@@ -46,9 +46,11 @@ def fetch(source: dict) -> Iterator[FetchedItem]:
     doc_type = SourceType(source["source_type"])
     found = 0
     for path in sorted(root.glob(glob)):
-        if not path.is_file() or path.name.endswith(".meta.json"):
-            continue
+        if not path.is_file() or path.name.endswith(".meta.json") or path.name.startswith("."):
+            continue  # skip sidecars and dotfiles (e.g. .gitkeep)
         raw = path.read_bytes()
+        if not raw:
+            continue  # skip empty placeholders
         meta = _read_sidecar(path)
         pub = meta.get("published_date")
         yield FetchedItem(

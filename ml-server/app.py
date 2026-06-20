@@ -21,6 +21,10 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
 DEVICE = os.getenv("ML_DEVICE", "cpu")
 USE_FP16 = DEVICE != "cpu"  # fp16 only helps on GPU
+# Cap sequence length: 8192-token CPU embedding is ~10x slower for negligible
+# retrieval gain (long sub-units are embedded as their own child chunks anyway).
+EMBED_MAX_LENGTH = int(os.getenv("EMBED_MAX_LENGTH", "512"))
+RERANK_MAX_LENGTH = int(os.getenv("RERANK_MAX_LENGTH", "512"))
 
 app = FastAPI(title="TaxMedha ML Server")
 
@@ -72,7 +76,8 @@ def health() -> dict:
 @app.post("/embed", response_model=EmbedResponse)
 def embed(req: EmbedRequest) -> EmbedResponse:
     out = _embedder().encode(
-        req.texts, return_dense=True, return_sparse=False, return_colbert_vecs=False
+        req.texts, max_length=EMBED_MAX_LENGTH,
+        return_dense=True, return_sparse=False, return_colbert_vecs=False
     )
     dense = out["dense_vecs"]
     vectors = [v.tolist() for v in dense]
@@ -84,7 +89,7 @@ def rerank(req: RerankRequest) -> RerankResponse:
     if not req.passages:
         return RerankResponse(results=[])
     pairs = [[req.query, p] for p in req.passages]
-    scores = _reranker().compute_score(pairs, normalize=True)
+    scores = _reranker().compute_score(pairs, normalize=True, max_length=RERANK_MAX_LENGTH)
     if isinstance(scores, float):
         scores = [scores]
     ranked = sorted(
