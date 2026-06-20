@@ -8,7 +8,8 @@ fastapi>=0.115
 uvicorn[standard]>=0.32
 pydantic>=2.9
 pydantic-settings>=2.6
-# Pin transformers to 4.x: FlagEmbedding 1.3's reranker tokenizer path breaks on
-# transformers 5.x (XLMRobertaTokenizer.prepare_for_model removed).
-transformers==4.46.3
+# transformers 5.x: FlagEmbedding's bge-m3 embedder needs it (passes dtype=).
+# The reranker is run via transformers directly (below), not FlagReranker, which
+# breaks on 5.x — so we stay on one transformers version for both.
+transformers==5.12.1
 FlagEmbedding>=1.3.0

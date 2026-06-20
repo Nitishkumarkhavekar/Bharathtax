@@ -38,9 +38,17 @@ def _embedder():
 
 @lru_cache(maxsize=1)
 def _reranker():
-    from FlagEmbedding import FlagReranker
+    # Use transformers directly (a standard cross-encoder) rather than
+    # FlagEmbedding's FlagReranker, which is incompatible with transformers 5.x.
+    import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-    return FlagReranker(RERANKER_MODEL, use_fp16=USE_FP16, device=DEVICE)
+    tok = AutoTokenizer.from_pretrained(RERANKER_MODEL)
+    model = AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL)
+    model.to(DEVICE).eval()
+    if USE_FP16:
+        model.half()
+    return tok, model, torch
 
 
 class EmbedRequest(BaseModel):
@@ -88,10 +96,14 @@ def embed(req: EmbedRequest) -> EmbedResponse:
 def rerank(req: RerankRequest) -> RerankResponse:
     if not req.passages:
         return RerankResponse(results=[])
-    pairs = [[req.query, p] for p in req.passages]
-    scores = _reranker().compute_score(pairs, normalize=True, max_length=RERANK_MAX_LENGTH)
-    if isinstance(scores, float):
-        scores = [scores]
+    tok, model, torch = _reranker()
+    inputs = tok(
+        [req.query] * len(req.passages), req.passages,
+        padding=True, truncation=True, max_length=RERANK_MAX_LENGTH, return_tensors="pt",
+    ).to(DEVICE)
+    with torch.no_grad():
+        logits = model(**inputs).logits.view(-1).float()
+        scores = torch.sigmoid(logits).tolist()  # normalise to 0..1
     ranked = sorted(
         ({"index": i, "score": float(s)} for i, s in enumerate(scores)),
         key=lambda r: r["score"],
