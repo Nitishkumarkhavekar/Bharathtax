@@ -1,0 +1,5 @@
+# Containers run Linux: force LF so Makefile / shell / configs don't break.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
