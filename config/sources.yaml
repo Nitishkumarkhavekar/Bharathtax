@@ -1,0 +1,85 @@
+# ============================================================================
+# TaxMedha — SOURCE REGISTRY
+# ----------------------------------------------------------------------------
+# Adding a source = editing THIS file, never code (hard requirement).
+# The ingestion pipeline reads this, upserts each entry into `corpus_sources`,
+# and processes it. Sources that can't be fetched automatically
+# (blocked/rate-limited) are dropped into MANUAL_DROP_DIR and ingested the same
+# way via the `manual` fetcher.
+#
+# `domain` is the multi-tenant axis (the taxmann.ai "Module" concept):
+# income_tax | gst | customs | company_law | ...  Only `income_tax` is in the
+# MVP corpus; the others are reserved extension points (commented out).
+# ============================================================================
+
+defaults:
+  rate_limit_seconds: 3          # polite crawl floor; overridable per source
+  cache: true                    # cache fetched bytes so re-runs don't re-hit the site
+  keep_raw: true                 # always retain raw file in MinIO
+
+sources:
+  # ----------------------------- INCOME TAX (MVP) ---------------------------
+  - key: it_act_1961
+    domain: income_tax
+    name: Income Tax Act, 1961
+    source_type: act             # act | rule | circular | notification
+    fetcher: manual              # manual | http_html | http_pdf  (seed via /data/manual)
+    base_url: https://incometaxindia.gov.in/pages/acts/income-tax-act.aspx
+    manual_glob: "income_tax/act_1961/**/*"   # under MANUAL_DROP_DIR
+    parser: it_act               # legal-structure parser profile
+    enabled: true
+
+  - key: it_rules_1962
+    domain: income_tax
+    name: Income Tax Rules, 1962
+    source_type: rule
+    fetcher: manual
+    base_url: https://incometaxindia.gov.in/pages/rules/income-tax-rules-1962.aspx
+    manual_glob: "income_tax/rules_1962/**/*"
+    parser: it_rules
+    enabled: true
+
+  - key: cbdt_circulars_recent
+    domain: income_tax
+    name: CBDT Circulars (recent)
+    source_type: circular
+    fetcher: manual              # flip to http_html once crawler is validated
+    base_url: https://incometaxindia.gov.in/Pages/communications/circulars.aspx
+    manual_glob: "income_tax/circulars/**/*"
+    parser: cbdt_circular
+    rate_limit_seconds: 5
+    enabled: true
+
+  - key: cbdt_notifications_recent
+    domain: income_tax
+    name: CBDT Notifications (recent)
+    source_type: notification
+    fetcher: manual
+    base_url: https://incometaxindia.gov.in/Pages/communications/notifications.aspx
+    manual_glob: "income_tax/notifications/**/*"
+    parser: cbdt_notification
+    rate_limit_seconds: 5
+    enabled: true
+
+  # ----------------------- RESERVED EXTENSION POINTS ------------------------
+  # Adding a whole new market = uncommenting + dropping files. No code change.
+  #
+  # - key: cgst_act_2017
+  #   domain: gst
+  #   name: Central Goods and Services Tax Act, 2017
+  #   source_type: act
+  #   fetcher: manual
+  #   base_url: https://cbic-gst.gov.in/cgst-act.html
+  #   manual_glob: "gst/cgst_act_2017/**/*"
+  #   parser: gst_act
+  #   enabled: false
+  #
+  # - key: customs_act_1962
+  #   domain: customs
+  #   name: Customs Act, 1962
+  #   source_type: act
+  #   fetcher: manual
+  #   base_url: https://www.cbic.gov.in/entities/customs-act
+  #   manual_glob: "customs/customs_act_1962/**/*"
+  #   parser: customs_act
+  #   enabled: false

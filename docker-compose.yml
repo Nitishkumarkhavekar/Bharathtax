@@ -1,0 +1,120 @@
+# ============================================================================
+# TaxMedha — core stack (CPU-friendly; runs on the HP ZBook, no big GPU needed)
+# LLM is NOT a container here: dev uses Ollama on the host (or mock) via env.
+# For a real GPU deployment add the vLLM service:  -f docker-compose.gpu.yml
+# ============================================================================
+name: taxmedha
+
+x-backend-env: &backend-env
+  env_file: [.env]
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ml-server:
+    build: ./ml-server
+    restart: unless-stopped
+    <<: *backend-env
+    ports: ["8001:8001"]
+    volumes:
+      - hfcache:/root/.cache/huggingface     # cache bge-m3 / reranker weights
+    # CPU on this laptop. GPU override sets a device reservation instead.
+
+  api:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    <<: *backend-env
+    ports: ["8000:8000"]
+    volumes:
+      - ./backend:/app
+      - ./config:/app/config:ro
+      - ./data:/data
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      ml-server: {condition: service_started}
+
+  worker:
+    build: ./backend
+    command: celery -A app.ingestion.tasks.celery_app worker --loglevel=INFO --concurrency=2
+    restart: unless-stopped
+    <<: *backend-env
+    volumes:
+      - ./backend:/app
+      - ./config:/app/config:ro
+      - ./data:/data
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      ml-server: {condition: service_started}
+
+  beat:
+    build: ./backend
+    command: celery -A app.ingestion.tasks.celery_app beat --loglevel=INFO
+    restart: unless-stopped
+    <<: *backend-env
+    volumes:
+      - ./backend:/app
+      - ./config:/app/config:ro
+      - ./data:/data
+    depends_on:
+      redis: {condition: service_healthy}
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    ports: ["5173:5173"]
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  miniodata:
+  hfcache:
