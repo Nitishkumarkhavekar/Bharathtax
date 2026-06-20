@@ -74,6 +74,29 @@ ollama pull qwen2.5:3b-instruct
 - API docs: http://localhost:8000/docs
 - MinIO console: http://localhost:9001
 
+### Demo vertical slice
+
+After `make up && make migrate && make seed` (and, once embedded, `make ingest`):
+
+1. Log in as **officer1 / officer123** (wing *IT I&CI*, 5 seats).
+2. **Ask Bot** → pick Module *Income Tax*, ask e.g. *"What is the maximum
+   deduction under section 80C?"* → grounded answer with `[n]` citations linking
+   back to the exact section/source. If nothing relevant is found, the bot
+   refuses rather than guessing.
+3. **Documents** → upload a notice (PDF), then ask questions scoped to it.
+4. Log in as **wingadmin / wing123** → **Admin** shows the live seat pool; open
+   several sessions to watch a wing's seats fill (and logins block when full).
+
+Demo users (seeded): `admin/admin123` (super_admin), `wingadmin/wing123`
+(wing_admin), `officer1/officer123`, `officer2/officer123`, `auditor1/auditor123`.
+
+### Tests
+
+`make test` runs in the api container against Postgres:
+- `test_chunker` — structure-aware chunking (provisos/Explanations never split)
+- `test_retrieval_grounding` — anti-hallucination refusal + citation assembly
+- `test_licensing` — concurrent-session seat pool blocks at the limit
+
 ## GPU production
 
 ```bash

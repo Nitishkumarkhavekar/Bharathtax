@@ -20,7 +20,7 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pgvector>=0.3.6",
     # --- auth ---
-    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.1",
     "pyjwt>=2.10",
     # --- async jobs ---
     "celery>=5.4",
