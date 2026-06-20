@@ -9,7 +9,7 @@ import httpx
 
 from app.core.config import settings
 
-_TIMEOUT = httpx.Timeout(120.0)   # CPU embedding of a batch can be slow
+_TIMEOUT = httpx.Timeout(600.0)   # CPU embedding of a batch of long sections can be slow
 
 
 def embed(texts: list[str]) -> list[list[float]]:
