@@ -35,47 +35,54 @@ from app.services import storage
 log = get_logger(__name__)
 
 
-def _already_ingested(db, checksum: str) -> bool:
-    return db.scalar(select(CorpusDocument.id).where(CorpusDocument.checksum == checksum)) is not None
+def _existing_doc(db, checksum: str) -> CorpusDocument | None:
+    return db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum))
 
 
 def _process_item(db, *, item: FetchedItem, source: dict, source_id: int, domain: Domain) -> int:
-    if item.checksum and _already_ingested(db, item.checksum):
-        log.info("skip (already ingested): %s", item.title)
+    # Resume-safe dedup: a fully-indexed doc is skipped; a partially-ingested one
+    # (e.g. a run interrupted by sleep) resumes from where it stopped.
+    existing = _existing_doc(db, item.checksum) if item.checksum else None
+    if existing and existing.status == CorpusDocStatus.indexed:
+        log.info("skip (already indexed): %s", item.title)
         return 0
 
-    # 1) keep the raw file in MinIO
-    ext = ".pdf" if "pdf" in item.content_type else ".bin"
-    raw_key = f"{item.source_key}/{item.checksum}{ext}"
-    storage.put_bytes(raw_key, item.raw_bytes, item.content_type)
-
-    # 2) extract -> 3) normalise legal text
+    # extract -> normalise legal text (needed for both fresh + resume)
     raw_text = extract_text(item.raw_bytes, item.content_type, filename=item.origin_path or "")
     drop_headers = tuple(h.upper() for h in source.get("drop_headers", []))
     clean = normalise(raw_text, drop_headers=drop_headers)
 
-    # 4) persist the document (raw key + clean text retained for re-chunking)
-    doc = CorpusDocument(
-        source_id=source_id,
-        title=item.title,
-        doc_type=item.doc_type,
-        source_url=item.source_url,
-        raw_minio_key=raw_key,
-        extracted_text=clean,
-        checksum=item.checksum,
-        published_date=item.published_date,
-        status=CorpusDocStatus.parsed,
-    )
-    db.add(doc)
-    db.flush()
+    if existing:
+        doc = existing
+        resume_from = db.scalar(
+            select(func.count()).select_from(CorpusChunk).where(
+                CorpusChunk.corpus_document_id == doc.id
+            )
+        ) or 0
+    else:
+        # keep the raw file in MinIO, then persist the document (raw + clean text)
+        ext = ".pdf" if "pdf" in item.content_type else ".bin"
+        raw_key = f"{item.source_key}/{item.checksum}{ext}"
+        storage.put_bytes(raw_key, item.raw_bytes, item.content_type)
+        doc = CorpusDocument(
+            source_id=source_id, title=item.title, doc_type=item.doc_type,
+            source_url=item.source_url, raw_minio_key=raw_key, extracted_text=clean,
+            checksum=item.checksum, published_date=item.published_date,
+            status=CorpusDocStatus.parsed,
+        )
+        db.add(doc)
+        db.flush()
+        resume_from = 0
 
-    # 5) parse -> 6) chunk -> 7) embed + index
-    parser = get_parser(source["parser"])
-    chunks = chunk_units(parser(clean))
-    n = embed_index.index_document(db, document=doc, source_id=source_id, domain=domain, chunks=chunks)
+    # parse -> chunk -> embed + index (resuming if partial)
+    chunks = chunk_units(get_parser(source["parser"])(clean))
+    n = embed_index.index_document(
+        db, document=doc, source_id=source_id, domain=domain, chunks=chunks,
+        resume_from=resume_from,
+    )
     doc.status = CorpusDocStatus.indexed
     db.commit()
-    log.info("ingested '%s': %d chunks", item.title, n)
+    log.info("ingested '%s': %d chunks (resumed from %d)", item.title, n, resume_from)
     return n
 
 

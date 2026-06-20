@@ -6,6 +6,8 @@ date versioning is applied so amendments supersede rather than overwrite.
 """
 from __future__ import annotations
 
+from sqlalchemy import select
+
 from app.core.enums import Domain
 from app.core.logging import get_logger
 from app.ingestion.contracts import Chunk
@@ -18,18 +20,33 @@ _BATCH = 32
 
 
 def index_document(db, *, document: CorpusDocument, source_id: int, domain: Domain,
-                   chunks: list[Chunk]) -> int:
+                   chunks: list[Chunk], resume_from: int = 0) -> int:
     """Embed + persist all chunks for one corpus document, committing per batch so
     progress is durable and visible. Parent-child links resolve correctly because
-    a parent always precedes its children in the list. Returns rows written."""
+    a parent always precedes its children in the list.
+
+    `resume_from` lets a partially-ingested document continue: the first N chunks
+    (already in the DB, in insertion order) are skipped, and their ids are loaded
+    so later children can still link to parents in the skipped range. Returns rows
+    written THIS call."""
     if not chunks:
         return 0
 
     index_to_id: dict[int, int] = {}   # position in `chunks` -> db id
     total = len(chunks)
-    written = 0
+    written = resume_from
 
-    for start in range(0, total, _BATCH):
+    if resume_from:
+        existing = db.scalars(
+            select(CorpusChunk.id)
+            .where(CorpusChunk.corpus_document_id == document.id)
+            .order_by(CorpusChunk.id)
+        ).all()
+        for pos, cid in enumerate(existing):
+            index_to_id[pos] = cid
+        log.info("  resuming doc %s from chunk %d/%d", document.id, resume_from, total)
+
+    for start in range(resume_from, total, _BATCH):
         batch = chunks[start : start + _BATCH]
         vectors = emb.embed([c.text for c in batch])
         rows: list[tuple[int, CorpusChunk]] = []
