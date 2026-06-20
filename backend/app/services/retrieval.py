@@ -86,18 +86,27 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
     dense = _dense(db, qvec, domain, settings.retrieval_dense_k)
     sparse = _sparse(db, query, domain, settings.retrieval_sparse_k)
 
-    # merge candidate set by chunk id, recording which channel(s) hit it
+    # merge candidate set by chunk id, recording channel(s) + a base dense score
     cand: dict[int, tuple[CorpusChunk, set[str]]] = {}
-    for c, _ in dense:
+    base: dict[int, float] = {}
+    for c, s in dense:
         cand.setdefault(c.id, (c, set()))[1].add("dense")
+        base[c.id] = max(base.get(c.id, 0.0), s)
     for c, _ in sparse:
         cand.setdefault(c.id, (c, set()))[1].add("sparse")
+        base.setdefault(c.id, 0.0)
 
     if not cand:
         return RetrievalResult([], grounded=False, meta={"dense": len(dense), "sparse": 0})
 
     chunks = [c for c, _ in cand.values()]
-    scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+    reranked = True
+    try:
+        scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+    except Exception:  # reranker unavailable -> degrade to dense-score ordering
+        reranked = False
+        ranked = sorted(range(len(chunks)), key=lambda i: base[chunks[i].id], reverse=True)
+        scores = [(i, base[chunks[i].id]) for i in ranked[: settings.retrieval_rerank_k]]
 
     passages: list[Passage] = []
     for idx, score in scores:
@@ -124,6 +133,7 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
         "candidates": len(cand),
         "top_score": passages[0].score if passages else None,
         "min_score": settings.retrieval_min_score,
+        "reranked": reranked,
     }
     return RetrievalResult(passages, grounded=grounded, meta=meta)
 

@@ -8,4 +8,7 @@ fastapi>=0.115
 uvicorn[standard]>=0.32
 pydantic>=2.9
 pydantic-settings>=2.6
+# Pin transformers to 4.x: FlagEmbedding 1.3's reranker tokenizer path breaks on
+# transformers 5.x (XLMRobertaTokenizer.prepare_for_model removed).
+transformers==4.46.3
 FlagEmbedding>=1.3.0
