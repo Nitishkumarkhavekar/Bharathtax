@@ -26,7 +26,7 @@ USE_FP16 = DEVICE != "cpu"  # fp16 only helps on GPU
 EMBED_MAX_LENGTH = int(os.getenv("EMBED_MAX_LENGTH", "512"))
 RERANK_MAX_LENGTH = int(os.getenv("RERANK_MAX_LENGTH", "512"))
 
-app = FastAPI(title="TaxMedha ML Server")
+app = FastAPI(title="BharathTax ML Server")
 
 
 @lru_cache(maxsize=1)

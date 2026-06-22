@@ -1,5 +1,5 @@
 # ============================================================================
-# TaxMedha — GPU production override.
+# BharathTax — GPU production override.
 # Usage:  docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
 # Adds vLLM serving the production LLM and moves ML models onto the GPU.
 # Set in .env:  LLM_BACKEND=vllm  LLM_BASE_URL=http://llm:8000/v1

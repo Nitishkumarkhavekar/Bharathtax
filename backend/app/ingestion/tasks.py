@@ -20,7 +20,7 @@ from app.models.org import SeatLease
 
 log = get_logger(__name__)
 
-celery_app = Celery("taxmedha", broker=settings.redis_url, backend=settings.redis_url)
+celery_app = Celery("bharathtax", broker=settings.redis_url, backend=settings.redis_url)
 celery_app.conf.update(task_track_started=True, timezone="UTC")
 
 

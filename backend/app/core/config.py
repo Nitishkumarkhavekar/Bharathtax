@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # general
     app_env: str = "dev"
-    app_name: str = "TaxMedha"
+    app_name: str = "BharathTax"
     log_level: str = "INFO"
 
     # postgres
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     manual_drop_dir: str = "/data/manual"
     crawl_cache_dir: str = "/data/cache"
     crawl_rate_limit_seconds: int = 3
-    crawl_user_agent: str = "TaxMedha-Ingest/0.1"
+    crawl_user_agent: str = "BharathTax-Ingest/0.1"
     incremental_update_cron: str = "0 2 * * *"
 
     @property

@@ -33,7 +33,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <header className="bg-brand-dark text-white">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-6">
-          <Link to="/ask" className="font-bold text-lg">TaxMedha</Link>
+          <Link to="/ask" className="font-bold text-lg">BharathTax</Link>
           <nav className="flex gap-4 flex-1">
             {NAV.filter((n) => !n.roles || (session && n.roles.includes(session.role))).map((n) => (
               <Link

@@ -1,4 +1,4 @@
-# TaxMedha
+# BharathTax
 
 Self-hosted, AI-powered tax-research platform grounded **only** in primary
 Indian tax law (Income Tax Act / Rules / CBDT Circulars & Notifications) plus

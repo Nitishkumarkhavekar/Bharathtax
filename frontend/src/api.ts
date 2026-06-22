@@ -47,7 +47,7 @@ export interface SeatUsage {
 }
 
 function token(): string | null {
-  return localStorage.getItem("taxmedha_token");
+  return localStorage.getItem("bharathtax_token");
 }
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {

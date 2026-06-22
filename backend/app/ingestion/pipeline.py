@@ -154,7 +154,7 @@ def verify() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="taxmedha-ingest")
+    p = argparse.ArgumentParser(prog="bharathtax-ingest")
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="run the ingestion pipeline")
     r.add_argument("--source", help="only this source key")

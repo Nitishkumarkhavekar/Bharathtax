@@ -1,5 +1,5 @@
 # ============================================================================
-# TaxMedha — SOURCE REGISTRY
+# BharathTax — SOURCE REGISTRY
 # ----------------------------------------------------------------------------
 # Adding a source = editing THIS file, never code (hard requirement).
 # The ingestion pipeline reads this, upserts each entry into `corpus_sources`,

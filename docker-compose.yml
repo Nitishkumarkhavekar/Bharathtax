@@ -1,5 +1,5 @@
 # ============================================================================
-# TaxMedha — core stack (CPU-friendly; runs on the HP ZBook, no big GPU needed)
+# BharathTax — core stack (CPU-friendly; runs on the HP ZBook, no big GPU needed)
 # LLM is NOT a container here: dev uses Ollama on the host (or mock) via env.
 # For a real GPU deployment add the vLLM service:  -f docker-compose.gpu.yml
 # ============================================================================

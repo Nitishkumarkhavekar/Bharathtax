@@ -1,4 +1,4 @@
-# TaxMedha — common operations. (See README for details.)
+# BharathTax — common operations. (See README for details.)
 COMPOSE = docker compose
 
 .PHONY: up down logs build migrate revision seed ingest verify-corpus test fmt

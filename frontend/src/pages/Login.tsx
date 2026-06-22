@@ -29,7 +29,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <form onSubmit={submit} className="bg-white rounded-xl shadow p-8 w-96 space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-brand-dark">TaxMedha</h1>
+          <h1 className="text-2xl font-bold text-brand-dark">BharathTax</h1>
           <p className="text-sm text-slate-500">Citation-grounded tax research</p>
         </div>
         <label className="block text-sm">

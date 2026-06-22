@@ -16,7 +16,7 @@ from app.services import llm as llm_mod
 from app.services.retrieval import Passage, RetrievalResult, retrieve, retrieve_documents
 
 SYSTEM_PROMPT = (
-    "You are TaxMedha, a research assistant for Indian tax officers. Answer the "
+    "You are BharathTax, a research assistant for Indian tax officers. Answer the "
     "question USING ONLY the numbered passages of primary tax law provided. "
     "Do NOT use any outside or prior knowledge. Cite every claim inline with the "
     "passage number in square brackets, e.g. [1]. Quote the exact statutory "
