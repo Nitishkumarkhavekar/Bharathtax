@@ -37,6 +37,8 @@ dependencies = [
     "pillow>=11.0",
     # --- ml client (no heavy torch here; that lives in ml-server) ---
     "numpy>=2.0",
+    # --- appeal-order drafting ---
+    "python-docx>=1.1",               # DOCX export of draft orders
 ]
 
 [project.optional-dependencies]

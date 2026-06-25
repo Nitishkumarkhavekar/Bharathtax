@@ -92,4 +92,47 @@ export const api = {
   history: () => req<HistoryItem[]>("/history"),
   seatUsage: (wingId: number) => req<SeatUsage>(`/admin/wings/${wingId}/seats`),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
+
+  // --- authoring helpers ---
+  improvePrompt: (text: string, context: "ask" | "document" = "ask") =>
+    req<{ original: string; improved: string; changed: boolean }>("/assist/improve-prompt", {
+      method: "POST",
+      body: JSON.stringify({ text, context }),
+    }),
+
+  // --- rulings (case-law search) ---
+  rulings: (q: string) => req<any>(`/rulings?q=${encodeURIComponent(q)}`),
+
+  // --- admin corpus ---
+  corpusStats: () => req<{ chunks: number; by_domain: Record<string, number> }>("/admin/corpus/stats"),
+  ingestCaseLaw: () => req<any>("/admin/corpus/ingest-case-law", { method: "POST" }),
+
+  // --- appeal drafting ---
+  appealCases: () => req<any[]>("/appeal/cases"),
+  appealCreateCase: (b: any) => req<any>("/appeal/cases", { method: "POST", body: JSON.stringify(b) }),
+  appealCase: (id: number) => req<any>(`/appeal/cases/${id}`),
+  appealUpload: (id: number, files: FileList) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append("files", f));
+    return req<any>(`/appeal/cases/${id}/documents`, { method: "POST", body: fd });
+  },
+  appealRun: (id: number) => req<any>(`/appeal/cases/${id}/run`, { method: "POST" }),
+  appealRunStatus: (rid: number) => req<any>(`/appeal/runs/${rid}`),
+  appealLatest: (id: number) => req<any>(`/appeal/cases/${id}/latest`),
+  appealEditOutput: (oid: number, content: string) =>
+    req<any>(`/appeal/outputs/${oid}`, { method: "PUT", body: JSON.stringify({ content }) }),
+  appealRegenerate: (id: number, seq: number) => req<any>(`/appeal/cases/${id}/issues/${seq}/regenerate`, { method: "POST" }),
+  appealReassemble: (id: number) => req<any>(`/appeal/cases/${id}/reassemble`, { method: "POST" }),
+  appealDraftVersions: (id: number) => req<any[]>(`/appeal/cases/${id}/draft-versions`),
+  async appealDownload(path: string, filename: string) {
+    const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token()}` } });
+    if (!res.ok) throw new ApiError(res.status, "Download failed");
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  },
+  async appealOpenDoc(cid: number, did: number) {
+    const res = await fetch(`${BASE}/appeal/cases/${cid}/documents/${did}/file`, { headers: { Authorization: `Bearer ${token()}` } });
+    if (!res.ok) throw new ApiError(res.status, "Open failed");
+    window.open(URL.createObjectURL(await res.blob()), "_blank");
+  },
 };

@@ -1,7 +1,12 @@
 import { FormEvent, useState } from "react";
+import { Sparkles, BookOpen, AlertTriangle, Loader2, ArrowUpRight } from "lucide-react";
 import { AnswerResponse, ApiError, api } from "../api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ImprovePrompt } from "@/components/ImprovePrompt";
 
-// Module = the corpus/domain to search (taxmann.ai's "Module"); Style = answer format.
 const MODULES = [
   { value: "", label: "All modules" },
   { value: "income_tax", label: "Income Tax" },
@@ -9,44 +14,73 @@ const MODULES = [
   { value: "customs", label: "Customs (coming soon)" },
 ];
 const STYLES = ["explanatory", "concise"];
+const selectCls =
+  "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-function Answer({ a }: { a: AnswerResponse }) {
+function AnswerView({ q, a }: { q: string; a: AnswerResponse }) {
   return (
-    <div className="bg-white rounded-lg shadow p-5 space-y-4">
-      {!a.grounded && (
-        <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 text-sm">
-          No grounded answer — retrieval found nothing relevant in the primary sources.
-        </div>
+    <div className="space-y-4">
+      <div className="text-sm text-muted-foreground">You asked</div>
+      <div className="text-lg font-medium">{q}</div>
+
+      {!a.grounded ? (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="pt-6 flex gap-3 text-amber-800">
+            <AlertTriangle className="size-5 shrink-0" />
+            <p className="text-sm">{a.answer}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{a.answer}</p>
+            </CardContent>
+          </Card>
+
+          {a.citations.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-foreground">
+                <BookOpen className="size-4 text-primary" /> Sources ({a.citations.length})
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {a.citations.map((c) => (
+                  <Card key={c.n} className="hover:border-primary/40 transition-colors">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-start gap-2">
+                        <Badge variant="default" className="font-mono">[{c.n}]</Badge>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium leading-snug">{c.breadcrumb}</div>
+                          <div className="mt-1 flex items-center gap-2">
+                            {c.section_number && <Badge variant="secondary">§ {c.section_number}</Badge>}
+                            {c.source_url && (
+                              <a href={c.source_url} target="_blank" rel="noreferrer"
+                                className="text-xs text-primary hover:underline inline-flex items-center gap-0.5">
+                                source <ArrowUpRight className="size-3" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            {a.latency_ms != null && <>answered in {a.latency_ms} ms · </>}
+            top score {String(a.meta["top_score"] ?? "—")}
+          </div>
+        </>
       )}
-      <p className="whitespace-pre-wrap leading-relaxed">{a.answer}</p>
-      {a.citations.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-slate-600 mb-1">Sources</h3>
-          <ol className="space-y-1">
-            {a.citations.map((c) => (
-              <li key={c.n} className="text-sm">
-                <span className="font-mono text-brand">[{c.n}]</span>{" "}
-                {c.source_url ? (
-                  <a href={c.source_url} target="_blank" rel="noreferrer"
-                     className="text-brand hover:underline">{c.breadcrumb}</a>
-                ) : (
-                  <span>{c.breadcrumb}</span>
-                )}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-      <div className="text-xs text-slate-400">
-        {a.latency_ms != null && <>answered in {a.latency_ms} ms · </>}
-        top score {String(a.meta["top_score"] ?? "—")}
-      </div>
     </div>
   );
 }
 
 export default function Ask() {
   const [q, setQ] = useState("");
+  const [asked, setAsked] = useState("");
   const [module, setModule] = useState("");
   const [style, setStyle] = useState("explanatory");
   const [answer, setAnswer] = useState<AnswerResponse | null>(null);
@@ -56,51 +90,43 @@ export default function Ask() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!q.trim()) return;
-    setBusy(true);
-    setError(null);
-    setAnswer(null);
-    try {
-      setAnswer(await api.ask(q, module || undefined, style));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Request failed");
-    } finally {
-      setBusy(false);
-    }
+    setBusy(true); setError(null); setAnswer(null); setAsked(q);
+    try { setAnswer(await api.ask(q, module || undefined, style)); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Request failed"); }
+    finally { setBusy(false); }
   }
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Ask Bot</h1>
-      <form onSubmit={submit} className="bg-white rounded-lg shadow p-4 space-y-3">
-        <textarea
-          className="w-full border rounded p-3 h-24"
-          placeholder="e.g. What is the maximum deduction available under section 80C?"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm">
-            Module{" "}
-            <select className="border rounded px-2 py-1" value={module}
-                    onChange={(e) => setModule(e.target.value)}>
-              {MODULES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-          </label>
-          <label className="text-sm">
-            Style{" "}
-            <select className="border rounded px-2 py-1" value={style}
-                    onChange={(e) => setStyle(e.target.value)}>
-              {STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </label>
-          <button disabled={busy}
-                  className="ml-auto bg-brand text-white rounded px-5 py-2 hover:bg-brand-dark disabled:opacity-50">
-            {busy ? "Searching…" : "Ask"}
-          </button>
-        </div>
-      </form>
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-      {answer && <Answer a={answer} />}
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold flex items-center gap-2"><Sparkles className="size-5 text-primary" /> Ask Bot</h2>
+        <p className="text-sm text-muted-foreground">Ask a tax-law question — answers are grounded in primary law and cited, or it refuses.</p>
+      </div>
+
+      <Card>
+        <CardContent className="pt-5">
+          <form onSubmit={submit} className="space-y-3">
+            <Textarea className="min-h-[96px] text-[15px]" value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="e.g. When is an addition under section 68 sustainable for unexplained share application money?" />
+            <div className="flex flex-wrap items-center gap-3">
+              <ImprovePrompt value={q} onChange={setQ} context="ask" disabled={busy} />
+              <select className={selectCls} value={module} onChange={(e) => setModule(e.target.value)}>
+                {MODULES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+              <select className={selectCls} value={style} onChange={(e) => setStyle(e.target.value)}>
+                {STYLES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
+              </select>
+              <Button type="submit" className="ml-auto" disabled={busy}>
+                {busy ? <><Loader2 className="size-4 animate-spin" /> Researching…</> : <>Ask</>}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {error && <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</div>}
+      {busy && <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Retrieving primary sources and composing a cited answer…</div>}
+      {answer && <AnswerView q={asked} a={answer} />}
     </div>
   );
 }

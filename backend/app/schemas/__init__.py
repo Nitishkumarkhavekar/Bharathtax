@@ -39,6 +39,17 @@ class AskRequest(BaseModel):
     style: str | None = "explanatory"
 
 
+class ImprovePromptRequest(BaseModel):
+    text: str
+    context: str | None = "ask"   # "ask" (corpus) | "document"
+
+
+class ImprovePromptResponse(BaseModel):
+    original: str
+    improved: str
+    changed: bool
+
+
 class CitationOut(BaseModel):
     n: int
     chunk_id: int

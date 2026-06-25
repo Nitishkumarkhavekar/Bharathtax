@@ -6,6 +6,9 @@ import Ask from "./pages/Ask";
 import Documents from "./pages/Documents";
 import Admin from "./pages/Admin";
 import History from "./pages/History";
+import Appeals from "./pages/Appeals";
+import AppealCase from "./pages/AppealCase";
+import Rulings from "./pages/Rulings";
 import { ReactNode } from "react";
 
 function Protected({ children }: { children: ReactNode }) {
@@ -21,6 +24,9 @@ export default function App() {
     <Routes>
       <Route path="/login" element={session ? <Navigate to="/ask" replace /> : <Login />} />
       <Route path="/ask" element={<Protected><Ask /></Protected>} />
+      <Route path="/appeals" element={<Protected><Appeals /></Protected>} />
+      <Route path="/appeals/:id" element={<Protected><AppealCase /></Protected>} />
+      <Route path="/rulings" element={<Protected><Rulings /></Protected>} />
       <Route path="/documents" element={<Protected><Documents /></Protected>} />
       <Route path="/history" element={<Protected><History /></Protected>} />
       <Route path="/admin" element={<Protected><Admin /></Protected>} />
