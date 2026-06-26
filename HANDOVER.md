@@ -62,11 +62,13 @@ These are `.gitignore`d on purpose — Nitin will hand them over out-of-band:
 
 - **Primary law** (Workstream B): drop sources under `data/manual/` per
   `config/sources.yaml`, then `make ingest` and `make verify-corpus`.
-- **Case law** (for Appeals + Rulings): drop judgment PDFs (+ optional
-  `manifest.jsonl` mapping `pdf_key`→title/url) into `data/manual/case_law/`,
+- **Case law** (for Appeals + Rulings): drop judgment PDFs into
+  `data/manual/case_law/` (+ optional `manifest.jsonl` for proper titles/URLs),
   then either click **Admin → Corpus → Ingest case law** (super_admin) or run
   `docker compose run --rm worker python -c "from app.ingestion.case_law import ingest_dir; ingest_dir('/data/manual/case_law')"`.
   Ingest is idempotent (checksum dedup, durable per-batch commits).
+  **Full format + manifest spec: [`docs/case_law_corpus.md`](docs/case_law_corpus.md)**
+  (a ready example sits at `data/manual/case_law/manifest.example.jsonl`).
 
 Check state anytime: **Admin → Corpus** (chunks by domain) or
 `GET /admin/corpus/stats`.
