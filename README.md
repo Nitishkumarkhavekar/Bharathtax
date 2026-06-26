@@ -8,9 +8,14 @@ answers from the model's own knowledge.
 
 Two workstreams, one system:
 - **Workstream A — Application:** auth/licensing, hybrid RAG, Ask Bot, document
-  Q&A, admin console, audit log.
+  Q&A, **Appeals** (CIT(A)/NFAC order drafting → DOCX), **Rulings** (case-law
+  search), admin console, audit log.
 - **Workstream B — Data/Ingestion:** a configurable, re-runnable pipeline that
-  turns primary tax law into a clean, chunked, embedded, indexed corpus.
+  turns primary tax law **and case law** into a clean, chunked, embedded,
+  indexed corpus.
+
+See [`HANDOVER.md`](HANDOVER.md) for the run guide, env/corpus notes, and the
+current open-items list.
 
 Multi-domain by design (a `domain` axis = the taxmann.ai "Module" concept):
 the MVP ships `income_tax`; `gst`, `customs`, etc. are reserved extension
@@ -35,7 +40,7 @@ data/cache/             polite-crawl HTTP cache
 backend/app/
   core/                 settings, db, security, logging, audit
   models/ schemas/      SQLAlchemy ORM + Pydantic
-  api/routes/           auth, ask, documents, admin, history
+  api/routes/           auth, ask, documents, admin, history, appeal, rulings, assist
   services/             retrieval, rag, llm, embeddings, licensing, auth, audit
   ingestion/            Workstream B: registry→fetch→extract→parse→chunk→embed→index
 ml-server/              self-hosted bge-m3 embeddings + reranker (FastAPI)
@@ -83,9 +88,15 @@ After `make up && make migrate && make seed` (and, once embedded, `make ingest`)
    deduction under section 80C?"* → grounded answer with `[n]` citations linking
    back to the exact section/source. If nothing relevant is found, the bot
    refuses rather than guessing.
+   Either box has an **Improve prompt** button that rewrites a rough query into a
+   precise, professional one (retrieval-free; never invents sections/facts).
 3. **Documents** → upload a notice (PDF), then ask questions scoped to it.
-4. Log in as **wingadmin / wing123** → **Admin** shows the live seat pool; open
-   several sessions to watch a wing's seats fill (and logins block when full).
+4. **Appeals** → create a case, upload the order/grounds, run a draft → grounded,
+   cited appellate order, editable per-issue, export to DOCX.
+5. **Rulings** → search the case-law corpus by issue.
+6. Log in as **wingadmin / wing123** → **Admin** shows the live seat pool (open
+   several sessions to watch a wing's seats fill) and the **Corpus** card
+   (chunks by domain + case-law ingest).
 
 Demo users (seeded): `admin/admin123` (super_admin), `wingadmin/wing123`
 (wing_admin), `officer1/officer123`, `officer2/officer123`, `auditor1/auditor123`.
@@ -106,5 +117,8 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 ## Out of MVP scope (clean extension points left in code)
 
-Case-law / NJRS ingestion, Draft Bot, MS-Word add-in, redaction tool, SSO,
+NJRS bulk case-law ingestion, MS-Word add-in, redaction tool, SSO,
 multi-instance federation.
+
+(Case-law ingestion and the Appeals draft workflow — formerly out of scope —
+have since shipped; see [`HANDOVER.md`](HANDOVER.md) §5.)
