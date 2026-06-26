@@ -16,11 +16,13 @@ class SourceType(str, enum.Enum):
     rule = "rule"
     circular = "circular"
     notification = "notification"
+    judgment = "judgment"          # case law (ITAT / HC / SC orders)
 
 
 class Domain(str, enum.Enum):
     """The taxmann.ai 'Module' axis. MVP ships income_tax; rest are reserved."""
     income_tax = "income_tax"
+    case_law = "case_law"          # income-tax judgments (ITAT / HC / SC)
     gst = "gst"
     customs = "customs"
     company_law = "company_law"

@@ -1,5 +1,12 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { Upload, FileText, AlertTriangle, Loader2 } from "lucide-react";
 import { AnswerResponse, ApiError, DocumentOut, api } from "../api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ImprovePrompt } from "@/components/ImprovePrompt";
+import { cn } from "@/lib/utils";
 
 export default function Documents() {
   const [docs, setDocs] = useState<DocumentOut[]>([]);
@@ -15,77 +22,80 @@ export default function Documents() {
   async function upload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await api.uploadDocument(file);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Upload failed");
-    } finally {
-      setBusy(false);
-      e.target.value = "";
-    }
+    setBusy(true); setError(null);
+    try { await api.uploadDocument(file); await refresh(); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Upload failed"); }
+    finally { setBusy(false); e.target.value = ""; }
   }
 
   async function ask(e: FormEvent) {
     e.preventDefault();
     if (!selected || !q.trim()) return;
-    setBusy(true);
-    setError(null);
-    setAnswer(null);
-    try {
-      setAnswer(await api.askDocument(selected, q));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Request failed");
-    } finally {
-      setBusy(false);
-    }
+    setBusy(true); setError(null); setAnswer(null);
+    try { setAnswer(await api.askDocument(selected, q)); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Request failed"); }
+    finally { setBusy(false); }
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <div className="space-y-3">
-        <h1 className="text-xl font-semibold">My Documents</h1>
-        <label className="inline-block bg-brand text-white rounded px-4 py-2 cursor-pointer hover:bg-brand-dark">
-          Upload a file
-          <input type="file" className="hidden" onChange={upload} disabled={busy} />
-        </label>
-        <ul className="divide-y bg-white rounded-lg shadow">
-          {docs.map((d) => (
-            <li key={d.id}
-                className={`p-3 cursor-pointer hover:bg-slate-50 ${selected === d.id ? "bg-blue-50" : ""}`}
-                onClick={() => { setSelected(d.id); setAnswer(null); }}>
-              <div className="font-medium text-sm">{d.filename}</div>
-              <div className="text-xs text-slate-400">{d.status}</div>
-            </li>
-          ))}
-          {docs.length === 0 && <li className="p-3 text-sm text-slate-400">No documents yet.</li>}
-        </ul>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">Documents</h2>
+        <p className="text-sm text-muted-foreground">Upload a file and ask questions answered only from that document.</p>
       </div>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          <label className={cn("inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-4 h-9 text-sm font-medium cursor-pointer hover:bg-primary/90", busy && "opacity-50 pointer-events-none")}>
+            <Upload className="size-4" /> Upload a file
+            <input type="file" className="hidden" onChange={upload} disabled={busy} />
+          </label>
+          <Card>
+            <CardContent className="p-0 divide-y">
+              {docs.map((d) => (
+                <button key={d.id} onClick={() => { setSelected(d.id); setAnswer(null); }}
+                  className={cn("w-full text-left p-3 flex items-center gap-3 hover:bg-accent/50 transition-colors",
+                    selected === d.id && "bg-accent")}>
+                  <FileText className="size-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium truncate">{d.filename}</span>
+                  </span>
+                  <Badge variant={d.status === "ready" ? "success" : "secondary"}>{d.status}</Badge>
+                </button>
+              ))}
+              {docs.length === 0 && <div className="p-4 text-sm text-muted-foreground">No documents yet.</div>}
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className="space-y-3">
-        <h1 className="text-xl font-semibold">Ask the selected document</h1>
-        <form onSubmit={ask} className="bg-white rounded-lg shadow p-4 space-y-3">
-          <textarea className="w-full border rounded p-3 h-24" disabled={!selected}
-                    placeholder={selected ? "Ask about this document…" : "Select a document first"}
-                    value={q} onChange={(e) => setQ(e.target.value)} />
-          <button disabled={busy || !selected}
-                  className="bg-brand text-white rounded px-5 py-2 hover:bg-brand-dark disabled:opacity-50">
-            {busy ? "Working…" : "Ask"}
-          </button>
-        </form>
-        {error && <div className="text-red-600 text-sm">{error}</div>}
-        {answer && (
-          <div className="bg-white rounded-lg shadow p-4">
-            {!answer.grounded && (
-              <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 text-sm mb-2">
-                Nothing relevant found in this document.
-              </div>
-            )}
-            <p className="whitespace-pre-wrap leading-relaxed">{answer.answer}</p>
-          </div>
-        )}
+        <div className="space-y-3">
+          <Card>
+            <CardContent className="pt-5">
+              <form onSubmit={ask} className="space-y-3">
+                <Textarea disabled={!selected} value={q} onChange={(e) => setQ(e.target.value)}
+                  placeholder={selected ? "Ask about this document…" : "Select a document first"} />
+                <div className="flex items-center gap-3">
+                  <ImprovePrompt value={q} onChange={setQ} context="document" disabled={busy || !selected} />
+                  <Button type="submit" className="ml-auto" disabled={busy || !selected}>
+                    {busy ? <><Loader2 className="size-4 animate-spin" /> Working…</> : "Ask"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+          {error && <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</div>}
+          {answer && (
+            <Card>
+              <CardContent className="pt-5">
+                {!answer.grounded && (
+                  <div className="flex gap-2 text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-sm mb-3">
+                    <AlertTriangle className="size-4 shrink-0" /> Nothing relevant found in this document.
+                  </div>
+                )}
+                <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{answer.answer}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

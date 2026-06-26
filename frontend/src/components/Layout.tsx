@@ -1,7 +1,18 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { MessageSquareText, FileText, Clock, ShieldCheck, LogOut, Scale, Gavel, BookOpen } from "lucide-react";
 import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
+import { cn } from "@/lib/utils";
+
+const NAV = [
+  { to: "/ask", label: "Ask Bot", icon: MessageSquareText },
+  { to: "/appeals", label: "Appeals", icon: Gavel },
+  { to: "/rulings", label: "Rulings", icon: BookOpen },
+  { to: "/documents", label: "Documents", icon: FileText },
+  { to: "/history", label: "History", icon: Clock },
+  { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"] },
+];
 
 function SeatWidget() {
   const { session } = useAuth();
@@ -12,52 +23,74 @@ function SeatWidget() {
     api.seatUsage(session.wingId).then(setUsage).catch(() => setUsage(null));
   }, [isAdmin, session]);
   if (!usage) return null;
+  const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
   return (
-    <span className="text-sm text-slate-200" title="Live seat pool for your wing">
-      Seats {usage.used}/{usage.limit}
-    </span>
+    <div className="px-3 py-2 rounded-md bg-white/5" title="Live seat pool for your wing">
+      <div className="flex justify-between text-xs text-sidebar-foreground/70 mb-1">
+        <span>Wing seats</span><span>{usage.used}/{usage.limit}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
   );
 }
-
-const NAV = [
-  { to: "/ask", label: "Ask Bot" },
-  { to: "/documents", label: "Documents" },
-  { to: "/history", label: "History" },
-  { to: "/admin", label: "Admin", roles: ["super_admin", "wing_admin"] },
-];
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { session, logout } = useAuth();
   const loc = useLocation();
+  const nav = NAV.filter((n) => !n.roles || (session && n.roles.includes(session.role)));
+  const current = nav.find((n) => loc.pathname.startsWith(n.to));
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-brand-dark text-white">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-6">
-          <Link to="/ask" className="font-bold text-lg">BharathTax</Link>
-          <nav className="flex gap-4 flex-1">
-            {NAV.filter((n) => !n.roles || (session && n.roles.includes(session.role))).map((n) => (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={`text-sm hover:text-white ${
-                  loc.pathname === n.to ? "text-white" : "text-slate-300"
-                }`}
-              >
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          <SeatWidget />
-          <span className="text-sm text-slate-300">{session?.username}</span>
-          <button onClick={logout} className="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
-            Logout
-          </button>
+    <div className="min-h-screen flex bg-background">
+      {/* Sidebar */}
+      <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
+        <div className="h-16 flex items-center gap-2 px-5 border-b border-white/10">
+          <Scale className="size-6 text-primary" />
+          <span className="font-semibold text-lg tracking-tight">BharathTax</span>
         </div>
-      </header>
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">{children}</main>
-      <footer className="text-center text-xs text-slate-400 py-3">
-        Grounded only in primary Indian tax law. Answers are citation-backed; verify before reliance.
-      </footer>
+        <nav className="flex-1 p-3 space-y-1">
+          {nav.map((n) => {
+            const active = loc.pathname.startsWith(n.to);
+            return (
+              <Link key={n.to} to={n.to}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  active ? "bg-primary text-primary-foreground" : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-white"
+                )}>
+                <n.icon className="size-4" /> {n.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="p-3 space-y-3 border-t border-white/10">
+          <SeatWidget />
+          <div className="flex items-center justify-between gap-2 px-1">
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{session?.username}</div>
+              <div className="text-xs text-sidebar-foreground/60 capitalize">{session?.role?.replace("_", " ")}</div>
+            </div>
+            <button onClick={logout} title="Logout"
+              className="text-sidebar-foreground/70 hover:text-white p-2 rounded-md hover:bg-white/5">
+              <LogOut className="size-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-16 shrink-0 bg-card border-b flex items-center px-8">
+          <h1 className="text-base font-semibold text-foreground">{current?.label ?? "BharathTax"}</h1>
+          <div className="ml-auto text-xs text-muted-foreground">
+            Citation-grounded · primary Indian tax law
+          </div>
+        </header>
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-5xl mx-auto px-8 py-7">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }

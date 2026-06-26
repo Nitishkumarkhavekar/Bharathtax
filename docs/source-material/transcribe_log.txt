@@ -1,0 +1,26 @@
+Loading model 'medium' (CPU, int8)...
+Transcribing... this runs locally and can take a while on CPU.
+Detected language: hi (p=0.67)
+Audio duration: 0:28:50
+  ...10 segments, up to 0:00:32
+  ...20 segments, up to 0:01:07
+  ...30 segments, up to 0:01:39
+  ...40 segments, up to 0:02:03
+  ...50 segments, up to 0:02:28
+  ...60 segments, up to 0:02:55
+  ...70 segments, up to 0:03:21
+  ...80 segments, up to 0:03:44
+  ...90 segments, up to 0:04:17
+  ...100 segments, up to 0:05:21
+  ...110 segments, up to 0:06:15
+  ...120 segments, up to 0:07:24
+  ...130 segments, up to 0:07:49
+  ...140 segments, up to 0:12:33
+  ...150 segments, up to 0:16:44
+  ...160 segments, up to 0:17:58
+  ...170 segments, up to 0:24:11
+  ...180 segments, up to 0:24:31
+  ...190 segments, up to 0:24:52
+  ...200 segments, up to 0:27:12
+
+Done. 206 segments -> transcript.txt and transcript.srt

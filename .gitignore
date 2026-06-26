@@ -28,3 +28,6 @@ data/cache/**
 
 # handover artifacts (large DB dump kept out of git; ship separately)
 handover/
+
+# celery beat runtime state (regenerated; never commit)
+backend/celerybeat-schedule*
