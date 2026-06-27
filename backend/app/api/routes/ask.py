@@ -7,8 +7,9 @@ import time
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import Principal, client_meta, get_principal
+from app.api.deps import Principal, client_meta, get_principal, require_license
 from app.core.db import get_db
+from app.models.org import User
 from app.core.enums import Domain, QueryScope
 from app.models.activity import Query
 from app.schemas import AnswerResponse, AskRequest, CitationOut
@@ -28,7 +29,9 @@ def _domain(value: str | None) -> Domain | None:
 
 @router.post("", response_model=AnswerResponse)
 def ask(body: AskRequest, request: Request,
-        p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> AnswerResponse:
+        p: Principal = Depends(get_principal),
+        _licensed: User = Depends(require_license),
+        db: Session = Depends(get_db)) -> AnswerResponse:
     started = time.monotonic()
     domain = _domain(body.domain)
     result = rag.answer_question(db, body.question, domain=domain)

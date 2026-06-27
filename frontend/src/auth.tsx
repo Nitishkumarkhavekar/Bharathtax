@@ -9,8 +9,16 @@ interface Session {
 interface AuthCtx {
   session: Session | null;
   loading: boolean;
-  login: (u: string, p: string) => Promise<void>;
+  login: (u: string, p: string) => Promise<Session>;
   logout: () => Promise<void>;
+}
+
+/**
+ * The landing page after login (and the default route).
+ * Admins start on the admin dashboard; everyone else goes to the chat.
+ */
+export function landingPath(role?: string | null): string {
+  return role === "super_admin" || role === "wing_admin" ? "/admin/dashboard" : "/ask";
 }
 
 const Ctx = createContext<AuthCtx>(null!);
@@ -71,12 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, [session]);
 
-  async function login(u: string, p: string) {
+  async function login(u: string, p: string): Promise<Session> {
     const tok: TokenResponse = await api.login(u, p);
     localStorage.setItem(KEY, tok.access_token);
     const s = { username: tok.username, role: tok.role, wingId: tok.wing_id };
     localStorage.setItem(SESS, JSON.stringify(s));
     setSession(s);
+    return s;
   }
 
   async function logout() {

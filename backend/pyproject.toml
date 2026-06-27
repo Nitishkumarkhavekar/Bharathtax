@@ -39,6 +39,8 @@ dependencies = [
     "numpy>=2.0",
     # --- appeal-order drafting ---
     "python-docx>=1.1",               # DOCX export of draft orders
+    # --- admin console: system stats ---
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
