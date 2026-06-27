@@ -48,13 +48,13 @@ class OpenAICompatLLM:
         self.model = model
         self.api_key = api_key
 
-    def complete(self, system: str, user: str) -> str:
+    def complete(self, system: str, user: str, *, model: str | None = None) -> str:
         with httpx.Client(timeout=httpx.Timeout(180.0)) as client:
             r = client.post(
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 json={
-                    "model": self.model,
+                    "model": model or self.model,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},

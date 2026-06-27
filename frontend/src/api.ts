@@ -1,6 +1,23 @@
-// Typed API client. Token is injected from localStorage; 401s bubble up so the
-// auth layer can log the user out.
+// Typed API client. Token is injected from localStorage; any 401 / expired
+// token clears the local session and bounces the user to /login so they never
+// see a stale "Signature has expired" error in the middle of the app.
 const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+const TOKEN_KEY = "bharathtax_token";
+const SESSION_KEY = "bharathtax_session";
+
+function clearSessionAndRedirect() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+  // Avoid a redirect loop if we're already on the login page.
+  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    window.location.assign("/login");
+  }
+}
 
 export interface Citation {
   n: number;
@@ -47,7 +64,7 @@ export interface SeatUsage {
 }
 
 function token(): string | null {
-  return localStorage.getItem("bharathtax_token");
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
@@ -62,6 +79,12 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
       detail = (await res.json()).detail ?? detail;
     } catch {
       /* ignore */
+    }
+    // The login call itself returning 401 is "wrong username/password" — let
+    // that surface to the login form. Any OTHER 401 means the session is gone
+    // (expired signature, revoked seat lease, etc.) — bounce to /login.
+    if (res.status === 401 && !path.startsWith("/auth/login")) {
+      clearSessionAndRedirect();
     }
     throw new ApiError(res.status, detail);
   }

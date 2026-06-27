@@ -9,7 +9,19 @@ from __future__ import annotations
 
 import re
 
-from app.services.llm import get_llm
+import os
+from app.core.config import settings
+from app.services.llm import get_llm, OpenAICompatLLM
+
+# "Improve prompt" is an instruction-following REWRITE, not a grounded answer,
+# so it must use the raw instruction model (bharattax-rag always does RAG/answers).
+_IMPROVE_MODEL = os.getenv("IMPROVE_MODEL_NAME", "llama-3.1-8b-instruct")
+
+
+def _improve_llm():
+    if settings.llm_backend.lower() in {"openai", "vllm", "ollama"}:
+        return OpenAICompatLLM(settings.llm_base_url, _IMPROVE_MODEL, settings.llm_api_key)
+    return get_llm()  # mock/dev fallback
 
 # A section/rule/article reference, e.g. "section 68", "u/s 44AD", "s. 271(1)(c)".
 _SEC_TOKEN = re.compile(r"(?:section|sec\.?|s\.|u/s\.?|rule|article|art\.?)\s*(\d+[A-Za-z]*)", re.I)
@@ -110,7 +122,7 @@ def refine(text: str, context: str = "ask") -> str:
     system = _SYSTEM + (_DOC_HINT if context == "document" else "")
     user = f"Original question:\n{text}\n\nImproved question:"
     try:
-        out = get_llm().complete(system, user).strip()
+        out = _improve_llm().complete(system, user).strip()
     except Exception:
         return text
     # Mock backend (no model) returns a canned, bracketed string — never surface it.
