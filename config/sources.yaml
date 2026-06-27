@@ -29,6 +29,16 @@ sources:
     parser: it_act               # legal-structure parser profile
     enabled: true
 
+  - key: it_act_2025
+    domain: income_tax
+    name: Income-tax Act, 2025
+    source_type: act
+    fetcher: manual
+    base_url: https://incometaxindia.gov.in/pages/acts/income-tax-act.aspx
+    manual_glob: "income_tax/act_2025/**/*"
+    parser: it_act
+    enabled: true
+
   - key: it_rules_1962
     domain: income_tax
     name: Income Tax Rules, 1962
@@ -36,6 +46,16 @@ sources:
     fetcher: manual
     base_url: https://incometaxindia.gov.in/pages/rules/income-tax-rules-1962.aspx
     manual_glob: "income_tax/rules_1962/**/*"
+    parser: it_rules
+    enabled: true
+
+  - key: it_rules_2026
+    domain: income_tax
+    name: Income-tax Rules, 2026
+    source_type: rule
+    fetcher: manual
+    base_url: https://incometaxindia.gov.in/pages/rules/income-tax-rules-1962.aspx
+    manual_glob: "income_tax/rules_2026/**/*"
     parser: it_rules
     enabled: true
 

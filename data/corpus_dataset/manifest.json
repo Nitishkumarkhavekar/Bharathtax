@@ -1,0 +1,14 @@
+{
+  "total_chunks": 14421,
+  "embedding_dim": 1024,
+  "embedding_model": "BAAI/bge-m3",
+  "by_source": {
+    "it_act_1961": 6636,
+    "it_act_2025": 3197,
+    "it_rules_1962": 2883,
+    "it_rules_2026": 1692,
+    "cbdt_circulars_recent": 13
+  },
+  "embed_seconds": 265.2,
+  "embed_throughput_per_sec": 54.4
+}

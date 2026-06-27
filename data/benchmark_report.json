@@ -1,0 +1,158 @@
+{
+  "config": {
+    "rounds": 10,
+    "per_round": 79,
+    "total_questions": 790,
+    "concurrency": 4,
+    "cores": 4,
+    "passage_char_cap": 16000
+  },
+  "wall_seconds": 1176.0,
+  "throughput_q_per_min": 40.3,
+  "tokens_avg": {
+    "user_tokens": 15.4,
+    "chunk_tokens": 1566.8,
+    "chunk_tokens_full": 1703.2,
+    "prompt_tokens": 1879.6,
+    "generated_tokens": 124.4
+  },
+  "chunk_usage": {
+    "avg_pct_of_chunk_used_per_prompt": 98.7,
+    "avg_passages_per_prompt": 6.26,
+    "total_chunks_used": 4942,
+    "complete_chunks": 4893,
+    "incomplete_chunks_truncated": 49,
+    "pct_complete": 99.0,
+    "pct_incomplete": 1.0
+  },
+  "quality": {
+    "retrieval_hit_rate_pct": 100.0,
+    "grounding_rate_pct": 100.0
+  },
+  "latency_ms": {
+    "retrieve_avg": 600.0,
+    "generate_avg": 5326.0
+  },
+  "cpu_impact": {
+    "cores": 4,
+    "system_cpu_pct_avg": 38.7,
+    "system_cpu_pct_peak": 79.5,
+    "samples": 2350
+  },
+  "per_version": {
+    "1961": {
+      "questions": 198,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.9,
+      "chunk_tokens": 1712.7,
+      "generated_tokens": 145.3,
+      "chunk_used_pct": 98.8
+    },
+    "1962": {
+      "questions": 198,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.9,
+      "chunk_tokens": 1324.7,
+      "generated_tokens": 128.9,
+      "chunk_used_pct": 99.2
+    },
+    "2025": {
+      "questions": 197,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.0,
+      "chunk_tokens": 1606.8,
+      "generated_tokens": 118.6,
+      "chunk_used_pct": 99.6
+    },
+    "2026": {
+      "questions": 197,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.0,
+      "chunk_tokens": 1623.5,
+      "generated_tokens": 104.8,
+      "chunk_used_pct": 97.2
+    }
+  },
+  "per_round": [
+    {
+      "round": 1,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.4,
+      "chunk_tokens": 1565.4,
+      "generated_tokens": 121.7,
+      "chunk_used_pct": 98.5
+    },
+    {
+      "round": 2,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.4,
+      "chunk_tokens": 1711.8,
+      "generated_tokens": 131.5,
+      "chunk_used_pct": 98.4
+    },
+    {
+      "round": 3,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.5,
+      "chunk_tokens": 1660.3,
+      "generated_tokens": 113.7,
+      "chunk_used_pct": 97.4
+    },
+    {
+      "round": 4,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.3,
+      "chunk_tokens": 1493.0,
+      "generated_tokens": 129.7,
+      "chunk_used_pct": 99.0
+    },
+    {
+      "round": 5,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.4,
+      "chunk_tokens": 1561.6,
+      "generated_tokens": 132.4,
+      "chunk_used_pct": 99.2
+    },
+    {
+      "round": 6,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.5,
+      "chunk_tokens": 1609.6,
+      "generated_tokens": 108.8,
+      "chunk_used_pct": 98.4
+    },
+    {
+      "round": 7,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.5,
+      "chunk_tokens": 1652.8,
+      "generated_tokens": 140.8,
+      "chunk_used_pct": 99.6
+    },
+    {
+      "round": 8,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.5,
+      "chunk_tokens": 1303.0,
+      "generated_tokens": 120.6,
+      "chunk_used_pct": 99.4
+    },
+    {
+      "round": 9,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.3,
+      "chunk_tokens": 1512.3,
+      "generated_tokens": 126.4,
+      "chunk_used_pct": 97.5
+    },
+    {
+      "round": 10,
+      "retrieval_hit_pct": 100.0,
+      "user_tokens": 15.4,
+      "chunk_tokens": 1598.3,
+      "generated_tokens": 118.6,
+      "chunk_used_pct": 99.6
+    }
+  ]
+}

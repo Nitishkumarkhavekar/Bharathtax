@@ -20,7 +20,8 @@ from app.core.enums import ChunkLevel
 
 # A top-level unit header at line start: "80C. Title", "9A. Title", "2. Definitions".
 # Allow leading amendment brackets ("[80C." comes from India Code's "1[80C.").
-TOP_HEADER = re.compile(r"^\[*\s*(?P<num>\d{1,3}[A-Z]{0,3})\.\s+(?P<title>\S.*)$")
+# Also match hyphenated section numbers "194-I.", "115-O." (common in the IT Act).
+TOP_HEADER = re.compile(r"^\[*\s*(?P<num>\d{1,3}(?:-?[A-Z]{1,4})?)\.\s+(?P<title>\S.*)$")
 
 
 def _title_key(s: str) -> str:
@@ -44,14 +45,25 @@ EXPLANATION = re.compile(r"^Explanation\s*(?P<n>\d+)?\s*[\.\—:-]", re.I)
 
 
 def iter_chapter_titles(lines: list[str]) -> dict[int, tuple[str, str]]:
-    """Map line-index -> (roman, title) for chapter markers (title = next line)."""
+    """Map line-index -> (roman, title) for chapter markers (title = next line).
+
+    A genuine heading is the chapter token ALONE on its line ("CHAPTER XIV"),
+    followed by an all-caps title on the next line. Running prose that merely
+    mentions a chapter ("Chapter VIII of the Finance Act, 2016, and ...") is
+    rejected: anything other than brackets/whitespace after the numeral (in
+    particular lowercase letters) means it is a sentence, not a heading."""
     out: dict[int, tuple[str, str]] = {}
     for i, ln in enumerate(lines):
-        m = CHAPTER.match(ln.strip())
-        if m:
-            roman = m.group("rom") + (m.group("suf") or "")
-            title = lines[i + 1].strip() if i + 1 < len(lines) else ""
-            out[i] = (roman, collapse_ws(title))
+        stripped = ln.strip()
+        m = CHAPTER.match(stripped)
+        if not m:
+            continue
+        rest = stripped[m.end():]
+        if re.search(r"[a-z]", rest):
+            continue  # prose reference, not a heading
+        roman = m.group("rom") + (m.group("suf") or "")
+        title = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        out[i] = (roman, collapse_ws(title))
     return out
 
 
