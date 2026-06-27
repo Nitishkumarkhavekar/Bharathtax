@@ -1,0 +1,48 @@
+# ============================================================================
+# BharathTax — LLM host (this GPU VPS): Llama-3.1-8B-Instruct via vLLM.
+# OpenAI-compatible /v1 API — the backend's `vllm`/`openai` LLM backend points here.
+#
+#   docker compose -f docker-compose.llm.yml up -d
+#   curl http://127.0.0.1:8002/v1/models
+#
+# On the web-app VPS set:
+#   LLM_BACKEND=openai
+#   LLM_BASE_URL=http://<THIS_VPS_IP>:8002/v1
+#   LLM_MODEL_NAME=llama-3.1-8b-instruct
+#
+# Shares the GPU with ml-server (~3.9 GB). gpu-memory-utilization is capped so
+# both fit in 16 GB. AWQ-INT4 weights ~5.5 GB + KV cache.
+# SECURITY: no auth — firewall 8002 to the app VPS only.
+# ============================================================================
+name: bharathtax-llm
+
+services:
+  llm:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    command: >
+      --model hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
+      --served-model-name llama-3.1-8b-instruct
+      --quantization awq_marlin
+      --max-model-len 6144
+      --gpu-memory-utilization 0.50
+      --dtype float16
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    ports: ["8002:8000"]
+    volumes:
+      - hfcache:/root/.cache/huggingface
+    gpus: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ipc: host
+
+volumes:
+  hfcache:
+    name: bharathtax-ml_hfcache       # reuse the same weight cache volume as ml-server
+    external: true

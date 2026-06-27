@@ -1,0 +1,15 @@
+# GPU build — CUDA 12.8 wheels (RTX 50-series / Blackwell, sm_120).
+# The cu128 torch wheel bundles the CUDA runtime libs, so a plain slim base works;
+# only the NVIDIA driver (via nvidia-container-toolkit) is needed at runtime.
+# torch 2.7.x: >=2.6 required by transformers (refuses torch.load of .bin on older),
+# and 2.7+cu128 is the first line with Blackwell sm_120 kernels.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.1
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+pydantic-settings>=2.6
+# transformers 5.x: FlagEmbedding's bge-m3 embedder needs it. The reranker runs via
+# transformers directly (a cross-encoder), not FlagReranker, which breaks on 5.x.
+transformers==5.12.1
+FlagEmbedding>=1.3.0

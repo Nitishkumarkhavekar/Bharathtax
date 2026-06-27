@@ -1,0 +1,52 @@
+# ============================================================================
+# BharathTax — MODEL-ONLY host (this VPS).
+# Runs ONLY ml-server (bge-m3 embeddings + bge-reranker-v2-m3), exposed over the
+# network. Postgres, the ingestion worker, the API and the corpus all live on
+# the separate web-app VPS, which calls this service for /embed and /rerank.
+#
+# Usage:
+#   docker compose -f docker-compose.ml.yml up -d --build
+#   curl http://127.0.0.1:8001/health
+#
+# On the web-app VPS set:  ML_SERVER_URL=http://<THIS_VPS_IP>:8001
+#
+# SECURITY: ml-server has no auth. Do NOT leave 8001 open to the public internet.
+# Restrict it to the app VPS only — firewall to that IP, or run both VPSes on a
+# private network / WireGuard and bind there (see `ports` note below).
+# ============================================================================
+name: bharathtax-ml
+
+services:
+  ml-server:
+    build:
+      context: ./ml-server
+      dockerfile: Dockerfile.gpu      # CUDA 12.8 torch (Blackwell sm_120)
+    restart: unless-stopped
+    environment:
+      EMBEDDING_MODEL: BAAI/bge-m3
+      RERANKER_MODEL: BAAI/bge-reranker-v2-m3
+      ML_DEVICE: cuda          # run embeddings + reranker on the GPU (fp16)
+      EMBED_MAX_LENGTH: "512"   # raise on GPU if longer-context recall is needed
+      RERANK_MAX_LENGTH: "512"
+    gpus: all                  # requires nvidia-container-toolkit on the host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Public bind. To restrict to a private/VPN interface instead, use e.g.
+    #   ports: ["10.0.0.5:8001:8001"]
+    ports: ["8001:8001"]
+    volumes:
+      - hfcache:/root/.cache/huggingface   # persist downloaded bge weights (~4.6 GB)
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8001/health').status==200 else sys.exit(1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  hfcache:
