@@ -129,6 +129,144 @@ class UserOut(BaseModel):
     id: int
     username: str
     full_name: str | None
+    email: str | None = None
     role: Role
     wing_id: int
+    office_id: int | None = None
     is_active: bool
+    created_at: datetime | None = None
+
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    email: str | None = None
+    role: Role | None = None
+    wing_id: int | None = None
+    office_id: int | None = None
+    is_active: bool | None = None
+    password: str | None = None    # optional reset
+
+
+# ---- licenses ----
+class LicenseCreate(BaseModel):
+    valid_until: datetime
+    assigned_to: str | None = None
+    notes: str | None = None
+    valid_from: datetime | None = None
+
+
+class LicenseUpdate(BaseModel):
+    valid_until: datetime | None = None
+    assigned_to: str | None = None
+    notes: str | None = None
+    status: str | None = None      # active | expired | deactivated
+
+
+class LicenseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    key: str
+    status: str
+    valid_from: datetime
+    valid_until: datetime
+    assigned_to: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---- revenue ----
+class RevenueCreate(BaseModel):
+    entry_date: datetime | None = None
+    source: str
+    description: str | None = None
+    amount: float
+    currency: str = "INR"
+    license_key_id: int | None = None
+
+
+class RevenueUpdate(BaseModel):
+    entry_date: datetime | None = None
+    source: str | None = None
+    description: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    license_key_id: int | None = None
+
+
+class RevenueOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    entry_date: datetime
+    source: str
+    description: str | None = None
+    amount: float
+    currency: str
+    license_key_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---- dashboard / model / server ----
+class DashboardOut(BaseModel):
+    users_total: int
+    users_active: int
+    admins: int
+    queries_24h: int
+    queries_7d: int
+    queries_total: int
+    avg_latency_ms: float | None = None
+    revenue_month: float
+    revenue_total: float
+    licenses_active: int
+    licenses_expired: int
+    licenses_deactivated: int
+    seats_used: int
+    seats_total: int
+    queries_per_day: list[dict]      # [{day: 'YYYY-MM-DD', count: int}]
+    top_questions: list[dict]        # [{question: str, count: int}]
+
+
+class ModelInfoOut(BaseModel):
+    id: str
+    queries_total: int
+    queries_24h: int
+    queries_7d: int
+    avg_latency_ms: float | None
+    success_rate: float              # 0..100
+    is_primary: bool
+    is_fallback: bool
+
+
+class ModelManagementOut(BaseModel):
+    backend: str
+    base_url: str
+    primary_model: str
+    fallback_model: str | None
+    models: list[ModelInfoOut]
+    queries_per_day: list[dict]
+    latency_per_day: list[dict]
+    last_error: str | None = None
+    healthy: bool
+
+
+class ServerStatsOut(BaseModel):
+    healthy: bool
+    cpu_percent: float
+    cpu_count: int
+    load_avg: list[float]            # [1m, 5m, 15m]
+    mem_total_mb: float
+    mem_used_mb: float
+    mem_percent: float
+    swap_used_mb: float
+    swap_percent: float
+    disk_total_gb: float
+    disk_used_gb: float
+    disk_percent: float
+    uptime_seconds: int
+    process_count: int
+    network_bytes_sent: int
+    network_bytes_recv: int
+    containers: list[dict]           # [{name, status, image}]
+    llm_endpoint_healthy: bool
+    llm_endpoint_latency_ms: float | None

@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     # llm (behind LLMClient abstraction)
     llm_backend: str = "mock"  # mock | ollama | vllm | openai
     llm_model_name: str = "qwen2.5:3b-instruct"
+    llm_fallback_model_name: str = ""   # optional ungrounded model for basic Q&A when primary refuses
     llm_base_url: str = "http://host.docker.internal:11434/v1"
     llm_api_key: str = "not-needed"
     llm_max_tokens: int = 1024

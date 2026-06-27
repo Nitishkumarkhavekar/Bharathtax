@@ -6,9 +6,29 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import admin, appeal, assist, ask, auth, documents, history, rulings
 from app.core.config import settings
-from app.core.logging import configure_logging
+from app.core.db import Base, engine
+from app.core.logging import configure_logging, get_logger
+
+import app.models  # noqa: F401  ensure all models are registered on Base.metadata
 
 configure_logging()
+_log = get_logger(__name__)
+
+
+def _ensure_admin_tables() -> None:
+    """Create net-new admin tables (license_keys, revenue_entries) if missing.
+
+    The original Alembic chain is sealed and we layer post-baseline tables in
+    via SQLAlchemy's checkfirst=True semantics so we don't re-create the
+    full schema on every boot.
+    """
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    except Exception as exc:        # pragma: no cover - boot diagnostic only
+        _log.warning("create_all failed (continuing): %s", exc)
+
+
+_ensure_admin_tables()
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 

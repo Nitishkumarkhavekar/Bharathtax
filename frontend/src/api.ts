@@ -1,6 +1,23 @@
-// Typed API client. Token is injected from localStorage; 401s bubble up so the
-// auth layer can log the user out.
+// Typed API client. Token is injected from localStorage; any 401 / expired
+// token clears the local session and bounces the user to /login so they never
+// see a stale "Signature has expired" error in the middle of the app.
 const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+const TOKEN_KEY = "bharathtax_token";
+const SESSION_KEY = "bharathtax_session";
+
+function clearSessionAndRedirect() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+  // Avoid a redirect loop if we're already on the login page.
+  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    window.location.assign("/login");
+  }
+}
 
 export interface Citation {
   n: number;
@@ -26,6 +43,15 @@ export interface TokenResponse {
   wing_id: number;
   username: string;
 }
+
+export interface LicenseStatus {
+  required: boolean;
+  licensed: boolean;
+  license_key: string | null;
+  assigned_to: string | null;
+  valid_until: string | null;
+  message: string | null;
+}
 export interface DocumentOut {
   id: number;
   filename: string;
@@ -46,8 +72,156 @@ export interface SeatUsage {
   available: number;
 }
 
+// ---- admin console types ----
+export type AdminRole = "super_admin" | "wing_admin" | "officer" | "auditor";
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  full_name: string | null;
+  email: string | null;
+  role: AdminRole;
+  wing_id: number;
+  office_id: number | null;
+  is_active: boolean;
+  created_at: string | null;
+}
+export interface AdminUserCreate {
+  username: string;
+  password: string;
+  full_name?: string;
+  email?: string;
+  role: AdminRole;
+  wing_id: number;
+  office_id?: number;
+}
+export interface AdminUserUpdate {
+  full_name?: string;
+  email?: string;
+  role?: AdminRole;
+  wing_id?: number;
+  office_id?: number;
+  is_active?: boolean;
+  password?: string;
+}
+
+export interface License {
+  id: number;
+  key: string;
+  status: "active" | "expired" | "deactivated";
+  valid_from: string;
+  valid_until: string;
+  assigned_to: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface LicenseCreate {
+  valid_until: string;
+  assigned_to?: string;
+  notes?: string;
+  valid_from?: string;
+}
+export interface LicenseUpdate {
+  valid_until?: string;
+  assigned_to?: string;
+  notes?: string;
+  status?: "active" | "expired" | "deactivated";
+}
+
+export interface Revenue {
+  id: number;
+  entry_date: string;
+  source: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  license_key_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface RevenueCreate {
+  entry_date?: string;
+  source: string;
+  description?: string;
+  amount: number;
+  currency?: string;
+  license_key_id?: number;
+}
+export interface RevenueUpdate {
+  entry_date?: string;
+  source?: string;
+  description?: string;
+  amount?: number;
+  currency?: string;
+  license_key_id?: number;
+}
+
+export interface AdminDashboard {
+  users_total: number;
+  users_active: number;
+  admins: number;
+  queries_24h: number;
+  queries_7d: number;
+  queries_total: number;
+  avg_latency_ms: number | null;
+  revenue_month: number;
+  revenue_total: number;
+  licenses_active: number;
+  licenses_expired: number;
+  licenses_deactivated: number;
+  seats_used: number;
+  seats_total: number;
+  queries_per_day: { day: string; count: number }[];
+  top_questions: { question: string; count: number }[];
+}
+
+export interface AdminModelInfo {
+  id: string;
+  queries_total: number;
+  queries_24h: number;
+  queries_7d: number;
+  avg_latency_ms: number | null;
+  success_rate: number;
+  is_primary: boolean;
+  is_fallback: boolean;
+}
+export interface AdminModel {
+  backend: string;
+  base_url: string;
+  primary_model: string;
+  fallback_model: string | null;
+  models: AdminModelInfo[];
+  queries_per_day: { day: string; count: number }[];
+  latency_per_day: { day: string; latency_ms: number }[];
+  last_error: string | null;
+  healthy: boolean;
+}
+
+export interface AdminServer {
+  healthy: boolean;
+  cpu_percent: number;
+  cpu_count: number;
+  load_avg: number[];
+  mem_total_mb: number;
+  mem_used_mb: number;
+  mem_percent: number;
+  swap_used_mb: number;
+  swap_percent: number;
+  disk_total_gb: number;
+  disk_used_gb: number;
+  disk_percent: number;
+  uptime_seconds: number;
+  process_count: number;
+  network_bytes_sent: number;
+  network_bytes_recv: number;
+  containers: { name: string; status: string; image: string }[];
+  llm_endpoint_healthy: boolean;
+  llm_endpoint_latency_ms: number | null;
+}
+
 function token(): string | null {
-  return localStorage.getItem("bharathtax_token");
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
@@ -62,6 +236,12 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
       detail = (await res.json()).detail ?? detail;
     } catch {
       /* ignore */
+    }
+    // The login call itself returning 401 is "wrong username/password" — let
+    // that surface to the login form. Any OTHER 401 means the session is gone
+    // (expired signature, revoked seat lease, etc.) — bounce to /login.
+    if (res.status === 401 && !path.startsWith("/auth/login")) {
+      clearSessionAndRedirect();
     }
     throw new ApiError(res.status, detail);
   }
@@ -79,6 +259,14 @@ export const api = {
     req<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; role: string; wing_id: number }>("/auth/me"),
+
+  // --- license activation (gates the chat for non-admin users) ---
+  licenseStatus: () => req<LicenseStatus>("/auth/license/status"),
+  activateLicense: (key: string) =>
+    req<LicenseStatus>("/auth/license/activate", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
   ask: (question: string, domain?: string, style?: string) =>
     req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style }) }),
   documents: () => req<DocumentOut[]>("/documents"),
@@ -106,6 +294,51 @@ export const api = {
   // --- admin corpus ---
   corpusStats: () => req<{ chunks: number; by_domain: Record<string, number> }>("/admin/corpus/stats"),
   ingestCaseLaw: () => req<any>("/admin/corpus/ingest-case-law", { method: "POST" }),
+
+  // --- admin: dashboard / model / server ---
+  adminDashboard: () => req<AdminDashboard>("/admin/dashboard"),
+  adminModel: () => req<AdminModel>("/admin/model"),
+  adminServer: () => req<AdminServer>("/admin/model/server"),
+
+  // --- admin: users / admins ---
+  adminListUsers: (filters?: { wing_id?: number; role?: string; q?: string }) => {
+    const p = new URLSearchParams();
+    if (filters?.wing_id != null) p.set("wing_id", String(filters.wing_id));
+    if (filters?.role) p.set("role", filters.role);
+    if (filters?.q) p.set("q", filters.q);
+    const qs = p.toString();
+    return req<AdminUser[]>(`/admin/users${qs ? `?${qs}` : ""}`);
+  },
+  adminCreateUser: (b: AdminUserCreate) =>
+    req<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(b) }),
+  adminUpdateUser: (id: number, b: AdminUserUpdate) =>
+    req<AdminUser>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(b) }),
+  adminDeleteUser: (id: number) =>
+    req<void>(`/admin/users/${id}`, { method: "DELETE" }),
+
+  // --- admin: licenses ---
+  adminLicenses: () => req<License[]>("/admin/licenses"),
+  adminCreateLicense: (b: LicenseCreate) =>
+    req<License>("/admin/licenses", { method: "POST", body: JSON.stringify(b) }),
+  adminUpdateLicense: (id: number, b: LicenseUpdate) =>
+    req<License>(`/admin/licenses/${id}`, { method: "PUT", body: JSON.stringify(b) }),
+  adminDeactivateLicense: (id: number) =>
+    req<License>(`/admin/licenses/${id}/deactivate`, { method: "POST" }),
+  adminDeleteLicense: (id: number) =>
+    req<void>(`/admin/licenses/${id}`, { method: "DELETE" }),
+
+  // --- admin: revenue ---
+  adminRevenue: () => req<Revenue[]>("/admin/revenue"),
+  adminCreateRevenue: (b: RevenueCreate) =>
+    req<Revenue>("/admin/revenue", { method: "POST", body: JSON.stringify(b) }),
+  adminUpdateRevenue: (id: number, b: RevenueUpdate) =>
+    req<Revenue>(`/admin/revenue/${id}`, { method: "PUT", body: JSON.stringify(b) }),
+  adminDeleteRevenue: (id: number) =>
+    req<void>(`/admin/revenue/${id}`, { method: "DELETE" }),
+  adminRevenueSummary: () =>
+    req<{ by_month: { month: string; amount: number }[]; currency: string }>(
+      "/admin/revenue/summary",
+    ),
 
   // --- appeal drafting ---
   appealCases: () => req<any[]>("/appeal/cases"),

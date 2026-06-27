@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Scale, ShieldCheck, BookText, Gavel } from "lucide-react";
-import { useAuth } from "../auth";
+import { landingPath, useAuth } from "../auth";
 import { ApiError } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,10 @@ export default function Login() {
 
   async function submit(e: FormEvent) {
     e.preventDefault(); setError(null); setBusy(true);
-    try { await login(username, password); nav("/ask"); }
+    try {
+      const s = await login(username, password);
+      nav(landingPath(s.role), { replace: true });
+    }
     catch (err) { setError(err instanceof ApiError ? err.message : "Login failed"); }
     finally { setBusy(false); }
   }
