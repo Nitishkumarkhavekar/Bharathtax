@@ -84,7 +84,50 @@ export interface AdminUser {
   wing_id: number;
   office_id: number | null;
   is_active: boolean;
+  approval_status: "pending" | "approved" | "rejected";
+  approved_at: string | null;
   created_at: string | null;
+}
+
+export interface PublicWing {
+  id: number;
+  name: string;
+  code: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name?: string;
+  organisation?: string;
+}
+
+export interface RegisterResponse {
+  id: number;
+  email: string;
+  full_name: string | null;
+  approval_status: string;
+  message: string;
+}
+
+export interface Profile {
+  id: number;
+  username: string;
+  email: string | null;
+  full_name: string | null;
+  organisation: string | null;
+  role: string;
+  wing_id: number;
+  is_active: boolean;
+  approval_status: string;
+  created_at: string | null;
+}
+
+export interface ProfileUpdate {
+  full_name?: string;
+  organisation?: string;
+  current_password?: string;
+  new_password?: string;
 }
 export interface AdminUserCreate {
   username: string;
@@ -160,6 +203,7 @@ export interface RevenueUpdate {
 export interface AdminDashboard {
   users_total: number;
   users_active: number;
+  pending_approvals: number;
   admins: number;
   queries_24h: number;
   queries_7d: number;
@@ -255,8 +299,17 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  login: (username: string, password: string) =>
-    req<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  login: (email: string, password: string) =>
+    req<TokenResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  register: (b: RegisterRequest) =>
+    req<RegisterResponse>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
+  publicWings: () => req<PublicWing[]>("/auth/wings"),
+  profile: () => req<Profile>("/auth/profile"),
+  updateProfile: (b: ProfileUpdate) =>
+    req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; role: string; wing_id: number }>("/auth/me"),
 
@@ -301,11 +354,12 @@ export const api = {
   adminServer: () => req<AdminServer>("/admin/model/server"),
 
   // --- admin: users / admins ---
-  adminListUsers: (filters?: { wing_id?: number; role?: string; q?: string }) => {
+  adminListUsers: (filters?: { wing_id?: number; role?: string; q?: string; approval_status?: string }) => {
     const p = new URLSearchParams();
     if (filters?.wing_id != null) p.set("wing_id", String(filters.wing_id));
     if (filters?.role) p.set("role", filters.role);
     if (filters?.q) p.set("q", filters.q);
+    if (filters?.approval_status) p.set("approval_status", filters.approval_status);
     const qs = p.toString();
     return req<AdminUser[]>(`/admin/users${qs ? `?${qs}` : ""}`);
   },
@@ -313,6 +367,10 @@ export const api = {
     req<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(b) }),
   adminUpdateUser: (id: number, b: AdminUserUpdate) =>
     req<AdminUser>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(b) }),
+  adminApproveUser: (id: number) =>
+    req<AdminUser>(`/admin/users/${id}/approve`, { method: "POST" }),
+  adminRejectUser: (id: number) =>
+    req<AdminUser>(`/admin/users/${id}/reject`, { method: "POST" }),
   adminDeleteUser: (id: number) =>
     req<void>(`/admin/users/${id}`, { method: "DELETE" }),
 

@@ -28,7 +28,34 @@ def _ensure_admin_tables() -> None:
         _log.warning("create_all failed (continuing): %s", exc)
 
 
+def _patch_user_columns() -> None:
+    """Add the self-service-registration columns to `users` if a previous
+    schema is in place. Idempotent — uses ADD COLUMN IF NOT EXISTS.
+    """
+    from sqlalchemy import text
+    stmts = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) NOT NULL DEFAULT 'approved'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_by_user_id INTEGER",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS organisation VARCHAR(200)",
+        # Backfill email for old seeded users so they can log in by email.
+        "UPDATE users SET email = lower(username) || '@bharathtax.com' WHERE email IS NULL",
+        # Migrate any previously-seeded @bharathtax.local addresses to the new
+        # @bharathtax.com domain.
+        "UPDATE users SET email = replace(lower(email), '@bharathtax.local', '@bharathtax.com') WHERE lower(email) LIKE '%@bharathtax.local'",
+        # Unique index on lower(email) so user@x.com == User@X.com.
+        "CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_uq ON users (lower(email))",
+    ]
+    try:
+        with engine.begin() as conn:
+            for s in stmts:
+                conn.execute(text(s))
+    except Exception as exc:        # pragma: no cover - boot diagnostic only
+        _log.warning("user-column patch failed (continuing): %s", exc)
+
+
 _ensure_admin_tables()
+_patch_user_columns()
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 

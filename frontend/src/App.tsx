@@ -3,13 +3,15 @@ import { ReactNode } from "react";
 import Layout from "./components/Layout";
 import { landingPath, useAuth } from "./auth";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Landing from "./pages/Landing";
 import Ask from "./pages/Ask";
+import ProfilePage from "./pages/Profile";
 import Documents from "./pages/Documents";
 import History from "./pages/History";
 import Appeals from "./pages/Appeals";
 import AppealCase from "./pages/AppealCase";
 import Rulings from "./pages/Rulings";
-import Landing from "./pages/Landing";
 
 // Admin console
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -56,9 +58,11 @@ export default function App() {
   const landing = landingPath(session?.role);
   return (
     <Routes>
-      {/* Public landing page — the front door for logged-out visitors. */}
+      {/* Public landing page — the front door for logged-out visitors;
+          signed-in users skip straight to their role's home. */}
       <Route path="/" element={session ? <Navigate to={landing} replace /> : <Landing />} />
       <Route path="/login" element={session ? <Navigate to={landing} replace /> : <Login />} />
+      <Route path="/register" element={session ? <Navigate to={landing} replace /> : <Register />} />
 
       {/* Chat + user-facing tools are not for admin accounts — admins are
           bounced to the admin console. */}
@@ -68,6 +72,7 @@ export default function App() {
       <Route path="/rulings" element={<NonAdminOnly><Rulings /></NonAdminOnly>} />
       <Route path="/documents" element={<NonAdminOnly><Documents /></NonAdminOnly>} />
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />
+      <Route path="/profile" element={<NonAdminOnly><ProfilePage /></NonAdminOnly>} />
 
       {/* Admin console — full-screen with its own sidebar (no outer Layout). */}
       <Route
@@ -104,7 +109,11 @@ export default function App() {
         />
       </Route>
 
-      <Route path="*" element={<Navigate to={landing} replace />} />
+      {/* Unknown URL: signed-in users hit their home; everyone else lands on /. */}
+      <Route
+        path="*"
+        element={<Navigate to={session ? landing : "/"} replace />}
+      />
     </Routes>
   );
 }

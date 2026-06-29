@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, verify_password
@@ -17,10 +17,29 @@ class AuthError(Exception):
     pass
 
 
-def authenticate(db: Session, username: str, password: str) -> User:
-    user = db.scalar(select(User).where(User.username == username))
-    if not user or not user.is_active or not verify_password(password, user.password_hash):
-        raise AuthError("invalid credentials")
+class PendingApprovalError(AuthError):
+    """Raised when a registered user tries to log in before being approved."""
+
+
+class RejectedError(AuthError):
+    """Raised when a rejected user tries to log in."""
+
+
+def authenticate(db: Session, email: str, password: str) -> User:
+    """Look up the user by email (case-insensitive), check the password, and
+    gate on approval status."""
+    ident = (email or "").strip().lower()
+    user = db.scalar(select(User).where(func.lower(User.email) == ident))
+    if not user or not verify_password(password, user.password_hash):
+        raise AuthError("Invalid email or password.")
+    if not user.is_active:
+        raise AuthError("Account deactivated. Contact your administrator.")
+    if user.approval_status == "pending":
+        raise PendingApprovalError(
+            "Your account is awaiting administrator approval."
+        )
+    if user.approval_status == "rejected":
+        raise RejectedError("Your registration was rejected by the administrator.")
     return user
 
 

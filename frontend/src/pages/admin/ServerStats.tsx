@@ -186,8 +186,8 @@ export default function ServerStatsPage() {
         {data.containers.length === 0 ? (
           <Empty label="No container info available (docker.sock not mounted into api container)." />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-sm admin-table">
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[560px] text-sm admin-table">
               <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium">Name</th>

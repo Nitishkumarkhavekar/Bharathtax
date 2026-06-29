@@ -5,15 +5,25 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, client_meta, get_current_user, get_principal
 from app.core.db import get_db
+from app.core.security import hash_password, verify_password
 from app.models.admin import LicenseKey
 from app.models.enums import Role
-from app.models.org import User
-from app.schemas import LoginRequest, MeResponse, TokenResponse
+from app.models.org import User, Wing
+from app.schemas import (
+    LoginRequest,
+    MeResponse,
+    ProfileOut,
+    ProfileUpdate,
+    PublicWingOut,
+    RegisterRequest,
+    RegisterResponse,
+    TokenResponse,
+)
 from app.services import audit
 from app.services import auth as auth_svc
 from app.services import licensing
@@ -122,14 +132,20 @@ def license_activate(body: LicenseActivateRequest, request: Request,
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+    email = (body.email or "").strip()
+    if not email or "@" not in email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Enter a valid email address.")
     try:
-        user = auth_svc.authenticate(db, body.username, body.password)
-    except auth_svc.AuthError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+        user = auth_svc.authenticate(db, email, body.password)
+    except auth_svc.PendingApprovalError as e:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
+    except auth_svc.RejectedError as e:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
+    except auth_svc.AuthError as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=str(e) or "invalid credentials")
     try:
         token, expire, _sid = auth_svc.login(db, user)
     except licensing.SeatPoolExhausted as e:
-        # this is the seat-pool block the brief calls for
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail=f"All {e.limit} seats for your wing are in use. Try again later.",
@@ -140,6 +156,105 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)) -
         access_token=token, expires_at=expire, role=user.role,
         wing_id=user.wing_id, username=user.username,
     )
+
+
+# -------- public registration + wings list ---------------------------------
+@router.get("/wings", response_model=list[PublicWingOut])
+def list_wings_public(db: Session = Depends(get_db)) -> list[Wing]:
+    """Wings list exposed unauthenticated so the registration form can show
+    which wing the new user belongs to."""
+    return list(db.scalars(select(Wing).order_by(Wing.name)))
+
+
+@router.post("/register", response_model=RegisterResponse)
+def register(body: RegisterRequest, request: Request,
+             db: Session = Depends(get_db)) -> RegisterResponse:
+    email = (body.email or "").strip().lower()
+    if "@" not in email or "." not in email.split("@", 1)[-1]:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Enter a valid email address.")
+    if len(body.password or "") < 6:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters.",
+        )
+
+    # Email and derived username must both be unique.
+    if db.scalar(select(User).where(func.lower(User.email) == email)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="An account already exists for this email.")
+    base_username = email.split("@", 1)[0]
+    username = base_username
+    n = 1
+    while db.scalar(select(User).where(User.username == username)):
+        n += 1
+        username = f"{base_username}{n}"
+
+    # Wings are an admin concept (seat scope). New self-service registrations
+    # land in the first available wing; the admin can move them later.
+    default_wing = db.scalar(select(Wing).order_by(Wing.id))
+    if not default_wing:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The deployment isn't configured yet. Contact your administrator.",
+        )
+
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(body.password),
+        full_name=body.full_name or None,
+        organisation=(body.organisation or "").strip() or None,
+        role=Role.officer,
+        wing_id=default_wing.id,
+        is_active=True,
+        approval_status="pending",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    audit.log_event(
+        db, action="register", user_id=user.id, wing_id=user.wing_id,
+        **client_meta(request),
+    )
+    return RegisterResponse(
+        id=user.id,
+        email=user.email or email,
+        full_name=user.full_name,
+        approval_status=user.approval_status,
+        message="Account created. An administrator will review and approve it shortly.",
+    )
+
+
+# -------- profile (current user) --------------------------------------------
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(user: User = Depends(get_current_user)) -> User:
+    return user
+
+
+@router.put("/profile", response_model=ProfileOut)
+def update_profile(body: ProfileUpdate,
+                   user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> User:
+    if body.full_name is not None:
+        user.full_name = body.full_name.strip() or None
+    if body.organisation is not None:
+        user.organisation = body.organisation.strip() or None
+    if body.new_password:
+        if len(body.new_password) < 6:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="New password must be at least 6 characters.",
+            )
+        if not body.current_password or not verify_password(
+            body.current_password, user.password_hash
+        ):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Your current password is incorrect.",
+            )
+        user.password_hash = hash_password(body.new_password)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/logout")

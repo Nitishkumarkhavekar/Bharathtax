@@ -57,16 +57,16 @@ export default function AdminDashboardPage() {
           <div className="absolute -top-24 -right-20 size-72 rounded-full bg-sky-400/30 blur-3xl" />
           <div className="absolute -bottom-24 -left-10 size-72 rounded-full bg-violet-400/20 blur-3xl" />
         </div>
-        <div className="relative px-6 py-6 sm:px-8 sm:py-7 flex flex-wrap items-center gap-5">
+        <div className="relative px-5 py-5 sm:px-8 sm:py-7 flex flex-wrap items-center gap-5">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-[11px] font-medium ring-1 ring-white/25 text-white">
               <Sparkles className="size-3" />
               {greeting()} · {fmtDate(new Date())}
             </div>
-            <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-xl sm:text-3xl font-semibold tracking-tight">
               Welcome back, {capitalize(session?.username ?? "Admin")}
             </h1>
-            <p className="mt-1.5 text-sm text-white/85 max-w-xl leading-relaxed">
+            <p className="mt-1.5 text-[13px] sm:text-sm text-white/85 max-w-xl leading-relaxed">
               Here's a real-time overview of usage, revenue and infrastructure. Numbers update on
               every load; the server pane refreshes live.
             </p>
@@ -80,6 +80,11 @@ export default function AdminDashboardPage() {
               <Pill>
                 <KeyRound className="size-3.5" /> {data.licenses_active} active license{data.licenses_active === 1 ? "" : "s"}
               </Pill>
+              {data.pending_approvals > 0 && (
+                <Pill>
+                  <Users className="size-3.5" /> {data.pending_approvals} pending approval{data.pending_approvals === 1 ? "" : "s"}
+                </Pill>
+              )}
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-white">

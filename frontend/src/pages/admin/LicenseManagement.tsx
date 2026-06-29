@@ -162,8 +162,8 @@ export default function LicenseManagementPage() {
         </Section>
       ) : (
         <Section title="Keys" subtitle={`${rows.length} record(s)`}>
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-sm admin-table">
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[680px] text-sm admin-table">
               <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium">Key</th>

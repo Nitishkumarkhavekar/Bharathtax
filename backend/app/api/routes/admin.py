@@ -99,6 +99,7 @@ def list_users(
     wing_id: int | None = None,
     role: str | None = None,
     q: str | None = None,
+    approval_status: str | None = None,
     admin: User = Depends(_admin),
     db: Session = Depends(get_db),
 ) -> list[User]:
@@ -112,6 +113,10 @@ def list_users(
             stmt = stmt.where(User.role == role_enum)
         except ValueError:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="bad role")
+    if approval_status:
+        if approval_status not in ("pending", "approved", "rejected"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="bad approval_status")
+        stmt = stmt.where(User.approval_status == approval_status)
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(
@@ -172,6 +177,36 @@ def update_user(user_id: int, body: UserUpdate, admin: User = Depends(_admin),
     return user
 
 
+@router.post("/users/{user_id}/approve", response_model=UserOut)
+def approve_user(user_id: int, admin: User = Depends(_admin),
+                 db: Session = Depends(get_db)) -> User:
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    _scope_wing(admin, user.wing_id)
+    user.approval_status = "approved"
+    user.is_active = True
+    user.approved_by_user_id = admin.id
+    user.approved_at = datetime.now(timezone.utc)
+    db.commit(); db.refresh(user)
+    return user
+
+
+@router.post("/users/{user_id}/reject", response_model=UserOut)
+def reject_user(user_id: int, admin: User = Depends(_admin),
+                db: Session = Depends(get_db)) -> User:
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    _scope_wing(admin, user.wing_id)
+    user.approval_status = "rejected"
+    user.is_active = False
+    user.approved_by_user_id = admin.id
+    user.approved_at = datetime.now(timezone.utc)
+    db.commit(); db.refresh(user)
+    return user
+
+
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, admin: User = Depends(_admin),
                 db: Session = Depends(get_db)) -> None:
@@ -215,6 +250,9 @@ def dashboard(admin: User = Depends(_admin), db: Session = Depends(get_db)) -> d
 
     users_total = int(db.scalar(select(func.count(User.id))) or 0)
     users_active = int(db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))) or 0)
+    pending_approvals = int(db.scalar(
+        select(func.count(User.id)).where(User.approval_status == "pending")
+    ) or 0)
     admins = int(db.scalar(
         select(func.count(User.id)).where(User.role.in_([Role.super_admin, Role.wing_admin]))
     ) or 0)
@@ -276,6 +314,7 @@ def dashboard(admin: User = Depends(_admin), db: Session = Depends(get_db)) -> d
     return {
         "users_total": users_total,
         "users_active": users_active,
+        "pending_approvals": pending_approvals,
         "admins": admins,
         "queries_24h": queries_24h,
         "queries_7d": queries_7d,

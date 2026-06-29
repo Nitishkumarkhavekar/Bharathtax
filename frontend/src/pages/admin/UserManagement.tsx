@@ -12,6 +12,9 @@ import {
   Building2,
   AlertCircle,
   KeyRound,
+  Check,
+  X as XIcon,
+  Clock as ClockIcon,
 } from "lucide-react";
 import { AdminRole, AdminUser, AdminUserCreate, AdminUserUpdate, api } from "@/api";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
@@ -39,10 +42,13 @@ interface Props {
 const ROLES_USER: AdminRole[] = ["officer", "auditor"];
 const ROLES_ADMIN: AdminRole[] = ["super_admin", "wing_admin"];
 
+type StatusTab = "all" | "pending" | "approved" | "rejected";
+
 export default function UserManagement({ mode }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [wings, setWings] = useState<Wing[]>([]);
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<StatusTab>(mode === "users" ? "pending" : "all");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<null | AdminUser | "new">(null);
@@ -52,7 +58,7 @@ export default function UserManagement({ mode }: Props) {
   const title = isAdminMode ? "Admin Management" : "User Management";
   const subtitle = isAdminMode
     ? "Manage super admins and wing admins."
-    : "Manage officers and auditors.";
+    : "Manage officers and auditors. New registrations land in the Pending tab — approve or reject them here.";
 
   async function refresh() {
     setLoading(true);
@@ -78,16 +84,23 @@ export default function UserManagement({ mode }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return users;
+  const pendingCount = useMemo(
+    () => users.filter((u) => u.approval_status === "pending").length,
+    [users],
+  );
+
+  const visible = useMemo(() => {
     const t = q.toLowerCase();
-    return users.filter(
-      (u) =>
+    return users.filter((u) => {
+      if (tab !== "all" && u.approval_status !== tab) return false;
+      if (!t) return true;
+      return (
         u.username.toLowerCase().includes(t) ||
         (u.full_name ?? "").toLowerCase().includes(t) ||
-        (u.email ?? "").toLowerCase().includes(t),
-    );
-  }, [users, q]);
+        (u.email ?? "").toLowerCase().includes(t)
+      );
+    });
+  }, [users, q, tab]);
 
   async function onDelete(u: AdminUser) {
     if (!confirm(`Delete ${u.username}? This cannot be undone.`)) return;
@@ -96,6 +109,25 @@ export default function UserManagement({ mode }: Props) {
       await refresh();
     } catch (e: any) {
       alert(e?.message ?? "delete failed");
+    }
+  }
+
+  async function onApprove(u: AdminUser) {
+    try {
+      await api.adminApproveUser(u.id);
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message ?? "approve failed");
+    }
+  }
+
+  async function onReject(u: AdminUser) {
+    if (!confirm(`Reject ${u.email ?? u.username}? They won't be able to sign in.`)) return;
+    try {
+      await api.adminRejectUser(u.id);
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message ?? "reject failed");
     }
   }
 
@@ -113,7 +145,7 @@ export default function UserManagement({ mode }: Props) {
         }
       />
 
-      <div className="grid sm:grid-cols-3 gap-4 admin-rise">
+      <div className="grid sm:grid-cols-4 gap-4 admin-rise">
         <StatCard
           label={isAdminMode ? "Total admins" : "Total users"}
           value={users.length}
@@ -122,24 +154,38 @@ export default function UserManagement({ mode }: Props) {
           hint={`${activeCount} active`}
         />
         <StatCard
-          label="Active"
-          value={activeCount}
-          accent="green"
-          hint="With active=True"
+          label="Pending approval"
+          value={pendingCount}
+          icon={<ClockIcon className="size-4" />}
+          accent="amber"
+          hint="Waiting for your review"
         />
+        <StatCard label="Active" value={activeCount} accent="green" hint="Can sign in now" />
         <StatCard
           label="Inactive"
           value={users.length - activeCount}
           accent="slate"
-          hint="Disabled accounts"
+          hint="Disabled / rejected"
         />
       </div>
 
+      {!isAdminMode && pendingCount > 0 && tab !== "pending" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 flex items-center gap-2.5">
+          <ClockIcon className="size-4" />
+          <span className="text-sm font-medium flex-1">
+            {pendingCount} user{pendingCount === 1 ? "" : "s"} waiting for approval.
+          </span>
+          <Button size="sm" variant="outline" onClick={() => setTab("pending")}>
+            Review now
+          </Button>
+        </div>
+      )}
+
       <Section
         title={isAdminMode ? "All admins" : "All users"}
-        subtitle={`${filtered.length} ${filtered.length === 1 ? "record" : "records"} shown`}
+        subtitle={`${visible.length} ${visible.length === 1 ? "record" : "records"} shown`}
         action={
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
             <input
               value={q}
@@ -150,14 +196,56 @@ export default function UserManagement({ mode }: Props) {
           </div>
         }
       >
+        {/* Status tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3 -mt-2">
+          {([
+            { key: "all", label: "All", count: users.length },
+            { key: "pending", label: "Pending", count: pendingCount },
+            { key: "approved", label: "Approved", count: users.filter((u) => u.approval_status === "approved").length },
+            { key: "rejected", label: "Rejected", count: users.filter((u) => u.approval_status === "rejected").length },
+          ] as { key: StatusTab; label: string; count: number }[]).map((t) => {
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors " +
+                  (active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200")
+                }
+              >
+                {t.label}
+                <span
+                  className={
+                    "rounded-full px-1.5 py-0.5 text-[10.5px] font-mono " +
+                    (active ? "bg-white/20" : "bg-white text-slate-700 ring-1 ring-slate-200")
+                  }
+                >
+                  {t.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {err && <ErrorBanner msg={err} />}
         {loading ? (
           <Loading />
-        ) : filtered.length === 0 ? (
-          <Empty label={isAdminMode ? "No admins yet." : "No users yet."} />
+        ) : visible.length === 0 ? (
+          <Empty
+            label={
+              tab === "pending"
+                ? "No pending registrations."
+                : isAdminMode
+                  ? "No admins yet."
+                  : "No users yet."
+            }
+          />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-sm admin-table">
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[640px] text-sm admin-table">
               <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium">User</th>
@@ -169,8 +257,9 @@ export default function UserManagement({ mode }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u) => {
+                {visible.map((u) => {
                   const wing = wings.find((w) => w.id === u.wing_id);
+                  const isPending = u.approval_status === "pending";
                   return (
                     <tr key={u.id} className="border-t border-slate-100">
                       <td className="px-4 py-2.5">
@@ -186,7 +275,7 @@ export default function UserManagement({ mode }: Props) {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-slate-600">{u.email ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-slate-700">{u.email ?? "—"}</td>
                       <td className="px-4 py-2.5">
                         <RoleBadge role={u.role} />
                       </td>
@@ -194,32 +283,37 @@ export default function UserManagement({ mode }: Props) {
                         {wing ? `${wing.name} (${wing.code})` : `#${u.wing_id}`}
                       </td>
                       <td className="px-4 py-2.5">
-                        {u.is_active ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1">
-                            <span className="size-1.5 rounded-full bg-emerald-500" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Inactive</Badge>
-                        )}
+                        <StatusBadge u={u} />
                       </td>
                       <td className="px-4 py-2.5 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setShowForm(u)}
-                          title="Edit"
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onDelete(u)}
-                          title="Delete"
-                        >
-                          <Trash2 className="size-4 text-rose-600" />
-                        </Button>
+                        {isPending ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => onApprove(u)}
+                            >
+                              <Check className="size-3.5" /> Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                              onClick={() => onReject(u)}
+                            >
+                              <XIcon className="size-3.5" /> Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => setShowForm(u)} title="Edit">
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => onDelete(u)} title="Delete">
+                              <Trash2 className="size-4 text-rose-600" />
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );
@@ -243,6 +337,32 @@ export default function UserManagement({ mode }: Props) {
         />
       )}
     </div>
+  );
+}
+
+function StatusBadge({ u }: { u: AdminUser }) {
+  if (u.approval_status === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">
+        <ClockIcon className="size-3" /> Pending
+      </span>
+    );
+  }
+  if (u.approval_status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
+        <XIcon className="size-3" /> Rejected
+      </span>
+    );
+  }
+  if (!u.is_active) {
+    return <Badge variant="secondary">Inactive</Badge>;
+  }
+  return (
+    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 gap-1">
+      <span className="size-1.5 rounded-full bg-emerald-500" />
+      Active
+    </Badge>
   );
 }
 

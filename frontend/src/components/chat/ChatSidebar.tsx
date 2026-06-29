@@ -11,6 +11,7 @@ import {
   BookOpen,
   FileText,
   Clock,
+  UserCircle2,
 } from "lucide-react";
 import { ChatThread, groupByRecency } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const TOOLS = [
   { to: "/rulings", label: "Rulings", icon: BookOpen },
   { to: "/documents", label: "Documents", icon: FileText },
   { to: "/history", label: "History", icon: Clock },
+  { to: "/profile", label: "Profile", icon: UserCircle2 },
 ];
 
 interface ChatSidebarProps {
