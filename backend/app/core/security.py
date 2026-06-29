@@ -43,5 +43,9 @@ def create_access_token(subject: str, *, session_id: str, claims: dict[str, Any]
 
 
 def decode_token(token: str) -> dict[str, Any]:
-    """Raises jwt.PyJWTError on invalid/expired tokens."""
-    return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    """Raises jwt.PyJWTError on invalid/expired tokens. `leeway` tolerates small
+    clock skew between containers (e.g. WSL2 drift after sleep/restart), which
+    otherwise trips the iat/nbf 'token not yet valid' check intermittently."""
+    return jwt.decode(
+        token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], leeway=30
+    )
