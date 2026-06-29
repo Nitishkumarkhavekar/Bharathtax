@@ -9,6 +9,7 @@ import History from "./pages/History";
 import Appeals from "./pages/Appeals";
 import AppealCase from "./pages/AppealCase";
 import Rulings from "./pages/Rulings";
+import Landing from "./pages/Landing";
 
 // Admin console
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -55,6 +56,8 @@ export default function App() {
   const landing = landingPath(session?.role);
   return (
     <Routes>
+      {/* Public landing page — the front door for logged-out visitors. */}
+      <Route path="/" element={session ? <Navigate to={landing} replace /> : <Landing />} />
       <Route path="/login" element={session ? <Navigate to={landing} replace /> : <Login />} />
 
       {/* Chat + user-facing tools are not for admin accounts — admins are
