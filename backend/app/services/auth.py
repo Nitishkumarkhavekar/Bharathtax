@@ -45,7 +45,24 @@ def authenticate(db: Session, email: str, password: str) -> User:
 
 def login(db: Session, user: User) -> tuple[str, datetime, str]:
     """Acquire a seat and mint a token. Raises licensing.SeatPoolExhausted if the
-    wing's pool is full. Returns (token, expiry, session_id)."""
+    wing's pool is full. Returns (token, expiry, session_id).
+
+    Releases any live leases the user already holds first — one user keeps one
+    seat, regardless of how many tabs/devices they've logged in from. The prior
+    sessions become invalid on their next request (user_from_claims rejects
+    released leases)."""
+    now = datetime.now(timezone.utc)
+    db.execute(
+        SeatLease.__table__.update()
+        .where(
+            SeatLease.user_id == user.id,
+            SeatLease.released_at.is_(None),
+            SeatLease.expires_at > now,
+        )
+        .values(released_at=now)
+    )
+    db.commit()
+
     session_id = uuid.uuid4().hex
     token, expire = create_access_token(
         subject=str(user.id),
