@@ -12,6 +12,12 @@ model_list:
       api_base: http://host.docker.internal:8080/v1
       api_key: os.environ/BHARATTAX_API_KEY
 
+  - model_name: bharattax-appeal
+    litellm_params:
+      model: openai/bharattax-appeal
+      api_base: http://host.docker.internal:8080/v1
+      api_key: os.environ/BHARATTAX_API_KEY
+
   - model_name: llama-3.1-8b-instruct
     litellm_params:
       model: openai/llama-3.1-8b-instruct

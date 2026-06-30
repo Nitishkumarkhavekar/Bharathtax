@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import rag_core
+import appeal
 
 # ---- config from environment -------------------------------------------------
 if os.getenv("CORPUS_DIR"):
@@ -108,6 +109,7 @@ def _sources_footer(passages: list[dict]) -> str:
 def list_models() -> dict:
     return {"object": "list", "data": [
         {"id": "bharattax-rag", "object": "model", "owned_by": "bharattax"},
+        {"id": "bharattax-appeal", "object": "model", "owned_by": "bharattax"},
         {"id": rag_core.LLM_MODEL, "object": "model", "owned_by": "bharattax"},
     ]}
 
@@ -127,6 +129,19 @@ def chat_completions(body: dict[str, Any],
         raise HTTPException(status_code=400, detail="no user message")
     question = msgs[last_user_i]["content"]
     history = msgs[:last_user_i]
+
+    # Appellate-order drafting model: generate a full CIT(A) draft order from the
+    # appeal documents sent as the user message. No RAG, no sources footer.
+    if body.get("model") == "bharattax-appeal":
+        content = appeal.draft_order(question)
+        return {
+            "id": "chatcmpl-" + uuid.uuid4().hex[:24], "object": "chat.completion",
+            "created": int(time.time()), "model": "bharattax-appeal",
+            "choices": [{"index": 0, "finish_reason": "stop",
+                         "message": {"role": "assistant", "content": content}}],
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        }
+
     res = rag_core.answer(question, version=body.get("version"),
                           source=body.get("source"), history=history)
     content = res["text"]

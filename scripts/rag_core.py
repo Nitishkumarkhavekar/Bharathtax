@@ -341,6 +341,16 @@ def generate(question: str, passages: list[dict] | None = None,
     return text.strip()
 
 
+def complete(system: str, user: str, *, max_tokens: int = 1024, temperature: float = 0.2) -> str:
+    """Low-level single-shot completion against the raw LLM (no RAG). Reused by the
+    appeal-order drafter and other instruction-following tasks."""
+    out = _post(LLM + "/chat/completions", {
+        "model": LLM_MODEL, "temperature": temperature, "max_tokens": max_tokens,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}]})
+    return out["choices"][0]["message"]["content"].strip()
+
+
 def answer(question: str, *, version=None, source=None, history=None) -> dict:
     # Greetings / small talk: reply conversationally, no retrieval.
     if is_smalltalk(question):
