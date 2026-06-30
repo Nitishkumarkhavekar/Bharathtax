@@ -144,7 +144,8 @@ def crawl_section(ctx, page, key: str) -> int:
                 time.sleep(PAUSE)
             except Exception as e:
                 print(f"  err {slug}: {str(e)[:70]}")
-        if j.get("lastPage") or (total and page_no * PAGE_SIZE >= total):
+        # NOTE: Liferay's `lastPage` is the last page *number* (int), not a bool.
+        if (total and page_no * PAGE_SIZE >= total) or page_no >= int(j.get("lastPage") or 9999):
             break
         page_no += 1
     print(f"  {key}: downloaded {got} (of ~{total})")
