@@ -65,14 +65,22 @@ def _chunks(title: str, text: str) -> list[Chunk]:
     return out
 
 
+def _content_hash(text: str) -> str:
+    """Hash NORMALISED text, not raw bytes. The HC-judgments dataset serves the
+    same connected-matters order ('@ Ors') under many CNRs, each a byte-different
+    PDF (regenerated with a new timestamp) — byte-checksum dedup misses those, so
+    one order would be ingested dozens of times. Content-hash collapses them."""
+    return hashlib.sha256(re.sub(r"\s+", " ", text).strip().lower().encode("utf-8")).hexdigest()
+
+
 def ingest_pdf(db, src, raw: bytes, title: str, source_url: str | None = None) -> int:
-    checksum = hashlib.sha256(raw).hexdigest()
-    if db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum,
-                                              CorpusDocument.source_id == src.id)):
-        return 0  # already ingested
     text = extract(raw)
     if not text.strip():
         return 0
+    checksum = _content_hash(text)
+    if db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum,
+                                              CorpusDocument.source_id == src.id)):
+        return 0  # same judgment text already ingested (connected matter / duplicate)
     key = f"case_law/{checksum[:16]}.pdf"
     storage.put_bytes(key, raw, "application/pdf")
     doc = CorpusDocument(source_id=src.id, title=title, doc_type=SourceType.judgment,
