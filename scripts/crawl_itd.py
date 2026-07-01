@@ -105,19 +105,33 @@ def crawl_section(ctx, page, key: str) -> int:
     body = captured["body"]
     outdir = ROOT / dest
     outdir.mkdir(parents=True, exist_ok=True)
-    got = 0
-    page_no = 1
-    total = None
-    while True:
+
+    def api_post(page_no):
+        """POST one search page with retries; return json or None."""
         api = f"{BASE}/o/search/v1.0/search?nestedFields=embedded&page={page_no}&pageSize={PAGE_SIZE}"
-        r = ctx.request.post(api, data=body, headers={"Content-Type": "application/json"})
-        if r.status != 200:
-            print(f"  api page {page_no} -> HTTP {r.status}, stopping"); break
-        j = r.json()
+        for attempt in range(4):
+            try:
+                r = ctx.request.post(api, data=body, headers={"Content-Type": "application/json"})
+                if r.status == 200:
+                    return r.json()
+            except Exception as e:
+                if attempt == 0:
+                    print(f"  page {page_no} retry: {str(e)[:50]}")
+            page.wait_for_timeout(3000)
+        return None
+
+    first = api_post(1)
+    if not first:
+        print("  page 1 failed after retries."); return 0
+    total = first.get("totalCount")
+    last_page = int(first.get("lastPage") or 1)
+    print(f"  {total} items across {last_page} pages")
+    got = 0
+    for page_no in range(1, last_page + 1):
+        j = first if page_no == 1 else api_post(page_no)
+        if not j:
+            print(f"  page {page_no}: failed after retries — skipping (re-run fills gaps)"); continue
         items = j.get("items", []) or []
-        total = j.get("totalCount", total)
-        if not items:
-            break
         for it in items:
             url = _pdf_url(it)
             if not url:
@@ -144,10 +158,6 @@ def crawl_section(ctx, page, key: str) -> int:
                 time.sleep(PAUSE)
             except Exception as e:
                 print(f"  err {slug}: {str(e)[:70]}")
-        # NOTE: Liferay's `lastPage` is the last page *number* (int), not a bool.
-        if (total and page_no * PAGE_SIZE >= total) or page_no >= int(j.get("lastPage") or 9999):
-            break
-        page_no += 1
     print(f"  {key}: downloaded {got} (of ~{total})")
     return got
 
