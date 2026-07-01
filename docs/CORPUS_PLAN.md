@@ -26,9 +26,10 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 
 ## Phase 1 — Statutory core  (target: days)  — **B**
 - [x] Income-tax Act, 1961 (consolidated/amended) — India Code
+- [x] **Income-tax Act, 2025** (the NEW act, in force 1-Apr-2026) — 553 structured sections via ITD ACT_SECTIONS API
 - [x] Allied direct-tax acts: Black Money, Vivad se Vishwas, Gift-tax
+- [x] **Finance Acts, 1962→2026 (ALL 63)** — annual amendment layer — harvested as clean structured sections (`scripts/crawl_acts.py`, blueprint ACT_SECTIONS_BP_ERC, act_id 4209071 × year_id). 8,416 chunks. NO PDFs/OCR.
 - [ ] **Income-tax Rules, 1962 — COMPLETE** (have only Part 4) — source: dor.gov.in all parts / e-filing
-- [ ] **Finance Acts, 1961→present** (annual amendments — *critical*) — **not on India Code**; source: e-filing portal / PRS / e-gazette
 - [ ] Taxation Laws (Amendment) Acts (full set)
 - [ ] Wealth-tax / Benami / other allied acts (historical, for "as the law stood")
 - [ ] DTAAs / tax treaties (India's bilateral treaties) — incometax.gov.in e-filing
