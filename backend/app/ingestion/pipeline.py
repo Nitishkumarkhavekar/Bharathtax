@@ -39,12 +39,20 @@ def _existing_doc(db, checksum: str) -> CorpusDocument | None:
     return db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum))
 
 
-def _process_item(db, *, item: FetchedItem, source: dict, source_id: int, domain: Domain) -> int:
+def _process_item(db, *, item: FetchedItem, source: dict, source_id: int, domain: Domain,
+                  embed_vectors: bool = True) -> int:
     # Resume-safe dedup: a fully-indexed doc is skipped; a partially-ingested one
     # (e.g. a run interrupted by sleep) resumes from where it stopped.
     existing = _existing_doc(db, item.checksum) if item.checksum else None
     if existing and existing.status == CorpusDocStatus.indexed:
         log.info("skip (already indexed): %s", item.title)
+        return 0
+    # In stage-only (no-embed) mode a doc stays `parsed`; if it's already been
+    # staged (chunks present, still parsed), skip re-parsing — embed-pending fills it.
+    if existing and not embed_vectors and existing.status == CorpusDocStatus.parsed and \
+            db.scalar(select(func.count()).select_from(CorpusChunk)
+                      .where(CorpusChunk.corpus_document_id == existing.id)):
+        log.info("skip (already staged): %s", item.title)
         return 0
 
     # extract -> normalise legal text (needed for both fresh + resume)
@@ -74,19 +82,22 @@ def _process_item(db, *, item: FetchedItem, source: dict, source_id: int, domain
         db.flush()
         resume_from = 0
 
-    # parse -> chunk -> embed + index (resuming if partial)
+    # parse -> chunk -> embed + index (resuming if partial). In stage-only mode we
+    # persist chunks with NULL embeddings and leave the doc `parsed` for embed-pending.
     chunks = chunk_units(get_parser(source["parser"])(clean))
     n = embed_index.index_document(
         db, document=doc, source_id=source_id, domain=domain, chunks=chunks,
-        resume_from=resume_from,
+        resume_from=resume_from, embed_vectors=embed_vectors,
     )
-    doc.status = CorpusDocStatus.indexed
+    doc.status = CorpusDocStatus.indexed if embed_vectors else CorpusDocStatus.parsed
     db.commit()
-    log.info("ingested '%s': %d chunks (resumed from %d)", item.title, n, resume_from)
+    verb = "ingested" if embed_vectors else "staged"
+    log.info("%s '%s': %d chunks (resumed from %d)", verb, item.title, n, resume_from)
     return n
 
 
-def run(only_source: str | None = None) -> None:
+def run(only_source: str | None = None, *, no_embed: bool = False,
+        shard: tuple[int, int] | None = None) -> None:
     configure_logging()
     storage.ensure_bucket()
     db = SessionLocal()
@@ -95,12 +106,66 @@ def run(only_source: str | None = None) -> None:
         for source, row in registry.sync_sources(db):
             if only_source and source["key"] != only_source:
                 continue
-            log.info("=== source: %s (%s) ===", source["key"], source["fetcher"])
+            if shard:
+                source = {**source, "_shard": shard}
+            log.info("=== source: %s (%s)%s%s ===", source["key"], source["fetcher"],
+                     " [stage-only]" if no_embed else "",
+                     f" [shard {shard[0]}/{shard[1]}]" if shard else "")
             fetcher = get_fetcher(source["fetcher"])
             domain = Domain(source["domain"])
             for item in fetcher(source):
-                total += _process_item(db, item=item, source=source, source_id=row.id, domain=domain)
-        log.info("DONE. total chunks indexed this run: %d", total)
+                total += _process_item(db, item=item, source=source, source_id=row.id,
+                                       domain=domain, embed_vectors=not no_embed)
+        verb = "staged" if no_embed else "indexed"
+        log.info("DONE. total chunks %s this run: %d", verb, total)
+    finally:
+        db.close()
+
+
+def embed_pending(batch: int = 256) -> None:
+    """GPU batch pass: embed every chunk staged with a NULL embedding (from a prior
+    `run --no-embed`), then flip fully-embedded documents to `indexed`. Idempotent
+    and resumable — safe to re-run after an interruption."""
+    configure_logging()
+    db = SessionLocal()
+    try:
+        from app.services import embeddings as emb
+        pending_total = db.scalar(
+            select(func.count()).select_from(CorpusChunk).where(CorpusChunk.embedding.is_(None))
+        ) or 0
+        log.info("embed-pending: %d chunk(s) awaiting embedding", pending_total)
+        done = 0
+        while True:
+            rows = db.scalars(
+                select(CorpusChunk).where(CorpusChunk.embedding.is_(None))
+                .order_by(CorpusChunk.id).limit(batch)
+            ).all()
+            if not rows:
+                break
+            for r, vec in zip(rows, emb.embed([r.text for r in rows])):
+                r.embedding = vec
+            db.commit()
+            done += len(rows)
+            log.info("  embedded %d/%d", done, pending_total)
+        # promote docs whose chunks are now all embedded
+        stale = db.scalars(
+            select(CorpusDocument).where(CorpusDocument.status == CorpusDocStatus.parsed)
+        ).all()
+        promoted = 0
+        for doc in stale:
+            unembedded = db.scalar(
+                select(func.count()).select_from(CorpusChunk).where(
+                    CorpusChunk.corpus_document_id == doc.id, CorpusChunk.embedding.is_(None))
+            ) or 0
+            has_chunks = db.scalar(
+                select(func.count()).select_from(CorpusChunk).where(
+                    CorpusChunk.corpus_document_id == doc.id)
+            ) or 0
+            if has_chunks and unembedded == 0:
+                doc.status = CorpusDocStatus.indexed
+                promoted += 1
+        db.commit()
+        log.info("DONE. embedded %d chunk(s); promoted %d doc(s) -> indexed", done, promoted)
     finally:
         db.close()
 
@@ -158,11 +223,23 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="run the ingestion pipeline")
     r.add_argument("--source", help="only this source key")
+    r.add_argument("--no-embed", action="store_true",
+                   help="stage-only: parse+chunk on CPU, leave embeddings NULL for embed-pending (GPU)")
+    r.add_argument("--shard", help="modulo shard 'i/N' for parallel staging (e.g. 0/4)")
+    ep = sub.add_parser("embed-pending", help="GPU pass: embed all NULL-embedding chunks")
+    ep.add_argument("--batch", type=int, default=256)
     sub.add_parser("verify", help="verify corpus + indexes exist")
     args = p.parse_args(argv)
 
     if args.cmd == "run":
-        run(args.source)
+        shard = None
+        if args.shard:
+            i, n = (int(x) for x in args.shard.split("/"))
+            shard = (i, n)
+        run(args.source, no_embed=args.no_embed, shard=shard)
+        return 0
+    if args.cmd == "embed-pending":
+        embed_pending(batch=args.batch)
         return 0
     if args.cmd == "verify":
         return verify()

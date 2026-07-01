@@ -44,10 +44,17 @@ def fetch(source: dict) -> Iterator[FetchedItem]:
         return
     root = Path(settings.manual_drop_dir)
     doc_type = SourceType(source["source_type"])
+    # eligible files (skip sidecars/dotfiles), sorted for a stable order
+    files = [p for p in sorted(root.glob(glob))
+             if p.is_file() and not p.name.endswith(".meta.json") and not p.name.startswith(".")]
+    # optional modulo shard for parallel staging: _shard = (i, N) -> only files where idx%N==i
+    shard = source.get("_shard")
+    if shard:
+        i, n = shard
+        files = [p for idx, p in enumerate(files) if idx % n == i]
+        log.info("shard %d/%d: %d of the eligible files", i, n, len(files))
     found = 0
-    for path in sorted(root.glob(glob)):
-        if not path.is_file() or path.name.endswith(".meta.json") or path.name.startswith("."):
-            continue  # skip sidecars and dotfiles (e.g. .gitkeep)
+    for path in files:
         raw = path.read_bytes()
         if not raw:
             continue  # skip empty placeholders
