@@ -113,9 +113,18 @@ def run(only_source: str | None = None, *, no_embed: bool = False,
                      f" [shard {shard[0]}/{shard[1]}]" if shard else "")
             fetcher = get_fetcher(source["fetcher"])
             domain = Domain(source["domain"])
+            failed = 0
             for item in fetcher(source):
-                total += _process_item(db, item=item, source=source, source_id=row.id,
-                                       domain=domain, embed_vectors=not no_embed)
+                try:
+                    total += _process_item(db, item=item, source=source, source_id=row.id,
+                                           domain=domain, embed_vectors=not no_embed)
+                except Exception as e:
+                    # One bad doc (corrupt PDF, OCR crash, ...) must not abort the run.
+                    db.rollback()
+                    failed += 1
+                    log.warning("skip (failed): %s -> %s", item.title, str(e)[:150])
+            if failed:
+                log.warning("source %s: %d doc(s) skipped after errors", source["key"], failed)
         verb = "staged" if no_embed else "indexed"
         log.info("DONE. total chunks %s this run: %d", verb, total)
     finally:
