@@ -134,7 +134,7 @@ def _sc_id(item) -> str:
     return found[0] if found else ""
 
 
-def crawl_section(ctx, page, key: str) -> int:
+def crawl_section(ctx, page, key: str, years: set[str] | None = None) -> int:
     page_url, dest, dtype = SECTIONS[key]
     captured: dict = {}
 
@@ -208,7 +208,8 @@ def crawl_section(ctx, page, key: str) -> int:
         return 0
 
     got = 0
-    for year, yid in YEAR_IDS.items():
+    year_items = [(y, i) for y, i in YEAR_IDS.items() if not years or y in years]
+    for year, yid in year_items:
         b2 = json.loads(json.dumps(base))
         b2["attributes"]["search.experiences.year_id"] = yid
         body_str = json.dumps(b2)
@@ -231,6 +232,10 @@ def crawl_section(ctx, page, key: str) -> int:
 def main():
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     keys = list(SECTIONS) if which == "all" else [which]
+    # Optional 2nd arg = comma-separated years to crawl (a partition for multi-worker
+    # parallel runs). Omit to crawl every year. Idempotent, so workers never collide.
+    years = set(sys.argv[2].split(",")) if len(sys.argv) > 2 else None
+    tag = f" [years {sys.argv[2]}]" if years else ""
     with sync_playwright() as p:
         b = p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
         ctx = b.new_context(user_agent=UA, viewport={"width": 1366, "height": 768})
@@ -238,8 +243,8 @@ def main():
         # warm-up: hit the homepage once so Akamai issues clearance
         _safe_goto(page, BASE, wait_until="domcontentloaded", timeout=90000)
         page.wait_for_timeout(3000)
-        total = sum(crawl_section(ctx, page, k) for k in keys)
-        print(f"\nDONE. total documents downloaded: {total}")
+        total = sum(crawl_section(ctx, page, k, years) for k in keys)
+        print(f"\nDONE{tag}. total documents downloaded: {total}")
         b.close()
 
 
