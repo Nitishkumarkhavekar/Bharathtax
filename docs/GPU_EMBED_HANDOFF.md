@@ -14,8 +14,12 @@ Copy everything under **"PROMPT TO RUN ON THE GPU BOX"** into a Claude Code sess
 - All CBDT documents are downloaded and **staged**: parsed → structure-aware chunked →
   written to `corpus_chunks` with `embedding = NULL` and the parent `corpus_documents`
   row left at `status = 'parsed'`.
-- Volume to embed: **~40–55k chunks** (1,443 circulars + 11,151 notifications, plus any
-  statutes/case-law not yet embedded). Confirm the live number with the count query below.
+- Volume to embed (measured 2026-07-01 after staging): **34,572 chunks** pending across
+  **12,462 documents** (53,601 chunks total; 19,029 already embedded from earlier runs).
+  Breakdown of pending: notifications 31,937 · circulars 2,635. Re-confirm live with the
+  count query below (it only grows if more sources are staged).
+- **197 notification PDFs are image-only (scanned)** — they were staged with empty text
+  (OCR was skipped for speed). They need an OCR pass; see the OCR step below.
 - The embedding model is **BAAI/bge-m3** (1024-dim, cosine), served by the `ml-server`
   container. On a 16 GB GPU (fp16) this is fast — expect **~10–30 min** of compute for
   the whole corpus, not hours.
@@ -80,6 +84,19 @@ Bring up a GPU `ml-server` on the box, point the app's `ML_SERVER_URL` at it, ru
 > ```
 > Watch the `embedded N/total` progress. On a 16 GB GPU this should finish in ~10–30 min.
 > If it dies, just run the same command again — it resumes from the first NULL row.
+>
+> **4b. (Optional but recommended) OCR the 197 image-only scanned notifications.**
+> These were staged with empty text (OCR was skipped during bulk CPU staging). They have
+> 0 chunks, so re-running staging **with OCR enabled** re-processes exactly those (every
+> doc that already has chunks is skipped). The box has more cores than the dev laptop, so
+> OCR won't stall it — but keep it to ONE process (OCR is CPU-heavy):
+> ```bash
+> # OCR ON = simply do NOT set ITD_SKIP_OCR
+> docker compose exec api python -m app.ingestion.pipeline run --no-embed --source cbdt_notifications_recent
+> ```
+> This fills text + chunks for the scanned docs (leaving NULL embeddings), which the next
+> `embed-pending` run then vectorizes. If you skip this, those 197 docs stay non-searchable
+> but nothing else is affected.
 >
 > **5. Verify the corpus is fully indexed:**
 > ```bash
