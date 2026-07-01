@@ -40,7 +40,36 @@ Bring up a GPU `ml-server` on the box, point the app's `ML_SERVER_URL` at it, ru
 
 ---
 
-## PROMPT TO RUN ON THE GPU BOX
+## ★ CHOSEN PATH (A): corpus stays on the laptop, GPU serves models
+
+Concrete split for this deployment:
+
+**On the GPU box** (bring up ONLY the model server, expose it to the laptop):
+```bash
+git pull                                             # get embed-pending + this doc
+docker compose -f docker-compose.ml.yml up -d --build
+curl -fsS http://127.0.0.1:8001/health && echo OK    # wait for ~4.6GB weight download
+docker compose -f docker-compose.ml.yml exec ml-server python -c "import torch; print(torch.cuda.is_available())"  # -> True
+```
+Then make port 8001 reachable from the laptop's OUTBOUND connection. The laptop is
+behind home NAT and only dials OUT, so you just need the GPU box to accept it:
+**firewall 8001 to the laptop's public IP** (or put both on WireGuard and use that IP).
+`ml-server` has NO auth — never leave 8001 open to the whole internet. Note the GPU box IP.
+
+**On the laptop** (run the embed pass against the remote GPU, writing vectors into the
+local Postgres — no config change to the running app, just an env override for this run):
+```bash
+docker exec -e ML_SERVER_URL=http://<GPU_IP>:8001 -d taxmedha-api-1 \
+  sh -c 'PYTHONUNBUFFERED=1 python -m app.ingestion.pipeline embed-pending --batch 256 > /tmp/embed.log 2>&1'
+```
+Sanity-check first that the laptop can reach it:
+`docker exec taxmedha-api-1 python -c "import httpx; print(httpx.get('http://<GPU_IP>:8001/health').status_code)"` → 200.
+Then verify: `docker exec taxmedha-api-1 python -m app.ingestion.pipeline verify` (all PASS).
+Keep the laptop awake + online for the ~10–30 min pass.
+
+---
+
+## PROMPT TO RUN ON THE GPU BOX (full runbook / other paths)
 
 > You are operating the BharathTax repo on a Linux host with an NVIDIA 16 GB GPU and the
 > NVIDIA Container Toolkit installed. The income-tax corpus has already been crawled,
