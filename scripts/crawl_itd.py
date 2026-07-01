@@ -104,6 +104,36 @@ def _number(item) -> str:
     return ""
 
 
+def _html_content(item) -> str | None:
+    """Older docs are inline HTML structured-content (no PDF). Return that HTML."""
+    for f in item.get("embedded", {}).get("contentFields", []):
+        if f.get("name") == "documentContent":
+            data = f.get("contentFieldValue", {}).get("data", "") or ""
+            if "<" in data and len(data) > 200:   # real HTML body, not an empty field
+                return data
+    return None
+
+
+def _sc_id(item) -> str:
+    """Structured-content id (stable unique name for the HTML docs)."""
+    found = []
+
+    def w(o):
+        if isinstance(o, str):
+            m = re.search(r"/structured-contents/(\d+)", o)
+            if m:
+                found.append(m.group(1))
+        elif isinstance(o, dict):
+            for v in o.values():
+                w(v)
+        elif isinstance(o, list):
+            for v in o:
+                w(v)
+
+    w(item)
+    return found[0] if found else ""
+
+
 def crawl_section(ctx, page, key: str) -> int:
     page_url, dest, dtype = SECTIONS[key]
     captured: dict = {}
@@ -139,29 +169,43 @@ def crawl_section(ctx, page, key: str) -> int:
             page.wait_for_timeout(3000)
         return None
 
-    def download(it) -> int:
+    def _meta(dest_f, it, url):
+        dest_f.with_suffix(dest_f.suffix + ".meta.json").write_text(json.dumps({
+            "title": _number(it) or dest_f.stem, "source_url": url,
+            "source_host": "incometaxindia.gov.in", "doc_type": dtype, "date": it.get("dateCreated"),
+        }, indent=2), encoding="utf-8")
+
+    def download(it, year) -> int:
+        # 1) PDF path (newer docs)
         url = _pdf_url(it)
-        if not url:
-            return 0
-        slug = url.rsplit("/", 1)[-1]
-        dest_f = outdir / f"{slug}.pdf"
-        if dest_f.exists() and dest_f.stat().st_size > 0:
-            return 0
-        try:
-            resp = ctx.request.get(urljoin(BASE, url), headers={**DL_HEADERS, "Referer": page_url})
-            data = resp.body()
-            if data[:4] != b"%PDF":
+        if url:
+            slug = url.rsplit("/", 1)[-1]
+            dest_f = outdir / f"{slug}.pdf"
+            if dest_f.exists() and dest_f.stat().st_size > 0:
                 return 0
-            dest_f.write_bytes(data)
-            dest_f.with_suffix(".pdf.meta.json").write_text(json.dumps({
-                "title": _number(it) or slug, "source_url": urljoin(BASE, url),
-                "source_host": "incometaxindia.gov.in", "doc_type": dtype, "date": it.get("dateCreated"),
-            }, indent=2), encoding="utf-8")
-            time.sleep(PAUSE)
+            try:
+                resp = ctx.request.get(urljoin(BASE, url), headers={**DL_HEADERS, "Referer": page_url})
+                data = resp.body()
+                if data[:4] != b"%PDF":
+                    return 0
+                dest_f.write_bytes(data)
+                _meta(dest_f, it, urljoin(BASE, url))
+                time.sleep(PAUSE)
+                return 1
+            except Exception as e:
+                print(f"    err {slug}: {str(e)[:60]}")
+                return 0
+        # 2) inline HTML structured-content (older docs, no PDF)
+        html = _html_content(it)
+        if html:
+            sid = _sc_id(it) or str(abs(hash(html)))[:10]
+            dest_f = outdir / f"{dtype}-{year}-sc{sid}.html"
+            if dest_f.exists() and dest_f.stat().st_size > 0:
+                return 0
+            dest_f.write_text(html, encoding="utf-8")
+            _meta(dest_f, it, f"{BASE}/o/headless-delivery/v1.0/structured-contents/{sid}")
             return 1
-        except Exception as e:
-            print(f"    err {slug}: {str(e)[:60]}")
-            return 0
+        return 0
 
     got = 0
     for year, yid in YEAR_IDS.items():
@@ -173,11 +217,11 @@ def crawl_section(ctx, page, key: str) -> int:
             print(f"  {year}: page 1 failed — skipping (re-run fills gaps)"); continue
         yr_total = j.get("totalCount", 0)
         last_page = int(j.get("lastPage") or 1)
-        yr_got = sum(download(it) for it in (j.get("items") or []))
+        yr_got = sum(download(it, year) for it in (j.get("items") or []))
         for pageno in range(2, last_page + 1):
             jj = api_post(pageno, body_str)
             if jj:
-                yr_got += sum(download(it) for it in (jj.get("items") or []))
+                yr_got += sum(download(it, year) for it in (jj.get("items") or []))
         got += yr_got
         print(f"  {year}: +{yr_got} new (year has {yr_total}) | {key} running total {got}")
     print(f"  {key}: downloaded {got} new")
