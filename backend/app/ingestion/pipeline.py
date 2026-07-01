@@ -15,6 +15,8 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import signal
 import sys
 
 from sqlalchemy import func, select, text as sqltext
@@ -33,6 +35,28 @@ from app.models.corpus import CorpusChunk, CorpusDocument
 from app.services import storage
 
 log = get_logger(__name__)
+
+
+_EXTRACT_TIMEOUT_S = 90  # a single doc's extraction must not stall the whole run
+
+
+@contextlib.contextmanager
+def _time_limit(seconds: int):
+    """Hard wall-clock cap via SIGALRM (Unix, main thread). A malformed PDF can send
+    PyMuPDF into a CPU-bound loop that try/except can't catch; this raises TimeoutError
+    at the next interpreter check so the run loop can skip that one document."""
+    def _raise(signum, frame):
+        raise TimeoutError(f"extraction exceeded {seconds}s")
+    if hasattr(signal, "SIGALRM"):
+        old = signal.signal(signal.SIGALRM, _raise)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old)
+    else:  # non-Unix fallback: no hard cap available
+        yield
 
 
 def _existing_doc(db, checksum: str) -> CorpusDocument | None:
@@ -55,8 +79,10 @@ def _process_item(db, *, item: FetchedItem, source: dict, source_id: int, domain
         log.info("skip (already staged): %s", item.title)
         return 0
 
-    # extract -> normalise legal text (needed for both fresh + resume)
-    raw_text = extract_text(item.raw_bytes, item.content_type, filename=item.origin_path or "")
+    # extract -> normalise legal text (needed for both fresh + resume). A hard
+    # timeout guards against a malformed PDF spinning PyMuPDF forever.
+    with _time_limit(_EXTRACT_TIMEOUT_S):
+        raw_text = extract_text(item.raw_bytes, item.content_type, filename=item.origin_path or "")
     drop_headers = tuple(h.upper() for h in source.get("drop_headers", []))
     clean = normalise(raw_text, drop_headers=drop_headers)
 

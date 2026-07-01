@@ -2,6 +2,8 @@
 OCR (Tesseract) ONLY for scanned pages with no text — never by default."""
 from __future__ import annotations
 
+import os
+
 import fitz  # PyMuPDF
 
 from app.core.logging import get_logger
@@ -10,6 +12,13 @@ log = get_logger(__name__)
 
 # If a page yields fewer than this many chars, treat it as image-only -> OCR it.
 _MIN_CHARS_PER_PAGE = 20
+
+
+def _ocr_enabled() -> bool:
+    """OCR is opt-out per-run: bulk CPU staging sets ITD_SKIP_OCR=1 so scanned pages
+    are left empty (fast) and OCR'd deliberately in a later targeted/GPU pass instead
+    of stalling the whole run tens of seconds per scanned document."""
+    return os.getenv("ITD_SKIP_OCR", "").strip() not in ("1", "true", "yes")
 
 
 def _ocr_page(page: "fitz.Page") -> str:
@@ -41,7 +50,7 @@ def extract(raw: bytes) -> str:
         except Exception as e:
             log.warning("page text extraction failed, skipping page: %s", str(e)[:120])
             continue
-        if len(text.strip()) < _MIN_CHARS_PER_PAGE:
+        if len(text.strip()) < _MIN_CHARS_PER_PAGE and _ocr_enabled():
             ocr_text = _ocr_page(page)
             if ocr_text.strip():
                 ocr_pages += 1
