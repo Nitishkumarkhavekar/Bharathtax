@@ -58,7 +58,8 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 - [x] Batch-embed full corpus (bge-m3) → pgvector HNSW — **34,572 chunks embedded this pass**
 - [x] `verify`: **53,601/53,601 chunks embedded + tsvector**; HNSW + GIN present; all PASS
 - [x] Smoke-test: TDS/194C query → 8 grounded passages, cited to real CBDT circulars
-- [ ] OCR the 197 image-only scanned notifications (re-stage with OCR on) — small follow-up
+- [x] OCR'd the 193 image-only scanned notifications (incl. Income-tax Rules 2026) + embedded
+- [x] **FINAL: 12,656 docs / 56,652 chunks — 100% embedded + tsvector, HNSW+GIN, all verify PASS**
 
 ## Phase 5 — Freshness (ongoing)
 - [ ] Celery-beat incremental jobs: pull NEW circulars/notifications/judgments (delta only)
