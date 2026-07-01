@@ -42,6 +42,25 @@ SECTIONS = {
     "notifications": (f"{BASE}/notifications", "notifications", "notification"),
 }
 
+# A broad search saturates at ~400 unique results, so we query PER YEAR
+# (year_id = Liferay 'Year' taxonomy category). Harvested from the site's own
+# dropdown; the Year vocabulary is shared across circulars & notifications.
+YEAR_IDS = {
+    "2026": 13590315, "2025": 38332, "2024": 38326, "2023": 38323, "2022": 38320,
+    "2021": 38317, "2020": 38314, "2019": 38305, "2018": 38302, "2017": 38299,
+    "2016": 38296, "2015": 38293, "2014": 38290, "2013": 38287, "2012": 38284,
+    "2011": 38281, "2010": 38278, "2009": 38275, "2008": 38272, "2007": 38269,
+    "2006": 38266, "2005": 38263, "2004": 38260, "2003": 38257, "2002": 38254,
+    "2001": 38251, "2000": 38248, "1999": 38245, "1998": 38242, "1997": 38239,
+    "1996": 38236, "1995": 38233, "1994": 38230, "1993": 38227, "1992": 38224,
+    "1991": 38221, "1990": 38218, "1989": 38215, "1988": 38212, "1987": 38209,
+    "1986": 38206, "1985": 38203, "1984": 38200, "1983": 38197, "1982": 38194,
+    "1981": 38191, "1980": 38188, "1979": 38185, "1978": 38182, "1977": 38179,
+    "1976": 38176, "1975": 38173, "1974": 38170, "1973": 38167, "1972": 38164,
+    "1971": 38161, "1970": 38158, "1969": 38155, "1968": 38152, "1967": 38149,
+    "1966": 38146, "1965": 38143, "1964": 38140, "1963": 38137, "1962": 38134,
+}
+
 
 def _safe_goto(page, url, **kw):
     """Navigate with retries — survives transient network blips (ERR_NETWORK_CHANGED)."""
@@ -102,63 +121,66 @@ def crawl_section(ctx, page, key: str) -> int:
     if "body" not in captured:
         print("  could not capture the search API body."); return 0
 
-    body = captured["body"]
+    base = json.loads(captured["body"])
     outdir = ROOT / dest
     outdir.mkdir(parents=True, exist_ok=True)
 
-    def api_post(page_no):
+    def api_post(page_no, body_str):
         """POST one search page with retries; return json or None."""
         api = f"{BASE}/o/search/v1.0/search?nestedFields=embedded&page={page_no}&pageSize={PAGE_SIZE}"
         for attempt in range(4):
             try:
-                r = ctx.request.post(api, data=body, headers={"Content-Type": "application/json"})
+                r = ctx.request.post(api, data=body_str, headers={"Content-Type": "application/json"})
                 if r.status == 200:
                     return r.json()
             except Exception as e:
                 if attempt == 0:
-                    print(f"  page {page_no} retry: {str(e)[:50]}")
+                    print(f"    page {page_no} retry: {str(e)[:50]}")
             page.wait_for_timeout(3000)
         return None
 
-    first = api_post(1)
-    if not first:
-        print("  page 1 failed after retries."); return 0
-    total = first.get("totalCount")
-    last_page = int(first.get("lastPage") or 1)
-    print(f"  {total} items across {last_page} pages")
+    def download(it) -> int:
+        url = _pdf_url(it)
+        if not url:
+            return 0
+        slug = url.rsplit("/", 1)[-1]
+        dest_f = outdir / f"{slug}.pdf"
+        if dest_f.exists() and dest_f.stat().st_size > 0:
+            return 0
+        try:
+            resp = ctx.request.get(urljoin(BASE, url), headers={**DL_HEADERS, "Referer": page_url})
+            data = resp.body()
+            if data[:4] != b"%PDF":
+                return 0
+            dest_f.write_bytes(data)
+            dest_f.with_suffix(".pdf.meta.json").write_text(json.dumps({
+                "title": _number(it) or slug, "source_url": urljoin(BASE, url),
+                "source_host": "incometaxindia.gov.in", "doc_type": dtype, "date": it.get("dateCreated"),
+            }, indent=2), encoding="utf-8")
+            time.sleep(PAUSE)
+            return 1
+        except Exception as e:
+            print(f"    err {slug}: {str(e)[:60]}")
+            return 0
+
     got = 0
-    for page_no in range(1, last_page + 1):
-        j = first if page_no == 1 else api_post(page_no)
+    for year, yid in YEAR_IDS.items():
+        b2 = json.loads(json.dumps(base))
+        b2["attributes"]["search.experiences.year_id"] = yid
+        body_str = json.dumps(b2)
+        j = api_post(1, body_str)
         if not j:
-            print(f"  page {page_no}: failed after retries — skipping (re-run fills gaps)"); continue
-        items = j.get("items", []) or []
-        for it in items:
-            url = _pdf_url(it)
-            if not url:
-                continue
-            slug = url.rsplit("/", 1)[-1]
-            dest_f = outdir / f"{slug}.pdf"
-            if dest_f.exists() and dest_f.stat().st_size > 0:
-                continue
-            try:
-                resp = ctx.request.get(urljoin(BASE, url),
-                                       headers={**DL_HEADERS, "Referer": page_url})
-                data = resp.body()
-                if not data[:4] == b"%PDF":
-                    continue
-                dest_f.write_bytes(data)
-                dest_f.with_suffix(".pdf.meta.json").write_text(json.dumps({
-                    "title": _number(it) or slug, "source_url": urljoin(BASE, url),
-                    "source_host": "incometaxindia.gov.in", "doc_type": dtype,
-                    "date": it.get("dateCreated"),
-                }, indent=2), encoding="utf-8")
-                got += 1
-                if got % 10 == 0 or got <= 3:
-                    print(f"  [{dtype} {got}/{total}] {slug}")
-                time.sleep(PAUSE)
-            except Exception as e:
-                print(f"  err {slug}: {str(e)[:70]}")
-    print(f"  {key}: downloaded {got} (of ~{total})")
+            print(f"  {year}: page 1 failed — skipping (re-run fills gaps)"); continue
+        yr_total = j.get("totalCount", 0)
+        last_page = int(j.get("lastPage") or 1)
+        yr_got = sum(download(it) for it in (j.get("items") or []))
+        for pageno in range(2, last_page + 1):
+            jj = api_post(pageno, body_str)
+            if jj:
+                yr_got += sum(download(it) for it in (jj.get("items") or []))
+        got += yr_got
+        print(f"  {year}: +{yr_got} new (year has {yr_total}) | {key} running total {got}")
+    print(f"  {key}: downloaded {got} new")
     return got
 
 
