@@ -53,11 +53,12 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 - [ ] AAR / Advance Rulings
 - [ ] Judgment metadata: court, bench, date, CNR, parties, sections-cited
 
-## Phase 4 — Embed at scale  (GPU — deferred until box free)
-- [ ] Stand up ingest pipeline on the 16 GB GPU box (`ML_DEVICE=cuda`, gpu compose)
-- [ ] Batch-embed full corpus (bge-m3) → pgvector HNSW
-- [ ] `verify-corpus`: every chunk embedded + tsvector + indexes; counts by domain/source
-- [ ] Smoke-test retrieval quality across statutes / circulars / case law
+## Phase 4 — Embed at scale  ✅ (DONE 2026-07-01, RTX 5060 Ti)
+- [x] GPU ml-server (bge-m3, `device:cuda`) on the box; laptop drove `embed-pending` over the network
+- [x] Batch-embed full corpus (bge-m3) → pgvector HNSW — **34,572 chunks embedded this pass**
+- [x] `verify`: **53,601/53,601 chunks embedded + tsvector**; HNSW + GIN present; all PASS
+- [x] Smoke-test: TDS/194C query → 8 grounded passages, cited to real CBDT circulars
+- [ ] OCR the 197 image-only scanned notifications (re-stage with OCR on) — small follow-up
 
 ## Phase 5 — Freshness (ongoing)
 - [ ] Celery-beat incremental jobs: pull NEW circulars/notifications/judgments (delta only)
