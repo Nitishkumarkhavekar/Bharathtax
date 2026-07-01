@@ -8,13 +8,14 @@ from collections.abc import Callable, Iterator
 from functools import partial
 
 from app.ingestion.contracts import ParsedUnit
-from app.ingestion.parse import cbdt, it_act, it_rules
+from app.ingestion.parse import act_sections, cbdt, it_act, it_rules
 
 Parser = Callable[[str], Iterator[ParsedUnit]]
 
 _REGISTRY: dict[str, Parser] = {
     "it_act": it_act.parse,
     "it_rules": it_rules.parse,
+    "act_sections": act_sections.parse,
     "cbdt_circular": partial(cbdt.parse, doc_type_label="Circular"),
     "cbdt_notification": partial(cbdt.parse, doc_type_label="Notification"),
 }

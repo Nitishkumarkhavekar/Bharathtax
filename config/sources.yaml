@@ -81,6 +81,26 @@ sources:
     rate_limit_seconds: 5
     enabled: true
 
+  - key: finance_acts
+    domain: income_tax
+    name: Finance Acts (annual)
+    source_type: act
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/finance-acts
+    manual_glob: "income_tax/acts_new/finance_act_*.txt"
+    parser: act_sections
+    enabled: true
+
+  - key: it_act_2025_structured
+    domain: income_tax
+    name: Income-tax Act, 2025
+    source_type: act
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/income-tax-act-2025
+    manual_glob: "income_tax/acts_new/income_tax_act_2025.txt"
+    parser: act_sections
+    enabled: true
+
   # ----------------------- RESERVED EXTENSION POINTS ------------------------
   # Adding a whole new market = uncommenting + dropping files. No code change.
   #
