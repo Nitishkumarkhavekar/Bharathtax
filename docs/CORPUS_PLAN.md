@@ -35,8 +35,8 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 - [ ] Parse + chunk all of the above (CPU)
 
 ## Phase 2 — Executive / CBDT  (target: 1–2 weeks)  — **B**
-- [ ] **CBDT Circulars** — all, year-wise — **e-filing portal crawler** (incometax.gov.in, not the Akamai-blocked site)
-- [ ] **CBDT Notifications** — all, year-wise — e-filing portal / e-gazette
+- [x] **CBDT Circulars** — ALL year-wise 1962→2026 = **1,443** (402 PDF + 1,041 HTML) — `scripts/crawl_itd.py` (Akamai unlocked via non-headless Playwright + Liferay search API)
+- [x] **CBDT Notifications** — ALL year-wise 1962→2026 = **11,151** (1,752 PDF + 9,399 HTML) — same crawler, 4-worker parallel run (~30 min)
 - [ ] CBDT Instructions & Office Memoranda
 - [ ] Press Releases
 - [ ] Prescribed Forms (ITR forms + others) — metadata/context
@@ -78,7 +78,8 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 |---|---|---|
 | Act, allied acts, Finance Acts* | indiacode.nic.in | ✅ open (Finance Acts gap) |
 | Rules, DTAAs | dor.gov.in / incometax.gov.in | ✅ open |
-| Circulars, Notifications, Press, Forms | **incometax.gov.in** (e-filing) | ✅ open (old site is Akamai-blocked — skip) |
+| **Circulars + Notifications (DONE: 1,443 + 11,151)** | **incometaxindia.gov.in** (Liferay API) | ✅ **Akamai UNLOCKED** via `scripts/crawl_itd.py` (non-headless Playwright, per-year year_id, PDF+HTML, multi-worker) |
+| Press, Forms | incometax.gov.in (e-filing) | ✅ open |
 | Notifications (gazetted) | egazette.gov.in | ✅ open |
 | High Court judgments | AWS *Indian HC Judgments* open dataset | ✅ open, bulk |
 | ITAT orders | itat.gov.in | ✅ open |
