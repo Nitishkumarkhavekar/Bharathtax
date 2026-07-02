@@ -13,6 +13,7 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -466,19 +467,55 @@ def _trim(s: str, n: int) -> str:
     return s if len(s) <= n else s[:n] + "\n…[truncated]…"
 
 
+def _issue_doc_context(case: AppealCase, issue_text: str, *, max_chars: int = 24000) -> str:
+    tokens = set(re.findall(r"[a-z0-9()/-]{3,}", issue_text.lower()))
+    ranked: list[tuple[float, AppealDocument]] = []
+
+    for doc in case.documents:
+        hay = f"{doc.filename} {doc.category} {(doc.text or '')[:8000]}".lower()
+        overlap = sum(1 for token in tokens if token in hay)
+        fuzzy = SequenceMatcher(None, issue_text.lower(), hay[:400]).ratio()
+        ranked.append((overlap + fuzzy, doc))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    chosen = [doc for score, doc in ranked if score > 0][:4] or [doc for _, doc in ranked[:3]]
+
+    sections = []
+    budget = max_chars
+    for doc in chosen:
+        excerpt = _sample_text(doc.text or "", target_chars=3200)
+        if not excerpt:
+            continue
+        block = (
+            f"===== {doc.filename} =====\n"
+            f"Category: {doc.category}\n"
+            f"Relevant Extract:\n{excerpt}"
+        )
+        if len(block) > budget and sections:
+            break
+        sections.append(block)
+        budget -= len(block) + 2
+
+    if not sections:
+        return _docs_text(case, max_chars=max_chars)
+    return "\n\n".join(sections)
+
+
 def document_compliance(case: AppealCase) -> dict:
     present = {d.category for d in case.documents}
     return {
         "compliance_sheet": [{"filename": d.filename, "category": d.category,
-                              "group": GROUP.get(d.category, "Unclassified"), "pages": d.pages}
+                              "group": GROUP.get(d.category, "Unclassified"), "pages": d.pages,
+                              "extracted_chars": len((d.text or "").strip())}
                              for d in case.documents],
         "missing": [c for c in EXPECTED if c not in present],
     }
 
 
 # --- per-issue drafting (reused by run + regenerate) ---
-def draft_issue(db: Session, docs_text: str, issue: dict) -> tuple[str, list]:
+def draft_issue(db: Session, case: AppealCase, issue: dict) -> tuple[str, list]:
     q = issue.get("issue", "")
+    docs_text = _issue_doc_context(case, q)
     ctx, cites = _ground(db, q, domain=None)   # ground on statutes AND case law
     user = (f"You are drafting the issue-wise DISCUSSION AND FINDINGS for ONE ground of a formal "
             f"CIT(A)/NFAC appellate order. This is a Government legal order: write in dignified, "

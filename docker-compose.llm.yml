@@ -24,7 +24,7 @@ services:
       --model hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
       --served-model-name llama-3.1-8b-instruct
       --quantization awq_marlin
-      --max-model-len 6144
+      --max-model-len 8192
       --gpu-memory-utilization 0.50
       --dtype float16
     environment:

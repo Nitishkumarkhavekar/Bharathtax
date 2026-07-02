@@ -11,6 +11,7 @@ Config via env: BHARATTAX_API_KEY, CORPUS_DIR, ML_URL, LLM_URL, ALLOWED_ORIGINS.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import time
@@ -35,6 +36,21 @@ if os.getenv("LLM_URL"):
     rag_core.LLM = os.environ["LLM_URL"].rstrip("/")
 API_KEY = os.getenv("BHARATTAX_API_KEY", "")
 ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+
+# --- continuous-improvement data capture -------------------------------------
+# Every answer and every explicit feedback/correction is logged here; a periodic
+# job distils it into (a) a verified-example store used as few-shot context and
+# (b) a fine-tuning dataset. This is what makes the model improve over time.
+FEEDBACK_DIR = Path(os.getenv("FEEDBACK_DIR", str(rag_core.DATA.parent / "feedback")))
+
+
+def _log(kind: str, rec: dict) -> None:
+    try:
+        FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
+        with open(FEEDBACK_DIR / "interactions.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"t": int(time.time()), "kind": kind, **rec}, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 _STATE: dict = {}
 
@@ -105,6 +121,52 @@ def _sources_footer(passages: list[dict]) -> str:
     return ("\n\nSources:\n" + "\n".join(lines)) if lines else ""
 
 
+@app.post("/v1/feedback")
+def feedback(body: dict[str, Any],
+             authorization: str | None = Header(default=None),
+             x_api_key: str | None = Header(default=None)) -> dict:
+    """Record a rating/correction/accepted edit — the verified signal used to
+    improve the model. Send {question, answer?, rating?('up'|'down'),
+    correction?, model?, source?}."""
+    _check_key(authorization, x_api_key)
+    _log("feedback", {k: body.get(k) for k in
+                      ("question", "answer", "rating", "correction", "model", "source")})
+    # Learn: a correction, or a thumbs-up on an answer, becomes a verified example.
+    learned = False
+    q = (body.get("question") or "").strip()
+    gold = (body.get("correction") or "").strip() or \
+           ((body.get("answer") or "").strip() if body.get("rating") == "up" else "")
+    if q and gold:
+        try:
+            learned = rag_core.add_verified(q, gold)
+        except Exception:
+            learned = False
+    return {"ok": True, "learned": learned}
+
+
+@app.post("/v1/law")
+def law_search(body: dict[str, Any],
+               authorization: str | None = Header(default=None),
+               x_api_key: str | None = Header(default=None)) -> dict:
+    """Retrieve relevant primary-law passages (IT Act / Rules / circulars) for a
+    query from the corpus — so clients (e.g. the appeal drafter) can ground on the
+    real Acts & Rules when they are unsure, instead of guessing."""
+    _check_key(authorization, x_api_key)
+    query = (body.get("query") or "").strip()
+    if not query:
+        return {"passages": []}
+    k = min(int(body.get("k", 6) or 6), 12)
+    passages = _STATE["store"].retrieve(query)[:k]
+    return {"passages": [{
+        "n": i + 1,
+        "act": p["row"]["act_name"],
+        "section": p["row"].get("section_number") or p["row"].get("rule_number"),
+        "breadcrumb": p["row"]["breadcrumb"],
+        "text": p["row"]["text"][:1200],
+        "score": round(p["score"], 3),
+    } for i, p in enumerate(passages)]}
+
+
 @app.get("/v1/models")
 def list_models() -> dict:
     return {"object": "list", "data": [
@@ -145,6 +207,10 @@ def chat_completions(body: dict[str, Any],
     res = rag_core.answer(question, version=body.get("version"),
                           source=body.get("source"), history=history)
     content = res["text"]
+    _log("answer", {"model": body.get("model", "bharattax-rag"), "question": question,
+                    "answer": content, "grounded": res["grounded"],
+                    "sections": [ (p["row"].get("section_number") or p["row"].get("rule_number"))
+                                  for p in res["passages"][:8] ]})
     # Only show Sources when the answer actually cited the law ([1], [2], ...) — keeps
     # greetings, basics and general answers free of irrelevant source lists.
     if res["passages"] and re.search(r"\[\d+\]", content):

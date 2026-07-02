@@ -233,12 +233,14 @@ class Store:
             idx = np.array([i for i in idx if self.rows[i]["source_key"] == source])
         return idx
 
-    def retrieve(self, query: str, *, version=None, source=None) -> list[dict]:
+    def retrieve(self, query: str, *, version=None, source=None, query_emb=None) -> list[dict]:
         idx = self._filter(version, source)
         allow = set(int(i) for i in idx)
 
-        # dense
-        q = np.asarray(_post(ML + "/embed", {"texts": [query]})["embeddings"][0], dtype=np.float32)
+        # dense (reuse a precomputed embedding when available)
+        if query_emb is None:
+            query_emb = _post(ML + "/embed", {"texts": [query]})["embeddings"][0]
+        q = np.asarray(query_emb, dtype=np.float32)
         q /= (np.linalg.norm(q) + 1e-9)
         sims = self.embs @ q
         dense = [i for i in np.argsort(-sims) if int(i) in allow][:DENSE_K]
@@ -320,13 +322,23 @@ def _passages_block(passages: list[dict]) -> str:
 
 
 def generate(question: str, passages: list[dict] | None = None,
-             history: list[dict] | None = None, note: str = "") -> str:
+             history: list[dict] | None = None, note: str = "",
+             fewshot: list[dict] | None = None) -> str:
     """Generate a conversational, professional answer. `passages` may be empty
     (greetings / basic concepts). `history` is prior chat turns (no system role).
-    `note` is an out-of-band instruction injected for this turn (e.g. a section was
-    not found) — the model acts on it but must not quote it to the user."""
+    `note` is an out-of-band instruction injected for this turn. `fewshot` are
+    verified (question, answer) examples from past accepted/corrected answers,
+    injected as prior turns so the model learns from them (continuous improvement)."""
     note_block = f"\n\n[SYSTEM NOTE: {note}]" if note else ""
-    user_content = question + note_block + _passages_block(passages or [])
+    # Verified memory: inject the closest expert-approved answer as authoritative
+    # guidance in THIS turn, so its facts compete with (and augment) the passages.
+    ver_block = ""
+    if fewshot:
+        top = fewshot[0]
+        ver_block = ("\n\n[EXPERT-VERIFIED ANSWER to a nearly identical question — treat these facts "
+                     "and figures as authoritative and make sure your answer reflects them:\n"
+                     + top.get("answer", "") + "]")
+    user_content = question + note_block + ver_block + _passages_block(passages or [])
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for m in (history or []):
         if m.get("role") in ("user", "assistant") and m.get("content"):
@@ -364,14 +376,16 @@ def answer(question: str, *, version=None, source=None, history=None) -> dict:
         if inc:
             return {"grounded": True, "text": _calc_answer(inc), "passages": []}
     store = Store_singleton()
-    passages = store.retrieve(question, version=version, source=source)
+    qemb = _post(ML + "/embed", {"texts": [question]})["embeddings"][0]   # embed once
+    fewshot = Verified_singleton().similar(qemb)                          # learn from past accepted answers
+    passages = store.retrieve(question, version=version, source=source, query_emb=qemb)
     missing = store.cited_missing(question)
     note = ""
     if missing:
         note = ("The user referred to " + ", ".join(missing) + ", which could NOT be found "
                 "in the Income-tax Act or Rules. Tell them you could not find that and ask them "
                 "to re-check the number; do not invent its contents or substitute another number.")
-    text = generate(question, passages, history, note=note)
+    text = generate(question, passages, history, note=note, fewshot=fewshot)
     return {"grounded": bool(passages), "text": text, "passages": passages}
 
 
@@ -383,3 +397,71 @@ def Store_singleton() -> Store:
     if _STORE is None:
         _STORE = Store()
     return _STORE
+
+
+# --- Verified-example memory (continuous improvement) -------------------------
+# Accepted / corrected answers are stored with their embeddings; at answer time we
+# retrieve the most similar ones and feed them as few-shot examples. The model gets
+# more accurate as verified feedback accumulates — no retraining required.
+VERIFIED_PATH = DATA.parent / "feedback" / "verified.jsonl"
+FEWSHOT_K = 2
+FEWSHOT_MIN_SIM = 0.82
+
+
+class VerifiedStore:
+    def __init__(self) -> None:
+        self.rows: list[dict] = []
+        self.embs = np.zeros((0, 1024), dtype=np.float32)
+        if VERIFIED_PATH.exists():
+            rows, embs = [], []
+            for line in VERIFIED_PATH.read_text(encoding="utf-8").splitlines():
+                try:
+                    r = json.loads(line)
+                    if r.get("question") and r.get("answer") and r.get("emb"):
+                        rows.append({"question": r["question"], "answer": r["answer"]})
+                        embs.append(r["emb"])
+                except Exception:
+                    continue
+            self.rows = rows
+            if embs:
+                e = np.asarray(embs, dtype=np.float32)
+                self.embs = e / (np.linalg.norm(e, axis=1, keepdims=True) + 1e-9)
+
+    def similar(self, query_emb, k: int = FEWSHOT_K, min_sim: float = FEWSHOT_MIN_SIM) -> list[dict]:
+        if not self.rows:
+            return []
+        q = np.asarray(query_emb, dtype=np.float32)
+        q /= (np.linalg.norm(q) + 1e-9)
+        sims = self.embs @ q
+        order = np.argsort(-sims)[:k]
+        return [self.rows[i] for i in order if sims[i] >= min_sim]
+
+    def add(self, question: str, answer: str, emb) -> None:
+        e = np.asarray(emb, dtype=np.float32)
+        e /= (np.linalg.norm(e) + 1e-9)
+        self.rows.append({"question": question, "answer": answer})
+        self.embs = np.vstack([self.embs, e[None, :]])
+        VERIFIED_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(VERIFIED_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"question": question, "answer": answer,
+                                "emb": [round(float(x), 6) for x in e]}, ensure_ascii=False) + "\n")
+
+
+_VERIFIED: VerifiedStore | None = None
+
+
+def Verified_singleton() -> VerifiedStore:
+    global _VERIFIED
+    if _VERIFIED is None:
+        _VERIFIED = VerifiedStore()
+    return _VERIFIED
+
+
+def add_verified(question: str, answer: str) -> bool:
+    """Record a verified (accepted or corrected) answer into the learning memory."""
+    q, a = (question or "").strip(), (answer or "").strip()
+    if not q or not a:
+        return False
+    emb = _post(ML + "/embed", {"texts": [q]})["embeddings"][0]
+    Verified_singleton().add(q, a, emb)
+    return True
