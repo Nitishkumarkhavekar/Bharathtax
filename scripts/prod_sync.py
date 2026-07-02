@@ -33,8 +33,11 @@ def dev_psql(sql: str) -> str:
 
 
 def prod_sh(script: str) -> str:
-    return subprocess.run(["ssh", "-o", "BatchMode=yes", PROD_HOST, "bash", "-s"],
-                          input=script, capture_output=True, text=True).stdout.strip()
+    # surface BOTH streams — psql \copy errors go to stderr and (without ON_ERROR_STOP)
+    # don't fail the shell, so a silently-dropped COPY must still be visible.
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", PROD_HOST, "bash", "-s"],
+                       input=script, capture_output=True, text=True)
+    return (r.stdout + r.stderr).strip()
 
 
 def prod_psql(sql: str) -> str:
@@ -71,15 +74,21 @@ def main():
     for f in ("sync_docs.dat.gz", "sync_chunks.dat.gz"):
         subprocess.run(["docker", "cp", f"{DEV_PG}:{SCRATCH}/{f}", os.path.join(tmp, f)], check=True)
         subprocess.run(["scp", "-P", "20202", "-o", "BatchMode=yes", os.path.join(tmp, f), f"{PROD_HOST}:{SCRATCH}/{f}"], check=True)
-    # 3) import on prod: docs (fast), then ONE chunks COPY; bump sequences; verify
+    # 3) import on prod via SERVER-SIDE COPY from a heredoc-written SQL file (taxmedha is
+    #    superuser). ON_ERROR_STOP=1 makes any failure loud instead of a silent drop.
+    #    docs before chunks (FK order); indexes stay live so the site keeps serving.
     print("importing into prod (zero-downtime COPY-append)...")
+    sqlfile = (f"COPY corpus_documents({DCOLS}) FROM '{SCRATCH}/sync_docs.dat';\n"
+               f"COPY corpus_chunks({CCOLS}) FROM '{SCRATCH}/sync_chunks.dat';\n")
     script = f"""set -e
 docker cp {SCRATCH}/sync_docs.dat.gz {PROD_PG}:{SCRATCH}/; docker cp {SCRATCH}/sync_chunks.dat.gz {PROD_PG}:{SCRATCH}/
-docker exec {PROD_PG} sh -c "gunzip -f {SCRATCH}/sync_docs.dat.gz {SCRATCH}/sync_chunks.dat.gz"
-docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -c "\\copy corpus_documents({DCOLS}) FROM '{SCRATCH}/sync_docs.dat'"
-docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -c "\\copy corpus_chunks({CCOLS}) FROM '{SCRATCH}/sync_chunks.dat'"
-docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -c "SELECT setval(pg_get_serial_sequence('corpus_documents','id'),(SELECT max(id) FROM corpus_documents)); SELECT setval(pg_get_serial_sequence('corpus_chunks','id'),(SELECT max(id) FROM corpus_chunks));" >/dev/null
-docker exec {PROD_PG} sh -c "rm -f {SCRATCH}/sync_*.dat*"
+docker exec {PROD_PG} sh -c 'gunzip -f {SCRATCH}/sync_docs.dat.gz {SCRATCH}/sync_chunks.dat.gz'
+cat > {SCRATCH}/sync.sql <<'SQLEOF'
+{sqlfile}SQLEOF
+docker cp {SCRATCH}/sync.sql {PROD_PG}:{SCRATCH}/sync.sql
+docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -v ON_ERROR_STOP=1 -f {SCRATCH}/sync.sql
+docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -c "SELECT setval(pg_get_serial_sequence('corpus_documents','id'),(SELECT max(id) FROM corpus_documents)); SELECT setval(pg_get_serial_sequence('corpus_chunks','id'),(SELECT max(id) FROM corpus_chunks));"
+docker exec {PROD_PG} sh -c 'rm -f {SCRATCH}/sync_*.dat* {SCRATCH}/sync.sql'
 docker exec bharathtax-web-api-1 python -m app.ingestion.pipeline verify 2>&1 | grep -E 'corpus_chunks|with embedding|by domain|PASS|FAIL'
 """
     print(prod_sh(script))
