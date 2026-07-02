@@ -3,6 +3,7 @@ JWT/seat auth, MinIO storage, PDF extraction, Celery, and corpus-grounded drafti
 from __future__ import annotations
 
 import json
+import mimetypes
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
@@ -19,9 +20,11 @@ from app.services import audit
 from app.services import appeal_draft as svc
 from app.services.appeal_export import build_order_docx
 from app.services.storage import put_bytes, get_bytes
-from app.ingestion.extract.pdf import extract as pdf_extract
+from app.ingestion.extract import extract_text
 
 router = APIRouter(prefix="/appeal", tags=["appeal"])
+
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".txt", ".html", ".htm"}
 
 
 class CaseCreate(BaseModel):
@@ -108,18 +111,26 @@ async def upload_docs(cid: int, files: list[UploadFile] = File(...),
                       p: Principal = Depends(get_principal), db: Session = Depends(get_db), request: Request = None):
     case = _get_case(db, p.user, cid)
     added = []
+    skipped = []
     for f in files:
-        if not f.filename or not f.filename.lower().endswith(".pdf"):
+        filename = f.filename or ""
+        guessed_type, _ = mimetypes.guess_type(filename)
+        ext = ""
+        if "." in filename:
+            ext = f".{filename.rsplit('.', 1)[1].lower()}"
+        if not filename or ext not in ALLOWED_UPLOAD_EXTENSIONS:
+            skipped.append(filename or "(unnamed file)")
             continue
         raw = await f.read()
-        key = f"appeal/case_{case.id}/{f.filename}"
-        put_bytes(key, raw, content_type="application/pdf")
+        content_type = f.content_type or guessed_type or "application/octet-stream"
+        key = f"appeal/case_{case.id}/{filename}"
+        put_bytes(key, raw, content_type=content_type)
         try:
-            text = pdf_extract(raw)
+            text = extract_text(raw, content_type, filename=filename)
         except Exception:
             text = ""
-        pages = text.count("\f") + 1 if text else 0
-        doc = AppealDocument(case_id=case.id, filename=f.filename, category=svc.classify(f.filename, text),
+        pages = text.count("\f") + 1 if ext == ".pdf" and text else 0
+        doc = AppealDocument(case_id=case.id, filename=filename, category=svc.classify(filename, text),
                              minio_key=key, text=text, pages=pages)
         db.add(doc); added.append(doc)
     db.commit()
@@ -127,7 +138,9 @@ async def upload_docs(cid: int, files: list[UploadFile] = File(...),
     audit.log_event(db, action="appeal.upload", user_id=p.user.id, wing_id=p.user.wing_id,
                     resource_type="appeal_case", resource_id=str(case.id), **client_meta(request))
     return {"documents": [{"id": d.id, "filename": d.filename, "category": d.category, "pages": d.pages} for d in case.documents],
-            "missing": [c for c in svc.EXPECTED if c not in present]}
+            "missing": [c for c in svc.EXPECTED if c not in present],
+            "accepted_types": sorted(ALLOWED_UPLOAD_EXTENSIONS),
+            "skipped": skipped}
 
 
 @router.get("/cases/{cid}/documents/{did}/file")
@@ -136,8 +149,10 @@ def get_doc_file(cid: int, did: int, p: Principal = Depends(get_principal), db: 
     doc = db.get(AppealDocument, did)
     if not doc or doc.case_id != cid:
         raise HTTPException(404, "Not found")
-    return Response(get_bytes(doc.minio_key), media_type="application/pdf",
-                    headers={"Content-Disposition": f'inline; filename="{doc.filename}"'})
+    media_type = mimetypes.guess_type(doc.filename)[0] or "application/octet-stream"
+    disposition = "inline" if media_type == "application/pdf" else "attachment"
+    return Response(get_bytes(doc.minio_key), media_type=media_type,
+                    headers={"Content-Disposition": f'{disposition}; filename="{doc.filename}"'})
 
 
 # --- run / outputs ---
@@ -199,8 +214,7 @@ def regenerate(cid: int, seq: int, p: Principal = Depends(get_principal), db: Se
     issues = (json.loads(im.content).get("issues") if im else None) or []
     if seq >= len(issues):
         raise HTTPException(404, "Issue not found")
-    docs_text = svc._docs_text(case)
-    block, cites = svc.draft_issue(db, docs_text, issues[seq])
+    block, cites = svc.draft_issue(db, case, issues[seq])
     prev = list(db.scalars(select(AppealOutput).where(AppealOutput.run_id == run.id, AppealOutput.kind == "finding", AppealOutput.seq == seq)))
     ver = max([o.version for o in prev], default=0) + 1
     o = AppealOutput(run_id=run.id, kind="finding", seq=seq, label=issues[seq]["issue"], content=block, citations=cites, version=ver)

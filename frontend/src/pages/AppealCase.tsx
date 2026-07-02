@@ -54,6 +54,7 @@ export default function AppealCase() {
   const [versions, setVersions] = useState<any[]>([]);
   const [saved, setSaved] = useState("");
   const [regen, setRegen] = useState<Record<number, boolean>>({});
+  const [uploadNote, setUploadNote] = useState("");
   const poll = useRef<any>(null);
 
   const loadCase = useCallback(async () => setC(await api.appealCase(cid)), [cid]);
@@ -68,7 +69,15 @@ export default function AppealCase() {
 
   async function upload(e: ChangeEvent<HTMLInputElement>) {
     if (!e.target.files?.length) return;
-    const r = await api.appealUpload(cid, e.target.files); setMissing(r.missing); loadCase(); e.target.value = "";
+    const r = await api.appealUpload(cid, e.target.files);
+    setMissing(r.missing);
+    if (r.skipped?.length) {
+      setUploadNote(`Skipped unsupported files: ${r.skipped.join(", ")}`);
+    } else {
+      setUploadNote("");
+    }
+    loadCase();
+    e.target.value = "";
   }
   async function start() {
     setBusy(true); setProgress("queued");
@@ -106,9 +115,10 @@ export default function AppealCase() {
 
       <Section title="Documents" extra={
         <label className={cn("inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-3 h-9 text-sm font-medium cursor-pointer hover:bg-primary/90")}>
-          <Upload className="size-4" /> Upload PDFs<input type="file" accept="application/pdf" multiple className="hidden" onChange={upload} />
+          <Upload className="size-4" /> Upload case files<input type="file" accept=".pdf,.docx,.txt,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html" multiple className="hidden" onChange={upload} />
         </label>}>
         {missing.length > 0 && <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">Missing expected: {missing.join(", ")}</div>}
+        {uploadNote && <div className="text-sm text-muted-foreground bg-muted/50 border rounded-md px-3 py-2 mb-3">{uploadNote}</div>}
         <div className="divide-y rounded-md border">
           {c?.documents?.map((d: any) => (
             <div key={d.id} className="flex items-center gap-3 p-2.5">

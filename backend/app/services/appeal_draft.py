@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -116,26 +117,105 @@ def _detect_issues(text: str) -> list[dict]:
     return [{"issue": name} for name, pat in _ISSUE_PATTERNS if re.search(pat, text, re.I)]
 
 
-def _docs_text(case: AppealCase, max_chars: int = 24000) -> str:
-    parts = [f"===== {d.filename} (category: {d.category}) =====\n{(d.text or '').strip()}"
-             for d in case.documents]
-    blob = "\n\n".join(parts)
+def _clean_text(text: str) -> str:
+    return re.sub(r"\n{3,}", "\n\n", (text or "").strip())
+
+
+def _sample_text(text: str, *, target_chars: int = 2600) -> str:
+    cleaned = _clean_text(text)
+    if len(cleaned) <= target_chars:
+        return cleaned
+
+    first = cleaned[: int(target_chars * 0.45)].strip()
+    mid_start = max(0, (len(cleaned) // 2) - int(target_chars * 0.15))
+    middle = cleaned[mid_start : mid_start + int(target_chars * 0.3)].strip()
+    last = cleaned[-int(target_chars * 0.25) :].strip()
+    return "\n...\n".join(part for part in [first, middle, last] if part)
+
+
+def _document_inventory(case: AppealCase) -> str:
+    rows = []
+    for idx, doc in enumerate(case.documents, start=1):
+        chars = len((doc.text or "").strip())
+        rows.append(
+            f"{idx}. {doc.filename} | category={doc.category} | pages={doc.pages} | extracted_chars={chars}"
+        )
+    return "\n".join(rows) if rows else "(no documents)"
+
+
+def _docs_text(case: AppealCase, max_chars: int = 48000) -> str:
+    sections = [f"DOCUMENT INVENTORY\n{_document_inventory(case)}"]
+    budget = max_chars - len(sections[0])
+
+    docs = sorted(case.documents, key=lambda d: (d.category == "unclassified", d.filename.lower()))
+    for doc in docs:
+        excerpt = _sample_text(doc.text or "")
+        if not excerpt:
+            excerpt = "[No extractable text found in this file.]"
+        block = (
+            f"===== {doc.filename} =====\n"
+            f"Category: {doc.category}\n"
+            f"Pages: {doc.pages}\n"
+            f"Key Extract:\n{excerpt}"
+        )
+        if len(block) > budget and sections:
+            break
+        sections.append(block)
+        budget -= len(block) + 2
+
+    blob = "\n\n".join(sections)
     return blob[:max_chars] + ("\n…[truncated]…" if len(blob) > max_chars else "")
+
+
+def _issue_doc_context(case: AppealCase, issue_text: str, *, max_chars: int = 24000) -> str:
+    tokens = set(re.findall(r"[a-z0-9()/-]{3,}", issue_text.lower()))
+    ranked: list[tuple[float, AppealDocument]] = []
+
+    for doc in case.documents:
+        hay = f"{doc.filename} {doc.category} {(doc.text or '')[:8000]}".lower()
+        overlap = sum(1 for token in tokens if token in hay)
+        fuzzy = SequenceMatcher(None, issue_text.lower(), hay[:400]).ratio()
+        ranked.append((overlap + fuzzy, doc))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    chosen = [doc for score, doc in ranked if score > 0][:4] or [doc for _, doc in ranked[:3]]
+
+    sections = []
+    budget = max_chars
+    for doc in chosen:
+        excerpt = _sample_text(doc.text or "", target_chars=3200)
+        if not excerpt:
+            continue
+        block = (
+            f"===== {doc.filename} =====\n"
+            f"Category: {doc.category}\n"
+            f"Relevant Extract:\n{excerpt}"
+        )
+        if len(block) > budget and sections:
+            break
+        sections.append(block)
+        budget -= len(block) + 2
+
+    if not sections:
+        return _docs_text(case, max_chars=max_chars)
+    return "\n\n".join(sections)
 
 
 def document_compliance(case: AppealCase) -> dict:
     present = {d.category for d in case.documents}
     return {
         "compliance_sheet": [{"filename": d.filename, "category": d.category,
-                              "group": GROUP.get(d.category, "Unclassified"), "pages": d.pages}
+                              "group": GROUP.get(d.category, "Unclassified"), "pages": d.pages,
+                              "extracted_chars": len((d.text or "").strip())}
                              for d in case.documents],
         "missing": [c for c in EXPECTED if c not in present],
     }
 
 
 # --- per-issue drafting (reused by run + regenerate) ---
-def draft_issue(db: Session, docs_text: str, issue: dict) -> tuple[str, list]:
+def draft_issue(db: Session, case: AppealCase, issue: dict) -> tuple[str, list]:
     q = issue.get("issue", "")
+    docs_text = _issue_doc_context(case, q)
     ctx, cites = _ground(db, q, domain=None)   # ground on statutes AND case law
     user = (f"MODULE 5 — DRAFTING ENGINE for ONE issue. Write the issue-wise Discussion and Findings "
             f"with labelled sub-parts: Facts / Submissions / AO's view / Legal position / Analysis / "
@@ -221,7 +301,7 @@ def run_case(run_id: int) -> None:
         blocks = []
         for i, issue in enumerate(issues):
             progress(f"Module 5: Drafting issue {i + 1}/{len(issues)}")
-            block, cites = draft_issue(db, docs_text, issue)
+            block, cites = draft_issue(db, case, issue)
             db.add(AppealOutput(run_id=run.id, kind="finding", seq=i, label=issue["issue"], content=block, citations=cites))
             blocks.append(f"### Issue: {issue['issue']}\n\n{block}")
 

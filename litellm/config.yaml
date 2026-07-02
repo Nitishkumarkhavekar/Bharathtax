@@ -27,6 +27,16 @@ model_list:
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
+  # forward feedback to the RAG backend (LiteLLM only proxies model routes otherwise)
+  pass_through_endpoints:
+    - path: "/v1/feedback"
+      target: "http://host.docker.internal:8080/v1/feedback"
+      headers:
+        Authorization: "Bearer os.environ/BHARATTAX_API_KEY"
+    - path: "/v1/law"
+      target: "http://host.docker.internal:8080/v1/law"
+      headers:
+        Authorization: "Bearer os.environ/BHARATTAX_API_KEY"
 
 litellm_settings:
   drop_params: true            # ignore unknown OpenAI params instead of erroring
