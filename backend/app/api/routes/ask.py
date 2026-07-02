@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import Principal, client_meta, get_principal, require_license
 from app.core.db import get_db
 from app.models.org import User
+from app.services import tokens
 from app.core.enums import Domain, QueryScope
 from app.models.activity import Query
 from app.schemas import AnswerResponse, AskRequest, CitationOut
@@ -50,6 +51,17 @@ def ask(body: AskRequest, request: Request,
     )
     db.add(q)
     db.commit()
+    # Book the LLM token spend against this user for each underlying model call
+    # (primary bharattax-rag, plus the optional llama fallback).
+    for call in (result.meta.get("llm_calls") or []):
+        tokens.record(
+            db,
+            user_id=p.user.id,
+            action="ask",
+            model=call.get("model"),
+            usage=call.get("usage"),
+            latency_ms=call.get("latency_ms"),
+        )
     audit.log_event(db, action="ask", user_id=p.user.id, wing_id=p.user.wing_id,
                     resource_type="query", resource_id=str(q.id),
                     query_text=body.question, **client_meta(request))

@@ -8,6 +8,7 @@ from app.models.enums import (
     ChunkLevel, CorpusDocStatus, Domain, DocumentStatus, QueryScope, Role, SourceType,
 )
 from app.models.org import Department, Office, SeatLease, User, Wing
+from app.models.token_usage import TokenUsage
 
 __all__ = [
     "AuditLog", "Query",
@@ -17,4 +18,5 @@ __all__ = [
     "Document", "DocumentChunk",
     "ChunkLevel", "CorpusDocStatus", "Domain", "DocumentStatus", "QueryScope", "Role", "SourceType",
     "Department", "Office", "SeatLease", "User", "Wing",
+    "TokenUsage",
 ]

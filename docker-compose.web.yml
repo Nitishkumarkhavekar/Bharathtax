@@ -37,6 +37,45 @@ services:
       -d TCP-LISTEN:14000,bind=172.17.0.1,fork,reuseaddr
       TCP:127.0.0.1:14000
 
+  # ---------------------------------------------------------------------------
+  # OnlyOffice Document Server — Word-style web editor used by Module 6's Edit
+  # mode. Browser hits https://bharattax.wenvia.global/oo/ which nginx proxies
+  # to 127.0.0.1:8095 → this container. OnlyOffice itself talks back to the
+  # api container over the internal docker network (so download / save
+  # callbacks don't depend on public DNS).
+  # ---------------------------------------------------------------------------
+  documentserver:
+    image: onlyoffice/documentserver:8.0
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${OO_JWT_SECRET}
+      JWT_HEADER: "AuthorizationJwt"
+      USE_UNAUTHORIZED_STORAGE: "false"
+    volumes:
+      - oo_data:/var/www/onlyoffice/Data
+      - oo_log:/var/log/onlyoffice
+      - oo_cache:/var/lib/onlyoffice
+    ports:
+      - "127.0.0.1:8095:80"
+
+  # ---------------------------------------------------------------------------
+  # previewer: headless LibreOffice that converts the generated draft .docx
+  # into a PDF for the Module 6 in-page preview. Only the api container talks
+  # to it via the docker network; no host port exposure.
+  # ---------------------------------------------------------------------------
+  previewer:
+    build: ./previewer
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "python3 -c 'import urllib.request,sys;sys.exit(0 if urllib.request.urlopen(\"http://localhost:5151/health\",timeout=3).status==200 else 1)'"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   postgres:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
@@ -95,7 +134,7 @@ services:
 
   worker:
     build: ./backend
-    command: celery -A app.ingestion.tasks.celery_app worker --loglevel=INFO --concurrency=2
+    command: celery -A app.ingestion.tasks.celery_app worker --loglevel=INFO --concurrency=4
     restart: unless-stopped
     <<: *backend-env
     extra_hosts:
@@ -134,3 +173,6 @@ services:
 volumes:
   pgdata:
   miniodata:
+  oo_data:
+  oo_log:
+  oo_cache:

@@ -224,6 +224,14 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
 
     client = client or llm_mod.get_llm()
     primary_text = client.complete(SYSTEM_PROMPT_NATIVE, q)
+    # Telemetry the caller can persist into the token_usage table.
+    llm_calls: list[dict] = []
+    if isinstance(client, llm_mod.OpenAICompatLLM):
+        llm_calls.append({
+            "model": client.last_model or settings.llm_model_name,
+            "usage": client.last_usage,
+            "latency_ms": client.last_latency_ms,
+        })
 
     # If the grounded model refused (no match in primary sources) AND a fallback
     # is configured, retry with a general income-tax LLM. The fallback prompt
@@ -234,6 +242,12 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         try:
             primary_text = client.complete(SYSTEM_PROMPT_FALLBACK, q, model=fallback)
             used = f"fallback:{fallback}"
+            if isinstance(client, llm_mod.OpenAICompatLLM):
+                llm_calls.append({
+                    "model": client.last_model or fallback,
+                    "usage": client.last_usage,
+                    "latency_ms": client.last_latency_ms,
+                })
         except TypeError:
             # Older LLMClient.complete() without a `model` kwarg (e.g. tests). Skip.
             pass
@@ -244,6 +258,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             "retrieval": used,
             "primary_model": settings.llm_model_name,
             "domain": domain.value if domain else None,
+            "llm_calls": llm_calls,
         },
     )
 

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Scale, User2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
 import { Markdown, normalizeMarkdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
+import { api } from "@/api";
+import { useAuth } from "@/auth";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -29,6 +31,7 @@ export default function ChatMessages({
         <Message
           key={idx}
           msg={m}
+          question={idx > 0 && messages[idx - 1].role === "user" ? messages[idx - 1].content : undefined}
           streaming={idx === streamingIdx}
           onStreamingDone={onStreamingDone}
         />
@@ -83,10 +86,12 @@ function ThinkingBubble() {
 // ----------------------------------------------------------------- Message
 function Message({
   msg,
+  question,
   streaming,
   onStreamingDone,
 }: {
   msg: ChatMessage;
+  question?: string;
   streaming: boolean;
   onStreamingDone?: () => void;
 }) {
@@ -166,7 +171,46 @@ function Message({
             via {String(msg.meta["retrieval"])}
           </div>
         )}
+        {!streaming && msg.grounded !== false && (
+          <FeedbackRow question={question} answer={msg.content} />
+        )}
       </div>
+    </div>
+  );
+}
+
+
+function FeedbackRow({ question, answer }: { question?: string; answer: string }) {
+  const { session } = useAuth();
+  const [sent, setSent] = useState<"up" | "down" | null>(null);
+  async function send(rating: "up" | "down") {
+    setSent(rating);
+    try {
+      await api.feedback({ question, answer, rating });
+    } catch {
+      /* feedback is best-effort */
+    }
+  }
+  if (sent) {
+    // Title-case the first letter of the username for a nicer greeting —
+    // "officer1" → "Officer1", "Kamal" → "Kamal".
+    const raw = session?.username || "";
+    const name = raw ? raw[0].toUpperCase() + raw.slice(1) : "";
+    return (
+      <div className="text-[11px] text-slate-400">
+        {name ? `Thanks ${name} — your feedback helps improve answers.` : "Thanks — your feedback helps improve answers."}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 text-slate-400">
+      <span className="text-[11px]">Was this helpful?</span>
+      <button onClick={() => send("up")} className="hover:text-emerald-600 transition-colors" title="Helpful">
+        <ThumbsUp className="size-4" />
+      </button>
+      <button onClick={() => send("down")} className="hover:text-rose-600 transition-colors" title="Not helpful">
+        <ThumbsDown className="size-4" />
+      </button>
     </div>
   );
 }
