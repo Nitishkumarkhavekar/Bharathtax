@@ -98,37 +98,34 @@ function Hero() {
       <BackgroundOrnaments />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 items-center">
         <div className="lg:col-span-7 space-y-6 animate-fade-up">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[12px] font-semibold ring-1 ring-primary/20">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/15 via-sky-500/15 to-violet-500/15 text-primary text-[12px] font-semibold ring-1 ring-primary/20 backdrop-blur">
             <Sparkles className="size-3.5" />
-            Citation-grounded · primary Indian tax law
+            Purpose-built for the Income-tax Department
           </span>
-          <h1 className="text-[34px] sm:text-5xl lg:text-[58px] leading-[1.05] font-semibold tracking-tight">
-            Tax research that{" "}
+          <h1 className="text-[34px] sm:text-5xl lg:text-[60px] leading-[1.03] font-semibold tracking-tight">
+            The tax-research copilot that{" "}
             <span className="bg-gradient-to-r from-primary via-sky-500 to-violet-500 bg-clip-text text-transparent">
               cites every claim
             </span>
-            .
+            {" "}& drafts every order.
           </h1>
           <p className="text-[15.5px] sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-            BharathTax is a research assistant built for Indian income-tax
-            officers, practitioners and chartered accountants. Every answer
-            points back to the exact section, rule or CBDT circular —
-            it refuses to guess.
+            BharathTax is a citation-grounded assistant for Indian income-tax
+            officers, CIT(A) benches, chartered accountants and legal counsel.
+            Ask a question, get a footnoted answer sourced from the Act, Rules
+            and CBDT circulars — or upload an appeal file and generate a
+            fully-drafted appellate order in six auditable modules.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Link to="/register">
-              <Button size="lg" className="gap-2 h-12 text-[15px] px-6 shadow-md">
+              <button className="bt-btn-primary h-12 px-6 text-[15px] rounded-xl">
                 Start for free <ArrowRight className="size-4" />
-              </Button>
+              </button>
             </Link>
             <Link to="/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2 h-12 text-[15px] px-6 border-slate-300"
-              >
+              <button className="bt-btn-ghost h-12 px-6 text-[15px] rounded-xl">
                 Sign in
-              </Button>
+              </button>
             </Link>
           </div>
           <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 text-[13px] text-slate-600">
@@ -142,12 +139,31 @@ function Hero() {
               <CheckCircle2 className="size-4 text-emerald-500" /> Audit-logged · seat-licensed
             </li>
           </ul>
+          {/* Inline stat strip — social proof without needing external logos. */}
+          <div className="grid grid-cols-3 gap-3 max-w-lg pt-4">
+            <HeroStat value="120k+" label="Statutes indexed" />
+            <HeroStat value="6-module" label="Appeal pipeline" />
+            <HeroStat value="< 4s" label="Median citation time" />
+          </div>
         </div>
         <div className="lg:col-span-5">
           <HeroPreview />
         </div>
       </div>
     </section>
+  );
+}
+
+function HeroStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-xl bg-white/70 backdrop-blur ring-1 ring-slate-200/70 px-3 py-2.5 shadow-sm">
+      <div className="text-[18px] font-semibold bt-gradient-text leading-none">
+        {value}
+      </div>
+      <div className="text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
+        {label}
+      </div>
+    </div>
   );
 }
 

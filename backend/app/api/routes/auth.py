@@ -8,12 +8,16 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from datetime import timedelta
+
 from app.api.deps import Principal, client_meta, get_current_user, get_principal
 from app.core.db import get_db
 from app.core.security import hash_password, verify_password
 from app.models.admin import LicenseKey
 from app.models.enums import Role
 from app.models.org import User, Wing
+from app.models.token_usage import TokenUsage
+from sqlalchemy import func as _func
 from app.schemas import (
     LoginRequest,
     MeResponse,
@@ -273,3 +277,112 @@ def heartbeat(p: Principal = Depends(get_principal), db: Session = Depends(get_d
 @router.get("/me", response_model=MeResponse)
 def me(user: User = Depends(get_current_user)) -> User:
     return user
+
+
+# -------- personal token usage -------------------------------------------
+class _TokenSummaryOut(BaseModel):
+    """User-facing summary. Model identifiers are deliberately NOT included —
+    users see spend attributed to their task ("ask", "improve_prompt",
+    "appeal.module1", …), never to a specific gateway model."""
+    total_tokens: int
+    prompt_tokens: int
+    completion_tokens: int
+    calls: int
+    tokens_24h: int
+    tokens_7d: int
+    tokens_30d: int
+    by_action: list[dict]
+    per_day: list[dict]
+    recent: list[dict]
+
+
+@router.get("/token-usage", response_model=_TokenSummaryOut)
+def my_token_usage(user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> _TokenSummaryOut:
+    """Aggregate token spend for the calling user."""
+    now = datetime.now(timezone.utc)
+    d1 = now - timedelta(days=1)
+    d7 = now - timedelta(days=7)
+    d30 = now - timedelta(days=30)
+
+    base = select(TokenUsage).where(TokenUsage.user_id == user.id)
+
+    totals_row = db.execute(
+        select(
+            _func.coalesce(_func.sum(TokenUsage.prompt_tokens), 0),
+            _func.coalesce(_func.sum(TokenUsage.completion_tokens), 0),
+            _func.coalesce(_func.sum(TokenUsage.total_tokens), 0),
+            _func.count(TokenUsage.id),
+        ).where(TokenUsage.user_id == user.id)
+    ).one()
+
+    tokens_24h = int(db.scalar(
+        select(_func.coalesce(_func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= d1)
+    ) or 0)
+    tokens_7d = int(db.scalar(
+        select(_func.coalesce(_func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= d7)
+    ) or 0)
+    tokens_30d = int(db.scalar(
+        select(_func.coalesce(_func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= d30)
+    ) or 0)
+
+    by_action_rows = db.execute(
+        select(
+            TokenUsage.action,
+            _func.count(TokenUsage.id),
+            _func.coalesce(_func.sum(TokenUsage.total_tokens), 0),
+        )
+        .where(TokenUsage.user_id == user.id)
+        .group_by(TokenUsage.action)
+        .order_by(_func.sum(TokenUsage.total_tokens).desc())
+    ).all()
+    by_action = [
+        {"action": a, "calls": int(c), "tokens": int(t)} for a, c, t in by_action_rows
+    ]
+
+    # NOTE: intentionally NOT computing a by_model breakdown here. Model
+    # identities are an implementation detail we don't surface to end users.
+
+    per_day_rows = db.execute(
+        select(
+            _func.date_trunc("day", TokenUsage.created_at).label("day"),
+            _func.coalesce(_func.sum(TokenUsage.total_tokens), 0),
+            _func.count(TokenUsage.id),
+        )
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= now - timedelta(days=30))
+        .group_by("day").order_by("day")
+    ).all()
+    per_day = [
+        {"day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
+         "tokens": int(t), "calls": int(c)}
+        for d, t, c in per_day_rows
+    ]
+
+    recent_rows = list(db.scalars(
+        base.order_by(TokenUsage.id.desc()).limit(20)
+    ))
+    # Recent rows scrub the model identifier so the user never sees which
+    # backend the request was routed to.
+    recent = [
+        {"id": r.id, "action": r.action,
+         "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
+         "total_tokens": r.total_tokens, "latency_ms": r.latency_ms,
+         "created_at": r.created_at.isoformat() if r.created_at else None}
+        for r in recent_rows
+    ]
+
+    return _TokenSummaryOut(
+        prompt_tokens=int(totals_row[0]),
+        completion_tokens=int(totals_row[1]),
+        total_tokens=int(totals_row[2]),
+        calls=int(totals_row[3]),
+        tokens_24h=tokens_24h,
+        tokens_7d=tokens_7d,
+        tokens_30d=tokens_30d,
+        by_action=by_action,
+        per_day=per_day,
+        recent=recent,
+    )

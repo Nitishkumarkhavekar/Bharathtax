@@ -7,11 +7,14 @@ numbered passages handed to the model.
 """
 from __future__ import annotations
 
+import base64
 import json
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -20,19 +23,155 @@ from app.core.enums import Domain
 from app.core.logging import get_logger
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
 from app.services import llm as llm_mod
+
+
+class _RunCancelled(Exception):
+    """Raised inside the pipeline when a user hits /appeal/runs/{id}/cancel
+    (or /cases/{cid}/stop). Caught by the outer except in run_case(), which
+    then leaves the DB in the "Cancelled by user" state already set by the
+    cancel endpoint instead of overwriting it with a generic error."""
+    pass
+from app.services import tokens
 from app.services.retrieval import retrieve
 
 log = get_logger(__name__)
 
+import os as _os
+from app.services.llm import OpenAICompatLLM as _OpenAICompatLLM
+# Draft Bot needs an instruction-following model (bharattax-rag strips the module
+# prompts and just does RAG). Route it to the raw model via the gateway.
+_APPEAL_MODEL = _os.getenv("APPEAL_MODEL_NAME", "llama-3.1-8b-instruct")
+_GEMINI_KEY = _os.getenv("GEMINI_API_KEY", "").strip()
+_GEMINI_MODELS = [m.strip() for m in _os.getenv(
+    "GEMINI_MODELS",
+    "gemini-3.1-pro-preview,gemini-pro-latest,gemini-flash-latest").split(",") if m.strip()]
+# With Gemini's ~1M-token context we can feed the figure-bearing documents whole
+# instead of trimming them to fit an 8K window (the source of lost-detail errors).
+_BIG_CTX = bool(_GEMINI_KEY)
+# Gemini 2.5/3.x are "thinking" models: thinking tokens count against
+# maxOutputTokens, so on a large context they can eat the whole budget and
+# return EMPTY text. Disable thinking by default (still far stronger than 8B).
+_THINK_BUDGET = int(_os.getenv("GEMINI_THINKING_BUDGET", "0"))
+# Cap concurrent Gemini calls (across the parallel drafts of all in-flight runs
+# in this worker process) so bursts stay within the API rate limit; excess calls
+# wait on the semaphore rather than 429-storming.
+_GEMINI_CONCURRENCY = int(_os.getenv("GEMINI_CONCURRENCY", "4"))
+_GEMINI_SEM = threading.Semaphore(_GEMINI_CONCURRENCY)
+_GEMINI_RETRIES = int(_os.getenv("GEMINI_RETRIES", "3"))
+
+
+class GeminiLLM:
+    """Google Gemini client exposing the same surface as OpenAICompatLLM
+    (`complete` + `last_usage`/`last_model`/`last_latency_ms`). It walks a chain of
+    models, falling back on 5xx/429/empty responses so a busy Pro model cannot
+    stall a run, and supports guaranteed-JSON output via `json_mode`."""
+
+    _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+    def __init__(self, api_key: str, models: list[str]) -> None:
+        self.api_key = api_key
+        self.models = models or ["gemini-flash-latest"]
+        self.model = self.models[0]
+        self.last_usage = None
+        self.last_model = None
+        self.last_latency_ms = None
+
+    def complete(self, system: str, user: str, *, model: str | None = None,
+                 max_tokens: int | None = None, json_mode: bool = False,
+                 files: list | None = None) -> str:
+        import time
+        import httpx
+        chain = [model] if model else list(self.models)
+        cfg = {"temperature": settings.llm_temperature,
+               "maxOutputTokens": max_tokens or settings.llm_max_tokens,
+               "thinkingConfig": {"thinkingBudget": _THINK_BUDGET}}
+        if json_mode:
+            cfg["responseMimeType"] = "application/json"
+        parts = [{"text": user}]
+        for mt, data in (files or []):
+            parts.append({"inlineData": {"mimeType": mt,
+                                         "data": base64.b64encode(data).decode()}})
+        body = {"systemInstruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": parts}],
+                "generationConfig": cfg}
+        last_err = None
+        for m in chain:
+            for attempt in range(_GEMINI_RETRIES):
+                self.last_usage, self.last_model, self.last_latency_ms = None, m, None
+                t0 = time.time()
+                try:
+                    with _GEMINI_SEM:
+                        with httpx.Client(timeout=httpx.Timeout(300.0)) as client:
+                            r = client.post(f"{self._BASE}/{m}:generateContent",
+                                            headers={"x-goog-api-key": self.api_key,
+                                                     "Content-Type": "application/json"},
+                                            json=body)
+                    # transient -> back off and RETRY THE SAME (fast) model rather
+                    # than dropping to the slower fallback model immediately.
+                    if r.status_code == 429 or r.status_code >= 500:
+                        last_err = f"{m} HTTP {r.status_code}"
+                        time.sleep(min(1.5 * (2 ** attempt), 8.0))
+                        continue
+                    r.raise_for_status()
+                    payload = r.json()
+                    self.last_latency_ms = int((time.time() - t0) * 1000)
+                    um = payload.get("usageMetadata") or {}
+                    self.last_usage = ({"prompt_tokens": um.get("promptTokenCount"),
+                                        "completion_tokens": um.get("candidatesTokenCount"),
+                                        "total_tokens": um.get("totalTokenCount")} if um else None)
+                    cands = payload.get("candidates") or []
+                    if not cands:
+                        last_err = f"{m} no candidates {str(payload.get('promptFeedback',''))[:120]}"
+                        break  # not transient -> try next model
+                    cparts = (cands[0].get("content") or {}).get("parts") or []
+                    txt = "".join(pt.get("text", "") for pt in cparts).strip()
+                    if not txt:
+                        last_err = f"{m} empty (finish={cands[0].get('finishReason')})"
+                        break  # not transient -> try next model
+                    return txt
+                except Exception as e:  # noqa: BLE001
+                    last_err = f"{m} {type(e).__name__}: {e}"
+                    time.sleep(min(1.5 * (2 ** attempt), 8.0))
+                    continue
+        raise RuntimeError(f"Gemini failed for {chain}: {last_err}")
+
+
+def _appeal_llm():
+    if _GEMINI_KEY:
+        return GeminiLLM(_GEMINI_KEY, _GEMINI_MODELS)
+    if settings.llm_backend.lower() in ("openai", "vllm", "ollama"):
+        return _OpenAICompatLLM(settings.llm_base_url, _APPEAL_MODEL, settings.llm_api_key)
+    return llm_mod.get_llm()
+
 OFFICER_SYSTEM = (
-    "You are an AI assistant for drafting appellate orders under the Income-tax Act for the "
-    "Commissioner of Income Tax (Appeals) / NFAC. You produce a DRAFT ('shell') order only; "
-    "the Commissioner applies independent mind before finalising.\n"
-    "CITATION RULES (mandatory): for any legal proposition, cite ONLY the numbered passages in "
-    "the RETRIEVED LAW section, inline as [n]. Never invent a case, section or rule not present "
-    "there. Facts come only from the appeal documents. If the passages don't support a point, "
-    "say so rather than guessing."
+    "You are an expert AI that drafts appellate orders under the Income-tax Act for the "
+    "Commissioner of Income Tax (Appeals) / NFAC. You produce a DRAFT order only; the Commissioner "
+    "applies independent mind before finalising. Write in formal CIT(A) style.\n"
+    "STRICT RULES:\n"
+    "- Use ONLY facts, dates, figures, names and jurisdiction that appear in the appeal documents. "
+    "NEVER invent a date, amount, party name, ward/jurisdiction or case citation. If a detail is "
+    "missing, write [not on record].\n"
+    "- Cite a section/rule/case ONLY if it is quoted in the RETRIEVED LAW section or in the appeal "
+    "documents. If the RETRIEVED LAW says none was retrieved (or is empty), do NOT use [n] "
+    "citations and do NOT name any case law or section that is not in the documents; reason from "
+    "the documents instead.\n"
+    "- If a ground was withdrawn, not pressed, or the grievance was already rectified by the AO "
+    "(e.g. a rectification order under section 154), say so and treat that ground as not pressed / "
+    "infructuous; do NOT 'allow' it.\n"
+    "- OUTPUT ONLY the order text. NEVER reproduce or restate these rules, or the words "
+    "'CITATION RULES', 'RETRIEVED LAW', 'APPEAL DOCUMENTS', 'MODULE', or any '===' header."
 )
+
+
+def _clean(text: str) -> str:
+    """Strip prompt scaffolding the model may have echoed into its output."""
+    t = text or ""
+    m = re.search(r"(?im)^\s*(citation rules|retrieved law\b|=+\s*retrieved law)", t)
+    if m:
+        t = t[:m.start()]
+    t = re.sub(r"(?im)^\s*={2,}.*?={2,}\s*$", "", t)
+    t = re.sub(r"(?im)^\s*module\s*\d[^\n]*$", "", t)
+    return t.strip()
 
 # --- document classification (filename + content heuristics) ---
 _RULES = [
@@ -55,12 +194,16 @@ GROUP = {"assessment_order": "Assessment Records", "demand_notice": "Assessment 
          "additional_evidence": "Appeal Documents", "unclassified": "Unclassified"}
 
 _ISSUE_PATTERNS = [
-    ("Addition u/s 68 — unexplained cash credit / share capital", r"\b68\b|cash credit|share application|unexplained"),
+    ("Addition u/s 69A — unexplained money / investment", r"69a|unexplained (money|investment)"),
+    ("Addition u/s 68 — unexplained cash credit / share capital", r"\b68\b|cash credit|share application|share capital"),
+    ("Assessment framed u/s 144 without service of notice / breach of natural justice",
+     r"without.{0,25}(the )?notice|natural justice|void.?ab.?initio|ex.?parte|not served"),
+    ("Computation of total income / excessive demand", r"excessive demand|error in comput|computation sheet|erred in comput"),
     ("Disallowance u/s 37 — business expenditure", r"\b37\b|business promotion|disallow.*expens"),
     ("Disallowance u/s 14A r.w. Rule 8D", r"\b14a\b|rule 8d|exempt income"),
     ("Penalty u/s 270A — under-reporting / misreporting", r"270a|under-?reporting|misreporting"),
     ("Penalty u/s 271(1)(c) — concealment", r"271\(1\)\(c\)|concealment"),
-    ("Condonation of delay u/s 249", r"condon|delay in filing|limitation"),
+    ("Condonation of delay u/s 249", r"condon|delay in filing"),
     ("Additional evidence under Rule 46A", r"46a|additional evidence"),
 ]
 
@@ -79,23 +222,81 @@ def classify(filename: str, text: str) -> str:
 
 # --- grounding + LLM helpers ---
 def _ground(db: Session, query: str, *, domain: Domain | None = Domain.income_tax):
-    """Return (context_text, citations) from the corpus for a query."""
-    res = retrieve(db, query, domain=domain)
+    """Return (context_text, citations) grounded on the primary-law corpus (the IT
+    Act & Rules), fetched from the model gateway's /law endpoint so the drafter can
+    reference actual sections when unsure instead of guessing. Falls back to the
+    local corpus if the remote is unavailable."""
+    import httpx
+    passages = []
+    try:
+        r = httpx.post(settings.llm_base_url.rstrip("/") + "/law",
+                       headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                       json={"query": query, "k": 6}, timeout=20.0)
+        if r.status_code == 200:
+            passages = r.json().get("passages", []) or []
+    except Exception:
+        passages = []
+    if passages:
+        blocks, cites = [], []
+        for p in passages:
+            n = p.get("n")
+            blocks.append(f"[{n}] ({p.get('breadcrumb', '')})\n{p.get('text', '')}")
+            cites.append({"n": n, "breadcrumb": p.get("breadcrumb"),
+                          "section_number": p.get("section"), "source_url": None,
+                          "act": p.get("act")})
+        return "\n\n".join(blocks), cites
+    # fallback: local corpus (usually empty on the web VPS)
+    try:
+        local = retrieve(db, query, domain=domain).passages
+    except Exception:
+        local = []
     blocks, cites = [], []
-    for i, p in enumerate(res.passages, start=1):
-        blocks.append(f"[{i}] ({p.breadcrumb})\n{p.text}")
-        cites.append({"n": i, "chunk_id": p.chunk_id, "breadcrumb": p.breadcrumb,
-                      "section_number": p.section_number, "source_url": p.source_url})
+    for i, lp in enumerate(local, start=1):
+        blocks.append(f"[{i}] ({lp.breadcrumb})\n{lp.text}")
+        cites.append({"n": i, "chunk_id": lp.chunk_id, "breadcrumb": lp.breadcrumb,
+                      "section_number": lp.section_number, "source_url": lp.source_url})
     return ("\n\n".join(blocks) if blocks else "(no relevant primary law retrieved)"), cites
 
 
-def _complete(user: str) -> str:
-    return llm_mod.get_llm().complete(OFFICER_SYSTEM, user)
+# The most recent LLM client used by _complete / _complete_json — kept as
+# module-level state so `run_case()` can pluck the last call's `usage` and
+# persist it into `token_usage` without threading a tuple through everything.
+_LAST_CLIENT: _OpenAICompatLLM | None = None
 
 
-def _complete_json(user: str) -> dict:
-    txt = llm_mod.get_llm().complete(
-        OFFICER_SYSTEM + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.", user)
+def _complete(user: str, *, max_tokens: int = 900) -> str:
+    global _LAST_CLIENT
+    # llama-3.1-8b-instruct on the gateway has a 6K context window; keep the
+    # output budget low so the *input* prompt has room to fit the docs +
+    # retrieved law. Pass a bigger max_tokens explicitly for assembly.
+    client = _appeal_llm()
+    _LAST_CLIENT = client
+    return client.complete(OFFICER_SYSTEM, user, max_tokens=max_tokens)
+
+
+def _last_llm_meta() -> dict | None:
+    c = _LAST_CLIENT
+    if not isinstance(c, (_OpenAICompatLLM, GeminiLLM)):
+        return None
+    return {
+        "model": c.last_model or _APPEAL_MODEL,
+        "usage": c.last_usage,
+        "latency_ms": c.last_latency_ms,
+    }
+
+
+def _complete_json(user: str, *, max_tokens: int = 1500) -> dict:
+    global _LAST_CLIENT
+    client = _appeal_llm()
+    _LAST_CLIENT = client
+    if isinstance(client, GeminiLLM):
+        txt = client.complete(
+            OFFICER_SYSTEM + "\n\nReturn ONLY a single valid JSON object.",
+            user, max_tokens=max_tokens, json_mode=True)
+    else:
+        txt = client.complete(
+            OFFICER_SYSTEM + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.",
+            user, max_tokens=max_tokens)
     s = txt.strip()
     if s.startswith("```"):
         s = s.split("```", 2)[1]
@@ -116,11 +317,153 @@ def _detect_issues(text: str) -> list[dict]:
     return [{"issue": name} for name, pat in _ISSUE_PATTERNS if re.search(pat, text, re.I)]
 
 
-def _docs_text(case: AppealCase, max_chars: int = 24000) -> str:
-    parts = [f"===== {d.filename} (category: {d.category}) =====\n{(d.text or '').strip()}"
-             for d in case.documents]
+def _raw_cat(case, *cats) -> str:
+    """Raw (un-digested) text of the first document(s) in the given categories."""
+    out = []
+    for c in cats:
+        for d in case.documents:
+            if d.category == c and (d.text or "").strip():
+                out.append(d.text)
+    return "\n\n".join(out)
+
+
+def _extract_case(case, docs_text: str) -> dict:
+    """Extract the appellant's REAL case — the numbered Grounds of Appeal from Form 35,
+    the Statement of Facts and the written submissions — so the order addresses the
+    actual grievances and never fabricates an issue. Reads the RAW Form 35 (grounds
+    live near its end and would be lost in a digest)."""
+    form35 = _raw_cat(case, "form_35", "grounds_of_appeal", "statement_of_facts")
+    subs = _raw_cat(case, "written_submission")
+    if form35 or subs:
+        src = ("=== FORM 35 / STATEMENT OF FACTS ===\n" + _trim(form35, 40000 if _BIG_CTX else 11000) +
+               "\n\n=== WRITTEN SUBMISSION ===\n" + _trim(subs, 30000 if _BIG_CTX else 5000))
+    else:
+        src = "=== APPEAL DOCUMENTS ===\n" + _trim(docs_text, 60000 if _BIG_CTX else 12000)
+    j = _complete_json(
+        "You are reading an income-tax appeal. Extract the appellant's case FAITHFULLY from the "
+        "documents (especially the 'Grounds of Appeal' table in FORM No. 35). Return ONLY JSON:\n"
+        "- grounds: an array of the numbered Grounds of Appeal EXACTLY as raised by the appellant. "
+        "Do NOT invent, merge away, or add any ground that is not actually raised. Keep the "
+        "appellant's own substance, condensed to ONE clear sentence per ground. Usually 2-4 grounds.\n"
+        "- facts: a faithful narrative of the facts (6-12 sentences): the assessment and its section; "
+        "the income assessed; each addition with its EXACT amount and the section it was made/taxed "
+        "under (e.g. 69A, 115BBE); the demand raised BEFORE and, if a rectification order under "
+        "section 154 was passed, the reduced demand AFTER rectification (state both figures and the "
+        "rectification date); service of notices; and whether the tax was paid. Use ONLY figures and "
+        "facts stated in the documents; never round or invent an amount.\n"
+        "- submissions: a faithful summary of the appellant's written submissions/arguments (6-12 "
+        "sentences).\n"
+        'Return {"grounds": ["..."], "facts": "...", "submissions": "..."}\n\n' + src,
+        max_tokens=3500)
+    if not isinstance(j, dict):
+        j = {}
+    grounds = [str(g).strip() for g in (j.get("grounds") or [])
+               if str(g).strip() not in ("", "...")]
+    # Deterministic date of institution = Form 35 e-verification date (falls back to
+    # the appeal-fee payment date). The LLM sometimes mis-reads this, so anchor it.
+    inst = ""
+    mm = (re.search(r"verified\s+by[^\n]*?\bon\s+(\d{1,2}[/.\-]\d{1,2}[/.\-]\d{4})", form35, re.I)
+          or re.search(r"Form of Verification.*?Date\s*[:\-]?\s*(\d{1,2}[/.\-]\d{1,2}[/.\-]\d{4})",
+                        form35, re.I | re.S)
+          or re.search(r"Date of payment[^\n]*?(\d{1,2}[/.\-]\d{1,2}[/.\-]\d{4})", form35, re.I))
+    if mm:
+        inst = mm.group(1)
+    return {"grounds": grounds,
+            "facts": (j.get("facts") or "").strip(),
+            "submissions": (j.get("submissions") or "").strip(),
+            "institution_date": inst}
+
+
+_LEAD_HDR = re.compile(
+    r"(?i)^\**\s*(discussion and findings|ground\s*no\.?\s*\d+|ground\s*\d+|issue)\b.*?$")
+
+
+def _strip_finding_headers(block: str) -> str:
+    """Drop any leading duplicate 'DISCUSSION AND FINDINGS' / 'Ground No. X' / 'Issue:'
+    lines the model restates, so assemble() can add ONE clean ground heading."""
+    lines = (block or "").split("\n")
+    i = 0
+    while i < len(lines):
+        ln = lines[i].strip().strip("*").strip()
+        if ln == "" or _LEAD_HDR.match(lines[i].strip()):
+            i += 1
+            continue
+        break
+    return "\n".join(lines[i:]).strip()
+
+
+def _digest_one(filename: str, category: str, text: str) -> str:
+    """Faithfully condense a large document so ALL files fit the model context."""
+    text = (text or "").strip()
+    if len(text) <= 3500:
+        return text
+    prompt = (
+        "Summarise this appeal document into a faithful, concise digest for drafting a CIT(A) "
+        "appellate order. Capture: the document type; all key dates; all figures (returned/assessed "
+        "income, additions, demand, penalty); parties and jurisdiction; the AO's actions and "
+        "findings; the appellant's arguments; and any case law or sections cited. Use ONLY facts "
+        "present in the text; do not invent. About 200-300 words.\n\n"
+        f"DOCUMENT '{filename}' (category: {category}):\n{text[:14000]}")
+    try:
+        return _appeal_llm().complete(
+            "You are a precise legal analyst. Summarise faithfully; never invent facts.", prompt)
+    except Exception:
+        return text[:3500]
+
+
+def _ocr_pdf(minio_key: str, filename: str) -> str:
+    """Transcribe a document with Gemini's native PDF/document vision when its text
+    layer is empty/garbled (a scan Tesseract could not read). Returns '' on failure."""
+    if not _GEMINI_KEY or not minio_key:
+        return ""
+    try:
+        from app.services.storage import get_bytes
+        raw = get_bytes(minio_key)
+    except Exception as e:  # noqa: BLE001
+        log.warning("OCR: could not fetch %s: %s", filename, e)
+        return ""
+    if not raw:
+        return ""
+    try:
+        llm = GeminiLLM(_GEMINI_KEY, _GEMINI_MODELS)
+        txt = llm.complete(
+            "You are a precise OCR and document-transcription engine.",
+            "Transcribe ALL text from this document faithfully and completely. Preserve every "
+            "figure, date, amount, name and section reference exactly. Render tables as readable "
+            "lines. Output ONLY the transcribed text — no commentary, no markdown fences.",
+            files=[("application/pdf", raw)], max_tokens=16000)
+        return txt.strip()
+    except Exception as e:  # noqa: BLE001
+        log.warning("OCR: Gemini transcription failed for %s: %s", filename, e)
+        return ""
+
+
+def _docs_text(case: AppealCase, max_chars: int = 120000 if _BIG_CTX else 20000) -> str:
+    """Concatenated text of the case documents, capped to fit the appeal LLM's
+    context window (llama-3.1-8b on the gateway = 6K tokens, ~24KB chars; we
+    leave room for the system prompt, module instructions, retrieved law and
+    the output). Pre-trims very long individual documents so we don't pack the
+    whole budget into one assessment order.
+    """
+    # On Gemini (huge context) skip the per-document digest entirely: feed the RAW
+    # text (no lossy summarising, and ~6 fewer LLM calls per run). Cap each doc so a
+    # single long file can't dominate. On the small-context Llama path, digest as before.
+    per_doc = 25000 if _BIG_CTX else 10**9
+    parts = []
+    for d in case.documents:
+        raw = (d.text or "").strip()
+        body = raw if _BIG_CTX else _digest_one(d.filename, d.category, raw).strip()
+        if len(body) > per_doc:
+            body = body[:per_doc] + "\n…[truncated]…"
+        parts.append(f"===== {d.filename} (category: {d.category}) =====\n{body}")
     blob = "\n\n".join(parts)
-    return blob[:max_chars] + ("\n…[truncated]…" if len(blob) > max_chars else "")
+    if len(blob) > max_chars:
+        blob = blob[:max_chars] + "\n…[truncated]…"
+    return blob
+
+
+def _trim(s: str, n: int) -> str:
+    return s if len(s) <= n else s[:n] + "\n…[truncated]…"
 
 
 def document_compliance(case: AppealCase) -> dict:
@@ -137,32 +480,148 @@ def document_compliance(case: AppealCase) -> dict:
 def draft_issue(db: Session, docs_text: str, issue: dict) -> tuple[str, list]:
     q = issue.get("issue", "")
     ctx, cites = _ground(db, q, domain=None)   # ground on statutes AND case law
-    user = (f"MODULE 5 — DRAFTING ENGINE for ONE issue. Write the issue-wise Discussion and Findings "
-            f"with labelled sub-parts: Facts / Submissions / AO's view / Legal position / Analysis / "
-            f"Finding / Decision. End with the Result (Allowed / Partly Allowed / Dismissed / Set Aside) "
-            f"and any direction to the AO. Cite legal points as [n] from the RETRIEVED LAW only.\n\n"
-            f"=== ISSUE ===\n{q}\n\n=== APPEAL DOCUMENTS (facts) ===\n{docs_text}\n\n"
-            f"=== RETRIEVED LAW ===\n{ctx}")
+    user = (f"You are drafting the issue-wise DISCUSSION AND FINDINGS for ONE ground of a formal "
+            f"CIT(A)/NFAC appellate order. This is a Government legal order: write in dignified, "
+            f"formal legal English in FULL, well-reasoned PARAGRAPHS. Do NOT use one-line notes, "
+            f"telegraphic fragments, or one-word conclusions. Under the labelled sub-parts "
+            f"Facts / Submissions / AO's view / Legal position / Analysis / Finding / Decision, set "
+            f"out: (a) the material facts and figures; (b) the appellant's contentions in substance; "
+            f"(c) the AO's stand; (d) the applicable statutory provisions and principles; (e) a "
+            f"reasoned ANALYSIS that applies the law to the facts and explains WHY; (f) a clear "
+            f"FINDING with reasons; and (g) a DECISION that states the outcome together with the "
+            f"reasons for it. Then give the Result (Allowed / Partly Allowed / Dismissed / Set Aside) "
+            f"and specific, actionable Directions to the AO. Each of Analysis, Finding and Decision "
+            f"must be a proper paragraph of several sentences — never a bare word like 'Dismissed.'. "
+            f"Cite a statutory section/rule as [n] ONLY if it appears in the RETRIEVED LAW below; if "
+            f"that says none was retrieved, do NOT use [n] and do NOT invent any provision. Do NOT cite "
+            f"a section that is not directly relevant to THIS ground; if the retrieved law is off-point, "
+            f"reason from the facts without naming an irrelevant provision. You MAY refer by name to a "
+            f"judicial precedent ONLY if the APPELLANT has actually cited it in the appeal documents "
+            f"below; where the appellant relies on such case law, briefly note the precedent and either "
+            f"accept or distinguish it with reasons; never invent a case that is not on record. If the "
+            f"documents state the section under which an addition was charged to tax (for example "
+            f"section 115BBE for an addition under section 69A), state that charging section. State an "
+            f"amount, date or demand ONLY as it appears in the documents (use the reduced figure if a "
+            f"section-154 rectification lowered it). Do NOT state that the appellant paid or deposited "
+            f"the tax, and do NOT direct any refund, unless the documents EXPLICITLY say the tax was "
+            f"paid. If this ground was rectified by the AO (e.g. via a section-154 order) or was not "
+            f"pressed, say so and treat it as not pressed / infructuous rather than allowing it. Do NOT "
+            f"repeat these section headers.\n\n"
+            f"=== ISSUE ===\n{q}\n\n=== APPEAL DOCUMENTS (facts) ===\n{_trim(docs_text, 40000 if _BIG_CTX else 7000)}\n\n"
+            f"=== RETRIEVED LAW ===\n{_trim(ctx, 3500)}")
     try:
-        block = _complete(user)
+        block = _complete(user, max_tokens=1600)
     except Exception as e:  # one issue must not fail the order
         block = f"_[Drafting failed for this issue: {type(e).__name__}. Retry.]_"
-    return block, cites
+    return _clean(block), cites
 
 
-def assemble(understanding: dict, findings_blocks: list[str]) -> str:
+def _parse_date(v: str):
+    v = (v or "").strip()
+    for fmt in ("%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d.%m.%y", "%d/%m/%y",
+                "%d-%b-%Y", "%d %b %Y", "%d-%B-%Y", "%d %B %Y"):
+        try:
+            return datetime.strptime(v, fmt).date()
+        except Exception:
+            continue
+    return None
+
+
+def _build_intro(understanding: dict, docs_text: str) -> str:
+    """Deterministic CIT(A)/NFAC introduction. Extracts the ASSESSMENT-order details
+    and Form-35 dates, drops any date after filing (a section-154 rectification), and
+    computes the delay in code."""
+    j = _complete_json(
+        "From the appeal documents return ONLY JSON (use \"\" if not found; dates dd.mm.yyyy).\n"
+        "- assessment_order_section: section of the ORIGINAL assessment / best-judgment order appealed "
+        "(e.g. 144 or 143(3)); NOT a section 154 rectification.\n"
+        "- assessment_order_date: date of that assessment order. It is EARLIER than any rectification "
+        "and BEFORE the appeal filing date. Pick the earliest substantive order date that precedes "
+        "the filing date.\n"
+        "- ao: the AO's designation with ward (e.g. 'Income Tax Officer, Ward 28(1), Delhi'), not a "
+        "person's name.\n"
+        "- service_date: the date of service of the order declared in Form No. 35.\n"
+        "- filing_date: the date the appeal was filed / instituted.\n"
+        "- ay: the assessment year.\n"
+        'Return {"assessment_order_section":"","assessment_order_date":"","ao":"","service_date":"",'
+        '"filing_date":"","ay":""}\n\n=== APPEAL DOCUMENTS ===\n' + _trim(docs_text, 9000))
+    if not isinstance(j, dict):
+        j = {}
+    def g(k):
+        return (j.get(k) or "").strip()
+    sec = g("assessment_order_section") or "[not on record]"
+    order_date, service = g("assessment_order_date"), g("service_date")
+    filing = (understanding.get("institution_date") or "").strip() or g("filing_date")
+    ao = g("ao") or "the Assessing Officer"
+    ay = g("ay") or "[not on record]"
+    od, sd, fd = _parse_date(order_date), _parse_date(service), _parse_date(filing)
+    # a date AFTER filing is a later (section-154) order, not the impugned one -> drop
+    if fd and od and od > fd:
+        od, order_date = None, "[not on record]"
+    if fd and sd and sd > fd:
+        sd, service = None, ""
+    base = sd or od
+    delay_txt = ""
+    if base and fd:
+        d = (fd - base).days
+        if d > 30:
+            delay_txt = (f" The date of service of the impugned order as declared in Form No. 35 is "
+                         f"{service or order_date}. Thus, the institution of this appeal is delayed by "
+                         f"{d} days, and condonation of the delay is required.")
+        elif d >= 0:
+            delay_txt = " The appeal has been filed within the period of limitation."
+    return (f"This appeal has been instituted on {filing or '[not on record]'} against the order "
+            f"passed under section {sec} of the Income-tax Act, 1961 dated "
+            f"{order_date or '[not on record]'} by {ao} (hereinafter referred to as 'the AO') "
+            f"for A.Y. {ay}.{delay_txt}")
+
+
+def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "") -> str:
+    """Stitch the drafted parts into a complete, properly-structured order. Grounds,
+    Facts and Submissions sections are always populated; each finding gets ONE clean
+    'Ground No. N' heading (leading duplicates stripped); the operative Result is
+    concise and does not repeat the detailed directions."""
     grounds = understanding.get("grounds", []) or []
-    user = (
-        "MODULE 5/6 — ASSEMBLE THE DRAFT APPELLATE ORDER (formal CIT(A)/NFAC style) with sections: "
-        "1. Introduction 2. Grounds of Appeal 3. Facts of the Case 4. Submissions of the Appellant "
-        "5. Remand Report/Rejoinder (if any) 6. Discussion and Findings (use the blocks verbatim) "
-        "7. Result with directions. Do NOT add any new citation beyond what the blocks contain.\n\n"
-        f"=== FACTS ===\n{understanding.get('facts', '')}\n\n"
-        f"=== GROUNDS ===\n" + "\n".join(f"{i+1}. {g}" for i, g in enumerate(grounds)) + "\n\n"
-        f"=== APPELLANT SUBMISSIONS ===\n{understanding.get('appellant_submissions', '')}\n\n"
-        f"=== ISSUE-WISE DISCUSSION AND FINDINGS (verbatim) ===\n" + "\n\n".join(findings_blocks)
-    )
-    return _complete(user)
+    grounds = [re.sub(r"^\s*\d+[.)]\s*", "", (g or "").strip()) for g in grounds if (g or "").strip()]
+    facts = (understanding.get("facts", "") or "").strip()
+    submissions = (understanding.get("appellant_submissions", "") or "").strip()
+    try:
+        intro = _build_intro(understanding, docs_text or facts)
+    except Exception:
+        intro = facts[:1200]
+    try:
+        result = _clean(_appeal_llm().complete(
+            OFFICER_SYSTEM,
+            "Write ONLY the concluding OPERATIVE portion of the appellate order, in 4-8 sentences. "
+            "State the outcome of EACH AND EVERY numbered ground in one sentence each, in order and "
+            "omitting none, consistent with the finding recorded for that ground (e.g. 'Ground No. 1 is allowed / "
+            "partly allowed / dismissed / set aside ...'). Then ONE sentence beginning 'In the "
+            "result, the appeal is allowed / partly allowed / dismissed.'. You may add at most one "
+            "consolidated sentence of directions to the AO. Do NOT repeat the detailed analysis and "
+            "do NOT restate the full directions already recorded in the findings.\n\n"
+            + ("\n\n".join(findings_blocks))[:9000]).strip())
+        result = re.sub(r"(?is)^\**\s*(6\.\s*)?(operative portion[^\n]*|result)\s*:?\s*\**\s*\n+", "", result).strip()
+    except Exception:
+        result = ""
+
+    findings = []
+    for i, b in enumerate(findings_blocks):
+        body = _strip_finding_headers(_clean(b))
+        head = grounds[i].strip() if i < len(grounds) and grounds[i].strip() else f"Ground No. {i + 1}"
+        findings.append(f"Ground No. {i + 1}: {head}\n\n{body}")
+
+    grounds_txt = "\n".join(f"{i + 1}. {g}" for i, g in enumerate(grounds)) if grounds else "[not on record]"
+    parts = [
+        "DRAFT APPELLATE ORDER \u2014 CIT(A) / NFAC\n",
+        "1. INTRODUCTION\n" + intro,
+        "2. GROUNDS OF APPEAL\n" + grounds_txt,
+        "3. FACTS OF THE CASE\n" + (facts or "[not on record]"),
+        "4. SUBMISSIONS OF THE APPELLANT\n" + (submissions or "[not on record]"),
+        "5. DISCUSSION AND FINDINGS\n" + "\n\n".join(findings),
+    ]
+    if result:
+        parts.append("6. RESULT\n" + result)
+    return "\n\n".join(x for x in parts if x.strip())
 
 
 # --- orchestration (called by the Celery task) ---
@@ -173,18 +632,94 @@ def run_case(run_id: int) -> None:
         if not run:
             return
         case = db.get(AppealCase, run.case_id)
-        run.status, run.provider, run.model = "running", settings.llm_backend, settings.llm_model_name
-        case.status = "running"
+        # Targeted UPDATE — never mutate the in-memory `run` object during
+        # the pipeline, so subsequent `db.commit()` calls elsewhere in the
+        # run don't autoflush a full-row rewrite that would clobber an
+        # out-of-band cancel flip on status / error.
+        db.execute(
+            update(AppealRun)
+            .where(AppealRun.id == run.id)
+            .values(status="running", provider=settings.llm_backend, model=_APPEAL_MODEL)
+        )
+        db.execute(
+            update(AppealCase)
+            .where(AppealCase.id == case.id)
+            .values(status="running")
+        )
         db.commit()
 
+        def _check_cancel():
+            """Re-read status from the DB (bypassing SQLAlchemy's identity
+            map so we actually see out-of-band changes) and abort the
+            pipeline if a cancel endpoint has flipped us."""
+            row = db.execute(
+                select(AppealRun.status, AppealRun.error).where(AppealRun.id == run.id)
+            ).one_or_none()
+            if not row:
+                return
+            status, err = row
+            if status == "error" and (err or "").lower().startswith("cancelled"):
+                raise _RunCancelled()
+
         def progress(stage: str):
-            run.progress = stage
+            # Cancel check FIRST — if we're cancelled, don't emit a progress
+            # update that would race the cancel commit.
+            _check_cancel()
+            # Targeted UPDATE that only touches `progress`. The original
+            # `run.progress = stage; db.commit()` sent SQLAlchemy's full
+            # dirty-row UPDATE which also re-wrote status/error and clobbered
+            # the cancel endpoint's flip. Using an explicit statement avoids
+            # both the clobber AND the autoflush of any other dirty attrs on
+            # the in-memory `run` object.
+            db.execute(
+                update(AppealRun)
+                .where(AppealRun.id == run.id)
+                .values(progress=stage)
+            )
             db.commit()
+
+        # Every LLM call in this pipeline gets attributed to the officer who
+        # started the run (via run.created_by), so the token spend shows up
+        # per-user in the admin console.
+        owner_id = run.created_by
+
+        def _bill(action: str) -> None:
+            meta = _last_llm_meta()
+            if not meta:
+                return
+            tokens.record(
+                db, user_id=owner_id, action=action,
+                model=meta.get("model"), usage=meta.get("usage"),
+                latency_ms=meta.get("latency_ms"),
+            )
+
+        # OCR-repair any document whose text layer is empty/unreadable (scanned
+        # image) using Gemini document-vision; persist so re-runs skip it. Anything
+        # that still can't be read is flagged so the officer is never left unaware.
+        ocr_fixed, ocr_failed = [], []
+        if _GEMINI_KEY:
+            _empties = [d for d in case.documents
+                        if len((d.text or "").strip()) < 100 and d.minio_key]
+            if _empties:
+                progress(f"OCR: reading {len(_empties)} scanned document(s)")
+                def _ocr_one(d):
+                    return d, _ocr_pdf(d.minio_key, d.filename)
+                with ThreadPoolExecutor(max_workers=min(len(_empties), 4)) as _ex:
+                    for _d, _txt in _ex.map(_ocr_one, _empties):
+                        if len(_txt.strip()) >= 100:
+                            _d.text = _txt
+                            ocr_fixed.append(_d.filename)
+                        else:
+                            ocr_failed.append(_d.filename)
+                db.commit()
+                log.info("appeal %s OCR repaired=%s unreadable=%s", run.id, ocr_fixed, ocr_failed)
 
         docs_text = _docs_text(case)
 
         progress("Module 3: Document compliance")
         comp = document_compliance(case)
+        comp["ocr_repaired"] = ocr_fixed
+        comp["unreadable"] = ocr_failed
         db.add(AppealOutput(run_id=run.id, kind="compliance", content=json.dumps(comp, ensure_ascii=False)))
 
         progress("Module 1: Deficiency check")
@@ -193,7 +728,8 @@ def run_case(run_id: int) -> None:
                          "verification, appeal fee, tax on returned income; LIMITATION (order date, service date, "
                          "filing date, delay, condonation needed & sufficient?); mandatory attachments; Rule 46A "
                          "new-evidence (before AO? admit/reject/remand). Output a Deficiency Report.\n\n"
-                         f"=== APPEAL DOCUMENTS ===\n{docs_text}\n\n=== RETRIEVED LAW ===\n{ctx}")
+                         f"=== APPEAL DOCUMENTS ===\n{_trim(docs_text, 7000)}\n\n=== RETRIEVED LAW ===\n{_trim(ctx, 2500)}")
+        _bill("appeal.module1")
         db.add(AppealOutput(run_id=run.id, kind="deficiency", content=defi, citations=cites))
 
         progress("Module 2: Scope validation")
@@ -201,43 +737,92 @@ def run_case(run_id: int) -> None:
         scope = _complete("MODULE 2 — SCOPE VALIDATION (Faceless Appeal Scheme 2021). Identify the section appealed "
                           "(143(3)/144/147/154/271B/270A), check appealability u/s 246A, flag excluded/sensitive "
                           "categories. Output a Scope Validation Report.\n\n"
-                          f"=== APPEAL DOCUMENTS ===\n{docs_text}\n\n=== RETRIEVED LAW ===\n{ctx}")
+                          f"=== APPEAL DOCUMENTS ===\n{_trim(docs_text, 7000)}\n\n=== RETRIEVED LAW ===\n{_trim(ctx, 2500)}")
+        _bill("appeal.module2")
         db.add(AppealOutput(run_id=run.id, kind="scope", content=scope, citations=cites))
 
-        progress("Module 4: Issue matrix")
-        understanding = _complete_json(
-            "MODULE 4 — DOCUMENT UNDERSTANDING. From the documents return JSON: "
-            '{"facts": "...", "grounds": ["..."], "appellant_submissions": "...", "ao_position": "...", '
-            '"issues": [{"issue": "..."}]}\n\n=== APPEAL DOCUMENTS ===\n' + docs_text)
-        issues = understanding.get("issues") if isinstance(understanding, dict) else None
-        issues = [i for i in (issues or []) if isinstance(i, dict) and i.get("issue", "").strip() not in ("", "...")]
-        if not issues:
-            issues = _detect_issues(docs_text)
-            understanding = {"facts": understanding.get("facts", "") if isinstance(understanding, dict) else "",
-                             "grounds": understanding.get("grounds", []) if isinstance(understanding, dict) else [],
-                             "appellant_submissions": "", "issues": issues}
+        progress("Module 4: Grounds & issue matrix")
+        extracted = _extract_case(case, docs_text)
+        _bill("appeal.module4")
+        grounds = extracted["grounds"]
+        if grounds:
+            issues = [{"issue": g} for g in grounds]
+        else:  # last-resort heuristic if Form 35 grounds could not be read
+            issues = _detect_issues(docs_text) or [{"issue": "Grounds of appeal (see documents)"}]
+            grounds = [i["issue"] for i in issues]
+        understanding = {"facts": extracted["facts"], "grounds": grounds,
+                         "appellant_submissions": extracted["submissions"], "issues": issues,
+                         "institution_date": extracted.get("institution_date", "")}
         db.add(AppealOutput(run_id=run.id, kind="issue_matrix", content=json.dumps(understanding, ensure_ascii=False)))
 
+        progress(f"Module 5: Drafting {len(issues)} ground(s) in parallel")
+        def _draft_one(idx_issue):
+            idx, iss = idx_issue
+            tdb = SessionLocal()  # own session per thread (SQLAlchemy sessions aren't shared-safe)
+            try:
+                block, cites = draft_issue(tdb, docs_text, iss)
+            finally:
+                tdb.close()
+            return idx, iss, block, cites
+        with ThreadPoolExecutor(max_workers=min(len(issues) or 1, 6)) as _ex:
+            _drafts = sorted(_ex.map(_draft_one, list(enumerate(issues))), key=lambda x: x[0])
         blocks = []
-        for i, issue in enumerate(issues):
-            progress(f"Module 5: Drafting issue {i + 1}/{len(issues)}")
-            block, cites = draft_issue(db, docs_text, issue)
-            db.add(AppealOutput(run_id=run.id, kind="finding", seq=i, label=issue["issue"], content=block, citations=cites))
-            blocks.append(f"### Issue: {issue['issue']}\n\n{block}")
+        for idx, iss, block, cites in _drafts:
+            db.add(AppealOutput(run_id=run.id, kind="finding", seq=idx,
+                                label=iss["issue"][:290], content=block, citations=cites))
+            blocks.append(block)
+        _bill("appeal.module5")  # best-effort token entry (parallel calls not individually metered)
 
         progress("Module 6: Assembling draft order")
-        draft = assemble(understanding, blocks)
+        draft = assemble(understanding, blocks, docs_text)
+        _bill("appeal.module6")
         db.add(AppealOutput(run_id=run.id, kind="draft", content=draft))
 
-        run.status, run.finished_at = "done", datetime.now(timezone.utc)
-        case.status = "ready"
+        # Flush the module outputs before the final status commit so a
+        # last-second cancel that fires between these two statements can't
+        # leave orphan outputs uncommitted.
+        db.flush()
+        # Cancel-safe final commit. Re-read status one more time — if a cancel
+        # landed after the last progress() check, don't overwrite it with "done".
+        _check_cancel()
+        # Targeted UPDATE (as with progress()) so any dirty attrs on the in-memory
+        # `run` / `case` objects don't clobber the cancel flip on their way out.
+        db.execute(
+            update(AppealRun)
+            .where(AppealRun.id == run.id)
+            .values(status="done", finished_at=datetime.now(timezone.utc))
+        )
+        db.execute(
+            update(AppealCase)
+            .where(AppealCase.id == case.id)
+            .values(status="ready")
+        )
         db.commit()
     except Exception as e:  # noqa: BLE001
         db.rollback()
-        run = db.get(AppealRun, run_id)
-        if run:
-            run.status, run.error, run.finished_at = "error", f"{type(e).__name__}: {e}", datetime.now(timezone.utc)
+        # Read the current DB state ourselves — don't rely on `run.error` on
+        # the in-memory object because that may be stale / never refreshed.
+        row = db.execute(
+            select(AppealRun.error, AppealRun.case_id).where(AppealRun.id == run_id)
+        ).one_or_none()
+        if row:
+            existing_err, case_id = row
+            already_cancelled = (existing_err or "").lower().startswith("cancelled")
+            new_err = existing_err if already_cancelled else f"{type(e).__name__}: {e}"
+            db.execute(
+                update(AppealRun)
+                .where(AppealRun.id == run_id)
+                .values(status="error", error=new_err, finished_at=datetime.now(timezone.utc))
+            )
+            db.execute(
+                update(AppealCase)
+                .where(AppealCase.id == case_id)
+                .values(status="error")
+            )
             db.commit()
-        log.exception("appeal run %s failed", run_id)
+        if isinstance(e, _RunCancelled):
+            log.info("appeal run %s cancelled by user", run_id)
+        else:
+            log.exception("appeal run %s failed", run_id)
     finally:
         db.close()

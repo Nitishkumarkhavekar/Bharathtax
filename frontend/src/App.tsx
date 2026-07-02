@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 import Ask from "./pages/Ask";
 import ProfilePage from "./pages/Profile";
+import UserTokenUsagePage from "./pages/TokenUsage";
 import Documents from "./pages/Documents";
 import History from "./pages/History";
 import Appeals from "./pages/Appeals";
@@ -21,6 +22,7 @@ import ModelManagementPage from "./pages/admin/ModelManagement";
 import ServerStatsPage from "./pages/admin/ServerStats";
 import RevenueManagementPage from "./pages/admin/RevenueManagement";
 import LicenseManagementPage from "./pages/admin/LicenseManagement";
+import TokenUsagePage from "./pages/admin/TokenUsage";
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
   const { session, loading } = useAuth();
@@ -73,6 +75,7 @@ export default function App() {
       <Route path="/documents" element={<NonAdminOnly><Documents /></NonAdminOnly>} />
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />
       <Route path="/profile" element={<NonAdminOnly><ProfilePage /></NonAdminOnly>} />
+      <Route path="/tokens" element={<NonAdminOnly><UserTokenUsagePage /></NonAdminOnly>} />
 
       {/* Admin console — full-screen with its own sidebar (no outer Layout). */}
       <Route
@@ -91,6 +94,7 @@ export default function App() {
         <Route path="admins" element={<UserManagement mode="admins" />} />
         <Route path="model" element={<ModelManagementPage />} />
         <Route path="server" element={<ServerStatsPage />} />
+        <Route path="tokens" element={<TokenUsagePage />} />
         <Route
           path="revenue"
           element={

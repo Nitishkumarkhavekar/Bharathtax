@@ -12,6 +12,7 @@ import {
   Scale,
   Menu,
   X,
+  Coins,
 } from "lucide-react";
 import { useAuth } from "@/auth";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ const NAV: {
   { to: "/admin/users", label: "User Management", icon: Users, desc: "Officers & auditors" },
   { to: "/admin/admins", label: "Admin Management", icon: ShieldCheck, desc: "Super & wing admins" },
   { to: "/admin/model", label: "Model Management", icon: Brain, desc: "LLM models & metrics" },
+  { to: "/admin/tokens", label: "Token Usage", icon: Coins, desc: "Per-user token spend" },
   { to: "/admin/server", label: "Model Server", icon: Server, desc: "System health" },
   { to: "/admin/revenue", label: "Revenue Management", icon: IndianRupee, super: true, desc: "Sales ledger" },
   { to: "/admin/licenses", label: "License Keys", icon: KeyRound, super: true, desc: "Issue & revoke" },

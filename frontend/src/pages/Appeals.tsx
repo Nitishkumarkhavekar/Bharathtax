@@ -1,68 +1,824 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { Gavel, Plus, ArrowRight } from "lucide-react";
+import {
+  Gavel,
+  Plus,
+  ArrowRight,
+  Search,
+  FileText,
+  IdCard,
+  CalendarDays,
+  Scale,
+  Loader2,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  ClipboardList,
+  ChevronDown,
+  Square,
+  Pencil,
+  Trash2,
+  X,
+  Check,
+} from "lucide-react";
 import { api } from "../api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 
-const STATUS_VARIANT: Record<string, "default" | "success" | "secondary" | "destructive"> = {
-  new: "secondary", running: "default", ready: "success", error: "destructive",
+// Human-friendly status metadata for the case cards + KPI strip.
+const STATUS_META: Record<
+  string,
+  {
+    label: string;
+    dot: string;
+    chip: string;
+    icon: typeof CheckCircle2;
+  }
+> = {
+  new: {
+    label: "New",
+    dot: "bg-slate-400 shadow-[0_0_0_3px_rgba(148,163,184,0.2)]",
+    chip: "bg-slate-100 text-slate-700 ring-slate-200",
+    icon: ClipboardList,
+  },
+  running: {
+    label: "Running",
+    dot: "bg-sky-500 shadow-[0_0_0_3px_rgba(14,165,233,0.22)] animate-pulse",
+    chip: "bg-sky-50 text-sky-700 ring-sky-200",
+    icon: Loader2,
+  },
+  ready: {
+    label: "Ready",
+    dot: "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
+    chip: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    icon: CheckCircle2,
+  },
+  error: {
+    label: "Error",
+    dot: "bg-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.22)]",
+    chip: "bg-rose-50 text-rose-700 ring-rose-200",
+    icon: AlertTriangle,
+  },
 };
 
 export default function Appeals() {
   const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [f, setF] = useState({ title: "", assessment_year: "", pan: "", section: "" });
   const [err, setErr] = useState("");
+  const [busyCreate, setBusyCreate] = useState(false);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<"all" | "new" | "running" | "ready" | "error">("all");
+  const [formOpen, setFormOpen] = useState(true);
+
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
-  const load = () => api.appealCases().then(setCases).catch((e) => setErr(e.message));
-  useEffect(() => { load(); }, []);
+
+  const load = () => {
+    setLoading(true);
+    return api
+      .appealCases()
+      .then((rows) => setCases(rows))
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => {
+    load();
+  }, []);
 
   async function create(e: FormEvent) {
-    e.preventDefault(); if (!f.title) return;
-    await api.appealCreateCase({ ...f, assessment_year: f.assessment_year || null, pan: f.pan || null, section: f.section || null });
-    setF({ title: "", assessment_year: "", pan: "", section: "" }); load();
+    e.preventDefault();
+    if (!f.title.trim()) return;
+    setBusyCreate(true);
+    setErr("");
+    try {
+      await api.appealCreateCase({
+        ...f,
+        assessment_year: f.assessment_year || null,
+        pan: f.pan || null,
+        section: f.section || null,
+      });
+      setF({ title: "", assessment_year: "", pan: "", section: "" });
+      await load();
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to create case.");
+    } finally {
+      setBusyCreate(false);
+    }
   }
+
+  const stats = useMemo(() => {
+    const c = { total: cases.length, running: 0, ready: 0, drafts: 0, error: 0 };
+    for (const x of cases) {
+      if (x.status === "running") c.running++;
+      else if (x.status === "ready") c.ready++;
+      else if (x.status === "error") c.error++;
+      else c.drafts++;
+    }
+    return c;
+  }, [cases]);
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return cases.filter((c) => {
+      if (filter !== "all" && (c.status || "new") !== filter) return false;
+      if (!term) return true;
+      const hay = `${c.title} ${c.pan ?? ""} ${c.assessment_year ?? ""} ${c.section ?? ""}`.toLowerCase();
+      return hay.includes(term);
+    });
+  }, [cases, q, filter]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2"><Gavel className="size-5 text-primary" /> Appeal cases</h2>
-        <p className="text-sm text-muted-foreground">Draft CIT(A)/NFAC appellate orders — grounded in primary law and case law.</p>
+      {/* ---------- Hero header ---------- */}
+      <HeroHeader />
+
+      {/* ---------- KPI strip ---------- */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KpiCard
+          label="Total cases"
+          value={stats.total}
+          hint={`${stats.drafts} draft${stats.drafts === 1 ? "" : "s"}`}
+          tone="indigo"
+          icon={<FileText className="size-4" />}
+        />
+        <KpiCard
+          label="Running"
+          value={stats.running}
+          hint="pipeline in progress"
+          tone="sky"
+          icon={<Loader2 className={stats.running > 0 ? "size-4 animate-spin" : "size-4"} />}
+        />
+        <KpiCard
+          label="Ready"
+          value={stats.ready}
+          hint="orders drafted"
+          tone="emerald"
+          icon={<CheckCircle2 className="size-4" />}
+        />
+        <KpiCard
+          label="Needs attention"
+          value={stats.error}
+          hint={stats.error > 0 ? "errored runs" : "no errors"}
+          tone="rose"
+          icon={<AlertTriangle className="size-4" />}
+        />
       </div>
 
-      <Card>
-        <CardContent className="pt-5">
-          <form onSubmit={create} className="grid sm:grid-cols-12 gap-3 items-end">
-            <div className="sm:col-span-5"><Label>Title</Label><Input value={f.title} onChange={set("title")} placeholder="ABC Traders Pvt Ltd — AY 2021-22" /></div>
-            <div className="sm:col-span-2"><Label>AY</Label><Input value={f.assessment_year} onChange={set("assessment_year")} placeholder="2021-22" /></div>
-            <div className="sm:col-span-2"><Label>PAN</Label><Input value={f.pan} onChange={set("pan")} /></div>
-            <div className="sm:col-span-2"><Label>Section</Label><Input value={f.section} onChange={set("section")} placeholder="143(3)" /></div>
-            <div className="sm:col-span-1"><Button type="submit" className="w-full"><Plus className="size-4" /></Button></div>
+      {/* ---------- New case form ---------- */}
+      <section className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setFormOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200/80 bg-gradient-to-r from-primary/[0.04] to-transparent hover:from-primary/[0.06] transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/15">
+              <Plus className="size-4" />
+            </div>
+            <div className="text-left">
+              <div className="text-[14px] font-semibold text-slate-900">
+                New appeal case
+              </div>
+              <div className="text-[11.5px] text-slate-500">
+                Give the case a name and (optionally) PAN, AY, and section
+              </div>
+            </div>
+          </div>
+          <ChevronDown
+            className={
+              "size-4 text-slate-500 transition-transform duration-200 " +
+              (formOpen ? "rotate-180" : "")
+            }
+          />
+        </button>
+        {formOpen && (
+          <form
+            onSubmit={create}
+            className="p-5 grid sm:grid-cols-12 gap-3 items-end animate-fade-up"
+          >
+            <FormField
+              className="sm:col-span-5"
+              label="Case title"
+              icon={<FileText className="size-3.5" />}
+              required
+            >
+              <input
+                value={f.title}
+                onChange={set("title")}
+                placeholder="ABC Traders Pvt Ltd — AY 2021-22"
+                className="input"
+              />
+            </FormField>
+            <FormField
+              className="sm:col-span-2"
+              label="AY"
+              icon={<CalendarDays className="size-3.5" />}
+            >
+              <input
+                value={f.assessment_year}
+                onChange={set("assessment_year")}
+                placeholder="2021-22"
+                className="input tabular-nums"
+              />
+            </FormField>
+            <FormField
+              className="sm:col-span-2"
+              label="PAN"
+              icon={<IdCard className="size-3.5" />}
+            >
+              <input
+                value={f.pan}
+                onChange={set("pan")}
+                placeholder="AAAPL1234C"
+                className="input font-mono uppercase tracking-wider text-[13px]"
+                maxLength={10}
+              />
+            </FormField>
+            <FormField
+              className="sm:col-span-2"
+              label="Section"
+              icon={<Scale className="size-3.5" />}
+            >
+              <input
+                value={f.section}
+                onChange={set("section")}
+                placeholder="143(3)"
+                className="input tabular-nums"
+              />
+            </FormField>
+            <div className="sm:col-span-1">
+              <button
+                type="submit"
+                disabled={busyCreate || !f.title.trim()}
+                className="bt-btn-primary w-full h-9"
+                title="Create case"
+              >
+                {busyCreate ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Plus className="size-4" />
+                )}
+              </button>
+            </div>
           </form>
-        </CardContent>
-      </Card>
+        )}
+      </section>
 
-      {err && <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{err}</div>}
+      {err && (
+        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 flex items-start gap-2">
+          <AlertTriangle className="size-4 mt-0.5 shrink-0" /> {err}
+        </div>
+      )}
 
-      <div className="grid gap-3">
-        {cases.map((c) => (
-          <Link key={c.id} to={`/appeals/${c.id}`}>
-            <Card className="hover:border-primary/40 transition-colors">
-              <CardContent className="py-4 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{c.title}</div>
-                  <div className="text-xs text-muted-foreground">AY {c.assessment_year || "—"} · PAN {c.pan || "—"} · s.{c.section || "—"}</div>
-                </div>
-                <Badge variant={STATUS_VARIANT[c.status] || "secondary"}>{c.status}</Badge>
-                <ArrowRight className="size-4 text-muted-foreground" />
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-        {cases.length === 0 && <p className="text-sm text-muted-foreground">No cases yet — create one above.</p>}
+      {/* ---------- Toolbar: search + filter ---------- */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by title, PAN, AY or section…"
+            className="w-full pl-9 pr-3 h-9 rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <FilterChips
+          value={filter}
+          onChange={setFilter}
+          counts={{
+            all: stats.total,
+            new: stats.drafts,
+            running: stats.running,
+            ready: stats.ready,
+            error: stats.error,
+          }}
+        />
+      </div>
+
+      {/* ---------- Cases list ---------- */}
+      {loading ? (
+        <div className="space-y-3">
+          <CaseSkeleton />
+          <CaseSkeleton />
+          <CaseSkeleton />
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState hasCases={cases.length > 0} />
+      ) : (
+        <div className="grid gap-3">
+          {filtered.map((c) => (
+            <CaseRow key={c.id} c={c} onChanged={load} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================ subcomponents
+
+function HeroHeader() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-sky-600 to-violet-600 p-5 sm:p-6 text-white shadow-lg shadow-primary/20">
+      {/* Decorative accents */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.10]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "22px 22px",
+        }}
+      />
+      <div className="pointer-events-none absolute -right-10 -top-10 size-56 rounded-full bg-white/15 blur-3xl" />
+      <div className="pointer-events-none absolute -left-10 -bottom-10 size-52 rounded-full bg-violet-400/25 blur-3xl" />
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 size-11 rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur flex items-center justify-center">
+            <Gavel className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-2 py-0.5 text-[11px] font-semibold tracking-wide backdrop-blur">
+              <Sparkles className="size-3" /> CIT(A) · NFAC appeal drafting
+            </div>
+            <h2 className="mt-1.5 text-2xl sm:text-[26px] font-semibold tracking-tight leading-tight">
+              Appeal cases
+            </h2>
+            <p className="text-white/85 text-[13.5px] mt-0.5 max-w-xl">
+              Upload the appeal file, run the six-module pipeline, and produce a
+              draft appellate order grounded in the Act, Rules and case law.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+  tone,
+  icon,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  tone: "indigo" | "sky" | "emerald" | "rose";
+  icon: React.ReactNode;
+}) {
+  const toneMap = {
+    indigo: {
+      wrap: "from-indigo-500/[0.06] to-white ring-indigo-200",
+      icon: "bg-indigo-100 text-indigo-700 ring-indigo-200",
+    },
+    sky: {
+      wrap: "from-sky-500/[0.06] to-white ring-sky-200",
+      icon: "bg-sky-100 text-sky-700 ring-sky-200",
+    },
+    emerald: {
+      wrap: "from-emerald-500/[0.06] to-white ring-emerald-200",
+      icon: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    },
+    rose: {
+      wrap: "from-rose-500/[0.06] to-white ring-rose-200",
+      icon: "bg-rose-100 text-rose-700 ring-rose-200",
+    },
+  }[tone];
+  return (
+    <div
+      className={
+        "relative overflow-hidden rounded-xl bg-gradient-to-br border border-slate-200/80 shadow-sm p-3.5 ring-1 " +
+        toneMap.wrap
+      }
+    >
+      <div className="flex items-center gap-2">
+        <div className={"size-8 rounded-lg ring-1 flex items-center justify-center shrink-0 " + toneMap.icon}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            {label}
+          </div>
+          <div className="text-[20px] font-semibold text-slate-900 leading-none tabular-nums mt-0.5">
+            {value}
+          </div>
+        </div>
+      </div>
+      <div className="mt-1.5 text-[11px] text-slate-500">{hint}</div>
+    </div>
+  );
+}
+
+function FormField({
+  label,
+  icon,
+  className,
+  required,
+  children,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  className?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+        {icon}
+        {label}
+        {required && <span className="text-rose-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function FilterChips({
+  value,
+  onChange,
+  counts,
+}: {
+  value: "all" | "new" | "running" | "ready" | "error";
+  onChange: (v: "all" | "new" | "running" | "ready" | "error") => void;
+  counts: Record<"all" | "new" | "running" | "ready" | "error", number>;
+}) {
+  const chips: {
+    key: "all" | "new" | "running" | "ready" | "error";
+    label: string;
+  }[] = [
+    { key: "all", label: "All" },
+    { key: "new", label: "Drafts" },
+    { key: "running", label: "Running" },
+    { key: "ready", label: "Ready" },
+    { key: "error", label: "Errors" },
+  ];
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {chips.map((ch) => {
+        const active = value === ch.key;
+        return (
+          <button
+            key={ch.key}
+            onClick={() => onChange(ch.key)}
+            className={
+              "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] font-medium transition-all border " +
+              (active
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-white text-slate-700 border-slate-200 hover:border-primary/30 hover:text-slate-900")
+            }
+          >
+            {ch.label}
+            <span
+              className={
+                "inline-block min-w-[20px] text-center rounded-full px-1.5 text-[10.5px] tabular-nums " +
+                (active
+                  ? "bg-white/25 text-white"
+                  : "bg-slate-100 text-slate-600")
+              }
+            >
+              {counts[ch.key] ?? 0}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
+  const status = (c.status || "new") as keyof typeof STATUS_META;
+  const meta = STATUS_META[status] ?? STATUS_META.new;
+  const StatusIcon = meta.icon;
+  const initial = (c.title || "?").trim().slice(0, 1).toUpperCase();
+  const [stopping, setStopping] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const isRunning = status === "running" || status === ("queued" as any);
+
+  // Every mini-button on the row lives inside the whole-row <Link>, so any
+  // click has to swallow bubbling to keep the router from navigating.
+  const swallow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  async function stop(e: React.MouseEvent) {
+    swallow(e);
+    if (!confirm(`Stop the pipeline for "${c.title}"?`)) return;
+    setStopping(true);
+    try {
+      await api.appealStopCase(c.id);
+      onChanged();
+    } catch (err: any) {
+      alert(err?.message ?? "Could not stop the run.");
+    } finally {
+      setStopping(false);
+    }
+  }
+
+  async function deleteCase(e: React.MouseEvent) {
+    swallow(e);
+    if (
+      !confirm(
+        `Delete "${c.title}"?\n\nThis permanently removes the case, every uploaded PDF, and every pipeline run. This cannot be undone.`,
+      )
+    )
+      return;
+    setDeleting(true);
+    try {
+      await api.appealDeleteCase(c.id);
+      onChanged();
+    } catch (err: any) {
+      alert(err?.message ?? "Could not delete the case.");
+      setDeleting(false);
+    }
+  }
+
+  function openEdit(e: React.MouseEvent) {
+    swallow(e);
+    setEditing(true);
+  }
+
+  return (
+    <Link
+      to={`/appeals/${c.id}`}
+      className="group block rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-0.5 transition-all overflow-hidden"
+    >
+      <div className="flex items-center gap-4 p-4">
+        {/* Left initial tile */}
+        <div className="relative shrink-0">
+          <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/40 to-violet-500/40 opacity-0 group-hover:opacity-100 blur transition-opacity" />
+          <div className="relative size-11 rounded-xl bg-gradient-to-br from-primary/10 to-violet-500/10 text-primary ring-1 ring-primary/15 flex items-center justify-center text-[15px] font-semibold">
+            {initial}
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="font-semibold text-slate-900 text-[15px] truncate">
+              {c.title}
+            </div>
+            <span className="text-[10.5px] text-slate-400 tabular-nums shrink-0">
+              #{c.id}
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
+            <Meta icon={<CalendarDays className="size-3" />} label={c.assessment_year ? `AY ${c.assessment_year}` : "AY —"} />
+            <Meta icon={<IdCard className="size-3" />} label={c.pan ? `PAN ${c.pan}` : "PAN —"} mono />
+            <Meta icon={<Scale className="size-3" />} label={c.section ? `s.${c.section}` : "s.—"} />
+          </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2">
+          {isRunning && (
+            <button
+              onClick={stop}
+              disabled={stopping}
+              title="Stop the pipeline"
+              aria-label="Stop the pipeline"
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-semibold ring-1 ring-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:ring-rose-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {stopping ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Square className="size-3 fill-current" />
+              )}
+              Stop
+            </button>
+          )}
+          <span
+            className={
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 " +
+              meta.chip
+            }
+          >
+            <span className={"size-1.5 rounded-full " + meta.dot} />
+            <StatusIcon className={"size-3 " + (status === "running" ? "animate-spin" : "")} />
+            {meta.label}
+          </span>
+          <button
+            onClick={openEdit}
+            title="Edit case metadata"
+            aria-label="Edit case metadata"
+            className="p-1.5 rounded-md text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            onClick={deleteCase}
+            disabled={deleting}
+            title="Delete this case"
+            aria-label="Delete this case"
+            className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+          >
+            {deleting ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="size-3.5" />
+            )}
+          </button>
+        </div>
+        <ArrowRight className="size-4 text-slate-300 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+      </div>
+      {editing && (
+        <EditCaseModal
+          c={c}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            onChanged();
+          }}
+        />
+      )}
+    </Link>
+  );
+}
+
+function EditCaseModal({
+  c,
+  onClose,
+  onSaved,
+}: {
+  c: any;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(c.title || "");
+  const [ay, setAy] = useState(c.assessment_year || "");
+  const [pan, setPan] = useState(c.pan || "");
+  const [section, setSection] = useState(c.section || "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const swallow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!title.trim()) {
+      setErr("Title cannot be empty.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.appealPatchCase(c.id, {
+        title: title.trim(),
+        assessment_year: ay.trim() || null,
+        pan: pan.trim() || null,
+        section: section.trim() || null,
+      });
+      onSaved();
+    } catch (e: any) {
+      setErr(e?.message ?? "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Render into document.body via a portal. The parent <Link> row uses
+  // `hover:-translate-y-0.5`, which creates a transform-containing block —
+  // any `position: fixed` DESCENDANT of that link would otherwise scope
+  // itself to the row instead of the viewport, breaking the overlay.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-up"
+      onClick={(e) => {
+        swallow(e);
+        onClose();
+      }}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden"
+        onClick={swallow}
+      >
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-primary/[0.06] to-transparent">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/15">
+              <Pencil className="size-4" />
+            </div>
+            <div>
+              <div className="text-[14px] font-semibold text-slate-900">
+                Edit case metadata
+              </div>
+              <div className="text-[11.5px] text-slate-500">
+                #{c.id} · updates apply immediately
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <form onSubmit={save} className="p-5 space-y-3">
+          <FormField label="Case title" icon={<FileText className="size-3.5" />} required>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="input"
+              autoFocus
+            />
+          </FormField>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <FormField label="AY" icon={<CalendarDays className="size-3.5" />}>
+              <input
+                value={ay}
+                onChange={(e) => setAy(e.target.value)}
+                placeholder="2021-22"
+                className="input tabular-nums"
+              />
+            </FormField>
+            <FormField label="PAN" icon={<IdCard className="size-3.5" />}>
+              <input
+                value={pan}
+                onChange={(e) => setPan(e.target.value.toUpperCase())}
+                placeholder="AAAPL1234C"
+                className="input font-mono uppercase tracking-wider text-[13px]"
+                maxLength={10}
+              />
+            </FormField>
+            <FormField label="Section" icon={<Scale className="size-3.5" />}>
+              <input
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                placeholder="143(3)"
+                className="input tabular-nums"
+              />
+            </FormField>
+          </div>
+          {err && (
+            <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 flex items-start gap-2">
+              <AlertTriangle className="size-4 mt-0.5 shrink-0" /> {err}
+            </div>
+          )}
+          <div className="pt-1 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bt-btn-ghost h-9 px-4 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy || !title.trim()}
+              className="bt-btn-primary h-9 px-5 rounded-lg"
+            >
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function Meta({ icon, label, mono }: { icon: React.ReactNode; label: string; mono?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-slate-400">{icon}</span>
+      <span className={mono ? "font-mono tracking-wide" : ""}>{label}</span>
+    </span>
+  );
+}
+
+function CaseSkeleton() {
+  return (
+    <div className="rounded-2xl bg-white border border-slate-200/80 p-4 shadow-sm">
+      <div className="flex items-center gap-4 animate-pulse">
+        <div className="size-11 rounded-xl bg-slate-100" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3.5 bg-slate-100 rounded w-2/5" />
+          <div className="h-3 bg-slate-100 rounded w-3/5" />
+        </div>
+        <div className="h-6 w-20 bg-slate-100 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ hasCases }: { hasCases: boolean }) {
+  return (
+    <div className="rounded-2xl bg-white border border-dashed border-slate-300 p-10 text-center">
+      <div className="mx-auto size-12 rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15 flex items-center justify-center mb-3">
+        <Gavel className="size-5" />
+      </div>
+      <div className="text-[14px] font-semibold text-slate-900">
+        {hasCases ? "No cases match this filter" : "No appeal cases yet"}
+      </div>
+      <div className="text-[12.5px] text-slate-500 mt-1 max-w-md mx-auto">
+        {hasCases
+          ? "Clear the search or switch back to All to see every case."
+          : "Create your first case above — add the assessee's PAN, AY and section to keep the audit trail intact."}
       </div>
     </div>
   );

@@ -1,0 +1,19 @@
+# Adds the CPU ml-server (bge-m3 + bge-reranker-v2-m3) to the bharathtax-web stack.
+# Override file — leaves docker-compose.web.yml untouched. ML_DEVICE=cpu from .env.
+# Usage: docker compose -f docker-compose.web.yml -f docker-compose.mlserver.yml up -d --build ml-server
+name: bharathtax-web
+services:
+  ml-server:
+    build: ./ml-server
+    restart: unless-stopped
+    env_file: [.env]
+    volumes:
+      - hfcache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health',timeout=3).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 300s
+volumes:
+  hfcache:
