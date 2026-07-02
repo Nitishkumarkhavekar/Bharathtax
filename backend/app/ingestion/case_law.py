@@ -7,9 +7,12 @@ data/manual/case_law/ and run:  python -m app.ingestion.case_law /data/manual/ca
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import os
 import re
+import signal
 import sys
 from pathlib import Path
 
@@ -31,6 +34,26 @@ log = get_logger(__name__)
 SOURCE_KEY = "it_caselaw"
 _CHUNK_CHARS = 1400
 _MIN_CHARS = 80
+# Bulk case-law: stage chunks with NULL embedding (CASELAW_NO_EMBED=1) and fill on the
+# GPU later — inline CPU embedding of ~500k chunks would take days.
+_NO_EMBED = os.getenv("CASELAW_NO_EMBED", "").strip() in ("1", "true", "yes")
+_EXTRACT_TIMEOUT_S = 120  # a single malformed PDF must not stall a 50k-doc run
+
+
+@contextlib.contextmanager
+def _time_limit(seconds: int):
+    def _raise(signum, frame):
+        raise TimeoutError(f"extraction exceeded {seconds}s")
+    if hasattr(signal, "SIGALRM"):
+        old = signal.signal(signal.SIGALRM, _raise)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old)
+    else:
+        yield
 
 
 def get_source(db):
@@ -74,7 +97,8 @@ def _content_hash(text: str) -> str:
 
 
 def ingest_pdf(db, src, raw: bytes, title: str, source_url: str | None = None) -> int:
-    text = extract(raw)
+    with _time_limit(_EXTRACT_TIMEOUT_S):
+        text = extract(raw)
     if not text.strip():
         return 0
     checksum = _content_hash(text)
@@ -83,13 +107,15 @@ def ingest_pdf(db, src, raw: bytes, title: str, source_url: str | None = None) -
         return 0  # same judgment text already ingested (connected matter / duplicate)
     key = f"case_law/{checksum[:16]}.pdf"
     storage.put_bytes(key, raw, "application/pdf")
+    status = CorpusDocStatus.parsed if _NO_EMBED else CorpusDocStatus.indexed
     doc = CorpusDocument(source_id=src.id, title=title, doc_type=SourceType.judgment,
                          source_url=source_url, raw_minio_key=key, extracted_text=text,
-                         checksum=checksum, status=CorpusDocStatus.indexed)
+                         checksum=checksum, status=status)
     db.add(doc)
     db.commit()
     db.refresh(doc)
-    return index_document(db, document=doc, source_id=src.id, domain=Domain.case_law, chunks=_chunks(title, text))
+    return index_document(db, document=doc, source_id=src.id, domain=Domain.case_law,
+                          chunks=_chunks(title, text), embed_vectors=not _NO_EMBED)
 
 
 def _load_manifest(path: str) -> dict:
@@ -115,15 +141,24 @@ def ingest_dir(path: str) -> dict:
         src = get_source(db)
         man = _load_manifest(path)
         docs = sorted(Path(path).glob("**/*.pdf"))
-        total = 0
+        total = failed = done = 0
+        verb = "staged" if _NO_EMBED else "ingested"
         for pdf in docs:
             meta = man.get(pdf.name, {})
             title = (meta.get("title") or pdf.stem.replace("_", " "))[:300]
             url = f"{_S3}/{meta['pdf_key']}" if meta.get("pdf_key") else None
-            n = ingest_pdf(db, src, pdf.read_bytes(), title, source_url=url)
-            log.info("ingested %s -> %d chunks", pdf.name, n)
-            total += n
-        return {"files": len(docs), "chunks": total}
+            try:
+                total += ingest_pdf(db, src, pdf.read_bytes(), title, source_url=url)
+            except Exception as e:
+                # a corrupt/hanging PDF (timeout) must not abort a 50k-doc run
+                db.rollback()
+                failed += 1
+                log.warning("skip (failed): %s -> %s", pdf.name, str(e)[:120])
+            done += 1
+            if done % 500 == 0:
+                log.info("%s %d/%d docs | %d chunks | %d failed", verb, done, len(docs), total, failed)
+        log.info("DONE. %s %d docs, %d chunks, %d failed", verb, len(docs), total, failed)
+        return {"files": len(docs), "chunks": total, "failed": failed}
     finally:
         db.close()
 
