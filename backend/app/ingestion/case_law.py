@@ -99,6 +99,7 @@ def _content_hash(text: str) -> str:
 def ingest_pdf(db, src, raw: bytes, title: str, source_url: str | None = None) -> int:
     with _time_limit(_EXTRACT_TIMEOUT_S):
         text = extract(raw)
+    text = text.replace("\x00", "")   # PostgreSQL text can't store NUL bytes
     if not text.strip():
         return 0
     checksum = _content_hash(text)
