@@ -34,7 +34,7 @@ def _windows(body: str) -> list[str]:
     return out
 
 
-def parse(text: str, act_name: str | None = None) -> Iterator[ParsedUnit]:
+def parse(text: str, act_name: str | None = None, unit_label: str = "Section") -> Iterator[ParsedUnit]:
     parts = _SPLIT.split(text)
     head = parts[0].strip()
     act = (act_name or (head.splitlines()[0] if head else "Act")).strip()[:120]
@@ -51,7 +51,7 @@ def parse(text: str, act_name: str | None = None) -> Iterator[ParsedUnit]:
         if not body:
             continue
 
-        path = [("Act", act), ("Section", num)]
+        path = [("Act", act), (unit_label, num)]
         extra = {"title": title, "chapter": chapter}
         header = " — ".join(p for p in (chapter, title) if p)
         section_text = f"{header}\n{body}" if header else body

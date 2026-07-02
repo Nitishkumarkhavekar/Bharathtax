@@ -101,6 +101,26 @@ sources:
     parser: act_sections
     enabled: true
 
+  - key: it_rules_complete
+    domain: income_tax
+    name: Income-tax Rules (complete)
+    source_type: rule
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/income-tax-rules
+    manual_glob: "income_tax/rules_new/income_tax_rules.txt"
+    parser: rule_sections
+    enabled: true
+
+  - key: it_rules_2026
+    domain: income_tax
+    name: Income-tax Rules, 2026
+    source_type: rule
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/income-tax-rules
+    manual_glob: "income_tax/rules_new/income_tax_rules_2026.txt"
+    parser: rule_sections
+    enabled: true
+
   # ----------------------- RESERVED EXTENSION POINTS ------------------------
   # Adding a whole new market = uncommenting + dropping files. No code change.
   #

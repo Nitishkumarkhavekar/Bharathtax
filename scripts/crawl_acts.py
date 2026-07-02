@@ -29,6 +29,7 @@ BASE = "https://www.incometaxindia.gov.in"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 OUT = Path("data/manual/income_tax/acts_new")
+OUT_RULES = Path("data/manual/income_tax/rules_new")
 PAGE_SIZE = 100
 
 # Year taxonomy (shared with circulars/notifications) — harvested from the site dropdown.
@@ -79,13 +80,26 @@ def _field(item: dict, name: str) -> str:
     return ""
 
 
-def _body(act_id: int, year_id: int) -> str:
+# Acts and Rules share the same section-harvest shape, differing only in blueprint,
+# the id attribute, and the field names carrying the number/title.
+_PROFILES = {
+    "act":  {"blueprint": "ACT_SECTIONS_BP_ERC", "id_key": "act_id",
+             "num_key": "chapter_section_number", "num_field": "sectionNumber",
+             "title_field": "sectionShortDescription"},
+    "rule": {"blueprint": "RULE_CONTENT_LIST_BP_ERC", "id_key": "rule_id",
+             "num_key": "rule_number", "num_field": "ruleNumber",
+             "title_field": "ruleShortDescription"},
+}
+
+
+def _body(kind: str, cid: int, year_id: int) -> str:
+    p = _PROFILES[kind]
     return json.dumps({"attributes": {
         "search.empty.search": True,
-        "search.experiences.blueprint.external.reference.code": "ACT_SECTIONS_BP_ERC",
-        "search.experiences.act_id": act_id,
+        "search.experiences.blueprint.external.reference.code": p["blueprint"],
+        f"search.experiences.{p['id_key']}": cid,
         "search.experiences.year_id": year_id,
-        "search.experiences.chapter_section_number": "",
+        f"search.experiences.{p['num_key']}": "",
     }})
 
 
@@ -103,9 +117,10 @@ def _api_post(ctx, page, page_no: int, body: str) -> dict | None:
     return None
 
 
-def harvest(ctx, page, act_id: int, year_id: int) -> list[dict]:
-    """Return all section dicts {num,title,chapter,text} for one act+year."""
-    body = _body(act_id, year_id)
+def harvest(ctx, page, kind: str, cid: int, year_id: int) -> list[dict]:
+    """Return all unit dicts {num,title,chapter,text} for one act/rule-set + year."""
+    p = _PROFILES[kind]
+    body = _body(kind, cid, year_id)
     j = _api_post(ctx, page, 1, body)
     if not j or not j.get("totalCount"):
         return []
@@ -120,24 +135,24 @@ def harvest(ctx, page, act_id: int, year_id: int) -> list[dict]:
         text = clean(_field(it, "documentContent"))
         if len(text) < 15:
             continue
-        num = _field(it, "sectionNumber") or (it.get("title", "") or "").replace("Section", "").strip(" -")
+        num = _field(it, p["num_field"]) or re.sub(r"^(Section|Rule)\s*", "", it.get("title", "") or "").strip(" -")
         out.append({
             "num": num,
-            "title": _field(it, "sectionShortDescription") or "",
+            "title": _field(it, p["title_field"]) or "",
             "chapter": (_field(it, "chapterTitle") or _field(it, "chapterNumber") or "").strip(),
             "text": text,
         })
     return out
 
 
-def write_act(slug: str, act_title: str, sections: list[dict]) -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
+def write_act(slug: str, act_title: str, sections: list[dict], outdir: Path = OUT) -> int:
+    outdir.mkdir(parents=True, exist_ok=True)
     lines = [f"{act_title}\n"]
     for s in sections:
         # marker the `act_sections` parser splits on
         head = f"@@SECTION {s['num']} | {s['chapter']} | {s['title']}".rstrip(" |")
         lines.append(f"\n{head}\n{s['text']}\n")
-    dest = OUT / f"{slug}.txt"
+    dest = outdir / f"{slug}.txt"
     dest.write_text("\n".join(lines), encoding="utf-8")
     dest.with_suffix(".txt.meta.json").write_text(json.dumps({
         "title": act_title, "source_host": "incometaxindia.gov.in",
@@ -158,24 +173,35 @@ def main():
 
         # 1) Income-tax Act, 2025 (new act) — latest year
         print("=== Income-tax Act, 2025 ===")
-        secs = harvest(ctx, page, IT_ACT_2025_ID, YEAR_IDS["2026"])
+        secs = harvest(ctx, page, "act", IT_ACT_2025_ID, YEAR_IDS["2026"])
         if secs:
-            n = write_act("income_tax_act_2025", "Income-tax Act, 2025", secs)
-            total_secs += n; total_acts += 1
-            print(f"  wrote {n} sections")
+            total_secs += write_act("income_tax_act_2025", "Income-tax Act, 2025", secs); total_acts += 1
+            print(f"  wrote {len(secs)} sections")
 
         # 2) Finance Acts — every year that has one
         print("=== Finance Acts (per year) ===")
         for year, yid in YEAR_IDS.items():
-            secs = harvest(ctx, page, FINANCE_ACT_ID, yid)
+            secs = harvest(ctx, page, "act", FINANCE_ACT_ID, yid)
             if not secs:
                 continue
-            n = write_act(f"finance_act_{year}", f"Finance Act, {year}", secs)
-            total_secs += n; total_acts += 1
-            print(f"  {year}: {n} sections")
+            total_secs += write_act(f"finance_act_{year}", f"Finance Act, {year}", secs); total_acts += 1
+            print(f"  {year}: {len(secs)} rules/sections")
             time.sleep(0.3)
 
-        print(f"\nDONE. {total_acts} acts, {total_secs} sections -> {OUT}")
+        # 3) Rules — Income-tax Rules (current, as amended to 2026) + the new 2026 Rules
+        print("=== Rules ===")
+        RULES = [
+            (6388690, "2026", "income_tax_rules", "Income-tax Rules, 1962"),
+            (16666527, "2026", "income_tax_rules_2026", "Income-tax Rules, 2026"),
+        ]
+        for cid, yr, slug, title in RULES:
+            secs = harvest(ctx, page, "rule", cid, YEAR_IDS[yr])
+            if not secs:
+                print(f"  {title}: (none)"); continue
+            total_secs += write_act(slug, title, secs, outdir=OUT_RULES); total_acts += 1
+            print(f"  {title}: {len(secs)} rules")
+
+        print(f"\nDONE. {total_acts} acts/rule-sets, {total_secs} units -> {OUT} + {OUT_RULES}")
         b.close()
 
 
