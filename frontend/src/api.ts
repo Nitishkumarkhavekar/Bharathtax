@@ -58,13 +58,20 @@ export interface DocumentOut {
   status: string;
   created_at: string;
 }
+export type HistoryKind = "all" | "query" | "appeal" | "document" | "session";
 export interface HistoryItem {
-  id: number;
-  scope: "corpus" | "document";
-  question: string;
-  answer: string | null;
+  id: string;
+  kind: Exclude<HistoryKind, "all">;
+  action: string;
+  label: string;
+  scope: string | null;
+  title: string;
+  detail: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
   created_at: string;
 }
+export type HistoryCounts = Record<HistoryKind, number>;
 export interface SeatUsage {
   wing_id: number;
   used: number;
@@ -84,7 +91,50 @@ export interface AdminUser {
   wing_id: number;
   office_id: number | null;
   is_active: boolean;
+  approval_status: "pending" | "approved" | "rejected";
+  approved_at: string | null;
   created_at: string | null;
+}
+
+export interface PublicWing {
+  id: number;
+  name: string;
+  code: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name?: string;
+  organisation?: string;
+}
+
+export interface RegisterResponse {
+  id: number;
+  email: string;
+  full_name: string | null;
+  approval_status: string;
+  message: string;
+}
+
+export interface Profile {
+  id: number;
+  username: string;
+  email: string | null;
+  full_name: string | null;
+  organisation: string | null;
+  role: string;
+  wing_id: number;
+  is_active: boolean;
+  approval_status: string;
+  created_at: string | null;
+}
+
+export interface ProfileUpdate {
+  full_name?: string;
+  organisation?: string;
+  current_password?: string;
+  new_password?: string;
 }
 export interface AdminUserCreate {
   username: string;
@@ -160,6 +210,7 @@ export interface RevenueUpdate {
 export interface AdminDashboard {
   users_total: number;
   users_active: number;
+  pending_approvals: number;
   admins: number;
   queries_24h: number;
   queries_7d: number;
@@ -196,6 +247,80 @@ export interface AdminModel {
   latency_per_day: { day: string; latency_ms: number }[];
   last_error: string | null;
   healthy: boolean;
+}
+
+export interface TokenActionRow {
+  action: string;
+  calls: number;
+  tokens: number;
+}
+export interface TokenModelRow {
+  model: string;
+  calls: number;
+  tokens: number;
+}
+export interface TokenDayRow {
+  day: string;
+  tokens: number;
+  calls: number;
+}
+export interface TokenRecentRow {
+  id: number;
+  action: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  latency_ms: number | null;
+  created_at: string | null;
+}
+export interface UserTokenUsage {
+  total_tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  calls: number;
+  tokens_24h: number;
+  tokens_7d: number;
+  tokens_30d: number;
+  by_action: TokenActionRow[];
+  per_day: TokenDayRow[];
+  recent: TokenRecentRow[];
+}
+export interface TokenPerUserRow {
+  user_id: number;
+  username: string;
+  full_name: string | null;
+  email: string | null;
+  calls: number;
+  total_tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+export interface AdminTokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  calls: number;
+  active_users: number;
+  tokens_24h: number;
+  tokens_7d: number;
+  tokens_window: number;
+  window_days: number;
+  per_user: TokenPerUserRow[];
+  per_action: TokenActionRow[];
+  per_model: TokenModelRow[];
+  per_day: TokenDayRow[];
+}
+export interface AdminUserTokenUsage {
+  user: { id: number; username: string; full_name: string | null; email: string | null; role: string };
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  calls: number;
+  tokens_24h: number;
+  tokens_7d: number;
+  by_action: TokenActionRow[];
+  by_model: TokenModelRow[];
+  per_day: TokenDayRow[];
 }
 
 export interface AdminServer {
@@ -255,8 +380,18 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  login: (username: string, password: string) =>
-    req<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  login: (email: string, password: string) =>
+    req<TokenResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  register: (b: RegisterRequest) =>
+    req<RegisterResponse>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
+  publicWings: () => req<PublicWing[]>("/auth/wings"),
+  profile: () => req<Profile>("/auth/profile"),
+  myTokenUsage: () => req<UserTokenUsage>("/auth/token-usage"),
+  updateProfile: (b: ProfileUpdate) =>
+    req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; role: string; wing_id: number }>("/auth/me"),
 
@@ -269,6 +404,8 @@ export const api = {
     }),
   ask: (question: string, domain?: string, style?: string) =>
     req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style }) }),
+  feedback: (b: { question?: string; answer?: string; rating?: string; correction?: string }) =>
+    req<{ ok: boolean }>("/assist/feedback", { method: "POST", body: JSON.stringify(b) }),
   documents: () => req<DocumentOut[]>("/documents"),
   uploadDocument: (file: File) => {
     const fd = new FormData();
@@ -277,7 +414,13 @@ export const api = {
   },
   askDocument: (id: number, question: string) =>
     req<AnswerResponse>(`/documents/${id}/ask`, { method: "POST", body: JSON.stringify({ question }) }),
-  history: () => req<HistoryItem[]>("/history"),
+  history: (kind: HistoryKind = "all", limit = 100) =>
+    req<HistoryItem[]>(`/history?kind=${kind}&limit=${limit}`),
+  historyCounts: () => req<HistoryCounts>("/history/counts"),
+  historyDelete: (id: string) =>
+    req<void>(`/history/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  historyClear: (kind: HistoryKind = "all") =>
+    req<void>(`/history?kind=${kind}`, { method: "DELETE" }),
   seatUsage: (wingId: number) => req<SeatUsage>(`/admin/wings/${wingId}/seats`),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
 
@@ -301,11 +444,12 @@ export const api = {
   adminServer: () => req<AdminServer>("/admin/model/server"),
 
   // --- admin: users / admins ---
-  adminListUsers: (filters?: { wing_id?: number; role?: string; q?: string }) => {
+  adminListUsers: (filters?: { wing_id?: number; role?: string; q?: string; approval_status?: string }) => {
     const p = new URLSearchParams();
     if (filters?.wing_id != null) p.set("wing_id", String(filters.wing_id));
     if (filters?.role) p.set("role", filters.role);
     if (filters?.q) p.set("q", filters.q);
+    if (filters?.approval_status) p.set("approval_status", filters.approval_status);
     const qs = p.toString();
     return req<AdminUser[]>(`/admin/users${qs ? `?${qs}` : ""}`);
   },
@@ -313,6 +457,10 @@ export const api = {
     req<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(b) }),
   adminUpdateUser: (id: number, b: AdminUserUpdate) =>
     req<AdminUser>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(b) }),
+  adminApproveUser: (id: number) =>
+    req<AdminUser>(`/admin/users/${id}/approve`, { method: "POST" }),
+  adminRejectUser: (id: number) =>
+    req<AdminUser>(`/admin/users/${id}/reject`, { method: "POST" }),
   adminDeleteUser: (id: number) =>
     req<void>(`/admin/users/${id}`, { method: "DELETE" }),
 
@@ -340,6 +488,12 @@ export const api = {
       "/admin/revenue/summary",
     ),
 
+  // --- admin: token usage ---
+  adminTokenUsage: (days = 30) =>
+    req<AdminTokenUsage>(`/admin/token-usage?days=${days}`),
+  adminUserTokenUsage: (userId: number) =>
+    req<AdminUserTokenUsage>(`/admin/users/${userId}/token-usage`),
+
   // --- appeal drafting ---
   appealCases: () => req<any[]>("/appeal/cases"),
   appealCreateCase: (b: any) => req<any>("/appeal/cases", { method: "POST", body: JSON.stringify(b) }),
@@ -349,8 +503,30 @@ export const api = {
     Array.from(files).forEach((f) => fd.append("files", f));
     return req<any>(`/appeal/cases/${id}/documents`, { method: "POST", body: fd });
   },
+  appealUpdateDocCategory: (cid: number, did: number, category: string) =>
+    req<any>(`/appeal/cases/${cid}/documents/${did}`, {
+      method: "PUT",
+      body: JSON.stringify({ category }),
+    }),
   appealRun: (id: number) => req<any>(`/appeal/cases/${id}/run`, { method: "POST" }),
   appealRunStatus: (rid: number) => req<any>(`/appeal/runs/${rid}`),
+  appealStopCase: (id: number) => req<any>(`/appeal/cases/${id}/stop`, { method: "POST" }),
+  appealCancelRun: (rid: number) => req<any>(`/appeal/runs/${rid}/cancel`, { method: "POST" }),
+  appealPatchCase: (
+    id: number,
+    body: { title?: string; assessment_year?: string | null; pan?: string | null; section?: string | null },
+  ) =>
+    req<any>(`/appeal/cases/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  appealDeleteCase: (id: number) =>
+    req<void>(`/appeal/cases/${id}`, { method: "DELETE" }),
+  appealDeleteDoc: (cid: number, did: number) =>
+    req<{ deleted_id: number; filename: string; missing: string[] }>(
+      `/appeal/cases/${cid}/documents/${did}`,
+      { method: "DELETE" },
+    ),
   appealLatest: (id: number) => req<any>(`/appeal/cases/${id}/latest`),
   appealEditOutput: (oid: number, content: string) =>
     req<any>(`/appeal/outputs/${oid}`, { method: "PUT", body: JSON.stringify({ content }) }),
@@ -362,6 +538,29 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, "Download failed");
     const url = URL.createObjectURL(await res.blob());
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  },
+  // Fetch the rendered PDF preview of the draft, returning a blob URL the
+  // caller drops into an <iframe src>. Caller is responsible for revoking
+  // the URL when done.
+  appealOnlyOfficeConfig: (cid: number) =>
+    req<{ editor_url: string; config: Record<string, unknown> }>(
+      `/appeal/cases/${cid}/oo/config`,
+    ),
+  appealForcesaveDraft: (cid: number) =>
+    req<{ ok: boolean; detail: string | null }>(
+      `/appeal/cases/${cid}/oo/forcesave`,
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+  async appealPreviewPdfUrl(cid: number): Promise<string> {
+    const res = await fetch(`${BASE}/appeal/cases/${cid}/preview.pdf`, {
+      headers: { Authorization: `Bearer ${token()}` },
+    });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try { detail = (await res.text()) || detail; } catch { /* ignore */ }
+      throw new ApiError(res.status, detail.slice(0, 240));
+    }
+    return URL.createObjectURL(await res.blob());
   },
   async appealOpenDoc(cid: number, did: number) {
     const res = await fetch(`${BASE}/appeal/cases/${cid}/documents/${did}/file`, { headers: { Authorization: `Bearer ${token()}` } });

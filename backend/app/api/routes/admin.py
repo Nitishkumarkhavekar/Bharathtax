@@ -29,6 +29,7 @@ from app.models.admin import LicenseKey, RevenueEntry
 from app.models.corpus import CorpusChunk
 from app.models.enums import Role
 from app.models.org import SeatLease, User, Wing
+from app.models.token_usage import TokenUsage
 from app.schemas import (
     DashboardOut,
     LicenseCreate,
@@ -99,6 +100,7 @@ def list_users(
     wing_id: int | None = None,
     role: str | None = None,
     q: str | None = None,
+    approval_status: str | None = None,
     admin: User = Depends(_admin),
     db: Session = Depends(get_db),
 ) -> list[User]:
@@ -112,6 +114,10 @@ def list_users(
             stmt = stmt.where(User.role == role_enum)
         except ValueError:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="bad role")
+    if approval_status:
+        if approval_status not in ("pending", "approved", "rejected"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="bad approval_status")
+        stmt = stmt.where(User.approval_status == approval_status)
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(
@@ -172,6 +178,36 @@ def update_user(user_id: int, body: UserUpdate, admin: User = Depends(_admin),
     return user
 
 
+@router.post("/users/{user_id}/approve", response_model=UserOut)
+def approve_user(user_id: int, admin: User = Depends(_admin),
+                 db: Session = Depends(get_db)) -> User:
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    _scope_wing(admin, user.wing_id)
+    user.approval_status = "approved"
+    user.is_active = True
+    user.approved_by_user_id = admin.id
+    user.approved_at = datetime.now(timezone.utc)
+    db.commit(); db.refresh(user)
+    return user
+
+
+@router.post("/users/{user_id}/reject", response_model=UserOut)
+def reject_user(user_id: int, admin: User = Depends(_admin),
+                db: Session = Depends(get_db)) -> User:
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    _scope_wing(admin, user.wing_id)
+    user.approval_status = "rejected"
+    user.is_active = False
+    user.approved_by_user_id = admin.id
+    user.approved_at = datetime.now(timezone.utc)
+    db.commit(); db.refresh(user)
+    return user
+
+
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, admin: User = Depends(_admin),
                 db: Session = Depends(get_db)) -> None:
@@ -215,6 +251,9 @@ def dashboard(admin: User = Depends(_admin), db: Session = Depends(get_db)) -> d
 
     users_total = int(db.scalar(select(func.count(User.id))) or 0)
     users_active = int(db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))) or 0)
+    pending_approvals = int(db.scalar(
+        select(func.count(User.id)).where(User.approval_status == "pending")
+    ) or 0)
     admins = int(db.scalar(
         select(func.count(User.id)).where(User.role.in_([Role.super_admin, Role.wing_admin]))
     ) or 0)
@@ -276,6 +315,7 @@ def dashboard(admin: User = Depends(_admin), db: Session = Depends(get_db)) -> d
     return {
         "users_total": users_total,
         "users_active": users_active,
+        "pending_approvals": pending_approvals,
         "admins": admins,
         "queries_24h": queries_24h,
         "queries_7d": queries_7d,
@@ -624,3 +664,213 @@ def revenue_summary(admin: User = Depends(_super), db: Session = Depends(get_db)
 
 # kept so existing platform.* import lints clean
 _ = platform.python_version
+
+
+# ---------- token usage (admin) --------------------------------------------
+@router.get("/token-usage")
+def admin_token_usage(
+    days: int = Q(30, ge=1, le=365),
+    admin: User = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Aggregate token spend across all users, for the admin console."""
+    now = datetime.now(timezone.utc)
+    d1 = now - timedelta(days=1)
+    d7 = now - timedelta(days=7)
+    dW = now - timedelta(days=days)
+
+    totals = db.execute(
+        select(
+            func.coalesce(func.sum(TokenUsage.prompt_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.completion_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.count(TokenUsage.id),
+            func.count(func.distinct(TokenUsage.user_id)),
+        )
+    ).one()
+
+    tokens_24h = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.created_at >= d1)
+    ) or 0)
+    tokens_7d = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.created_at >= d7)
+    ) or 0)
+    tokens_window = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.created_at >= dW)
+    ) or 0)
+
+    # Per-user leaderboard (top spenders)
+    per_user_rows = db.execute(
+        select(
+            User.id, User.username, User.full_name, User.email,
+            func.count(TokenUsage.id),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.prompt_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.completion_tokens), 0),
+        )
+        .join(TokenUsage, TokenUsage.user_id == User.id)
+        .group_by(User.id, User.username, User.full_name, User.email)
+        .order_by(func.sum(TokenUsage.total_tokens).desc())
+        .limit(50)
+    ).all()
+    per_user = [
+        {"user_id": uid, "username": un, "full_name": fn, "email": em,
+         "calls": int(c), "total_tokens": int(t),
+         "prompt_tokens": int(p), "completion_tokens": int(cc)}
+        for uid, un, fn, em, c, t, p, cc in per_user_rows
+    ]
+
+    # Per-action breakdown
+    per_action_rows = db.execute(
+        select(
+            TokenUsage.action,
+            func.count(TokenUsage.id),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+        )
+        .group_by(TokenUsage.action)
+        .order_by(func.sum(TokenUsage.total_tokens).desc())
+    ).all()
+    per_action = [
+        {"action": a, "calls": int(c), "tokens": int(t)} for a, c, t in per_action_rows
+    ]
+
+    # Per-model breakdown
+    per_model_rows = db.execute(
+        select(
+            TokenUsage.model,
+            func.count(TokenUsage.id),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+        )
+        .group_by(TokenUsage.model)
+        .order_by(func.sum(TokenUsage.total_tokens).desc())
+    ).all()
+    per_model = [
+        {"model": m, "calls": int(c), "tokens": int(t)} for m, c, t in per_model_rows
+    ]
+
+    # Daily time series
+    per_day_rows = db.execute(
+        select(
+            func.date_trunc("day", TokenUsage.created_at).label("day"),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.count(TokenUsage.id),
+        )
+        .where(TokenUsage.created_at >= dW)
+        .group_by("day").order_by("day")
+    ).all()
+    per_day = [
+        {"day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
+         "tokens": int(t), "calls": int(c)}
+        for d, t, c in per_day_rows
+    ]
+
+    return {
+        "prompt_tokens": int(totals[0]),
+        "completion_tokens": int(totals[1]),
+        "total_tokens": int(totals[2]),
+        "calls": int(totals[3]),
+        "active_users": int(totals[4] or 0),
+        "tokens_24h": tokens_24h,
+        "tokens_7d": tokens_7d,
+        "tokens_window": tokens_window,
+        "window_days": days,
+        "per_user": per_user,
+        "per_action": per_action,
+        "per_model": per_model,
+        "per_day": per_day,
+    }
+
+
+@router.get("/users/{user_id}/token-usage")
+def admin_user_token_usage(
+    user_id: int,
+    admin: User = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Same shape as /auth/token-usage but for any user (admin-viewable)."""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found")
+    _scope_wing(admin, user.wing_id)
+
+    now = datetime.now(timezone.utc)
+    d1 = now - timedelta(days=1)
+    d7 = now - timedelta(days=7)
+    d30 = now - timedelta(days=30)
+
+    totals = db.execute(
+        select(
+            func.coalesce(func.sum(TokenUsage.prompt_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.completion_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.count(TokenUsage.id),
+        ).where(TokenUsage.user_id == user_id)
+    ).one()
+
+    tokens_24h = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user_id, TokenUsage.created_at >= d1)
+    ) or 0)
+    tokens_7d = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user_id, TokenUsage.created_at >= d7)
+    ) or 0)
+
+    by_action = [
+        {"action": a, "calls": int(c), "tokens": int(t)}
+        for a, c, t in db.execute(
+            select(
+                TokenUsage.action,
+                func.count(TokenUsage.id),
+                func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            )
+            .where(TokenUsage.user_id == user_id)
+            .group_by(TokenUsage.action)
+            .order_by(func.sum(TokenUsage.total_tokens).desc())
+        ).all()
+    ]
+    by_model = [
+        {"model": m, "calls": int(c), "tokens": int(t)}
+        for m, c, t in db.execute(
+            select(
+                TokenUsage.model,
+                func.count(TokenUsage.id),
+                func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            )
+            .where(TokenUsage.user_id == user_id)
+            .group_by(TokenUsage.model)
+            .order_by(func.sum(TokenUsage.total_tokens).desc())
+        ).all()
+    ]
+    per_day_rows = db.execute(
+        select(
+            func.date_trunc("day", TokenUsage.created_at).label("day"),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.count(TokenUsage.id),
+        )
+        .where(TokenUsage.user_id == user_id, TokenUsage.created_at >= d30)
+        .group_by("day").order_by("day")
+    ).all()
+    per_day = [
+        {"day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
+         "tokens": int(t), "calls": int(c)}
+        for d, t, c in per_day_rows
+    ]
+
+    return {
+        "user": {"id": user.id, "username": user.username,
+                 "full_name": user.full_name, "email": user.email,
+                 "role": user.role.value if hasattr(user.role, "value") else str(user.role)},
+        "prompt_tokens": int(totals[0]),
+        "completion_tokens": int(totals[1]),
+        "total_tokens": int(totals[2]),
+        "calls": int(totals[3]),
+        "tokens_24h": tokens_24h,
+        "tokens_7d": tokens_7d,
+        "by_action": by_action,
+        "by_model": by_model,
+        "per_day": per_day,
+    }

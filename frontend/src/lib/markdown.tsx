@@ -6,11 +6,14 @@
 import { ReactNode } from "react";
 
 function renderInline(text: string): ReactNode[] {
-  // Order matters: escape-safe regexes for **bold**, `code`, [n] citations, urls.
+  // Order matters: **bold** must be tried BEFORE single-asterisk *italic* so
+  // `**foo**` doesn't get eaten as an italic. The `(?<!\*)` / `(?!\*)`
+  // guards on the italic alternative refuse matches that abut another `*`,
+  // which also prevents catching the outer asterisks of `**bold**` again.
   const parts: ReactNode[] = [];
   let i = 0;
   const re =
-    /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[\d+\]|https?:\/\/[^\s)]+|\b§\s?\d+[A-Z]*(?:\(\d+\))?)/g;
+    /(\*\*[^*\n]+\*\*|(?<!\*)\*(?!\*)[^*\n]+?(?<!\*)\*(?!\*)|_[^_\n]+?_|`[^`\n]+`|\[\d+\]|https?:\/\/[^\s)]+|\b§\s?\d+[A-Z]*(?:\(\d+\))?)/g;
   let match: RegExpExecArray | null;
   let key = 0;
   while ((match = re.exec(text)) !== null) {
@@ -21,6 +24,18 @@ function renderInline(text: string): ReactNode[] {
         <strong key={`b${key++}`} className="font-semibold text-foreground">
           {token.slice(2, -2)}
         </strong>,
+      );
+    } else if (
+      (token.startsWith("*") && token.endsWith("*")) ||
+      (token.startsWith("_") && token.endsWith("_"))
+    ) {
+      // Single-asterisk or underscore italic. Strip the surrounding markers
+      // and render inside <em>; the outer .prose-appeal em / .md-body em
+      // styles handle the actual italicisation.
+      parts.push(
+        <em key={`i${key++}`}>
+          {token.slice(1, -1)}
+        </em>,
       );
     } else if (token.startsWith("`") && token.endsWith("`")) {
       parts.push(
@@ -148,18 +163,21 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
       i++;
       continue;
     }
-    const h = /^(#{1,3})\s+(.*)$/.exec(ln);
+    const h = /^(#{1,6})\s+(.*)$/.exec(ln);
     if (h) {
       flushPara();
       blocks.push({ type: "h", lines: [h[2]], level: h[1].length });
       i++;
       continue;
     }
-    if (/^>\s?/.test(ln)) {
+    // Allow leading whitespace so nested blockquotes (`    > ...`, common
+    // when the LLM tucks a quote under a bullet) still get treated as a
+    // proper <blockquote> instead of literal `> …` text.
+    if (/^\s*>\s?/.test(ln)) {
       flushPara();
       const quote: string[] = [];
-      while (i < lines.length && /^>\s?/.test(lines[i])) {
-        quote.push(lines[i].replace(/^>\s?/, ""));
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+        quote.push(lines[i].replace(/^\s*>\s?/, ""));
         i++;
       }
       blocks.push({ type: "quote", lines: [quote.join(" ")] });
@@ -195,20 +213,22 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
 export function Markdown({ text, preNormalized }: { text: string; preNormalized?: boolean }) {
   const blocks = parseBlocks(text, preNormalized);
   return (
-    <div className="space-y-3 leading-relaxed text-[15px] text-slate-800">
+    <div className="md-body">
       {blocks.map((b, idx) => {
         if (b.type === "h") {
-          const sizes = ["text-xl", "text-lg", "text-base"];
-          const cls = `font-semibold text-foreground ${sizes[(b.level || 2) - 1]}`;
-          return (
-            <h3 key={idx} className={cls}>
-              {renderInline(b.lines[0])}
-            </h3>
-          );
+          // Emit the semantically correct heading tag so ancestor styles
+          // (e.g. `.prose-appeal h1..h4`) can distinguish top-level banners
+          // from mid-level sub-heads. We clamp `level` into 1..4.
+          const level = Math.min(Math.max(b.level || 2, 1), 4);
+          const inline = renderInline(b.lines[0]);
+          if (level === 1) return <h1 key={idx}>{inline}</h1>;
+          if (level === 2) return <h2 key={idx}>{inline}</h2>;
+          if (level === 3) return <h3 key={idx}>{inline}</h3>;
+          return <h4 key={idx}>{inline}</h4>;
         }
         if (b.type === "ul") {
           return (
-            <ul key={idx} className="list-disc pl-5 space-y-1.5">
+            <ul key={idx}>
               {b.lines.map((li, k) => (
                 <li key={k}>{renderInline(li)}</li>
               ))}
@@ -217,7 +237,7 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
         }
         if (b.type === "ol") {
           return (
-            <ol key={idx} className="list-decimal pl-5 space-y-1.5">
+            <ol key={idx}>
               {b.lines.map((li, k) => (
                 <li key={k}>{renderInline(li)}</li>
               ))}
@@ -225,20 +245,9 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
           );
         }
         if (b.type === "quote") {
-          return (
-            <blockquote
-              key={idx}
-              className="border-l-2 border-primary/40 pl-3 italic text-slate-600"
-            >
-              {renderInline(b.lines[0])}
-            </blockquote>
-          );
+          return <blockquote key={idx}>{renderInline(b.lines[0])}</blockquote>;
         }
-        return (
-          <p key={idx} className="whitespace-pre-wrap">
-            {renderInline(b.lines[0])}
-          </p>
-        );
+        return <p key={idx}>{renderInline(b.lines[0])}</p>;
       })}
     </div>
   );

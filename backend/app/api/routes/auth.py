@@ -5,15 +5,29 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+from datetime import timedelta
 
 from app.api.deps import Principal, client_meta, get_current_user, get_principal
 from app.core.db import get_db
+from app.core.security import hash_password, verify_password
 from app.models.admin import LicenseKey
 from app.models.enums import Role
-from app.models.org import User
-from app.schemas import LoginRequest, MeResponse, TokenResponse
+from app.models.org import User, Wing
+from app.models.token_usage import TokenUsage
+from sqlalchemy import func as _func
+from app.schemas import (
+    LoginRequest,
+    MeResponse,
+    ProfileOut,
+    ProfileUpdate,
+    PublicWingOut,
+    RegisterRequest,
+    RegisterResponse,
+    TokenResponse,
+)
 from app.services import audit
 from app.services import auth as auth_svc
 from app.services import licensing
@@ -122,14 +136,20 @@ def license_activate(body: LicenseActivateRequest, request: Request,
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+    email = (body.email or "").strip()
+    if not email or "@" not in email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Enter a valid email address.")
     try:
-        user = auth_svc.authenticate(db, body.username, body.password)
-    except auth_svc.AuthError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+        user = auth_svc.authenticate(db, email, body.password)
+    except auth_svc.PendingApprovalError as e:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
+    except auth_svc.RejectedError as e:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
+    except auth_svc.AuthError as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=str(e) or "invalid credentials")
     try:
         token, expire, _sid = auth_svc.login(db, user)
     except licensing.SeatPoolExhausted as e:
-        # this is the seat-pool block the brief calls for
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail=f"All {e.limit} seats for your wing are in use. Try again later.",
@@ -140,6 +160,105 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)) -
         access_token=token, expires_at=expire, role=user.role,
         wing_id=user.wing_id, username=user.username,
     )
+
+
+# -------- public registration + wings list ---------------------------------
+@router.get("/wings", response_model=list[PublicWingOut])
+def list_wings_public(db: Session = Depends(get_db)) -> list[Wing]:
+    """Wings list exposed unauthenticated so the registration form can show
+    which wing the new user belongs to."""
+    return list(db.scalars(select(Wing).order_by(Wing.name)))
+
+
+@router.post("/register", response_model=RegisterResponse)
+def register(body: RegisterRequest, request: Request,
+             db: Session = Depends(get_db)) -> RegisterResponse:
+    email = (body.email or "").strip().lower()
+    if "@" not in email or "." not in email.split("@", 1)[-1]:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Enter a valid email address.")
+    if len(body.password or "") < 6:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters.",
+        )
+
+    # Email and derived username must both be unique.
+    if db.scalar(select(User).where(func.lower(User.email) == email)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="An account already exists for this email.")
+    base_username = email.split("@", 1)[0]
+    username = base_username
+    n = 1
+    while db.scalar(select(User).where(User.username == username)):
+        n += 1
+        username = f"{base_username}{n}"
+
+    # Wings are an admin concept (seat scope). New self-service registrations
+    # land in the first available wing; the admin can move them later.
+    default_wing = db.scalar(select(Wing).order_by(Wing.id))
+    if not default_wing:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The deployment isn't configured yet. Contact your administrator.",
+        )
+
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(body.password),
+        full_name=body.full_name or None,
+        organisation=(body.organisation or "").strip() or None,
+        role=Role.officer,
+        wing_id=default_wing.id,
+        is_active=True,
+        approval_status="pending",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    audit.log_event(
+        db, action="register", user_id=user.id, wing_id=user.wing_id,
+        **client_meta(request),
+    )
+    return RegisterResponse(
+        id=user.id,
+        email=user.email or email,
+        full_name=user.full_name,
+        approval_status=user.approval_status,
+        message="Account created. An administrator will review and approve it shortly.",
+    )
+
+
+# -------- profile (current user) --------------------------------------------
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(user: User = Depends(get_current_user)) -> User:
+    return user
+
+
+@router.put("/profile", response_model=ProfileOut)
+def update_profile(body: ProfileUpdate,
+                   user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> User:
+    if body.full_name is not None:
+        user.full_name = body.full_name.strip() or None
+    if body.organisation is not None:
+        user.organisation = body.organisation.strip() or None
+    if body.new_password:
+        if len(body.new_password) < 6:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="New password must be at least 6 characters.",
+            )
+        if not body.current_password or not verify_password(
+            body.current_password, user.password_hash
+        ):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Your current password is incorrect.",
+            )
+        user.password_hash = hash_password(body.new_password)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/logout")
@@ -158,3 +277,112 @@ def heartbeat(p: Principal = Depends(get_principal), db: Session = Depends(get_d
 @router.get("/me", response_model=MeResponse)
 def me(user: User = Depends(get_current_user)) -> User:
     return user
+
+
+# -------- personal token usage -------------------------------------------
+class _TokenSummaryOut(BaseModel):
+    """User-facing summary. Model identifiers are deliberately NOT included —
+    users see spend attributed to their task ("ask", "improve_prompt",
+    "appeal.module1", …), never to a specific gateway model."""
+    total_tokens: int
+    prompt_tokens: int
+    completion_tokens: int
+    calls: int
+    tokens_24h: int
+    tokens_7d: int
+    tokens_30d: int
+    by_action: list[dict]
+    per_day: list[dict]
+    recent: list[dict]
+
+
+@router.get("/token-usage", response_model=_TokenSummaryOut)
+def my_token_usage(user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> _TokenSummaryOut:
+    """Aggregate token spend for the calling user."""
+    now = datetime.now(timezone.utc)
+    d1 = now - timedelta(days=1)
+    d7 = now - timedelta(days=7)
+    d30 = now - timedelta(days=30)
+
+    base = select(TokenUsage).where(TokenUsage.user_id == user.id)
+
+    totals_row = db.execute(
+        select(
+            _func.coalesce(_func.sum(TokenUsage.prompt_tokens), 0),
+            _func.coalesce(_func.sum(TokenUsage.completion_tokens), 0),
+            _func.coalesce(_func.sum(TokenUsage.total_tokens), 0),
+            _func.count(TokenUsage.id),
+        ).where(TokenUsage.user_id == user.id)
+    ).one()
+
+    tokens_24h = int(db.scalar(
+        select(_func.coalesce(_func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= d1)
+    ) or 0)
+    tokens_7d = int(db.scalar(
+        select(_func.coalesce(_func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= d7)
+    ) or 0)
+    tokens_30d = int(db.scalar(
+        select(_func.coalesce(_func.sum(TokenUsage.total_tokens), 0))
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= d30)
+    ) or 0)
+
+    by_action_rows = db.execute(
+        select(
+            TokenUsage.action,
+            _func.count(TokenUsage.id),
+            _func.coalesce(_func.sum(TokenUsage.total_tokens), 0),
+        )
+        .where(TokenUsage.user_id == user.id)
+        .group_by(TokenUsage.action)
+        .order_by(_func.sum(TokenUsage.total_tokens).desc())
+    ).all()
+    by_action = [
+        {"action": a, "calls": int(c), "tokens": int(t)} for a, c, t in by_action_rows
+    ]
+
+    # NOTE: intentionally NOT computing a by_model breakdown here. Model
+    # identities are an implementation detail we don't surface to end users.
+
+    per_day_rows = db.execute(
+        select(
+            _func.date_trunc("day", TokenUsage.created_at).label("day"),
+            _func.coalesce(_func.sum(TokenUsage.total_tokens), 0),
+            _func.count(TokenUsage.id),
+        )
+        .where(TokenUsage.user_id == user.id, TokenUsage.created_at >= now - timedelta(days=30))
+        .group_by("day").order_by("day")
+    ).all()
+    per_day = [
+        {"day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
+         "tokens": int(t), "calls": int(c)}
+        for d, t, c in per_day_rows
+    ]
+
+    recent_rows = list(db.scalars(
+        base.order_by(TokenUsage.id.desc()).limit(20)
+    ))
+    # Recent rows scrub the model identifier so the user never sees which
+    # backend the request was routed to.
+    recent = [
+        {"id": r.id, "action": r.action,
+         "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
+         "total_tokens": r.total_tokens, "latency_ms": r.latency_ms,
+         "created_at": r.created_at.isoformat() if r.created_at else None}
+        for r in recent_rows
+    ]
+
+    return _TokenSummaryOut(
+        prompt_tokens=int(totals_row[0]),
+        completion_tokens=int(totals_row[1]),
+        total_tokens=int(totals_row[2]),
+        calls=int(totals_row[3]),
+        tokens_24h=tokens_24h,
+        tokens_7d=tokens_7d,
+        tokens_30d=tokens_30d,
+        by_action=by_action,
+        per_day=per_day,
+        recent=recent,
+    )

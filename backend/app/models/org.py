@@ -60,11 +60,22 @@ class User(Base):
     wing_id: Mapped[int] = mapped_column(ForeignKey("wings.id"))
     office_id: Mapped[int | None] = mapped_column(ForeignKey("offices.id"), nullable=True)
     username: Mapped[str] = mapped_column(String(100), unique=True)
-    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(200), unique=True, nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Free-text organisation the user belongs to (firm / department / company).
+    # Filled in by the user from their profile page — independent of `wing`,
+    # which is the admin-controlled seat scope.
+    organisation: Mapped[str | None] = mapped_column(String(200), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(default=Role.officer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Self-service registrations land as 'pending' and cannot log in until an
+    # admin moves them to 'approved'. 'rejected' is terminal.
+    approval_status: Mapped[str] = mapped_column(String(20), default="approved")
+    approved_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     wing: Mapped[Wing] = relationship(back_populates="users")

@@ -3,7 +3,11 @@ import { ReactNode } from "react";
 import Layout from "./components/Layout";
 import { landingPath, useAuth } from "./auth";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Landing from "./pages/Landing";
 import Ask from "./pages/Ask";
+import ProfilePage from "./pages/Profile";
+import UserTokenUsagePage from "./pages/TokenUsage";
 import Documents from "./pages/Documents";
 import History from "./pages/History";
 import Appeals from "./pages/Appeals";
@@ -18,6 +22,7 @@ import ModelManagementPage from "./pages/admin/ModelManagement";
 import ServerStatsPage from "./pages/admin/ServerStats";
 import RevenueManagementPage from "./pages/admin/RevenueManagement";
 import LicenseManagementPage from "./pages/admin/LicenseManagement";
+import TokenUsagePage from "./pages/admin/TokenUsage";
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
   const { session, loading } = useAuth();
@@ -55,7 +60,11 @@ export default function App() {
   const landing = landingPath(session?.role);
   return (
     <Routes>
+      {/* Public landing page — the front door for logged-out visitors;
+          signed-in users skip straight to their role's home. */}
+      <Route path="/" element={session ? <Navigate to={landing} replace /> : <Landing />} />
       <Route path="/login" element={session ? <Navigate to={landing} replace /> : <Login />} />
+      <Route path="/register" element={session ? <Navigate to={landing} replace /> : <Register />} />
 
       {/* Chat + user-facing tools are not for admin accounts — admins are
           bounced to the admin console. */}
@@ -65,6 +74,8 @@ export default function App() {
       <Route path="/rulings" element={<NonAdminOnly><Rulings /></NonAdminOnly>} />
       <Route path="/documents" element={<NonAdminOnly><Documents /></NonAdminOnly>} />
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />
+      <Route path="/profile" element={<NonAdminOnly><ProfilePage /></NonAdminOnly>} />
+      <Route path="/tokens" element={<NonAdminOnly><UserTokenUsagePage /></NonAdminOnly>} />
 
       {/* Admin console — full-screen with its own sidebar (no outer Layout). */}
       <Route
@@ -83,6 +94,7 @@ export default function App() {
         <Route path="admins" element={<UserManagement mode="admins" />} />
         <Route path="model" element={<ModelManagementPage />} />
         <Route path="server" element={<ServerStatsPage />} />
+        <Route path="tokens" element={<TokenUsagePage />} />
         <Route
           path="revenue"
           element={
@@ -101,7 +113,11 @@ export default function App() {
         />
       </Route>
 
-      <Route path="*" element={<Navigate to={landing} replace />} />
+      {/* Unknown URL: signed-in users hit their home; everyone else lands on /. */}
+      <Route
+        path="*"
+        element={<Navigate to={session ? landing : "/"} replace />}
+      />
     </Routes>
   );
 }
