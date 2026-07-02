@@ -1,0 +1,24 @@
+# Adds the CPU ml-server (bge-m3 + bge-reranker-v2-m3) to the web-app deployment.
+# docker-compose.web.yml deliberately excludes ml-server; this override supplies a
+# local CPU one so the deployed app's ML_SERVER_URL=http://ml-server:8001 resolves
+# (query-time embed/rerank is one-at-a-time, so CPU latency is fine — no GPU needed
+# for serving; the GPU box is only for bulk (re)embedding).
+#
+# Usage (on the web VPS):
+#   docker-compose -f docker-compose.web.yml -f docker-compose.mlserver.yml up -d --build ml-server
+name: bharathtax-web
+services:
+  ml-server:
+    build: ./ml-server
+    restart: unless-stopped
+    env_file: [.env]            # ML_DEVICE=cpu, EMBEDDING_MODEL, RERANKER_MODEL
+    volumes:
+      - hfcache:/root/.cache/huggingface   # persist the ~4.6 GB bge weights
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health',timeout=3).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 300s
+volumes:
+  hfcache:
