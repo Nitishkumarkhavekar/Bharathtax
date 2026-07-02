@@ -44,15 +44,17 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 - [ ] Circular/notification parser profile (flat prose + numbered paras)
 - [ ] Effective-date versioning applied (amendments add, never overwrite)
 
-## Phase 3 — Case law / judiciary  (target: weeks, biggest volume)  — **T + B**
-- [~] **High Courts** — AWS *Indian High Court Judgments* open dataset
-  - [~] Bombay HC (Goa bench) ingested — **79 unique** after dedup
-  - [ ] **Widen to ALL High Courts** (dataset has every HC) — *T to expand selection*
-  - [ ] De-dup on disk (210 redundant connected-matter files) — optional cleanup
-- [ ] **ITAT** tribunal orders — itat.gov.in
-- [ ] **Supreme Court** income-tax judgments — SC portal / public sets
-- [ ] AAR / Advance Rulings
-- [ ] Judgment metadata: court, bench, date, CNR, parties, sections-cited
+## Phase 3 — Case law / judiciary  ✅ (HC + SC DONE 2026-07-02/03; largest volume)  — **B**
+- [x] **ALL High Courts — COMPLETE**: 99,358 income-tax judgments (all 25 HCs, all years,
+      substantive+procedural) via AWS *Indian HC Judgments* open dataset — `scripts/acquire_caselaw.py`
+      (harvest 138,121 by title-filter → filtered/full download → dedup ingest → GPU embed)
+- [x] **Supreme Court — COMPLETE**: 1,479 income-tax judgments (1952→2026, binding precedent) —
+      `scripts/acquire_sc.py` (AWS *Indian SC Judgments* open dataset)
+- [~] **ITAT** tribunal orders — itat.gov.in — **DEFERRED**: captcha-per-search + per-bench/date
+      granularity ⇒ ~300k+ gated searches (not doable politely at full scale). Persuasive not binding;
+      corpus already has all *binding* case law. Do a bounded slice / RTI bulk request later. See memory.
+- [ ] AAR / Advance Rulings (optional)
+- [x] Judgment metadata: court, title/parties, decision date, CNR, disposal (from dataset)
 
 ## Phase 4 — Embed at scale  ✅ (DONE 2026-07-01, RTX 5060 Ti)
 - [x] GPU ml-server (bge-m3, `device:cuda`) on the box; laptop drove `embed-pending` over the network
