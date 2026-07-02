@@ -64,9 +64,16 @@ Owner: **B** = this pipeline (me) · **T** = Tapas (case-law/appeal)
 - [x] OCR'd the 193 image-only scanned notifications (incl. Income-tax Rules 2026) + embedded
 - [x] **FINAL: 12,656 docs / 56,652 chunks — 100% embedded + tsvector, HNSW+GIN, all verify PASS**
 
-## Phase 5 — Freshness (ongoing)
-- [ ] Celery-beat incremental jobs: pull NEW circulars/notifications/judgments (delta only)
-- [ ] Re-embed deltas on GPU on a schedule
+## Phase 5 — Freshness  ✅ (DONE 2026-07-03)
+- [x] **`scripts/freshness.py`** (host) — delta-crawl current-year circulars/notifications (ITD browser)
+      + recent-year HC/SC (AWS) → stage → **embed the delta on the GPU** (durable rule) → verify.
+      Idempotent (byte/content dedup) → re-runs add only genuinely-new docs. *Validated: caught 8 new chunks.*
+- [x] **`scripts/prod_sync.py`** — incremental **zero-downtime** COPY-append of new dev rows to prod + verify.
+- [x] Split rationale: acquisition needs a browser (Akamai) / boto3 (AWS) not in the container →
+      **HOST acquires → CONTAINER ingests+embeds** (existing pipeline). Celery `incremental_update` still
+      re-ingests disk state daily.
+- **Schedule (weekly):** Windows Task Scheduler → `python scripts/freshness.py && python scripts/prod_sync.py`
+  (or cron on a host with the browser + AWS libs). Case-law re-scan is the slow part; run weekly, off-hours.
 
 ## Cross-cutting — Quality & governance (apply to every source)
 - [ ] Reject empty / image-only PDFs (or route to OCR) — formalize the ad-hoc check
