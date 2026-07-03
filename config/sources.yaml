@@ -121,6 +121,16 @@ sources:
     parser: treaty_sections
     enabled: true
 
+  - key: cbdt_press_releases
+    domain: income_tax
+    name: CBDT Press Releases (1997-2026)
+    source_type: circular
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/press-release
+    manual_glob: "income_tax/press_releases/*.txt"
+    parser: press_release
+    enabled: true
+
   - key: finance_bill_explanatory
     domain: income_tax
     name: Finance Bill Memorandum + Notes on Clauses (legislative intent, 2000-2026)

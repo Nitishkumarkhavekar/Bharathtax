@@ -21,6 +21,7 @@ _REGISTRY: dict[str, Parser] = {
     "finance_bill": partial(act_sections.parse, unit_label="Clause"),
     "cbdt_circular": partial(cbdt.parse, doc_type_label="Circular"),
     "cbdt_notification": partial(cbdt.parse, doc_type_label="Notification"),
+    "press_release": partial(cbdt.parse, doc_type_label="Press Release"),
 }
 
 
