@@ -17,6 +17,7 @@ _REGISTRY: dict[str, Parser] = {
     "it_rules": it_rules.parse,
     "act_sections": act_sections.parse,
     "rule_sections": partial(act_sections.parse, unit_label="Rule"),
+    "treaty_sections": partial(act_sections.parse, unit_label="Article"),
     "cbdt_circular": partial(cbdt.parse, doc_type_label="Circular"),
     "cbdt_notification": partial(cbdt.parse, doc_type_label="Notification"),
 }

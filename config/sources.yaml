@@ -111,6 +111,16 @@ sources:
     parser: act_sections
     enabled: true
 
+  - key: dtaa_treaties
+    domain: income_tax
+    name: Double Taxation Avoidance Agreements (tax treaties)
+    source_type: act
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/dtaa
+    manual_glob: "income_tax/dtaa/*.txt"
+    parser: treaty_sections
+    enabled: true
+
   - key: it_rules_complete
     domain: income_tax
     name: Income-tax Rules (complete)
