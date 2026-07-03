@@ -89,6 +89,26 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileSidebar, setMobileSidebar] = useState(false);
+  // Desktop chat-sidebar collapse — persisted so the preference survives
+  // reloads. Default: expanded.
+  const [chatSidebarCollapsed, setChatSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("bt_chat_sidebar_collapsed_v1") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleChatSidebar = () => {
+    setChatSidebarCollapsed((c) => {
+      const nxt = !c;
+      try {
+        localStorage.setItem("bt_chat_sidebar_collapsed_v1", nxt ? "1" : "0");
+      } catch {
+        /* */
+      }
+      return nxt;
+    });
+  };
   // Index of the most recently arrived assistant message that should animate
   // in word-by-word. Cleared when the typewriter reaches the end.
   const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
@@ -228,6 +248,8 @@ export default function Chat() {
           onSelect={selectThread}
           onNew={startNew}
           onDelete={deleteThread}
+          collapsed={chatSidebarCollapsed}
+          onToggleCollapsed={toggleChatSidebar}
         />
       </div>
 

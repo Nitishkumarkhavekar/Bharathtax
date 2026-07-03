@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import admin, appeal, assist, ask, auth, documents, history, rulings
+from app.api.routes import admin, appeal, assist, ask, auth, documents, history, ratings, rulings
 from app.api.routes import appeal_oo
 from app.core.config import settings
 from app.core.db import Base, engine
@@ -83,6 +83,7 @@ app.include_router(appeal.router)
 app.include_router(appeal_oo.router)
 app.include_router(rulings.router)
 app.include_router(assist.router)
+app.include_router(ratings.router)
 
 
 @app.get("/health", tags=["meta"])

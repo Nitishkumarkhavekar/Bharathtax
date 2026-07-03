@@ -13,6 +13,8 @@ import {
   X,
   UserCircle2,
   Coins,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
@@ -80,7 +82,13 @@ function SeatWidget() {
   );
 }
 
-function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarBody({
+  onNavigate,
+  collapsed = false,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+}) {
   const { session, logout } = useAuth();
   const loc = useLocation();
   const nav = NAV.filter((n) => !n.roles || (session && n.roles.includes(session.role)));
@@ -102,28 +110,42 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* Brand */}
-      <div className="relative h-16 flex items-center gap-2.5 px-5 border-b border-slate-200/80">
+      <div
+        className={cn(
+          "relative h-16 flex items-center border-b border-slate-200/80",
+          collapsed ? "px-0 justify-center" : "px-5 gap-2.5",
+        )}
+      >
         <div className="relative">
           <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/30 to-violet-500/30 blur-md" />
           <div className="relative size-9 rounded-xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-1 ring-white/40 shadow-md">
             <Scale className="size-4.5 text-white" strokeWidth={2.2} />
           </div>
         </div>
-        <div className="leading-tight">
-          <div className="text-[15px] font-semibold tracking-tight text-slate-900">
-            BharathTax
+        {!collapsed && (
+          <div className="leading-tight">
+            <div className="text-[15px] font-semibold tracking-tight text-slate-900">
+              BharathTax
+            </div>
+            <div className="text-[10.5px] text-slate-500 -mt-0.5">
+              Income-tax research
+            </div>
           </div>
-          <div className="text-[10.5px] text-slate-500 -mt-0.5">
-            Income-tax research
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="relative flex-1 p-3 space-y-1 overflow-y-auto chat-scrollbar">
-        <div className="px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-          Workspace
-        </div>
+      <nav
+        className={cn(
+          "relative flex-1 space-y-1 overflow-y-auto chat-scrollbar",
+          collapsed ? "px-2 py-3" : "p-3",
+        )}
+      >
+        {!collapsed && (
+          <div className="px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            Workspace
+          </div>
+        )}
         {nav.map((n) => {
           const active = loc.pathname.startsWith(n.to);
           return (
@@ -131,15 +153,20 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               key={n.to}
               to={n.to}
               onClick={onNavigate}
+              title={collapsed ? n.label : undefined}
+              aria-label={n.label}
               className={cn(
-                "group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13.5px] font-medium transition-all",
+                "group relative flex items-center rounded-xl text-[13.5px] font-medium transition-all",
+                collapsed
+                  ? "justify-center p-1.5"
+                  : "gap-3 px-2.5 py-2",
                 active
                   ? "bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-slate-900 font-semibold ring-1 ring-primary/35 shadow-sm"
                   : "text-slate-800 hover:bg-primary/[0.07] hover:text-slate-900 hover:ring-1 hover:ring-primary/15",
               )}
             >
               {/* Active-state left accent bar */}
-              {active && (
+              {active && !collapsed && (
                 <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-gradient-to-b from-primary to-violet-500" />
               )}
               <span
@@ -150,40 +177,66 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <n.icon className="size-4" />
               </span>
-              <span className="min-w-0 flex-1 truncate">{n.label}</span>
+              {!collapsed && (
+                <span className="min-w-0 flex-1 truncate">{n.label}</span>
+              )}
             </Link>
           );
         })}
       </nav>
 
       {/* Footer: seat widget + user card */}
-      <div className="relative border-t border-slate-200/80 p-3 space-y-3">
-        <SeatWidget />
-        <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-2.5 flex items-center gap-2.5">
-          <div className="relative shrink-0">
-            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
-            <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
-              {firstLetter}
+      <div
+        className={cn(
+          "relative border-t border-slate-200/80",
+          collapsed ? "p-2" : "p-3 space-y-3",
+        )}
+      >
+        {!collapsed && <SeatWidget />}
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative" title={session?.username}>
+              <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
+              <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
+                {firstLetter}
+              </div>
             </div>
+            <button
+              onClick={logout}
+              title="Logout"
+              aria-label="Logout"
+              className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+            >
+              <LogOut className="size-4" />
+            </button>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold truncate text-slate-900">
-              {session?.username}
+        ) : (
+          <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-2.5 flex items-center gap-2.5">
+            <div className="relative shrink-0">
+              <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
+              <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
+                {firstLetter}
+              </div>
             </div>
-            <div className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-slate-500 capitalize">
-              <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
-              {session?.role?.replace("_", " ")}
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold truncate text-slate-900">
+                {session?.username}
+              </div>
+              <div className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-slate-500 capitalize">
+                <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
+                {session?.role?.replace("_", " ")}
+              </div>
             </div>
+            <button
+              onClick={logout}
+              title="Logout"
+              aria-label="Logout"
+              className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+            >
+              <LogOut className="size-4" />
+            </button>
           </div>
-          <button
-            onClick={logout}
-            title="Logout"
-            aria-label="Logout"
-            className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-          >
-            <LogOut className="size-4" />
-          </button>
-        </div>
+        )}
       </div>
     </>
   );
@@ -193,6 +246,26 @@ export default function Layout({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const current = NAV.find((n) => loc.pathname.startsWith(n.to));
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Desktop sidebar collapsed state — persisted so it survives page reloads
+  // and route changes. Default is expanded.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("bt_sidebar_collapsed_v1") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const nxt = !c;
+      try {
+        localStorage.setItem("bt_sidebar_collapsed_v1", nxt ? "1" : "0");
+      } catch {
+        /* */
+      }
+      return nxt;
+    });
+  };
 
   // Close the drawer whenever the route changes.
   useEffect(() => {
@@ -201,9 +274,16 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 lg:w-64 shrink-0 relative overflow-hidden bt-sidebar-bg text-slate-800 border-r border-slate-200 flex-col">
-        <SidebarBody />
+      {/* Desktop sidebar — collapses to a 4rem icon rail when the header
+          toggle is clicked. The width is animated so the transition feels
+          intentional. */}
+      <aside
+        className={cn(
+          "hidden md:flex shrink-0 relative overflow-hidden bt-sidebar-bg text-slate-800 border-r border-slate-200 flex-col transition-[width] duration-200 ease-out",
+          collapsed ? "w-16" : "w-60 lg:w-64",
+        )}
+      >
+        <SidebarBody collapsed={collapsed} />
       </aside>
 
       {/* Mobile drawer */}
@@ -233,10 +313,24 @@ export default function Layout({ children }: { children: ReactNode }) {
         <header className="h-14 sm:h-16 shrink-0 bt-header-glass flex items-center px-3 sm:px-6 lg:px-8 gap-2 sticky top-0 z-30">
           <button
             onClick={() => setMobileOpen(true)}
-            className="md:hidden p-2 rounded-md hover:bg-slate-100"
+            className="md:hidden p-2 rounded-md hover:bg-slate-100 text-slate-700"
             aria-label="Open menu"
           >
             <Menu className="size-5" />
+          </button>
+          {/* Desktop collapse toggle — hides the sidebar to an icon rail
+              (or expands it back). Persisted in localStorage. */}
+          <button
+            onClick={toggleCollapsed}
+            className="hidden md:inline-flex p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-primary transition-colors"
+            aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
+            title={collapsed ? "Show sidebar" : "Hide sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-5" />
+            ) : (
+              <PanelLeftClose className="size-5" />
+            )}
           </button>
           <h1 className="text-base font-semibold text-foreground truncate">
             {current?.label ?? "BharathTax"}

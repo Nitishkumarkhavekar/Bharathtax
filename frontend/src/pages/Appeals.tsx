@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
   Gavel,
   Plus,
@@ -486,6 +487,7 @@ function FilterChips({
 }
 
 function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
+  const { confirm, dialog } = useConfirm();
   const status = (c.status || "new") as keyof typeof STATUS_META;
   const meta = STATUS_META[status] ?? STATUS_META.new;
   const StatusIcon = meta.icon;
@@ -504,7 +506,15 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
 
   async function stop(e: React.MouseEvent) {
     swallow(e);
-    if (!confirm(`Stop the pipeline for "${c.title}"?`)) return;
+    const ok = await confirm({
+      title: `Stop the pipeline for "${c.title}"?`,
+      description:
+        "Modules that have already completed will be kept. Modules still in progress will be aborted — you can rerun anytime.",
+      tone: "warning",
+      confirmLabel: "Stop pipeline",
+      cancelLabel: "Keep running",
+    });
+    if (!ok) return;
     setStopping(true);
     try {
       await api.appealStopCase(c.id);
@@ -518,12 +528,35 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
 
   async function deleteCase(e: React.MouseEvent) {
     swallow(e);
-    if (
-      !confirm(
-        `Delete "${c.title}"?\n\nThis permanently removes the case, every uploaded PDF, and every pipeline run. This cannot be undone.`,
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `Delete "${c.title}"?`,
+      description:
+        "This permanently removes the case, every uploaded PDF, and every pipeline run. This cannot be undone.",
+      tone: "danger",
+      confirmLabel: "Delete case",
+      detail: (c.pan || c.assessment_year || c.section) ? (
+        <div className="flex flex-col gap-1">
+          {c.pan && (
+            <div>
+              <b className="text-slate-800">PAN:</b>{" "}
+              <span className="font-mono tracking-wider">{c.pan}</span>
+            </div>
+          )}
+          {c.assessment_year && (
+            <div>
+              <b className="text-slate-800">AY:</b> {c.assessment_year}
+            </div>
+          )}
+          {c.section && (
+            <div>
+              <b className="text-slate-800">Section:</b>{" "}
+              <span className="tabular-nums">{c.section}</span>
+            </div>
+          )}
+        </div>
+      ) : undefined,
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       await api.appealDeleteCase(c.id);
@@ -558,9 +591,6 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
             <div className="font-semibold text-slate-900 text-[15px] truncate">
               {c.title}
             </div>
-            <span className="text-[10.5px] text-slate-400 tabular-nums shrink-0">
-              #{c.id}
-            </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
             <Meta icon={<CalendarDays className="size-3" />} label={c.assessment_year ? `AY ${c.assessment_year}` : "AY —"} />
@@ -630,6 +660,7 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
           }}
         />
       )}
+      {dialog}
     </Link>
   );
 }
@@ -705,7 +736,7 @@ function EditCaseModal({
                 Edit case metadata
               </div>
               <div className="text-[11.5px] text-slate-500">
-                #{c.id} · updates apply immediately
+                Updates apply immediately
               </div>
             </div>
           </div>

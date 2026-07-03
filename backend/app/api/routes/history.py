@@ -158,13 +158,19 @@ def my_history(
                     elif a.resource_type == "appeal_document":
                         display_name = doc_names.get(rid) or (a.query_text or None)
 
+            # Prefer the human-readable name; NEVER surface the numeric id.
+            # If the underlying case/doc is gone AND we don't have a title
+            # snapshot, say so with plain English instead of "#3" — the raw
+            # id is an implementation detail.
             detail: str | None
             if display_name:
                 detail = display_name
             elif a.query_text:
                 detail = a.query_text
-            elif a.resource_id:
-                detail = f"#{a.resource_id}"
+            elif a.resource_type == "appeal_case":
+                detail = "Case no longer available"
+            elif a.resource_type == "appeal_document":
+                detail = "Document no longer available"
             else:
                 detail = None
 

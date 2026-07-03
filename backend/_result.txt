@@ -1,6 +1,0 @@
-STATUS done 926s chars 27241
-compliance.ocr_repaired : []
-compliance.unreadable   : ['54765111_ReplyAgainstDeficiency.pdf', 'docID-366810227-Annexure_2_tracking']
-no-regression 21,49,429  : True
-no-regression not-pressed: True
-__DONE__

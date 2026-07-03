@@ -14,7 +14,7 @@ from app.services import tokens
 from app.core.enums import Domain, QueryScope
 from app.models.activity import Query
 from app.schemas import AnswerResponse, AskRequest, CitationOut
-from app.services import audit, rag
+from app.services import audit, capture, rag
 
 router = APIRouter(prefix="/ask", tags=["ask"])
 
@@ -65,6 +65,14 @@ def ask(body: AskRequest, request: Request,
     audit.log_event(db, action="ask", user_id=p.user.id, wing_id=p.user.wing_id,
                     resource_type="query", resource_id=str(q.id),
                     query_text=body.question, **client_meta(request))
+    try:
+        capture.log_event("chat", task="chat.ask", user_id=p.user.id,
+                          user_prompt=body.question, response=result.text,
+                          meta={"domain": body.domain, "grounded": result.grounded,
+                                "citations": [c.model_dump() for c in citations],
+                                "llm_calls": result.meta.get("llm_calls")})
+    except Exception:  # noqa: BLE001
+        pass
     return AnswerResponse(
         query_id=q.id, scope=QueryScope.corpus, grounded=result.grounded,
         answer=result.text, citations=citations, meta=result.meta, latency_ms=latency,

@@ -16,6 +16,8 @@ import {
   Sparkles,
   Coins,
   ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { ChatThread, groupByRecency } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
@@ -49,6 +51,10 @@ interface ChatSidebarProps {
   onNew: () => void;
   onDelete: (id: string) => void;
   onClose?: () => void; // mobile
+  /** Desktop collapse — when true, renders as a thin icon rail. */
+  collapsed?: boolean;
+  /** Called when the user clicks the show/hide toggle on the sidebar. */
+  onToggleCollapsed?: () => void;
 }
 
 export default function ChatSidebar({
@@ -58,6 +64,8 @@ export default function ChatSidebar({
   onNew,
   onDelete,
   onClose,
+  collapsed = false,
+  onToggleCollapsed,
 }: ChatSidebarProps) {
   const { session, logout } = useAuth();
   const [query, setQuery] = useState("");
@@ -99,6 +107,90 @@ export default function ChatSidebar({
     !!session && ["super_admin", "wing_admin"].includes(session.role);
   const firstLetter = (session?.username || "?").slice(0, 1).toUpperCase();
 
+  // Collapsed rail — a compact icon-only mode that keeps the toggle,
+  // "New chat" button and tool tiles reachable without eating horizontal
+  // space. Expand via the arrow at top-right.
+  if (collapsed) {
+    return (
+      <aside className="relative w-16 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          <div className="absolute -top-16 -left-12 size-56 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute bottom-24 -right-12 size-56 rounded-full bg-violet-300/25 blur-3xl" />
+        </div>
+        {/* Brand mark + expand toggle */}
+        <div className="relative h-16 flex flex-col items-center justify-center gap-1 border-b border-slate-200/80">
+          <div className="relative">
+            <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/30 to-violet-500/30 blur-md" />
+            <div className="relative size-8 rounded-xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-1 ring-white/40 shadow-md">
+              <Scale className="size-4 text-white" strokeWidth={2.2} />
+            </div>
+          </div>
+        </div>
+        <div className="relative flex flex-col items-center gap-2 p-2">
+          <button
+            onClick={onToggleCollapsed}
+            title="Show sidebar"
+            aria-label="Show sidebar"
+            className="size-9 rounded-lg bg-white ring-1 ring-slate-200 hover:ring-primary/40 hover:text-primary text-slate-600 flex items-center justify-center transition-colors"
+          >
+            <PanelLeftOpen className="size-4" />
+          </button>
+          <button
+            onClick={onNew}
+            title="New chat"
+            aria-label="New chat"
+            className="size-9 rounded-lg text-white flex items-center justify-center shadow-lg shadow-primary/25 transition-transform hover:scale-105"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(46,124,200,1) 0%, rgba(37,99,235,1) 55%, rgba(99,102,241,1) 100%)",
+            }}
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
+        {/* Tool icons stacked vertically */}
+        {!isAdmin && (
+          <div className="relative flex-1 overflow-y-auto chat-scrollbar flex flex-col items-center gap-1 py-2">
+            {TOOLS.map((t) => (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                title={t.label}
+                aria-label={t.label}
+                className={({ isActive }) =>
+                  cn(
+                    "size-9 rounded-lg bg-gradient-to-br ring-1 flex items-center justify-center transition-all",
+                    TONE_TILE[t.tone],
+                    isActive && "ring-2 ring-primary/50 shadow-sm",
+                  )
+                }
+              >
+                <t.icon className="size-4" />
+              </NavLink>
+            ))}
+          </div>
+        )}
+        {/* Footer: avatar + logout */}
+        <div className="relative border-t border-slate-200/80 p-2 flex flex-col items-center gap-2">
+          <div className="relative" title={session?.username}>
+            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
+            <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
+              {firstLetter}
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            title="Logout"
+            aria-label="Logout"
+            className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          >
+            <LogOut className="size-4" />
+          </button>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="relative w-full sm:w-72 lg:w-80 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
       {/* Soft aurora accents in the light surface */}
@@ -133,15 +225,27 @@ export default function ChatSidebar({
             </div>
           </div>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="sm:hidden p-2 rounded-md hover:bg-slate-100"
-            aria-label="Close menu"
-          >
-            <X className="size-4 text-slate-600" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {onToggleCollapsed && (
+            <button
+              onClick={onToggleCollapsed}
+              className="hidden sm:inline-flex p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-primary transition-colors"
+              aria-label="Hide sidebar"
+              title="Hide sidebar"
+            >
+              <PanelLeftClose className="size-4" />
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="sm:hidden p-2 rounded-md hover:bg-slate-100"
+              aria-label="Close menu"
+            >
+              <X className="size-4 text-slate-600" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* New chat + search */}

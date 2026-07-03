@@ -196,6 +196,12 @@
 .animate-fade-up { animation: fade-up .25s ease-out both; }
 
 /* Pipeline stepper — running-state animations */
+@keyframes bt-slide {
+  0%   { left: -33%; }
+  50%  { left: 100%; }
+  100% { left: 100%; }
+}
+
 @keyframes bt-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
