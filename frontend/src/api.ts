@@ -406,6 +406,10 @@ export const api = {
     req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style }) }),
   feedback: (b: { question?: string; answer?: string; rating?: string; correction?: string }) =>
     req<{ ok: boolean }>("/assist/feedback", { method: "POST", body: JSON.stringify(b) }),
+  rate: (b: { target_type: "appeal" | "chat"; target_id?: string | number; stars: number; question?: string; answer?: string; comment?: string }) =>
+    req<{ ok: boolean; stars: number }>("/ratings", { method: "POST", body: JSON.stringify({ ...b, target_id: b.target_id == null ? undefined : String(b.target_id) }) }),
+  getRating: (target_type: string, target_id: string | number) =>
+    req<{ stars: number | null; comment: string | null }>(`/ratings/${target_type}/${String(target_id)}`),
   documents: () => req<DocumentOut[]>("/documents"),
   uploadDocument: (file: File) => {
     const fd = new FormData();

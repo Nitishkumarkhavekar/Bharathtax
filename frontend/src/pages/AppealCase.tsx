@@ -1,10 +1,12 @@
 import { ChangeEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2 } from "lucide-react";
+import { StarRating } from "../components/ui/StarRating";
 import { api } from "../api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/lib/markdown";
 
@@ -142,8 +144,10 @@ function Section({
 export default function AppealCase() {
   const { id } = useParams();
   const cid = Number(id);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [c, setC] = useState<any>(null);
   const [missing, setMissing] = useState<string[]>([]);
+  const [uploadNote, setUploadNote] = useState("");
   const [outputs, setOutputs] = useState<Out[]>([]);
   const [findings, setFindings] = useState<Out[]>([]);
   const [run, setRun] = useState<any>(null);
@@ -231,7 +235,15 @@ export default function AppealCase() {
     setRun(r);
   }
   async function stopRun() {
-    if (!confirm("Stop the running pipeline for this case? Modules completed so far will be kept.")) return;
+    const ok = await confirm({
+      title: "Stop the running pipeline?",
+      description:
+        "Modules completed so far will be kept, but any module still in progress will be aborted. You can rerun the pipeline at any time.",
+      tone: "warning",
+      confirmLabel: "Stop pipeline",
+      cancelLabel: "Keep running",
+    });
+    if (!ok) return;
     try {
       await api.appealStopCase(cid);
       setBusy(false); setProgress("");
@@ -257,6 +269,7 @@ export default function AppealCase() {
 
   return (
     <div className="space-y-5">
+      {confirmDialog}
       <Link to="/appeals" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"><ArrowLeft className="size-4" /> All cases</Link>
       {c && (
         <div className="flex items-center gap-3">
@@ -499,6 +512,7 @@ export default function AppealCase() {
             </div>
           </Section>
 
+          <DraftRating cid={cid} />
           <DraftSection
             cid={cid}
             draft={draft}
@@ -512,6 +526,25 @@ export default function AppealCase() {
     </div>
   );
 }
+
+function DraftRating({ cid }: { cid: number }) {
+  const [stars, setStars] = useState(0);
+  useEffect(() => {
+    api.getRating("appeal", cid).then((r) => { if (r?.stars) setStars(r.stars); }).catch(() => {});
+  }, [cid]);
+  async function rate(n: number) {
+    setStars(n);
+    try { await api.rate({ target_type: "appeal", target_id: cid, stars: n }); } catch { /* best-effort */ }
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <span className="text-sm font-medium text-slate-700">Rate this draft order:</span>
+      <StarRating value={stars} onRate={rate} size={22} />
+      {stars > 0 ? <span className="text-sm text-amber-500">{stars}/5 — thank you!</span> : null}
+    </div>
+  );
+}
+
 
 // ---------------------------------------------------------------- Module 6
 type Ver = { id: number; version: number; edited: boolean; content: string };
@@ -536,6 +569,11 @@ function DraftSection({
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewErr, setPreviewErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Tracks whether the iframe's inner PDF viewer has actually finished
+  // initialising. Browser PDF viewers show a hideous "may have been moved,
+  // edited, or deleted" grey screen for a beat while they warm up — we
+  // hide that behind our own skeleton until the iframe fires `onLoad`.
+  const [iframeReady, setIframeReady] = useState(false);
   // Stable callback identity so the OnlyOffice editor doesn't unmount whenever
   // the parent re-renders (it does, often: every preview state change). We
   // pass this down instead of an inline arrow function.
@@ -552,6 +590,9 @@ function DraftSection({
       if (!draft.trim()) return;
       setPreviewBusy(true);
       setPreviewErr(null);
+      // Reset the iframe-ready flag whenever a new render kicks off so the
+      // skeleton overlays the STALE PDF until the new blob finishes loading.
+      setIframeReady(false);
       try {
         // The /preview.pdf endpoint synchronously asks OnlyOffice to flush
         // any in-flight edits and waits for our save-callback before
@@ -650,11 +691,13 @@ function DraftSection({
       </div>
 
       {mode === "preview" ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
-          {previewBusy && !pdfUrl && (
-            <div className="h-[760px] flex items-center justify-center text-sm text-slate-500">
-              <Loader2 className="size-4 animate-spin mr-2" /> Rendering preview…
-            </div>
+        <div className="relative rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          {/* Loading skeleton — shown either while we're rendering server-side
+              OR while the browser PDF viewer is still warming up (that's the
+              "It may have been moved…" phase). Fades out once the iframe's
+              onLoad fires. */}
+          {(previewBusy || !iframeReady) && !previewErr && (
+            <PreviewLoadingSkeleton mode={pdfUrl ? "loading" : "rendering"} />
           )}
           {previewErr && !previewBusy && (
             <div className="p-4 text-sm flex items-start gap-2 text-rose-700 bg-rose-50 border-b border-rose-100">
@@ -677,7 +720,11 @@ function DraftSection({
               key={pdfUrl}
               src={pdfUrl}
               title="Draft appellate order preview"
-              className="w-full h-[760px] bg-white"
+              onLoad={() => setIframeReady(true)}
+              className={cn(
+                "w-full h-[760px] bg-white transition-opacity duration-300",
+                iframeReady ? "opacity-100" : "opacity-0",
+              )}
             />
           )}
           {!pdfUrl && !previewBusy && !previewErr && (
@@ -945,9 +992,17 @@ function DocRow({
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const { confirm: confirmDialog, dialog: dialogNode } = useConfirm();
 
   async function deleteDoc() {
-    if (!confirm(`Delete "${doc.filename}"? This also removes the PDF from storage.`)) return;
+    const ok = await confirmDialog({
+      title: `Delete "${doc.filename}"?`,
+      description:
+        "This also removes the PDF from storage and drops it from any compliance check for this case.",
+      tone: "danger",
+      confirmLabel: "Delete document",
+    });
+    if (!ok) return;
     setDeleting(true);
     setErr(null);
     try {
@@ -992,6 +1047,7 @@ function DocRow({
 
   return (
     <div className="flex items-center gap-3 p-2.5">
+      {dialogNode}
       <FileText className="size-4 text-muted-foreground shrink-0" />
       <span className="flex-1 text-sm truncate" title={doc.filename}>
         {doc.filename}
@@ -1086,6 +1142,86 @@ function DocRow({
 /** Placeholder shown inside a module Section when its output hasn't landed
  *  yet — either the pipeline is still processing it, or the run hasn't been
  *  kicked off. Keeps expanded-but-empty sections from looking broken. */
+/** Attractive overlay shown on top of the preview iframe while it warms up.
+ *  Prevents the ugly Chrome PDF-viewer fallback ("It may have been moved,
+ *  edited, or deleted.") from ever being visible to the user.
+ *
+ *  `mode="rendering"` is used when we're waiting for the server to build the
+ *  PDF; `mode="loading"` when the PDF is en route but the browser viewer
+ *  hasn't painted its first frame yet. */
+function PreviewLoadingSkeleton({ mode }: { mode: "rendering" | "loading" }) {
+  const phrases =
+    mode === "rendering"
+      ? [
+          "Rendering your draft appellate order",
+          "Composing paragraphs",
+          "Numbering paragraphs",
+          "Applying legal typography",
+          "Finalising the preview",
+        ]
+      : [
+          "Loading document viewer",
+          "Streaming the PDF",
+          "Preparing the preview",
+        ];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % phrases.length), 1600);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div
+      className="absolute inset-0 z-10 flex items-center justify-center bg-white/95 backdrop-blur-sm animate-fade-up"
+      aria-live="polite"
+      role="status"
+    >
+      {/* Fake paginated document mock behind the message so the loader
+          reads as "your document, arriving" rather than a blank spinner. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4 opacity-40">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="w-[min(560px,80%)] rounded-lg bg-gradient-to-br from-slate-50 to-white ring-1 ring-slate-200 shadow-sm p-6 animate-pulse"
+            style={{ animationDelay: `${i * 200}ms` }}
+          >
+            <div className="h-3 rounded bg-slate-200 w-2/5 mb-4" />
+            <div className="space-y-2">
+              <div className="h-2 rounded bg-slate-100 w-full" />
+              <div className="h-2 rounded bg-slate-100 w-11/12" />
+              <div className="h-2 rounded bg-slate-100 w-10/12" />
+              <div className="h-2 rounded bg-slate-100 w-9/12" />
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Foreground: gradient-glow document icon + rotating status. */}
+      <div className="relative flex flex-col items-center gap-4 px-6 text-center">
+        <div className="relative">
+          <div className="absolute -inset-4 rounded-2xl bg-gradient-to-br from-primary/30 via-sky-400/30 to-violet-500/30 blur-2xl animate-pulse [animation-duration:2.5s]" />
+          <div className="relative size-14 rounded-2xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-4 ring-white shadow-lg shadow-primary/25">
+            <FileSignature className="size-6 text-white" strokeWidth={2.2} />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <div
+            key={idx}
+            className="text-[14px] font-semibold text-slate-800 status-phrase"
+          >
+            {phrases[idx]}…
+          </div>
+          <div className="text-[11.5px] text-slate-500">
+            Times New Roman · italic body · hanging indent
+          </div>
+        </div>
+        <div className="relative w-40 h-1 rounded-full bg-slate-100 overflow-hidden">
+          <div className="absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-primary via-sky-500 to-violet-500 animate-[bt-slide_1.4s_ease-in-out_infinite]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModulePlaceholder({ state }: { state: StepState }) {
   if (state === "current") {
     return (

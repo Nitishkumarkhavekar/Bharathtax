@@ -33,6 +33,7 @@ class _RunCancelled(Exception):
     cancel endpoint instead of overwriting it with a generic error."""
     pass
 from app.services import tokens
+from app.services import capture
 from app.services.retrieval import retrieve
 
 log = get_logger(__name__)
@@ -129,6 +130,11 @@ class GeminiLLM:
                     if not txt:
                         last_err = f"{m} empty (finish={cands[0].get('finishReason')})"
                         break  # not transient -> try next model
+                    try:
+                        capture.log_llm(system, user, txt, model=m,
+                                        usage=self.last_usage, latency_ms=self.last_latency_ms)
+                    except Exception:  # noqa: BLE001
+                        pass
                     return txt
                 except Exception as e:  # noqa: BLE001
                     last_err = f"{m} {type(e).__name__}: {e}"
@@ -446,14 +452,24 @@ def _docs_text(case: AppealCase, max_chars: int = 120000 if _BIG_CTX else 20000)
     the output). Pre-trims very long individual documents so we don't pack the
     whole budget into one assessment order.
     """
-    # On Gemini (huge context) skip the per-document digest entirely: feed the RAW
-    # text (no lossy summarising, and ~6 fewer LLM calls per run). Cap each doc so a
-    # single long file can't dominate. On the small-context Llama path, digest as before.
-    per_doc = 25000 if _BIG_CTX else 10**9
+    # Digest each document (keeps downstream context small -> calls stay fast) but do
+    # the digests IN PARALLEL so they complete concurrently rather than one-by-one.
+    per_doc = 10**9  # digests are already condensed
+    _docs = list(case.documents)
+    _pctx = capture.get_context()
+    def _digest_doc(d):
+        try:
+            capture.set_context(**_pctx)
+        except Exception:  # noqa: BLE001
+            pass
+        return _digest_one(d.filename, d.category, (d.text or "").strip()).strip()
+    if _docs:
+        with ThreadPoolExecutor(max_workers=min(len(_docs), 6)) as _ex:
+            _bodies = list(_ex.map(_digest_doc, _docs))
+    else:
+        _bodies = []
     parts = []
-    for d in case.documents:
-        raw = (d.text or "").strip()
-        body = raw if _BIG_CTX else _digest_one(d.filename, d.category, raw).strip()
+    for d, body in zip(_docs, _bodies):
         if len(body) > per_doc:
             body = body[:per_doc] + "\n…[truncated]…"
         parts.append(f"===== {d.filename} (category: {d.category}) =====\n{body}")
@@ -465,6 +481,18 @@ def _docs_text(case: AppealCase, max_chars: int = 120000 if _BIG_CTX else 20000)
 
 def _trim(s: str, n: int) -> str:
     return s if len(s) <= n else s[:n] + "\n…[truncated]…"
+
+
+def _sample_text(text: str, *, target_chars: int = 3200) -> str:
+    """A representative excerpt of a document: the whole thing if short, otherwise
+    head + tail (key figures and dates cluster at the start; grounds and conclusions
+    at the end), so a long file's salient parts survive the context budget."""
+    text = (text or "").strip()
+    if len(text) <= target_chars:
+        return text
+    head = target_chars * 2 // 3
+    tail = target_chars - head
+    return text[:head].rstrip() + "\n…\n" + text[-tail:].lstrip()
 
 
 def _issue_doc_context(case: AppealCase, issue_text: str, *, max_chars: int = 24000) -> str:
@@ -719,6 +747,11 @@ def run_case(run_id: int) -> None:
         # started the run (via run.created_by), so the token spend shows up
         # per-user in the admin console.
         owner_id = run.created_by
+        _cap_snap = {"user_id": owner_id, "case_id": case.id, "run_id": run.id}
+        try:
+            capture.set_context(**_cap_snap)
+        except Exception:  # noqa: BLE001
+            pass
 
         def _bill(action: str) -> None:
             meta = _last_llm_meta()
@@ -740,6 +773,10 @@ def run_case(run_id: int) -> None:
             if _empties:
                 progress(f"OCR: reading {len(_empties)} scanned document(s)")
                 def _ocr_one(d):
+                    try:
+                        capture.set_context(**_cap_snap)
+                    except Exception:  # noqa: BLE001
+                        pass
                     return d, _ocr_pdf(d.minio_key, d.filename)
                 with ThreadPoolExecutor(max_workers=min(len(_empties), 4)) as _ex:
                     for _d, _txt in _ex.map(_ocr_one, _empties):
@@ -793,11 +830,17 @@ def run_case(run_id: int) -> None:
         db.add(AppealOutput(run_id=run.id, kind="issue_matrix", content=json.dumps(understanding, ensure_ascii=False)))
 
         progress(f"Module 5: Drafting {len(issues)} ground(s) in parallel")
+        _case_id = case.id
         def _draft_one(idx_issue):
             idx, iss = idx_issue
+            try:
+                capture.set_context(**_cap_snap)
+            except Exception:  # noqa: BLE001
+                pass
             tdb = SessionLocal()  # own session per thread (SQLAlchemy sessions aren't shared-safe)
             try:
-                block, cites = draft_issue(tdb, docs_text, iss)
+                tcase = tdb.get(AppealCase, _case_id)  # case bound to THIS thread's session
+                block, cites = draft_issue(tdb, tcase, iss)
             finally:
                 tdb.close()
             return idx, iss, block, cites
@@ -814,6 +857,11 @@ def run_case(run_id: int) -> None:
         draft = assemble(understanding, blocks, docs_text)
         _bill("appeal.module6")
         db.add(AppealOutput(run_id=run.id, kind="draft", content=draft))
+        try:
+            capture.log_event("draft", task="appeal.final", response=draft,
+                              context=json.dumps(understanding, ensure_ascii=False))
+        except Exception:  # noqa: BLE001
+            pass
 
         # Flush the module outputs before the final status commit so a
         # last-second cancel that fires between these two statements can't

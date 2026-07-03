@@ -20,6 +20,8 @@ import {
   Quote,
   Github,
   Mail,
+  Search,
+  Layers,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -540,69 +542,114 @@ function HowItWorks() {
 
 // ============================================================== Use cases
 function UseCases() {
-  const CARDS = [
+  const CARDS: {
+    icon: typeof Search;
+    tone: "primary" | "violet" | "amber";
+    title: string;
+    desc: string;
+    points: string[];
+  }[] = [
     {
-      icon: ShieldCheck,
-      tone: "rose",
-      title: "For Income-tax Officers",
-      desc: "Rapid section lookups, ruling research, citation-perfect drafts. Audit-logged on your wing's seat pool.",
-      points: ["Bound by primary law", "Seat-licensed per wing", "Audit trail on every query"],
+      icon: Search,
+      tone: "primary",
+      title: "Research grounded in primary law",
+      desc: "Ask in plain English. Every answer names the exact section, rule or CBDT circular it drew from — and refuses when the corpus can't support it.",
+      points: [
+        "Refuses rather than hallucinate",
+        "Inline citations you can click through",
+        "Web-search fallback for recent circulars",
+      ],
     },
     {
-      icon: BookOpen,
-      tone: "blue",
-      title: "For CAs & Practitioners",
-      desc: "Stop scrolling 5 tabs. Ask in plain English, get answers grounded in the Act + Rules + circulars.",
-      points: ["Natural-language queries", "Multi-document Q&A", "Export to DOCX"],
+      icon: Gavel,
+      tone: "violet",
+      title: "Draft appellate orders in six modules",
+      desc: "Upload the appeal file. The pipeline runs deficiency, scope, compliance, issue matrix, findings, and a fully-assembled draft order — auditable end-to-end.",
+      points: [
+        "Deficiency + scope + compliance checks",
+        "Issue-wise findings with case-law grounding",
+        "Word-editable draft in Times New Roman",
+      ],
     },
     {
-      icon: LayoutDashboard,
+      icon: Layers,
       tone: "amber",
-      title: "For Administrators",
-      desc: "Approve registrations, manage models, watch live server health, issue license keys — all in one console.",
-      points: ["1-click user approvals", "Revenue & licensing CRUD", "Live model + server metrics"],
+      title: "Auditable, seat-licensed, self-hosted",
+      desc: "Runs inside your infrastructure. Every query, every draft, every model call is logged against a per-officer seat lease — with token spend broken down by task.",
+      points: [
+        "Per-officer seat leases",
+        "Full audit log of every query & draft",
+        "Token spend visible per task, per user",
+      ],
     },
   ];
   return (
     <section className="py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeader
-          eyebrow="Built for"
-          title="One tool, three roles."
-          subtitle="Officers, practitioners and admins each get the surface they need — nothing more."
+          eyebrow="What it does"
+          title="Three capabilities. One workspace."
+          subtitle="From a quick section lookup to a fully-drafted appellate order — every step is grounded, cited, and audit-logged."
         />
         <div className="mt-12 grid lg:grid-cols-3 gap-5">
           {CARDS.map((c, i) => {
-            const tones: Record<string, string> = {
-              rose: "from-rose-50 to-white text-rose-700 ring-rose-100",
-              blue: "from-sky-50 to-white text-sky-700 ring-sky-100",
-              amber: "from-amber-50 to-white text-amber-700 ring-amber-100",
-            };
+            const tones = {
+              primary: {
+                wrap: "from-sky-50/80 to-white ring-primary/15",
+                tile: "from-primary/15 to-sky-100 text-primary ring-primary/25",
+                accent: "from-primary/25 via-sky-400/20 to-violet-500/25",
+              },
+              violet: {
+                wrap: "from-violet-50/80 to-white ring-violet-200",
+                tile: "from-violet-200/70 to-fuchsia-100 text-violet-700 ring-violet-300",
+                accent: "from-violet-400/30 via-fuchsia-400/20 to-primary/25",
+              },
+              amber: {
+                wrap: "from-amber-50/80 to-white ring-amber-200",
+                tile: "from-amber-200/70 to-orange-100 text-amber-700 ring-amber-300",
+                accent: "from-amber-400/30 via-orange-400/20 to-rose-400/25",
+              },
+            }[c.tone];
             return (
               <div
                 key={i}
                 className={
-                  "rounded-2xl border border-slate-200 bg-gradient-to-br p-6 ring-1 hover:shadow-lg transition-shadow " +
-                  tones[c.tone]
+                  "group relative rounded-2xl border border-slate-200 bg-gradient-to-br p-6 ring-1 hover:shadow-lg hover:-translate-y-0.5 transition-all " +
+                  tones.wrap
                 }
               >
-                <div className="size-11 rounded-xl bg-white ring-1 ring-current/20 flex items-center justify-center">
-                  <c.icon className="size-5" />
+                {/* Halo behind the icon on hover */}
+                <div
+                  className={
+                    "absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-2xl transition-opacity pointer-events-none bg-gradient-to-br " +
+                    tones.accent
+                  }
+                  aria-hidden
+                />
+                <div className="relative">
+                  <div
+                    className={
+                      "size-12 rounded-xl bg-gradient-to-br ring-1 flex items-center justify-center shadow-sm " +
+                      tones.tile
+                    }
+                  >
+                    <c.icon className="size-5" />
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-slate-900">
+                    {c.title}
+                  </h3>
+                  <p className="mt-1.5 text-[13.5px] text-slate-600 leading-relaxed">
+                    {c.desc}
+                  </p>
+                  <ul className="mt-4 space-y-1.5 text-[13px] text-slate-700">
+                    {c.points.map((p) => (
+                      <li key={p} className="flex items-start gap-2">
+                        <CheckCircle2 className="size-4 mt-0.5 shrink-0 text-emerald-500" />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                  {c.title}
-                </h3>
-                <p className="mt-1.5 text-[13.5px] text-slate-600 leading-relaxed">
-                  {c.desc}
-                </p>
-                <ul className="mt-4 space-y-1.5 text-[13px] text-slate-700">
-                  {c.points.map((p) => (
-                    <li key={p} className="flex items-start gap-2">
-                      <CheckCircle2 className="size-4 mt-0.5 shrink-0 text-emerald-500" />
-                      {p}
-                    </li>
-                  ))}
-                </ul>
               </div>
             );
           })}

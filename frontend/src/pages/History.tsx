@@ -17,9 +17,11 @@ import { useAuth } from "../auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export default function History() {
   const { session } = useAuth();
+  const { confirm, dialog } = useConfirm();
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [counts, setCounts] = useState<HistoryCounts | null>(null);
   const [kind, setKind] = useState<HistoryKind>("all");
@@ -53,7 +55,14 @@ export default function History() {
   }, [kind]);
 
   async function deleteOne(id: string) {
-    if (!confirm("Delete this entry from your history?")) return;
+    const ok = await confirm({
+      title: "Delete this history entry?",
+      description:
+        "This row will be permanently removed from your activity feed. Other users' history is unaffected.",
+      tone: "danger",
+      confirmLabel: "Delete entry",
+    });
+    if (!ok) return;
     setDeleting((d) => ({ ...d, [id]: true }));
     try {
       await api.historyDelete(id);
@@ -70,13 +79,18 @@ export default function History() {
   }
 
   async function clearAll() {
-    const scopeLabel = kind === "all" ? "ALL history" : `all ${kind} entries`;
-    if (
-      !confirm(
-        `Permanently clear ${scopeLabel}? This cannot be undone.`,
-      )
-    )
-      return;
+    const scopeLabel = kind === "all" ? "your entire history" : `all ${kind} entries`;
+    const ok = await confirm({
+      title: `Clear ${scopeLabel}?`,
+      description:
+        kind === "all"
+          ? "Every entry in your activity feed — queries, appeal events, document events, sessions — will be permanently removed."
+          : `Every ${kind} entry in your activity feed will be permanently removed. Other kinds are untouched.`,
+      tone: "danger",
+      confirmLabel: kind === "all" ? "Clear all history" : `Clear ${kind}`,
+      confirmPhrase: kind === "all" ? "clear all" : undefined,
+    });
+    if (!ok) return;
     setBusyClear(true);
     try {
       await api.historyClear(kind);
@@ -95,6 +109,7 @@ export default function History() {
 
   return (
     <div className="space-y-5">
+      {dialog}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">

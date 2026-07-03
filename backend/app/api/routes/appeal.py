@@ -23,6 +23,7 @@ from app.services import audit
 from app.services import appeal_draft as svc
 from app.services.appeal_export import build_order_docx
 from app.services.storage import put_bytes, get_bytes
+from app.services import capture
 from app.ingestion.extract import extract_text
 
 router = APIRouter(prefix="/appeal", tags=["appeal"])
@@ -507,6 +508,16 @@ def edit_output(oid: int, body: OutputEdit, p: Principal = Depends(get_principal
     nxt = AppealOutput(run_id=o.run_id, kind=o.kind, seq=o.seq, label=o.label,
                        content=body.content, citations=o.citations, edited=True, version=o.version + 1)
     db.add(nxt); db.commit(); db.refresh(nxt)
+    # Gold label: the officer's approved/edited text vs the AI original — the most
+    # valuable supervised signal for training an in-house model.
+    try:
+        capture.log_event("gold_edit", task=f"appeal.edit.{o.kind}",
+                          user_id=p.user.id, run_id=o.run_id,
+                          context=o.content, response=body.content,
+                          meta={"kind": o.kind, "seq": o.seq, "output_id": oid,
+                                "new_output_id": nxt.id, "version": nxt.version})
+    except Exception:  # noqa: BLE001
+        pass
     return _out(nxt)
 
 

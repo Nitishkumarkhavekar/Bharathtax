@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BookOpen, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
+import { StarRating } from "../ui/StarRating";
 import { Markdown, normalizeMarkdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
 import { api } from "@/api";
@@ -183,6 +184,7 @@ function Message({
 function FeedbackRow({ question, answer }: { question?: string; answer: string }) {
   const { session } = useAuth();
   const [sent, setSent] = useState<"up" | "down" | null>(null);
+  const [stars, setStars] = useState(0);
   async function send(rating: "up" | "down") {
     setSent(rating);
     try {
@@ -191,26 +193,38 @@ function FeedbackRow({ question, answer }: { question?: string; answer: string }
       /* feedback is best-effort */
     }
   }
-  if (sent) {
-    // Title-case the first letter of the username for a nicer greeting —
-    // "officer1" → "Officer1", "Kamal" → "Kamal".
-    const raw = session?.username || "";
-    const name = raw ? raw[0].toUpperCase() + raw.slice(1) : "";
-    return (
-      <div className="text-[11px] text-slate-400">
-        {name ? `Thanks ${name} — your feedback helps improve answers.` : "Thanks — your feedback helps improve answers."}
-      </div>
-    );
+  async function rate(n: number) {
+    setStars(n);
+    try {
+      await api.rate({ target_type: "chat", question, answer, stars: n });
+    } catch {
+      /* best-effort */
+    }
   }
+  const raw = session?.username || "";
+  const name = raw ? raw[0].toUpperCase() + raw.slice(1) : "";
   return (
-    <div className="flex items-center gap-2 text-slate-400">
-      <span className="text-[11px]">Was this helpful?</span>
-      <button onClick={() => send("up")} className="hover:text-emerald-600 transition-colors" title="Helpful">
-        <ThumbsUp className="size-4" />
-      </button>
-      <button onClick={() => send("down")} className="hover:text-rose-600 transition-colors" title="Not helpful">
-        <ThumbsDown className="size-4" />
-      </button>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-400">
+      {sent ? (
+        <span className="text-[11px]">
+          {name ? `Thanks ${name} — your feedback helps improve answers.` : "Thanks — your feedback helps improve answers."}
+        </span>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px]">Was this helpful?</span>
+          <button onClick={() => send("up")} className="hover:text-emerald-600 transition-colors" title="Helpful">
+            <ThumbsUp className="size-4" />
+          </button>
+          <button onClick={() => send("down")} className="hover:text-rose-600 transition-colors" title="Not helpful">
+            <ThumbsDown className="size-4" />
+          </button>
+        </div>
+      )}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px]">Rate:</span>
+        <StarRating value={stars} onRate={rate} size={15} disabled={stars > 0} />
+        {stars > 0 ? <span className="text-[11px] text-amber-500">{stars}/5</span> : null}
+      </div>
     </div>
   );
 }

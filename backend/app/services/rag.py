@@ -153,6 +153,20 @@ def _looks_like_refusal(text: str) -> bool:
     return any(h in t for h in _REFUSAL_HINTS)
 
 
+_TIME_SENSITIVE = (
+    "today", "latest", "recent", "recently", "this week", "this month", "newest",
+    "just issued", "just announced", "just released", "up to date", "up-to-date",
+    "as of now", "nowadays", "these days", "last week", "past week",
+)
+
+
+def _is_time_sensitive(q: str) -> bool:
+    """True for questions asking about current/just-issued material the static
+    corpus cannot hold (e.g. 'latest circular', 'rulings issued today')."""
+    t = (q or "").lower()
+    return any(k in t for k in _TIME_SENSITIVE)
+
+
 @dataclass
 class Citation:
     n: int
@@ -237,8 +251,42 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     # is configured, retry with a general income-tax LLM. The fallback prompt
     # forces it to stay on tax topics.
     used = "model-native"
+    web_sources: list[dict] = []
     fallback = settings.llm_fallback_model_name
-    if fallback and _looks_like_refusal(primary_text) and hasattr(client, "complete"):
+    refused = _looks_like_refusal(primary_text)
+    # Live web search when the corpus refused OR the question is time-sensitive
+    # (today/latest/recent) — a static corpus can't hold current data. The web
+    # answer is clearly labelled as web-sourced and cited, never the statute.
+    if refused or _is_time_sensitive(q):
+        try:
+            from app.services import gemini_search as _gs
+            if _gs.available():
+                _wtext, web_sources = _gs.web_answer(q)
+                # Meter the Gemini call regardless of whether it produced
+                # usable text — a failed call still consumes tokens on some
+                # accounts (streamed + truncated responses).
+                if _gs.last_usage or _gs.last_latency_ms is not None:
+                    llm_calls.append({
+                        "model": _gs.last_model,
+                        "usage": _gs.last_usage,
+                        "latency_ms": _gs.last_latency_ms,
+                    })
+                if _wtext:
+                    primary_text = (
+                        "🌐 *Note: the following is drawn from external web sources, not the "
+                        "Income-tax Act corpus. Please verify against the official source before "
+                        "relying on it.*\n\n" + _wtext
+                    )
+                    if web_sources:
+                        primary_text += "\n\nSources:\n" + "\n".join(
+                            f"- {srcs['title']}: {srcs['url']}" for srcs in web_sources[:6])
+                    used = "web-search:gemini"
+        except Exception:  # noqa: BLE001
+            pass
+    # Only a genuine REFUSAL (not mere time-sensitivity) lets the general LLM
+    # replace an otherwise-valid corpus answer; if web search failed on a
+    # time-sensitive query we keep the corpus answer.
+    if refused and used == "model-native" and fallback and hasattr(client, "complete"):
         try:
             primary_text = client.complete(SYSTEM_PROMPT_FALLBACK, q, model=fallback)
             used = f"fallback:{fallback}"
@@ -252,6 +300,17 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             # Older LLMClient.complete() without a `model` kwarg (e.g. tests). Skip.
             pass
 
+    # A time-sensitive question that did NOT get a live web answer must never be
+    # served from the static corpus as if it were current — warn the user instead
+    # of silently presenting outdated data as "latest".
+    if _is_time_sensitive(q) and used != "web-search:gemini":
+        primary_text = (
+            "\u26a0\ufe0f *A live web lookup for the most recent information could not be completed "
+            "just now, so the following is from the stored material and may not reflect the latest "
+            "updates \u2014 please try again shortly for current data.*\n\n" + primary_text
+        )
+        used = used + "+stale-warned"
+
     return Answer(
         text=primary_text, grounded=True, citations=[],
         meta={
@@ -259,6 +318,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             "primary_model": settings.llm_model_name,
             "domain": domain.value if domain else None,
             "llm_calls": llm_calls,
+            "web_sources": web_sources,
         },
     )
 
