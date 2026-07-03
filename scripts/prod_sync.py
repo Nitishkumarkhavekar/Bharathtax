@@ -22,7 +22,7 @@ DB = ("taxmedha", "taxmedha")             # (user, dbname), same on dev + prod
 SCRATCH = "/tmp"
 
 SCOLS = "id,key,domain,name,source_type,base_url,config,enabled,last_crawled_at,created_at"
-DCOLS = "id,source_id,title,doc_type,source_url,raw_minio_key,extracted_text,checksum,published_date,status,fetched_at"
+DCOLS = "id,source_id,title,doc_type,source_url,raw_minio_key,extracted_text,checksum,published_date,status,fetched_at,sections_cited"
 CCOLS = ("id,corpus_document_id,source_id,domain,text,breadcrumb,chunk_level,parent_chunk_id,act_name,"
          "section_number,subsection,clause,proviso_no,explanation_no,rule_number,subrule,extra,embedding,"
          "effective_date,superseded_date,version,is_current,supersedes_id,created_at")

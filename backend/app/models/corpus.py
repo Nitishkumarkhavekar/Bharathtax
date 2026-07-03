@@ -15,7 +15,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean, Computed, Date, DateTime, ForeignKey, Index, Integer, String, Text, func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.config import settings
@@ -54,12 +54,19 @@ class CorpusDocument(Base):
     raw_minio_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     checksum: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)  # dedup/delta
+    # top-level Income-tax Act sections this doc CITES (judgments/circulars) -> "every case on s.68".
+    # GIN-indexed (see __table_args__) for fast `sections_cited @> ARRAY['68']` lookup.
+    sections_cited: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[CorpusDocStatus] = mapped_column(default=CorpusDocStatus.fetched)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     source: Mapped[CorpusSource] = relationship(back_populates="documents")
     chunks: Mapped[list["CorpusChunk"]] = relationship(back_populates="document")
+
+    __table_args__ = (
+        Index("ix_corpus_documents_sections_cited", "sections_cited", postgresql_using="gin"),
+    )
 
 
 class CorpusChunk(Base):

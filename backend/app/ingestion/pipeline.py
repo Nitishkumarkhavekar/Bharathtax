@@ -205,6 +205,40 @@ def embed_pending(batch: int = 256) -> None:
         db.close()
 
 
+def backfill_section_cites(batch: int = 2000) -> None:
+    """Fill corpus_documents.sections_cited (top-level IT-Act sections each judgment /
+    circular / notification CITES) — powers 'every case on Section 68'. Idempotent +
+    resumable: only rows where sections_cited IS NULL, and sets [] when a doc cites
+    nothing, so a re-run after a freshness pass processes only newly-ingested docs."""
+    configure_logging()
+    from app.ingestion.parse.section_cites import extract_sections
+    db = SessionLocal()
+    try:
+        cited_types = (SourceType.judgment, SourceType.circular, SourceType.notification)
+        total = withsecs = 0
+        while True:
+            rows = db.scalars(
+                select(CorpusDocument).where(
+                    CorpusDocument.sections_cited.is_(None),
+                    CorpusDocument.extracted_text.isnot(None),
+                    CorpusDocument.doc_type.in_(cited_types),
+                ).order_by(CorpusDocument.id).limit(batch)
+            ).all()
+            if not rows:
+                break
+            for doc in rows:
+                secs = extract_sections(doc.extracted_text or "")
+                doc.sections_cited = secs
+                total += 1
+                if secs:
+                    withsecs += 1
+            db.commit()
+            log.info("  backfilled %d docs (%d cite >=1 section)", total, withsecs)
+        log.info("DONE. sections_cited backfilled for %d docs; %d cite >=1 section", total, withsecs)
+    finally:
+        db.close()
+
+
 def verify() -> int:
     """Assert the corpus + its indexes exist. Returns process exit code."""
     configure_logging()
@@ -263,6 +297,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--shard", help="modulo shard 'i/N' for parallel staging (e.g. 0/4)")
     ep = sub.add_parser("embed-pending", help="GPU pass: embed all NULL-embedding chunks")
     ep.add_argument("--batch", type=int, default=256)
+    bc = sub.add_parser("backfill-cites", help="fill sections_cited (every-case-on-section-X)")
+    bc.add_argument("--batch", type=int, default=2000)
     sub.add_parser("verify", help="verify corpus + indexes exist")
     args = p.parse_args(argv)
 
@@ -275,6 +311,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "embed-pending":
         embed_pending(batch=args.batch)
+        return 0
+    if args.cmd == "backfill-cites":
+        backfill_section_cites(batch=args.batch)
         return 0
     if args.cmd == "verify":
         return verify()
