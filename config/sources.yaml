@@ -121,6 +121,16 @@ sources:
     parser: treaty_sections
     enabled: true
 
+  - key: finance_bill_explanatory
+    domain: income_tax
+    name: Finance Bill Memorandum + Notes on Clauses (legislative intent, 2000-2026)
+    source_type: act
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/finance-bills
+    manual_glob: "income_tax/finance_bills/*.txt"
+    parser: finance_bill
+    enabled: true
+
   - key: it_rules_complete
     domain: income_tax
     name: Income-tax Rules (complete)
