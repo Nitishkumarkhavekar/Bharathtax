@@ -101,6 +101,16 @@ sources:
     parser: act_sections
     enabled: true
 
+  - key: allied_direct_tax_acts
+    domain: income_tax
+    name: Allied direct-tax acts (Wealth-Tax, Benami, STT, CTT, Equalisation Levy, Expenditure-Tax, Gift-Tax)
+    source_type: act
+    fetcher: manual
+    base_url: https://www.incometaxindia.gov.in/all-acts
+    manual_glob: "income_tax/allied_acts/*.txt"
+    parser: act_sections
+    enabled: true
+
   - key: it_rules_complete
     domain: income_tax
     name: Income-tax Rules (complete)

@@ -30,7 +30,19 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 OUT = Path("data/manual/income_tax/acts_new")
 OUT_RULES = Path("data/manual/income_tax/rules_new")
+OUT_ALLIED = Path("data/manual/income_tax/allied_acts")
 PAGE_SIZE = 100
+
+# Allied direct-tax acts (single-version: harvest with NO year_id) — cat ids from /o/c/actassetcategories/
+ALLIED_ACTS = [
+    (4209486, "wealth_tax_act", "Wealth-Tax Act, 1957"),
+    (4209316, "benami_act", "Prohibition of Benami Property Transactions Act, 1988"),
+    (4209386, "securities_transaction_tax", "Securities Transaction Tax"),
+    (4208931, "commodities_transaction_tax", "Commodities Transaction Tax"),
+    (4209046, "equalisation_levy", "Equalisation Levy"),
+    (4209061, "expenditure_tax_act", "Expenditure-Tax Act, 1987"),
+    (4209101, "gift_tax_act", "Gift-Tax Act, 1958"),
+]
 
 # Year taxonomy (shared with circulars/notifications) — harvested from the site dropdown.
 YEAR_IDS = {
@@ -94,13 +106,15 @@ _PROFILES = {
 
 def _body(kind: str, cid: int, year_id: int) -> str:
     p = _PROFILES[kind]
-    return json.dumps({"attributes": {
+    attrs = {
         "search.empty.search": True,
         "search.experiences.blueprint.external.reference.code": p["blueprint"],
         f"search.experiences.{p['id_key']}": cid,
-        "search.experiences.year_id": year_id,
         f"search.experiences.{p['num_key']}": "",
-    }})
+    }
+    if year_id:  # single-version acts (Wealth-Tax, Benami, ...) omit year_id entirely
+        attrs["search.experiences.year_id"] = year_id
+    return json.dumps({"attributes": attrs})
 
 
 def _api_post(ctx, page, page_no: int, body: str) -> dict | None:
@@ -201,7 +215,16 @@ def main():
             total_secs += write_act(slug, title, secs, outdir=OUT_RULES); total_acts += 1
             print(f"  {title}: {len(secs)} rules")
 
-        print(f"\nDONE. {total_acts} acts/rule-sets, {total_secs} units -> {OUT} + {OUT_RULES}")
+        # 4) Allied direct-tax acts (single-version — harvest with no year_id)
+        print("=== Allied direct-tax acts ===")
+        for cid, slug, title in ALLIED_ACTS:
+            secs = harvest(ctx, page, "act", cid, 0)  # 0 -> _body omits year_id
+            if not secs:
+                print(f"  {title}: (none)"); continue
+            total_secs += write_act(slug, title, secs, outdir=OUT_ALLIED); total_acts += 1
+            print(f"  {title}: {len(secs)} sections")
+
+        print(f"\nDONE. {total_acts} acts/rule-sets, {total_secs} units -> {OUT} + {OUT_RULES} + {OUT_ALLIED}")
         b.close()
 
 
