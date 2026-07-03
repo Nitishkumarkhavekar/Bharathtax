@@ -34,6 +34,13 @@ BKT = "indian-high-court-judgments"
 REGION = "ap-south-1"
 # income-tax case titles: "... Vs COMMISSIONER OF INCOME TAX", "INCOME TAX OFFICER ...", etc.
 TAX = re.compile(r"income[- ]?tax|commissioner of income|principal commissioner of income", re.I)
+# Many income-tax appeals are titled only by party names, OR abbreviate the keyword
+# ("COMNR.OF I.TAX", "C.I.T.") in a way the TAX regex misses. Recover them via their
+# unambiguous income-tax case-type PREFIX. Deliberately EXCLUDES ambiguous codes
+# (TCA/TAXAP/CEA/TAX APPEAL) that would leak excise/VAT/other-tax cases into the corpus.
+TAX_CODE = re.compile(
+    r"^\s*(ITXA|ITTA|ITA|ITR|ITAT|ITREF|D\.?B\.? ?ITA|"
+    r"INCOME ?TAX ?APPEAL|INCOME ?TAX ?REFERENCE)\b", re.I)
 COLS = ["title", "pdf_link", "cnr", "decision_date", "disposal_nature", "court"]
 OUT = Path("data/manual/case_law")
 HC_MANIFEST = OUT / "hc_manifest.jsonl"      # matched metadata rows
@@ -89,7 +96,7 @@ def _scan_parquet(fs, key):
     part = key.replace("metadata/parquet/", "data/pdf/").replace("metadata.parquet", "")
     out = []
     for i, t in enumerate(titles):
-        if t and TAX.search(str(t)) and plinks[i]:
+        if t and plinks[i] and (TAX.search(str(t)) or TAX_CODE.match(str(t))):
             out.append({
                 "pdf_key": part + os.path.basename(str(plinks[i])),
                 "title": str(t)[:300],
