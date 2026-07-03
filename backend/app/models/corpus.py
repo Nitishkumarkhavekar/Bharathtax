@@ -57,6 +57,9 @@ class CorpusDocument(Base):
     # top-level Income-tax Act sections this doc CITES (judgments/circulars) -> "every case on s.68".
     # GIN-indexed (see __table_args__) for fast `sections_cited @> ARRAY['68']` lookup.
     sections_cited: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    # LLM-generated one-line law-report headnote ("what it held") for a judgment. The
+    # sentinels 'PROCEDURAL' / 'INSUFFICIENT' mark a doc as processed with no useful holding.
+    digest: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[CorpusDocStatus] = mapped_column(default=CorpusDocStatus.fetched)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

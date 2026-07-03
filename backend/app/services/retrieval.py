@@ -32,7 +32,9 @@ class Passage:
     rule_number: str | None
     domain: str
     score: float = 0.0
-    channels: list[str] = field(default_factory=list)  # dense | sparse
+    channels: list[str] = field(default_factory=list)  # dense | sparse | section
+    digest: str | None = None       # judgment headnote ("what it held"), if generated
+    sections_cited: list[str] | None = None
 
 
 @dataclass
@@ -97,9 +99,14 @@ def _parent_text(db: Session, chunk: CorpusChunk) -> str:
     return chunk.text
 
 
-def _source_url(db: Session, chunk: CorpusChunk) -> str | None:
+def _doc_meta(db: Session, chunk: CorpusChunk):
+    """(source_url, digest, sections_cited) for a chunk's parent document, one fetch.
+    digest is suppressed for the non-substantive sentinels."""
     doc = db.get(CorpusDocument, chunk.corpus_document_id)
-    return doc.source_url if doc else None
+    if not doc:
+        return None, None, None
+    dg = doc.digest if doc.digest and doc.digest not in ("PROCEDURAL", "INSUFFICIENT") else None
+    return doc.source_url, dg, doc.sections_cited
 
 
 def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> RetrievalResult:
@@ -139,18 +146,21 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
     passages: list[Passage] = []
     for idx, score in scores:
         c = chunks[idx]
+        url, digest, secs = _doc_meta(db, c)
         passages.append(
             Passage(
                 chunk_id=c.id,
                 breadcrumb=c.breadcrumb,
                 text=_parent_text(db, c),
                 match_text=c.text,
-                source_url=_source_url(db, c),
+                source_url=url,
                 section_number=c.section_number,
                 rule_number=c.rule_number,
                 domain=c.domain.value if hasattr(c.domain, "value") else str(c.domain),
                 score=round(score, 4),
                 channels=sorted(cand[c.id][1]),
+                digest=digest,
+                sections_cited=secs,
             )
         )
 

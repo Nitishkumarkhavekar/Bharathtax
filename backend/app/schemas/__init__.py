@@ -102,6 +102,8 @@ class CitationOut(BaseModel):
     breadcrumb: str
     source_url: str | None = None
     section_number: str | None = None
+    digest: str | None = None                    # judgment headnote ("what it held")
+    sections_cited: list[str] | None = None      # IT-Act sections the judgment cites
 
 
 class AnswerResponse(BaseModel):

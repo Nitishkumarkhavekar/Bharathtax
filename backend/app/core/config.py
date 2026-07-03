@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.1
 
+    # batch digest generation (case-law headnotes) — points at the high-throughput
+    # GPU vLLM (Llama-3.1-8B) by default; override via env for a different endpoint.
+    digest_llm_url: str = "http://139.84.144.69:8002/v1"
+    digest_llm_model: str = "llama-3.1-8b-instruct"
+
     # retrieval
     retrieval_dense_k: int = 20
     retrieval_sparse_k: int = 20

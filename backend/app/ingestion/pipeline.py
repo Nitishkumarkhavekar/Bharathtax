@@ -299,6 +299,11 @@ def main(argv: list[str] | None = None) -> int:
     ep.add_argument("--batch", type=int, default=256)
     bc = sub.add_parser("backfill-cites", help="fill sections_cited (every-case-on-section-X)")
     bc.add_argument("--batch", type=int, default=2000)
+    dg = sub.add_parser("digest", help="LLM-generate case headnotes (batch, resumable)")
+    dg.add_argument("--min-len", type=int, default=2500)
+    dg.add_argument("--concurrency", type=int, default=24)
+    dg.add_argument("--sections", help="comma-separated sections to restrict to (substantive tier)")
+    dg.add_argument("--limit", type=int, default=None)
     sub.add_parser("verify", help="verify corpus + indexes exist")
     args = p.parse_args(argv)
 
@@ -314,6 +319,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "backfill-cites":
         backfill_section_cites(batch=args.batch)
+        return 0
+    if args.cmd == "digest":
+        from app.ingestion.digest import generate_digests
+        secs = [s.strip() for s in args.sections.split(",")] if args.sections else None
+        generate_digests(min_len=args.min_len, concurrency=args.concurrency,
+                         sections=secs, limit=args.limit)
         return 0
     if args.cmd == "verify":
         return verify()

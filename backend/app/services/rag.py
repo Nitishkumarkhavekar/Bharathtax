@@ -174,6 +174,8 @@ class Citation:
     breadcrumb: str
     source_url: str | None
     section_number: str | None
+    digest: str | None = None          # judgment headnote, shown under the citation
+    sections_cited: list[str] | None = None
 
 
 @dataclass
@@ -187,7 +189,9 @@ class Answer:
 def _build_user_prompt(question: str, passages: list[Passage]) -> str:
     blocks = []
     for i, p in enumerate(passages, start=1):
-        blocks.append(f"[{i}] ({p.breadcrumb})\n{p.text}")
+        # a judgment headnote (what it held) primes the model on the ratio before the text
+        head = f"Headnote: {p.digest}\n" if getattr(p, "digest", None) else ""
+        blocks.append(f"[{i}] ({p.breadcrumb})\n{head}{p.text}")
     return f"QUESTION: {question}\n\nPASSAGES:\n" + "\n\n".join(blocks)
 
 
@@ -202,6 +206,8 @@ def _generate(question: str, result: RetrievalResult, client: llm_mod.LLMClient 
             breadcrumb=p.breadcrumb,
             source_url=p.source_url,
             section_number=p.section_number,
+            digest=getattr(p, "digest", None),
+            sections_cited=getattr(p, "sections_cited", None),
         )
         for i, p in enumerate(result.passages)
     ]

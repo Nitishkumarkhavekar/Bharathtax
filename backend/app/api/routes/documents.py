@@ -57,7 +57,8 @@ def ask_document(doc_id: int, body: DocAskRequest, request: Request,
 
     citations = [
         CitationOut(n=c.n, chunk_id=c.chunk_id, breadcrumb=c.breadcrumb,
-                    source_url=c.source_url, section_number=c.section_number)
+                    source_url=c.source_url, section_number=c.section_number,
+                    digest=c.digest, sections_cited=c.sections_cited)
         for c in result.citations
     ]
     q = Query(

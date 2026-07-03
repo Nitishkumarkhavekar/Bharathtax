@@ -45,10 +45,55 @@ def prod_psql(sql: str) -> str:
     return prod_sh(f"docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -tAc \"{sql}\"")
 
 
+def sync_digests():
+    """Push corpus_documents.digest (and sections_cited) for EXISTING rows dev->prod.
+    The main sync is append-only by id, so column UPDATES to already-synced docs need
+    their own path: dump (id,digest,sections_cited) for filled rows, COPY into a prod
+    temp table, UPDATE in one join. dev and prod share ids (id-preserving COPY)."""
+    import os, tempfile
+    n = int(dev_psql("SELECT count(*) FROM corpus_documents WHERE digest IS NOT NULL") or 0)
+    print(f"syncing digests/sections_cited for {n} dev docs -> prod...")
+    subprocess.run(["docker", "exec", DEV_PG, "psql", "-U", DB[0], "-d", DB[1], "-c",
+                    f"\\copy (SELECT id,digest,sections_cited FROM corpus_documents WHERE digest IS NOT NULL ORDER BY id) TO '{SCRATCH}/sync_dig.dat'"], check=True)
+    subprocess.run(["docker", "exec", DEV_PG, "sh", "-c", f"gzip -f {SCRATCH}/sync_dig.dat"], check=True)
+    tmp = tempfile.gettempdir()
+    sql = (f"CREATE TEMP TABLE _dig(id bigint, digest text, sections_cited varchar[]);\n"
+           f"COPY _dig(id,digest,sections_cited) FROM '{SCRATCH}/sync_dig.dat';\n"
+           f"UPDATE corpus_documents d SET digest=_dig.digest, sections_cited=_dig.sections_cited "
+           f"FROM _dig WHERE d.id=_dig.id;\n")
+    runsh = ("set -e\n"
+             f"docker cp {SCRATCH}/sync_dig.dat.gz {PROD_PG}:{SCRATCH}/\n"
+             f"docker cp {SCRATCH}/sync_dig.sql {PROD_PG}:{SCRATCH}/sync_dig.sql\n"
+             f"docker exec {PROD_PG} sh -c 'gunzip -f {SCRATCH}/sync_dig.dat.gz'\n"
+             f"docker exec {PROD_PG} psql -U {DB[0]} -d {DB[1]} -v ON_ERROR_STOP=1 -f {SCRATCH}/sync_dig.sql\n"
+             f"docker exec {PROD_PG} sh -c 'rm -f {SCRATCH}/sync_dig.dat* {SCRATCH}/sync_dig.sql'\n"
+             f"docker exec bharathtax-web-postgres-1 psql -U {DB[0]} -d {DB[1]} -tAc \"SELECT count(*) FILTER (WHERE digest IS NOT NULL) AS digests, count(*) FILTER (WHERE sections_cited IS NOT NULL) AS cited FROM corpus_documents\"\n")
+    p_sql, p_sh = os.path.join(tmp, "sync_dig.sql"), os.path.join(tmp, "sync_dig_run.sh")
+    open(p_sql, "w", newline="\n").write(sql)
+    open(p_sh, "w", newline="\n").write(runsh)
+    subprocess.run(["docker", "cp", f"{DEV_PG}:{SCRATCH}/sync_dig.dat.gz", os.path.join(tmp, "sync_dig.dat.gz")], check=True)
+    subprocess.run(["scp", "-P", "20202", "-o", "BatchMode=yes", os.path.join(tmp, "sync_dig.dat.gz"), f"{PROD_HOST}:{SCRATCH}/sync_dig.dat.gz"], check=True)
+    subprocess.run(["scp", "-P", "20202", "-o", "BatchMode=yes", p_sql, f"{PROD_HOST}:{SCRATCH}/sync_dig.sql"], check=True)
+    subprocess.run(["scp", "-P", "20202", "-o", "BatchMode=yes", p_sh, f"{PROD_HOST}:{SCRATCH}/sync_dig_run.sh"], check=True)
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", PROD_HOST, "bash", f"{SCRATCH}/sync_dig_run.sh"], capture_output=True, text=True)
+    print((r.stdout + r.stderr).strip())
+    subprocess.run(["ssh", "-o", "BatchMode=yes", PROD_HOST, f"rm -f {SCRATCH}/sync_dig_run.sh {SCRATCH}/sync_dig.sql"])
+    subprocess.run(["docker", "exec", DEV_PG, "sh", "-c", f"rm -f {SCRATCH}/sync_dig.dat*"])
+    for fn in ("sync_dig.dat.gz", "sync_dig.sql", "sync_dig_run.sh"):
+        try: os.remove(os.path.join(tmp, fn))
+        except OSError: pass
+    print("### digest sync complete.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--digests", action="store_true",
+                    help="sync digest/sections_cited column updates for existing rows (not append-only)")
     a = ap.parse_args()
+    if a.digests:
+        sync_digests()
+        return
 
     import os, tempfile
     pmax = {t: int(prod_psql(f"SELECT coalesce(max(id),0) FROM corpus_{t}") or 0)
