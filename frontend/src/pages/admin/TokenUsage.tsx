@@ -7,6 +7,8 @@ import {
   Brain,
   Search,
   User as UserIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { AdminTokenUsage, api } from "@/api";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
@@ -25,6 +27,8 @@ export default function TokenUsagePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +38,12 @@ export default function TokenUsagePage() {
       .catch((e) => setErr(e?.message ?? "failed"))
       .finally(() => setLoading(false));
   }, [days]);
+
+  // Reset to page 1 whenever the search or window changes so the user isn't
+  // stranded on an empty page after narrowing results.
+  useEffect(() => {
+    setPage(1);
+  }, [q, days, pageSize]);
 
   const users = useMemo(() => {
     if (!data) return [];
@@ -201,93 +211,203 @@ export default function TokenUsagePage() {
         </Section>
       </div>
 
-      {/* Per-user leaderboard */}
-      <Section
-        title="Top users"
-        subtitle={`${users.length} of ${data.per_user.length}`}
-        icon={<UserIcon className="size-4" />}
-        action={
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search users…"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-        }
-      >
-        {users.length === 0 ? (
-          <Empty label="No users match." />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full min-w-[720px] text-sm admin-table">
-              <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-medium">User</th>
-                  <th className="text-right px-4 py-2.5 font-medium">Calls</th>
-                  <th className="text-right px-4 py-2.5 font-medium">Prompt</th>
-                  <th className="text-right px-4 py-2.5 font-medium">Completion</th>
-                  <th className="text-right px-4 py-2.5 font-medium">Total</th>
-                  <th className="text-right px-4 py-2.5 font-medium">Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => {
-                  const share = data.total_tokens
-                    ? (u.total_tokens / data.total_tokens) * 100
-                    : 0;
-                  return (
-                    <tr key={u.user_id} className="border-t border-slate-100">
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
-                            {(u.full_name ?? u.username)[0]}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-medium text-slate-900 truncate">
-                              {u.full_name ?? u.username}
-                            </div>
-                            <div className="text-[11px] text-slate-500 truncate">
-                              @{u.username}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-slate-800">
-                        {fmt(u.calls)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-slate-600">
-                        {fmt(u.prompt_tokens)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-slate-600">
-                        {fmt(u.completion_tokens)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-slate-900 font-semibold">
-                        {fmt(u.total_tokens)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <div className="inline-flex items-center gap-2 w-full max-w-[140px] ml-auto">
-                          <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{ width: `${share}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] text-slate-500 tabular-nums w-10 text-right">
-                            {share.toFixed(1)}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
+      {/* Per-user leaderboard — every user paginated client-side. */}
+      {(() => {
+        const total = users.length;
+        const pageCount = Math.max(1, Math.ceil(total / pageSize));
+        const safePage = Math.min(page, pageCount);
+        const pageStart = (safePage - 1) * pageSize;
+        const paged = users.slice(pageStart, pageStart + pageSize);
+        return (
+          <Section
+            title="All users"
+            subtitle={
+              q.trim()
+                ? `${total} matching · ${data.per_user.length} total`
+                : `${data.per_user.length} user${data.per_user.length === 1 ? "" : "s"}`
+            }
+            icon={<UserIcon className="size-4" />}
+            action={
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search users…"
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+            }
+          >
+            {total === 0 ? (
+              <Empty label="No users match." />
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[720px] text-sm admin-table">
+                    <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 font-medium w-10">#</th>
+                        <th className="text-left px-4 py-2.5 font-medium">User</th>
+                        <th className="text-right px-4 py-2.5 font-medium">Calls</th>
+                        <th className="text-right px-4 py-2.5 font-medium">Prompt</th>
+                        <th className="text-right px-4 py-2.5 font-medium">Completion</th>
+                        <th className="text-right px-4 py-2.5 font-medium">Total</th>
+                        <th className="text-right px-4 py-2.5 font-medium">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paged.map((u, i) => {
+                        const rank = pageStart + i + 1;
+                        const share = data.total_tokens
+                          ? (u.total_tokens / data.total_tokens) * 100
+                          : 0;
+                        return (
+                          <tr key={u.user_id} className="border-t border-slate-100">
+                            <td className="px-4 py-2.5 text-slate-500 tabular-nums font-medium">
+                              {rank}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2.5">
+                                <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
+                                  {(u.full_name ?? u.username)[0]}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-medium text-slate-900 truncate">
+                                    {u.full_name ?? u.username}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 truncate">
+                                    @{u.username}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-slate-800">
+                              {fmt(u.calls)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-slate-600">
+                              {fmt(u.prompt_tokens)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-slate-600">
+                              {fmt(u.completion_tokens)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-slate-900 font-semibold">
+                              {fmt(u.total_tokens)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <div className="inline-flex items-center gap-2 w-full max-w-[140px] ml-auto">
+                                <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary"
+                                    style={{ width: `${share}%` }}
+                                  />
+                                </div>
+                                <span className="text-[11px] text-slate-500 tabular-nums w-10 text-right">
+                                  {share.toFixed(1)}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination footer */}
+                <div className="mt-3 flex items-center justify-between flex-wrap gap-3">
+                  <div className="text-[11px] text-slate-500 tabular-nums">
+                    Showing{" "}
+                    <span className="font-medium text-slate-700">
+                      {pageStart + 1}
+                    </span>
+                    –
+                    <span className="font-medium text-slate-700">
+                      {Math.min(pageStart + pageSize, total)}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-medium text-slate-700">{total}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="tu-page-size"
+                      className="text-[11px] text-slate-500"
+                    >
+                      Rows
+                    </label>
+                    <select
+                      id="tu-page-size"
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="h-7 rounded-md border border-slate-200 bg-white px-1.5 text-[11px] tabular-nums"
+                    >
+                      {[10, 20, 50, 100].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="w-2" />
+                    <PagerBtn
+                      disabled={safePage === 1}
+                      onClick={() => setPage(1)}
+                      label="First"
+                    >
+                      «
+                    </PagerBtn>
+                    <PagerBtn
+                      disabled={safePage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      label="Previous"
+                    >
+                      <ChevronLeft className="size-3.5" />
+                    </PagerBtn>
+                    {pageWindow(safePage, pageCount).map((p, idx) =>
+                      p === "…" ? (
+                        <span
+                          key={`gap-${idx}`}
+                          className="px-2 text-[11px] text-slate-400 select-none"
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p as number)}
+                          className={
+                            "min-w-7 h-7 px-2 rounded-md text-[11px] font-medium tabular-nums transition-colors " +
+                            (p === safePage
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-slate-600 hover:bg-slate-100")
+                          }
+                        >
+                          {p}
+                        </button>
+                      ),
+                    )}
+                    <PagerBtn
+                      disabled={safePage === pageCount}
+                      onClick={() =>
+                        setPage((p) => Math.min(pageCount, p + 1))
+                      }
+                      label="Next"
+                    >
+                      <ChevronRight className="size-3.5" />
+                    </PagerBtn>
+                    <PagerBtn
+                      disabled={safePage === pageCount}
+                      onClick={() => setPage(pageCount)}
+                      label="Last"
+                    >
+                      »
+                    </PagerBtn>
+                  </div>
+                </div>
+              </>
+            )}
+          </Section>
+        );
+      })()}
     </div>
   );
 }
@@ -305,4 +425,46 @@ function fmt(n: number): string {
   if (n < 1000) return String(n);
   if (n < 1_000_000) return (n / 1000).toFixed(n < 10_000 ? 2 : 1) + "k";
   return (n / 1_000_000).toFixed(2) + "M";
+}
+
+function PagerBtn({
+  disabled,
+  onClick,
+  children,
+  label,
+}: {
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={
+        "inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-md border border-slate-200 bg-white text-slate-600 text-[11px] font-medium transition-colors " +
+        (disabled
+          ? "opacity-40 cursor-not-allowed"
+          : "hover:bg-slate-50 hover:text-slate-900")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Compact pagination window: 1 … 4 [5] 6 … 12 */
+function pageWindow(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  if (left > 2) out.push("…");
+  for (let p = left; p <= right; p++) out.push(p);
+  if (right < total - 1) out.push("…");
+  out.push(total);
+  return out;
 }

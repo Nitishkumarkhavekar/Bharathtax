@@ -702,7 +702,9 @@ def admin_token_usage(
         .where(TokenUsage.created_at >= dW)
     ) or 0)
 
-    # Per-user leaderboard (top spenders)
+    # Per-user leaderboard — return EVERY user who ever spent tokens; the
+    # frontend paginates client-side.  The old top-50 cap made the table
+    # useless when the department scaled past a couple of dozen officers.
     per_user_rows = db.execute(
         select(
             User.id, User.username, User.full_name, User.email,
@@ -714,7 +716,6 @@ def admin_token_usage(
         .join(TokenUsage, TokenUsage.user_id == User.id)
         .group_by(User.id, User.username, User.full_name, User.email)
         .order_by(func.sum(TokenUsage.total_tokens).desc())
-        .limit(50)
     ).all()
     per_user = [
         {"user_id": uid, "username": un, "full_name": fn, "email": em,
@@ -873,4 +874,195 @@ def admin_user_token_usage(
         "by_action": by_action,
         "by_model": by_model,
         "per_day": per_day,
+    }
+
+
+# ============================================================ Gemini monitoring
+@router.get("/gemini")
+def admin_gemini_stats(
+    days: int = Q(30, ge=1, le=365),
+    admin: User = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Detailed Gemini-API health & spend for the admin console.
+
+    Aggregates every `token_usage` row whose `model` matches the configured
+    Gemini model — that's the source of truth since we bill every Gemini
+    call through the same `tokens.record()` path as LiteLLM.
+    """
+    import os as _os
+    gemini_model = _os.getenv("GEMINI_SEARCH_MODEL", "gemini-flash-latest")
+    key_configured = bool((_os.getenv("GEMINI_API_KEY") or "").strip())
+    web_search_enabled = _os.getenv("WEB_SEARCH_ENABLED", "1").lower() not in (
+        "0", "false", "no", ""
+    )
+
+    now = datetime.now(timezone.utc)
+    d24 = now - timedelta(hours=24)
+    d7 = now - timedelta(days=7)
+    dW = now - timedelta(days=days)
+
+    # Base filter: any row where model looks like Gemini (accept prefix
+    # match so gemini-flash-latest / gemini-1.5-pro / etc. all count).
+    gemini_filter = TokenUsage.model.ilike("gemini%")
+
+    # Overall totals (all time)
+    totals = db.execute(
+        select(
+            func.coalesce(func.sum(TokenUsage.prompt_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.completion_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.count(TokenUsage.id),
+            func.count(func.distinct(TokenUsage.user_id)),
+            func.coalesce(func.avg(TokenUsage.latency_ms), 0),
+        ).where(gemini_filter)
+    ).one()
+
+    tokens_24h = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(gemini_filter, TokenUsage.created_at >= d24)
+    ) or 0)
+    calls_24h = int(db.scalar(
+        select(func.count(TokenUsage.id))
+        .where(gemini_filter, TokenUsage.created_at >= d24)
+    ) or 0)
+    tokens_7d = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(gemini_filter, TokenUsage.created_at >= d7)
+    ) or 0)
+    tokens_window = int(db.scalar(
+        select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
+        .where(gemini_filter, TokenUsage.created_at >= dW)
+    ) or 0)
+
+    # Per-day series in the window
+    per_day_rows = db.execute(
+        select(
+            func.date_trunc("day", TokenUsage.created_at).label("day"),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.count(TokenUsage.id),
+        )
+        .where(gemini_filter, TokenUsage.created_at >= dW)
+        .group_by("day").order_by("day")
+    ).all()
+    per_day = [
+        {
+            "day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
+            "tokens": int(t),
+            "calls": int(c),
+        }
+        for d, t, c in per_day_rows
+    ]
+
+    # Per-model variant breakdown (in case a deploy uses more than one
+    # Gemini SKU over time).
+    per_model = [
+        {"model": m, "calls": int(c), "tokens": int(t)}
+        for m, c, t in db.execute(
+            select(
+                TokenUsage.model,
+                func.count(TokenUsage.id),
+                func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            )
+            .where(gemini_filter)
+            .group_by(TokenUsage.model)
+            .order_by(func.sum(TokenUsage.total_tokens).desc())
+        ).all()
+    ]
+
+    # Per-user leaderboard (all users, sorted, no cap).
+    per_user_rows = db.execute(
+        select(
+            User.id, User.username, User.full_name, User.email,
+            func.count(TokenUsage.id),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.prompt_tokens), 0),
+            func.coalesce(func.sum(TokenUsage.completion_tokens), 0),
+            func.coalesce(func.avg(TokenUsage.latency_ms), 0),
+        )
+        .join(TokenUsage, TokenUsage.user_id == User.id)
+        .where(gemini_filter)
+        .group_by(User.id, User.username, User.full_name, User.email)
+        .order_by(func.sum(TokenUsage.total_tokens).desc())
+    ).all()
+    per_user = [
+        {"user_id": uid, "username": un, "full_name": fn, "email": em,
+         "calls": int(c), "total_tokens": int(t),
+         "prompt_tokens": int(p), "completion_tokens": int(cc),
+         "avg_latency_ms": int(avg or 0)}
+        for uid, un, fn, em, c, t, p, cc, avg in per_user_rows
+    ]
+
+    # Per-action — which BharathTax feature is driving Gemini spend.
+    per_action_rows = db.execute(
+        select(
+            TokenUsage.action,
+            func.count(TokenUsage.id),
+            func.coalesce(func.sum(TokenUsage.total_tokens), 0),
+        )
+        .where(gemini_filter)
+        .group_by(TokenUsage.action)
+        .order_by(func.sum(TokenUsage.total_tokens).desc())
+    ).all()
+    per_action = [
+        {"action": a, "calls": int(c), "tokens": int(t)}
+        for a, c, t in per_action_rows
+    ]
+
+    # Most recent Gemini calls — for a debug "trail" panel.
+    recent_rows = db.execute(
+        select(
+            TokenUsage.id,
+            TokenUsage.user_id,
+            User.username,
+            User.full_name,
+            TokenUsage.action,
+            TokenUsage.model,
+            TokenUsage.prompt_tokens,
+            TokenUsage.completion_tokens,
+            TokenUsage.total_tokens,
+            TokenUsage.latency_ms,
+            TokenUsage.created_at,
+        )
+        .join(User, User.id == TokenUsage.user_id, isouter=True)
+        .where(gemini_filter)
+        .order_by(TokenUsage.id.desc())
+        .limit(500)
+    ).all()
+    recent = [
+        {
+            "id": rid, "user_id": uid, "username": un, "full_name": fn,
+            "action": act, "model": mdl,
+            "prompt_tokens": int(pt), "completion_tokens": int(ct),
+            "total_tokens": int(tt),
+            "latency_ms": (int(lat) if lat is not None else None),
+            "created_at": (ca.isoformat() if hasattr(ca, "isoformat") else str(ca)),
+        }
+        for rid, uid, un, fn, act, mdl, pt, ct, tt, lat, ca in recent_rows
+    ]
+
+    return {
+        # Config / health
+        "configured": key_configured,
+        "web_search_enabled": web_search_enabled,
+        "model": gemini_model,
+        # Totals (all time)
+        "prompt_tokens": int(totals[0]),
+        "completion_tokens": int(totals[1]),
+        "total_tokens": int(totals[2]),
+        "calls": int(totals[3]),
+        "active_users": int(totals[4] or 0),
+        "avg_latency_ms": int(totals[5] or 0),
+        # Recent activity
+        "calls_24h": calls_24h,
+        "tokens_24h": tokens_24h,
+        "tokens_7d": tokens_7d,
+        "tokens_window": tokens_window,
+        "window_days": days,
+        # Breakdowns
+        "per_day": per_day,
+        "per_model": per_model,
+        "per_user": per_user,
+        "per_action": per_action,
+        "recent": recent,
     }

@@ -23,6 +23,7 @@ import ServerStatsPage from "./pages/admin/ServerStats";
 import RevenueManagementPage from "./pages/admin/RevenueManagement";
 import LicenseManagementPage from "./pages/admin/LicenseManagement";
 import TokenUsagePage from "./pages/admin/TokenUsage";
+import GeminiPage from "./pages/admin/Gemini";
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
   const { session, loading } = useAuth();
@@ -95,6 +96,7 @@ export default function App() {
         <Route path="model" element={<ModelManagementPage />} />
         <Route path="server" element={<ServerStatsPage />} />
         <Route path="tokens" element={<TokenUsagePage />} />
+        <Route path="gemini" element={<GeminiPage />} />
         <Route
           path="revenue"
           element={
