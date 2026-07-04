@@ -361,17 +361,68 @@ def my_token_usage(user: User = Depends(get_current_user),
         for d, t, c in per_day_rows
     ]
 
-    recent_rows = list(db.scalars(
-        base.order_by(TokenUsage.id.desc()).limit(20)
+    # ------------------------------------------------------------------
+    # Recent activity — merge sibling rows from the same user question.
+    #
+    # A single Ask-bot question can produce SEVERAL rows in `token_usage`:
+    # the primary corpus model, an optional llama fallback, and (very often)
+    # a Gemini web-search fallback. Users don't need to see the plumbing —
+    # they need one row per question with the TOTAL spend it cost, so the
+    # Gemini token count is visible instead of drowning in zero-token
+    # primary-model rows.
+    #
+    # We over-fetch a wider window, then greedily collapse rows that share
+    # the same (user, action) and land within 30 s of each other into a
+    # single aggregate row.  Model identifiers stay scrubbed (they were
+    # never in the response), so the merge is invisible to the client.
+    # ------------------------------------------------------------------
+    raw = list(db.scalars(
+        base.order_by(TokenUsage.id.desc()).limit(120)
     ))
-    # Recent rows scrub the model identifier so the user never sees which
-    # backend the request was routed to.
+    merged: list[dict] = []
+    MERGE_WINDOW_S = 30.0
+    for r in raw:
+        if merged:
+            last = merged[-1]
+            same_action = last["action"] == r.action
+            last_dt = last["_dt"]
+            gap = (last_dt - r.created_at).total_seconds() if r.created_at and last_dt else 999
+            if same_action and 0 <= gap <= MERGE_WINDOW_S:
+                # Sum tokens onto the existing entry; keep the newer
+                # timestamp (which is `last`) so ordering stays stable.
+                last["prompt_tokens"] += int(r.prompt_tokens or 0)
+                last["completion_tokens"] += int(r.completion_tokens or 0)
+                last["total_tokens"] += int(r.total_tokens or 0)
+                # Latency: keep the max (the slowest call dominated the
+                # user-perceived wait).
+                if r.latency_ms is not None:
+                    prev = last.get("latency_ms") or 0
+                    last["latency_ms"] = max(prev, int(r.latency_ms))
+                continue
+        merged.append({
+            "id": r.id,
+            "action": r.action,
+            "prompt_tokens": int(r.prompt_tokens or 0),
+            "completion_tokens": int(r.completion_tokens or 0),
+            "total_tokens": int(r.total_tokens or 0),
+            "latency_ms": (int(r.latency_ms) if r.latency_ms is not None else None),
+            "created_at_iso": r.created_at.isoformat() if r.created_at else None,
+            "_dt": r.created_at,
+        })
+    # Drop rows where the underlying gateway didn't report any tokens.
+    # Those aren't "free calls" — they're gaps in the telemetry, and users
+    # find a wall of 0-token rows confusing (the by-task aggregates and
+    # KPI cards still count every call, so nothing is lost).
+    spent = [m for m in merged if m["total_tokens"] > 0]
+    # Trim to the client-facing size and strip the internal `_dt` key.
     recent = [
-        {"id": r.id, "action": r.action,
-         "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
-         "total_tokens": r.total_tokens, "latency_ms": r.latency_ms,
-         "created_at": r.created_at.isoformat() if r.created_at else None}
-        for r in recent_rows
+        {"id": m["id"], "action": m["action"],
+         "prompt_tokens": m["prompt_tokens"],
+         "completion_tokens": m["completion_tokens"],
+         "total_tokens": m["total_tokens"],
+         "latency_ms": m["latency_ms"],
+         "created_at": m["created_at_iso"]}
+        for m in spent[:50]
     ]
 
     return _TokenSummaryOut(

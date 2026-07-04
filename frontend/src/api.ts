@@ -310,6 +310,43 @@ export interface AdminTokenUsage {
   per_model: TokenModelRow[];
   per_day: TokenDayRow[];
 }
+export interface AdminGeminiRecentRow {
+  id: number;
+  user_id: number | null;
+  username: string | null;
+  full_name: string | null;
+  action: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  latency_ms: number | null;
+  created_at: string;
+}
+export interface AdminGeminiPerUserRow extends TokenPerUserRow {
+  avg_latency_ms: number;
+}
+export interface AdminGeminiStats {
+  configured: boolean;
+  web_search_enabled: boolean;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  calls: number;
+  active_users: number;
+  avg_latency_ms: number;
+  calls_24h: number;
+  tokens_24h: number;
+  tokens_7d: number;
+  tokens_window: number;
+  window_days: number;
+  per_day: TokenDayRow[];
+  per_model: TokenModelRow[];
+  per_user: AdminGeminiPerUserRow[];
+  per_action: TokenActionRow[];
+  recent: AdminGeminiRecentRow[];
+}
 export interface AdminUserTokenUsage {
   user: { id: number; username: string; full_name: string | null; email: string | null; role: string };
   prompt_tokens: number;
@@ -495,6 +532,8 @@ export const api = {
   // --- admin: token usage ---
   adminTokenUsage: (days = 30) =>
     req<AdminTokenUsage>(`/admin/token-usage?days=${days}`),
+  adminGemini: (days = 30) =>
+    req<AdminGeminiStats>(`/admin/gemini?days=${days}`),
   adminUserTokenUsage: (userId: number) =>
     req<AdminUserTokenUsage>(`/admin/users/${userId}/token-usage`),
 
