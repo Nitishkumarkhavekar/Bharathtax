@@ -668,6 +668,49 @@ _INSTRUCT_MODEL = "gemini-flash-latest"
 _INSTRUCT_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"]
 
 
+_MD_MARKERS = set("*_`#~")
+
+
+def _normalize_with_map(raw: str):
+    """Normalized text (markdown emphasis/heading markers removed, whitespace
+    collapsed) + a map from each normalized-char index back to its raw index."""
+    norm: list[str] = []
+    imap: list[int] = []
+    prev_space = False
+    for i, ch in enumerate(raw):
+        if ch in _MD_MARKERS:
+            continue
+        if ch.isspace():
+            if prev_space:
+                continue
+            norm.append(" "); imap.append(i); prev_space = True
+            continue
+        norm.append(ch); imap.append(i); prev_space = False
+    return "".join(norm), imap
+
+
+def _locate_selection(current_text: str, selection: str):
+    """Best-effort raw-char span (start, end) in current_text matching the user's
+    RENDERED selection, tolerating markdown-formatting differences; None if absent.
+    The officer selects rendered text (no ** __ # or list numbers), so an exact
+    substring match against the raw markdown frequently misses — we retry on a
+    marker-stripped, whitespace-collapsed view and map the hit back to the raw text."""
+    sel = (selection or "").strip()
+    if len(sel) < 3:
+        return None
+    i = current_text.find(sel)
+    if i >= 0:
+        return (i, i + len(sel))
+    nraw, imap = _normalize_with_map(current_text)
+    nsel = _normalize_with_map(sel)[0].strip()
+    if len(nsel) < 3:
+        return None
+    j = nraw.find(nsel)
+    if j < 0:
+        return None
+    return (imap[j], imap[j + len(nsel) - 1] + 1)
+
+
 @router.post("/cases/{cid}/draft/instruct")
 def instruct_draft(cid: str, body: DraftInstruction,
                    p: Principal = Depends(get_principal),
@@ -710,12 +753,14 @@ def instruct_draft(cid: str, body: DraftInstruction,
     # target confidently, fall back to a whole-draft rewrite.
     from app.services import draft_sections as _sec
     selection = (body.selection or "").strip()
-    sel_found = bool(selection) and selection in current_text
+    sel_span = _locate_selection(current_text, selection) if selection else None
+    sel_found = sel_span is not None
+    sel_excerpt = current_text[sel_span[0]:sel_span[1]] if sel_span else selection
     sections = None
     target_idx = None
     if sel_found:
         user_prompt = (
-            f"EXCERPT TO EDIT (verbatim):\n---\n{selection}\n---\n\n"
+            f"EXCERPT TO EDIT (verbatim):\n---\n{sel_excerpt}\n---\n\n"
             f"USER INSTRUCTION:\n{instruction}\n\n"
             f"OUTPUT: the revised excerpt only — same coverage, no preamble, no "
             f"surrounding text. Keep it drop-in for where it was taken from."
@@ -776,9 +821,10 @@ def instruct_draft(cid: str, body: DraftInstruction,
 
     # Splice the rewritten section back in, or use it whole if we did a full
     # rewrite. Either way, ``revised`` is the new complete draft.
-    if sel_found:
-        # Replace the FIRST occurrence of the highlighted excerpt with the rewrite.
-        revised = current_text.replace(selection, revised_piece, 1)
+    if sel_found and sel_span:
+        # Splice the rewrite back into the EXACT raw span the selection maps to
+        # (tolerant of markdown formatting the officer didn't see when selecting).
+        revised = current_text[:sel_span[0]] + revised_piece + current_text[sel_span[1]:]
     elif target_idx is not None:
         revised = _sec.splice(sections, target_idx, revised_piece)
     else:
