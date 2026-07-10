@@ -1,4 +1,5 @@
 import { ChangeEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles } from "lucide-react";
 import { StarRating } from "../components/ui/StarRating";
@@ -814,38 +815,51 @@ function TextModifyView({
   draft: string;
   onApplied: () => void | Promise<void>;
 }) {
-  const [pop, setPop] = useState<{ x: number; y: number; selection: string } | null>(null);
+  // Anchor = the selection's bounding rect in viewport coords, so the floating
+  // "Ask AI" chip and the popover both position relative to the SELECTION.
+  type Anchor = { cx: number; top: number; bottom: number };
+  const [pop, setPop] = useState<(Anchor & { selection: string }) | null>(null);
   // Floating "Ask AI" button shown when the user selects text (ChatGPT-style),
   // so editing is discoverable without needing a right-click.
-  const [hint, setHint] = useState<{ x: number; y: number } | null>(null);
+  const [hint, setHint] = useState<Anchor | null>(null);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  function openFor(clientX: number, clientY: number): boolean {
+  function selectionAnchor(): (Anchor & { selection: string }) | null {
     const sel = window.getSelection();
     const t = (sel?.toString() ?? "").trim();
-    if (t.length < 3) return false;
+    if (t.length < 3 || !sel || sel.rangeCount === 0) return null;
+    const r = sel.getRangeAt(0).getBoundingClientRect();
+    return { cx: r.left + r.width / 2, top: r.top, bottom: r.bottom, selection: t };
+  }
+  // Centered under the selection, clamped so the box is always fully on screen.
+  function anchoredStyle(a: Anchor, boxW: number, boxH: number): React.CSSProperties {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const w = Math.min(boxW, vw - 16);
+    const left = Math.max(8, Math.min(a.cx - w / 2, vw - w - 8));
+    const below = a.bottom + 8;
+    const top = below + boxH <= vh - 8 ? below : Math.max(8, a.top - boxH - 8);
+    return { position: "fixed", left, top, width: w, zIndex: 1000 };
+  }
+  function openFor(): boolean {
+    const a = selectionAnchor();
+    if (!a) return false;
     setErr(null);
     setPrompt("");
     setHint(null);
-    setPop({ x: clientX, y: clientY, selection: t });
+    setPop(a);
     return true;
   }
   function onContextMenu(e: React.MouseEvent) {
-    if (openFor(e.clientX, e.clientY)) e.preventDefault();
+    if (openFor()) e.preventDefault();
   }
   // On text selection inside the draft, float an "Ask AI" chip above it.
   function onSelectMouseUp() {
     if (pop) return;
-    const sel = window.getSelection();
-    const t = (sel?.toString() ?? "").trim();
-    if (t.length < 3 || !sel || sel.rangeCount === 0) {
-      setHint(null);
-      return;
-    }
-    const r = sel.getRangeAt(0).getBoundingClientRect();
-    setHint({ x: r.left + r.width / 2, y: r.top - 8 });
+    const a = selectionAnchor();
+    if (!a) { setHint(null); return; }
+    setHint({ cx: a.cx, top: a.top, bottom: a.bottom });
   }
   async function apply() {
     if (!pop || !prompt.trim() || busy) return;
@@ -905,34 +919,29 @@ function TextModifyView({
           <div className="text-sm text-slate-500 py-12 text-center">No draft yet.</div>
         )}
       </div>
-      {hint && !pop && (
+      {hint && !pop && createPortal(
         <button
           id="ai-ask-btn"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => openFor(hint.x, hint.y)}
+          onClick={() => openFor()}
           style={{
             position: "fixed",
-            left: hint.x,
-            top: hint.y,
-            transform: "translate(-50%, -100%)",
-            zIndex: 60,
+            left: Math.max(56, Math.min(hint.cx, window.innerWidth - 56)),
+            top: hint.top > 44 ? hint.top - 8 : hint.bottom + 8,
+            transform: hint.top > 44 ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+            zIndex: 1000,
           }}
           className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-white text-[12px] font-medium px-3 py-1.5 shadow-lg ring-1 ring-white/10 hover:bg-slate-800"
         >
           <Sparkles className="size-3.5 text-primary" /> Ask AI
-        </button>
+        </button>,
+        document.body,
       )}
-      {pop && (
+      {pop && createPortal(
         <div
           id="ai-modify-pop"
-          style={{
-            position: "fixed",
-            left: Math.max(8, Math.min(pop.x - 24, window.innerWidth - 320 - 8)),
-            top: Math.max(8, Math.min(pop.y + 8, window.innerHeight - 236)),
-            zIndex: 60,
-            width: "min(320px, calc(100vw - 16px))",
-          }}
+          style={anchoredStyle(pop, 340, 210)}
           className="rounded-xl border border-slate-200 bg-white shadow-2xl p-3"
         >
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
@@ -975,7 +984,8 @@ function TextModifyView({
               {busy ? "Applying…" : "Apply change"}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
