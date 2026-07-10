@@ -997,6 +997,9 @@ function TextModifyView({
   onApplied: () => void | Promise<void>;
 }) {
   const [pop, setPop] = useState<{ x: number; y: number; selection: string } | null>(null);
+  // Floating "Ask AI" button shown when the user selects text (ChatGPT-style),
+  // so editing is discoverable without needing a right-click.
+  const [hint, setHint] = useState<{ x: number; y: number } | null>(null);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1007,11 +1010,24 @@ function TextModifyView({
     if (t.length < 3) return false;
     setErr(null);
     setPrompt("");
+    setHint(null);
     setPop({ x: clientX, y: clientY, selection: t });
     return true;
   }
   function onContextMenu(e: React.MouseEvent) {
     if (openFor(e.clientX, e.clientY)) e.preventDefault();
+  }
+  // On text selection inside the draft, float an "Ask AI" chip above it.
+  function onSelectMouseUp() {
+    if (pop) return;
+    const sel = window.getSelection();
+    const t = (sel?.toString() ?? "").trim();
+    if (t.length < 3 || !sel || sel.rangeCount === 0) {
+      setHint(null);
+      return;
+    }
+    const r = sel.getRangeAt(0).getBoundingClientRect();
+    setHint({ x: r.left + r.width / 2, y: r.top - 8 });
   }
   async function apply() {
     if (!pop || !prompt.trim() || busy) return;
@@ -1028,6 +1044,14 @@ function TextModifyView({
       setBusy(false);
     }
   }
+  useEffect(() => {
+    if (!hint) return;
+    function onDown(e: MouseEvent) {
+      if (!(e.target as HTMLElement)?.closest?.("#ai-ask-btn")) setHint(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [hint]);
   useEffect(() => {
     if (!pop) return;
     function onDown(e: MouseEvent) {
@@ -1049,10 +1073,12 @@ function TextModifyView({
     <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-4 py-2 text-[11.5px] text-slate-500 flex items-center gap-1.5">
         <Sparkles className="size-3.5 text-primary" />
-        Select any text, then right-click to modify just that part with AI.
+        Select any text and click <b>Ask AI</b> to rewrite just that part (right-click also works).
       </div>
       <div
         onContextMenu={onContextMenu}
+        onMouseUp={onSelectMouseUp}
+        onScroll={() => setHint(null)}
         className="max-h-[65vh] sm:max-h-[720px] overflow-auto px-4 sm:px-6 py-4 sm:py-5 text-[13px] sm:text-[14px] leading-relaxed text-slate-800 break-words selection:bg-primary/20 [&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:mb-3 [&_strong]:font-semibold [&_*]:max-w-full"
       >
         {draft ? (
@@ -1061,6 +1087,24 @@ function TextModifyView({
           <div className="text-sm text-slate-500 py-12 text-center">No draft yet.</div>
         )}
       </div>
+      {hint && !pop && (
+        <button
+          id="ai-ask-btn"
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => openFor(hint.x, hint.y)}
+          style={{
+            position: "fixed",
+            left: hint.x,
+            top: hint.y,
+            transform: "translate(-50%, -100%)",
+            zIndex: 60,
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-white text-[12px] font-medium px-3 py-1.5 shadow-lg ring-1 ring-white/10 hover:bg-slate-800"
+        >
+          <Sparkles className="size-3.5 text-primary" /> Ask AI
+        </button>
+      )}
       {pop && (
         <div
           id="ai-modify-pop"
