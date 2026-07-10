@@ -20,6 +20,12 @@ class AppealCase(Base):
     __tablename__ = "appeal_cases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Public opaque identifier — appears in URLs instead of `id` so that the
+    # sequential integer id (an implementation detail + enumeration vector) is
+    # never exposed to users. UUID4 as a hex string, 32 chars, dashless. Every
+    # externally-callable route accepts EITHER slug or numeric id; the numeric
+    # id path is kept for admin/internal tooling. See _get_case().
+    slug: Mapped[str] = mapped_column(String(36), unique=True, index=True)
     owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     wing_id: Mapped[int] = mapped_column(ForeignKey("wings.id"), index=True)
     title: Mapped[str] = mapped_column(String(300))
@@ -44,6 +50,12 @@ class AppealDocument(Base):
     minio_key: Mapped[str] = mapped_column(String(500))
     text: Mapped[str] = mapped_column(Text, default="")
     pages: Mapped[int] = mapped_column(Integer, default=0)
+    # SHA-256 hex of the raw PDF bytes. Populated on upload. Used as the
+    # dedup key — if another AppealDocument already has this sha256 AND
+    # non-empty text, we copy its `text` instead of re-running Gemini OCR.
+    # Nullable so historic rows uploaded before this migration keep working
+    # (they simply skip the dedup path).
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     case: Mapped[AppealCase] = relationship(back_populates="documents")

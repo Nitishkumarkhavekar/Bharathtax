@@ -142,6 +142,13 @@ def create_user(body: UserCreate, admin: User = Depends(_admin),
         wing_id=body.wing_id, office_id=body.office_id,
     )
     db.add(user); db.commit(); db.refresh(user)
+    # Auto-provision a free-trial subscription (100K tokens) + a license key for
+    # non-admin users, so the account is usable the moment it is created. The
+    # key is visible on the admin Licenses page (notes = "Trial license for ...").
+    if user.role in (Role.officer, Role.auditor):
+        from app.services.provisioning import provision_trial
+        provision_trial(db, user, admin_id=admin.id)
+        db.commit()
     return user
 
 
@@ -217,9 +224,41 @@ def delete_user(user_id: int, admin: User = Depends(_admin),
     _scope_wing(admin, user.wing_id)
     if user.id == admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="cannot delete yourself")
-    # Free any seat leases first to avoid FK issues.
-    db.query(SeatLease).filter(SeatLease.user_id == user.id).delete()
-    db.delete(user); db.commit()
+    # Postgres FKs to users are NO ACTION, so a bare DELETE fails once the user
+    # has any dependent rows (subscription, appeal cases, queries, audit log…).
+    # Remove the user's own content + personal records in FK-safe order (children
+    # first). SET NULL FKs (token_usage, license created_by, revenue) are handled
+    # by the DB; a grant made BY this admin on someone else's sub is nulled, not
+    # deleted. NOTE: this also deletes the user's appeal cases and documents.
+    from sqlalchemy import text as _sqltext
+    uid = user.id
+    uname = user.username
+    steps = [
+        ("DELETE FROM appeal_outputs WHERE run_id IN (SELECT id FROM appeal_runs "
+         "WHERE created_by=:u OR case_id IN (SELECT id FROM appeal_cases WHERE owner_user_id=:u))", {"u": uid}),
+        ("DELETE FROM appeal_runs WHERE created_by=:u OR case_id IN "
+         "(SELECT id FROM appeal_cases WHERE owner_user_id=:u)", {"u": uid}),
+        ("DELETE FROM appeal_documents WHERE case_id IN (SELECT id FROM appeal_cases WHERE owner_user_id=:u)", {"u": uid}),
+        ("DELETE FROM appeal_cases WHERE owner_user_id=:u", {"u": uid}),
+        ("DELETE FROM documents WHERE owner_user_id=:u", {"u": uid}),
+        ("DELETE FROM queries WHERE user_id=:u", {"u": uid}),
+        ("DELETE FROM seat_leases WHERE user_id=:u", {"u": uid}),
+        ("DELETE FROM license_keys WHERE assigned_to=:n", {"n": uname}),
+        ("UPDATE user_subscriptions SET granted_by_admin_id=NULL WHERE granted_by_admin_id=:u", {"u": uid}),
+        ("DELETE FROM user_subscriptions WHERE user_id=:u", {"u": uid}),
+        ("DELETE FROM audit_log WHERE user_id=:u", {"u": uid}),
+    ]
+    try:
+        for sql, params in steps:
+            db.execute(_sqltext(sql), params)
+        db.delete(user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Could not delete this user — some related records could not be removed.",
+        )
 
 
 # ---------- corpus (kept for ingestion controls) ----------
@@ -497,6 +536,109 @@ def server_stats(admin: User = Depends(_admin)) -> dict:
         "containers": _docker_containers(),
         "llm_endpoint_healthy": llm_ok,
         "llm_endpoint_latency_ms": llm_lat,
+    }
+
+
+# ---------- model health (per-backend status) ----------
+@router.get("/model/health")
+def model_health(admin: User = Depends(_admin)) -> dict:
+    """Live health of every model/backend BharathTax depends on, for the admin
+    Model-Management console. Probes run concurrently; each service reports
+    ok / degraded / down + a human detail + latency, so the admin sees at a
+    glance what works and which LLM is actively serving generation."""
+    import os as _os
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _svc(key, name, role, stat, detail=None, latency=None, endpoint=None, models=None, meta=None):
+        return {"key": key, "name": name, "role": role, "status": stat, "detail": detail,
+                "latency_ms": latency, "endpoint": endpoint, "models": models or [], "meta": meta or {}}
+
+    def probe_gemini():
+        gkey = (_os.getenv("GEMINI_API_KEY") or "").strip()
+        gmodels = [m.strip() for m in _os.getenv("GEMINI_MODELS", "gemini-flash-latest").split(",") if m.strip()]
+        gep = "generativelanguage.googleapis.com"
+        if not gkey:
+            return _svc("gemini", "Gemini API", "Primary LLM + web search", "down", "No API key configured", None, gep, gmodels)
+        gm = gmodels[0] if gmodels else "gemini-flash-latest"
+        t0 = time.time()
+        try:
+            with httpx.Client(timeout=10.0) as c:
+                r = c.post(f"https://generativelanguage.googleapis.com/v1beta/models/{gm}:generateContent",
+                           headers={"x-goog-api-key": gkey, "Content-Type": "application/json"},
+                           json={"contents": [{"parts": [{"text": "ping"}]}],
+                                 "generationConfig": {"maxOutputTokens": 1, "thinkingConfig": {"thinkingBudget": 0}}})
+            lat = (time.time() - t0) * 1000
+            if r.status_code == 200:
+                return _svc("gemini", "Gemini API", "Primary LLM + web search", "ok", "Responding normally", lat, gep, gmodels)
+            if r.status_code == 429:
+                msg = ""
+                try:
+                    msg = (r.json().get("error", {}) or {}).get("message", "")
+                except Exception:
+                    pass
+                dep = ("credit" in msg.lower()) or ("depleted" in msg.lower())
+                return _svc("gemini", "Gemini API", "Primary LLM + web search", "down" if dep else "degraded",
+                            "Prepaid credits depleted \u2014 top up billing" if dep else "Rate limited (HTTP 429)",
+                            lat, gep, gmodels, {"http": 429, "message": msg[:200]})
+            return _svc("gemini", "Gemini API", "Primary LLM + web search", "degraded", f"HTTP {r.status_code}", lat, gep, gmodels, {"http": r.status_code})
+        except Exception as e:
+            return _svc("gemini", "Gemini API", "Primary LLM + web search", "down", f"Unreachable: {type(e).__name__}", None, gep, gmodels)
+
+    def probe_local():
+        t0 = time.time()
+        try:
+            with httpx.Client(timeout=15.0) as c:
+                r = c.get(settings.llm_base_url.rstrip("/") + "/models",
+                          headers={"Authorization": f"Bearer {settings.llm_api_key}"})
+            lat = (time.time() - t0) * 1000
+            if r.status_code < 400:
+                ids = [m.get("id") for m in r.json().get("data", []) if m.get("id")]
+                return _svc("local_llm", "Local LLM (vLLM)", "Fallback LLM", "ok", "Serving", lat, settings.llm_base_url, ids)
+            return _svc("local_llm", "Local LLM (vLLM)", "Fallback LLM", "down", f"HTTP {r.status_code}", lat, settings.llm_base_url)
+        except Exception as e:
+            return _svc("local_llm", "Local LLM (vLLM)", "Fallback LLM", "down", f"Unreachable: {type(e).__name__}", None, settings.llm_base_url)
+
+    def probe_embed():
+        t0 = time.time()
+        try:
+            with httpx.Client(timeout=8.0) as c:
+                r = c.get(settings.ml_server_url.rstrip("/") + "/health")
+            lat = (time.time() - t0) * 1000
+            ok = r.status_code < 400
+            return _svc("embeddings", "Embeddings + Reranker", "Retrieval (RAG)", "ok" if ok else "down",
+                        "Serving" if ok else f"HTTP {r.status_code}", lat, settings.ml_server_url,
+                        [settings.embedding_model, settings.reranker_model])
+        except Exception as e:
+            return _svc("embeddings", "Embeddings + Reranker", "Retrieval (RAG)", "down", f"Unreachable: {type(e).__name__}",
+                        None, settings.ml_server_url, [settings.embedding_model, settings.reranker_model])
+
+    def probe_rag():
+        law_ep = settings.llm_base_url.rstrip("/") + "/law"
+        t0 = time.time()
+        try:
+            with httpx.Client(timeout=20.0) as c:
+                r = c.post(law_ep, headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                           json={"query": "income tax return due date", "k": 1})
+            lat = (time.time() - t0) * 1000
+            if r.status_code == 200:
+                n = len(r.json().get("passages", []) or [])
+                return _svc("rag_corpus", "Primary-law RAG corpus", "Grounding / citations", "ok", f"Returned {n} passage(s)", lat, law_ep)
+            return _svc("rag_corpus", "Primary-law RAG corpus", "Grounding / citations", "down", f"HTTP {r.status_code}", lat, law_ep)
+        except Exception as e:
+            return _svc("rag_corpus", "Primary-law RAG corpus", "Grounding / citations", "down", f"Unreachable: {type(e).__name__}", None, law_ep)
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        services = list(ex.map(lambda f: f(), [probe_gemini, probe_local, probe_embed, probe_rag]))
+
+    gemini_ok = any(x["key"] == "gemini" and x["status"] == "ok" for x in services)
+    local_ok = any(x["key"] == "local_llm" and x["status"] == "ok" for x in services)
+    active = "gemini" if gemini_ok else ("local" if local_ok else "none")
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "services": services,
+        "active_generation": active,
+        "all_healthy": all(x["status"] == "ok" for x in services),
+        "any_down": any(x["status"] == "down" for x in services),
     }
 
 

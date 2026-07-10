@@ -26,13 +26,25 @@ class Settings(BaseSettings):
     # redis / celery
     redis_url: str = "redis://redis:6379/0"
 
-    # minio
+    # minio (kept for legacy compatibility with older read paths; not used
+    # for new writes now that R2 is the sole object store).
     minio_endpoint: str = "minio:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_secure: bool = False
     minio_bucket_raw: str = "taxmedha-raw"
     minio_region: str = "in-local"
+
+    # Cloudflare R2 — durable object store. When `r2_account_id` is set,
+    # every put/get in services/storage.py routes here and MinIO is untouched.
+    # See services/storage.py for the switching logic.
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_endpoint: str = ""           # `<account_id>.r2.cloudflarestorage.com`
+    r2_bucket_raw: str = ""
+    r2_region: str = "auto"
+    r2_signed_url_ttl_seconds: int = 24 * 3600
 
     # ml server
     ml_server_url: str = "http://ml-server:8001"

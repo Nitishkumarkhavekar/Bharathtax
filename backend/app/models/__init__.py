@@ -2,6 +2,7 @@
 from app.models.activity import AuditLog, Query
 from app.models.admin import LicenseKey, RevenueEntry
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
+from app.models.billing import SubscriptionPlan, TokenPrice, UserSubscription
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
 from app.models.documents import Document, DocumentChunk
 from app.models.enums import (
@@ -19,4 +20,5 @@ __all__ = [
     "ChunkLevel", "CorpusDocStatus", "Domain", "DocumentStatus", "QueryScope", "Role", "SourceType",
     "Department", "Office", "SeatLease", "User", "Wing",
     "TokenUsage",
+    "SubscriptionPlan", "TokenPrice", "UserSubscription",
 ]

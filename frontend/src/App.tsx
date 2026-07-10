@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Ask from "./pages/Ask";
 import ProfilePage from "./pages/Profile";
 import UserTokenUsagePage from "./pages/TokenUsage";
+import BillingPage from "./pages/Billing";
 import Documents from "./pages/Documents";
 import History from "./pages/History";
 import Appeals from "./pages/Appeals";
@@ -23,6 +24,8 @@ import ServerStatsPage from "./pages/admin/ServerStats";
 import RevenueManagementPage from "./pages/admin/RevenueManagement";
 import LicenseManagementPage from "./pages/admin/LicenseManagement";
 import TokenUsagePage from "./pages/admin/TokenUsage";
+import AdminPricingPage from "./pages/admin/Pricing";
+import AdminBillingPage from "./pages/admin/Billing";
 import GeminiPage from "./pages/admin/Gemini";
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
@@ -77,6 +80,7 @@ export default function App() {
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />
       <Route path="/profile" element={<NonAdminOnly><ProfilePage /></NonAdminOnly>} />
       <Route path="/tokens" element={<NonAdminOnly><UserTokenUsagePage /></NonAdminOnly>} />
+      <Route path="/billing" element={<NonAdminOnly><BillingPage /></NonAdminOnly>} />
 
       {/* Admin console — full-screen with its own sidebar (no outer Layout). */}
       <Route
@@ -97,6 +101,8 @@ export default function App() {
         <Route path="server" element={<ServerStatsPage />} />
         <Route path="tokens" element={<TokenUsagePage />} />
         <Route path="gemini" element={<GeminiPage />} />
+        <Route path="pricing" element={<AdminPricingPage />} />
+        <Route path="billing" element={<AdminBillingPage />} />
         <Route
           path="revenue"
           element={

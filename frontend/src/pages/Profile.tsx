@@ -10,8 +10,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Pencil,
+  Copy,
 } from "lucide-react";
-import { ApiError, Profile as ProfileT, api } from "../api";
+import { ApiError, LicenseStatus, Profile as ProfileT, api } from "../api";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth";
 
@@ -75,6 +76,9 @@ export default function ProfilePage() {
       {/* Personal details */}
       <PersonalDetailsCard profile={profile} onSaved={setProfile} />
 
+      {/* License key */}
+      <LicenseCard />
+
       {/* Password change */}
       <ChangePasswordCard />
 
@@ -110,6 +114,72 @@ export default function ProfilePage() {
 }
 
 // ----------------------------------------------------------------- Personal details
+function LicenseCard() {
+  const [st, setSt] = useState<LicenseStatus | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    api.licenseStatus().then(setSt).catch(() => setSt(null));
+  }, []);
+  const keyVal = st ? st.license_key || st.pending_key || null : null;
+  if (!keyVal) return null;
+  function copy() {
+    navigator.clipboard
+      ?.writeText(keyVal as string)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      })
+      .catch(() => {});
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <KeyRound className="size-4 text-primary" />
+        <h3 className="text-sm font-semibold text-slate-900">License key</h3>
+        {st?.licensed ? (
+          <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10.5px] font-semibold">
+            <CheckCircle2 className="size-3" /> Active
+          </span>
+        ) : (
+          <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10.5px] font-semibold">
+            Not activated
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 font-mono text-[15px] font-semibold text-slate-900 tracking-wide select-all break-all">
+          {keyVal}
+        </code>
+        <button
+          type="button"
+          onClick={copy}
+          className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 ring-1 ring-slate-200 text-[12px] font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+        >
+          {copied ? (
+            <>
+              <CheckCircle2 className="size-3.5 text-emerald-600" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="size-3.5" /> Copy
+            </>
+          )}
+        </button>
+      </div>
+      <p className="mt-2 text-[11.5px] text-slate-500">
+        {st?.licensed
+          ? `Activated${
+              st?.valid_until
+                ? " \u00b7 valid until " + new Date(st.valid_until).toLocaleDateString()
+                : ""
+            }.`
+          : "This key is pre-filled in the activation dialog \u2014 click Activate to start using BharathTax."}
+      </p>
+    </div>
+  );
+}
+
+
 function PersonalDetailsCard({
   profile,
   onSaved,

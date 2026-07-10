@@ -14,6 +14,8 @@ import {
   X,
   Coins,
   Sparkles,
+  Tag,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/auth";
 import { cn } from "@/lib/utils";
@@ -31,6 +33,8 @@ const NAV: {
   { to: "/admin/model", label: "Model Management", icon: Brain, desc: "LLM models & metrics" },
   { to: "/admin/tokens", label: "Token Usage", icon: Coins, desc: "Per-user token spend" },
   { to: "/admin/gemini", label: "Gemini API", icon: Sparkles, desc: "Web-search backend health" },
+  { to: "/admin/pricing", label: "Pricing Management", icon: Tag, desc: "Plans & token rates" },
+  { to: "/admin/billing", label: "User Billing", icon: CreditCard, desc: "Assign plans, watch balances" },
   { to: "/admin/server", label: "Model Server", icon: Server, desc: "System health" },
   { to: "/admin/revenue", label: "Revenue Management", icon: IndianRupee, super: true, desc: "Sales ledger" },
   { to: "/admin/licenses", label: "License Keys", icon: KeyRound, super: true, desc: "Issue & revoke" },

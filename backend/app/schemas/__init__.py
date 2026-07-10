@@ -28,6 +28,8 @@ class RegisterResponse(BaseModel):
     full_name: str | None = None
     approval_status: str
     message: str
+    license_key: str | None = None
+    trial_tokens: int | None = None
 
 
 class PublicWingOut(BaseModel):

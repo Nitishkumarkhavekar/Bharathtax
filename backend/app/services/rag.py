@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.enums import Domain
 from app.services import llm as llm_mod
+from app.services import query_cache as _qcache
 from app.services.retrieval import Passage, RetrievalResult, retrieve, retrieve_documents
 
 SYSTEM_PROMPT = (
@@ -135,36 +136,85 @@ def _greeting_reply(question: str) -> str | None:
 
 # Phrases the grounded model emits when it can't find a primary-source match.
 # When we see these, we retry with the fallback model.
+# Kept TIGHT — loose matching burned Gemini web-search calls on perfectly good
+# corpus answers that merely hedged mid-sentence.
 _REFUSAL_HINTS = (
-    "could not find",
-    "couldn't find",
+    "could not find this in the available primary sources",
     "not find this in the available primary sources",
-    "do not have information",
-    "don't have information",
-    "no relevant",
+    "not covered in the primary sources",
     "i cannot answer",
     "i can't answer",
-    "not covered in the primary sources",
+    "i do not have information about this",
+    "i don't have information about this",
 )
 
 
 def _looks_like_refusal(text: str) -> bool:
-    t = text.lower()
+    """True only for HIGH-CONFIDENCE refusals. Historically we tripped on
+    any answer containing "I don't have" or "no relevant" as sub-strings —
+    that fired Gemini's grounded search (~₹3 each) on hundreds of otherwise
+    valid corpus answers. Now we require BOTH:
+      1. The answer is short (a genuine refusal is 1-3 sentences), AND
+      2. It contains one of the tight `_REFUSAL_HINTS` phrases.
+    """
+    if not text:
+        return True
+    stripped = text.strip()
+    # A real refusal is short. Anything > 500 chars is a real answer, even
+    # if it happens to contain the string "do not have information" somewhere
+    # inside a long hedge.
+    if len(stripped) > 500:
+        return False
+    t = stripped.lower()
     return any(h in t for h in _REFUSAL_HINTS)
 
 
-_TIME_SENSITIVE = (
-    "today", "latest", "recent", "recently", "this week", "this month", "newest",
-    "just issued", "just announced", "just released", "up to date", "up-to-date",
-    "as of now", "nowadays", "these days", "last week", "past week",
+# Tight time-sensitivity gate. We require BOTH:
+#   1. A word that flags "now-ness" (today / latest / recent / current / this-year), AND
+#   2. A subject the corpus genuinely can't hold (circular / notification / ruling /
+#      order / news / update / order date after 2024)
+# so questions like "what is the current section 80C limit?" DON'T fire Gemini
+# (the corpus answers this perfectly for the standard AY).
+_TIME_MARKERS = (
+    "today", "yesterday", "latest", "recent", "recently", "just issued",
+    "just announced", "just released", "this week", "last week", "past week",
+    "this month", "past month", "as of now", "as of today",
+)
+_TIME_SUBJECTS = (
+    "circular", "notification", "press release", "ruling", "order",
+    "amendment", "budget", "news", "update", "developments",
+    "annouoncement", "announcement", "cabinet", "finance minister",
+    "cbdt press", "cbdt release",
 )
 
 
 def _is_time_sensitive(q: str) -> bool:
-    """True for questions asking about current/just-issued material the static
-    corpus cannot hold (e.g. 'latest circular', 'rulings issued today')."""
+    """True for questions the static corpus genuinely cannot hold — new
+    circular/ruling/notification news. Requires a time marker AND a
+    time-varying subject; either alone is not enough."""
+    if not q:
+        return False
+    t = q.lower()
+    has_marker = any(k in t for k in _TIME_MARKERS)
+    if not has_marker:
+        return False
+    has_subject = any(s in t for s in _TIME_SUBJECTS)
+    return has_subject
+
+
+_DOC_MARKERS = (
+    "circular", "notification", "press release", "office memorandum", "office order",
+    "instruction no", "instruction number", "f. no", "f.no", "cbdt circular",
+    "this circular", "the circular", "this notification", "this order",
+)
+
+
+def _is_document_query(q: str) -> bool:
+    """True for questions about a SPECIFIC external document (a CBDT circular /
+    notification / press release / instruction) whose full text the static corpus
+    cannot hold — better answered live from the web than from a stray fragment."""
     t = (q or "").lower()
-    return any(k in t for k in _TIME_SENSITIVE)
+    return any(k in t for k in _DOC_MARKERS)
 
 
 @dataclass
@@ -242,6 +292,30 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             meta={"retrieval": "greeting", "domain": domain.value if domain else None},
         )
 
+    # -----------------------------------------------------------------
+    # Question cache lookup — repeat questions ("current 80C limit?",
+    # "HRA exemption rules?") come back instantly and cost nothing.
+    # We only cache answers that DIDN'T involve web-search (see
+    # query_cache.should_cache) so a "latest circular" query never
+    # returns a 24-h-old snapshot.
+    # -----------------------------------------------------------------
+    domain_slug = domain.value if domain else None
+    # Document / time-sensitive questions must ALWAYS take the live path — never
+    # serve them a cached (possibly pre-web-search) answer.
+    # Time-sensitive queries ("latest/today") always go live; everything else —
+    # including STABLE document lookups (a circular's content never changes) — may be
+    # served instantly from cache.
+    cached = None if _is_time_sensitive(q) else _qcache.get(q, domain=domain_slug)
+    if cached:
+        meta = dict(cached.get("meta") or {})
+        meta["cache_hit"] = True
+        return Answer(
+            text=cached.get("text") or "",
+            grounded=bool(cached.get("grounded", True)),
+            citations=[],
+            meta=meta,
+        )
+
     client = client or llm_mod.get_llm()
     primary_text = client.complete(SYSTEM_PROMPT_NATIVE, q)
     # Telemetry the caller can persist into the token_usage table.
@@ -260,14 +334,40 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     web_sources: list[dict] = []
     fallback = settings.llm_fallback_model_name
     refused = _looks_like_refusal(primary_text)
-    # Live web search when the corpus refused OR the question is time-sensitive
-    # (today/latest/recent) — a static corpus can't hold current data. The web
-    # answer is clearly labelled as web-sourced and cited, never the statute.
-    if refused or _is_time_sensitive(q):
+    time_sensitive = _is_time_sensitive(q)
+    # ------------------------------------------------------------------
+    # Web-search fallback policy (COST-OPTIMISED, Nov 2025):
+    #   * On genuine REFUSAL → REPLACE the corpus answer with Gemini's.
+    #   * On TIME-SENSITIVE query WITH a valid corpus answer → SUPPLEMENT:
+    #       keep the corpus answer, append a short "Recent updates" section
+    #       drawn from Gemini so we don't overwrite good grounded content.
+    #   * On TIME-SENSITIVE query WHERE the corpus also refused → REPLACE.
+    #   * Otherwise → SKIP Gemini entirely (biggest saving vs the previous
+    #       behaviour, which triggered on any query containing "current"/
+    #       "latest" even when the corpus already answered it).
+    # ------------------------------------------------------------------
+    document_query = _is_document_query(q)
+    should_call_gemini = refused or time_sensitive or document_query
+    supplement_mode = time_sensitive and not refused and not document_query
+    # For a "this circular / notification" question, pull the document identifier
+    # the corpus matched (e.g. "F. No. 225/205/2024/ITA-II") into the web query so
+    # the live search targets the RIGHT document rather than a generic one.
+    web_query = q
+    if document_query:
+        import re as _re
+        _ids = _re.findall(
+            r"(?:F\.?\s*No\.?|Circular\s+No\.?|Notification\s+No\.?|Instruction\s+No\.?)\s*[\w./()\-]+",
+            primary_text or "", _re.I)
+        if _ids:
+            _idstr = " ".join(dict.fromkeys(_ids))
+            web_query = (f"{q} This refers to the CBDT communication {_idstr}. Give its "
+                         f"circular/notification number, date, subject and key contents in "
+                         f"simple terms.")[:320]
+    if should_call_gemini:
         try:
             from app.services import gemini_search as _gs
             if _gs.available():
-                _wtext, web_sources = _gs.web_answer(q)
+                _wtext, web_sources = _gs.web_answer(web_query)
                 # Meter the Gemini call regardless of whether it produced
                 # usable text — a failed call still consumes tokens on some
                 # accounts (streamed + truncated responses).
@@ -278,15 +378,25 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
                         "latency_ms": _gs.last_latency_ms,
                     })
                 if _wtext:
-                    primary_text = (
-                        "🌐 *Note: the following is drawn from external web sources, not the "
-                        "Income-tax Act corpus. Please verify against the official source before "
-                        "relying on it.*\n\n" + _wtext
-                    )
+                    src_block = ""
                     if web_sources:
-                        primary_text += "\n\nSources:\n" + "\n".join(
+                        src_block = "\n\nSources:\n" + "\n".join(
                             f"- {srcs['title']}: {srcs['url']}" for srcs in web_sources[:6])
-                    used = "web-search:gemini"
+                    if supplement_mode:
+                        # Append rather than replace — the corpus already
+                        # gave a good grounded answer; Gemini just adds
+                        # what's happened since.
+                        primary_text = (
+                            primary_text
+                            + "\n\n---\n\n"
+                            + "🌐 **Recent updates from the web** *(external sources — verify before relying):*\n\n"
+                            + _wtext
+                            + src_block
+                        )
+                        used = "corpus+web-search:gemini"
+                    else:
+                        primary_text = _wtext + src_block
+                        used = "web-search:gemini"
         except Exception:  # noqa: BLE001
             pass
     # Only a genuine REFUSAL (not mere time-sensitivity) lets the general LLM
@@ -308,8 +418,9 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
 
     # A time-sensitive question that did NOT get a live web answer must never be
     # served from the static corpus as if it were current — warn the user instead
-    # of silently presenting outdated data as "latest".
-    if _is_time_sensitive(q) and used != "web-search:gemini":
+    # of silently presenting outdated data as "latest". (Includes both replace
+    # and supplement modes.)
+    if time_sensitive and not used.endswith("web-search:gemini") and "web-search:gemini" not in used:
         primary_text = (
             "\u26a0\ufe0f *A live web lookup for the most recent information could not be completed "
             "just now, so the following is from the stored material and may not reflect the latest "
@@ -317,15 +428,32 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         )
         used = used + "+stale-warned"
 
+    result_meta = {
+        "retrieval": used,
+        "primary_model": settings.llm_model_name,
+        "domain": domain.value if domain else None,
+        "llm_calls": llm_calls,
+        "web_sources": web_sources,
+    }
+    # Cache the fresh answer so the next identical question returns instantly.
+    # We skip web-search answers (staleness risk) — see query_cache.should_cache.
+    try:
+        # Cache native answers always; cache web-search answers too when the query is
+        # a STABLE document lookup (circular/notification content does not change),
+        # but never a time-sensitive "latest" answer.
+        stable_web = document_query and not time_sensitive and used == "web-search:gemini"
+        if _qcache.should_cache(meta=result_meta) or stable_web:
+            _qcache.put(
+                q,
+                {"text": primary_text, "grounded": True, "meta": result_meta},
+                domain=domain_slug,
+            )
+    except Exception:  # noqa: BLE001 — never let cache-write break the response
+        pass
+
     return Answer(
         text=primary_text, grounded=True, citations=[],
-        meta={
-            "retrieval": used,
-            "primary_model": settings.llm_model_name,
-            "domain": domain.value if domain else None,
-            "llm_calls": llm_calls,
-            "web_sources": web_sources,
-        },
+        meta=result_meta,
     )
 
 

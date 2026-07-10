@@ -99,8 +99,19 @@ def _decode_doc_token(tok: str) -> dict[str, Any]:
     return claims
 
 
-def _get_case_for_user(db: Session, user: User, cid: int) -> AppealCase:
-    case = db.get(AppealCase, cid)
+def _get_case_for_user(db: Session, user: User, cid) -> AppealCase:
+    """Slug-or-id lookup, mirroring appeal.py::_get_case but without the
+    wing-admin / super-admin bypass — OnlyOffice callbacks are strictly
+    per-officer."""
+    case: AppealCase | None = None
+    if isinstance(cid, int):
+        case = db.get(AppealCase, cid)
+    elif isinstance(cid, str):
+        s = cid.strip()
+        if s.isdigit():
+            case = db.get(AppealCase, int(s))
+        else:
+            case = db.scalar(select(AppealCase).where(AppealCase.slug == s))
     if not case:
         raise HTTPException(404, "Case not found")
     if case.owner_user_id != user.id:
@@ -149,7 +160,7 @@ class OOForceSaveOut(BaseModel):
 
 
 @router.get("/cases/{cid}/oo/config", response_model=OOConfigOut)
-def oo_config(cid: int, p: Principal = Depends(get_principal),
+def oo_config(cid: str, p: Principal = Depends(get_principal),
               db: Session = Depends(get_db)) -> OOConfigOut:
     """Hand the frontend the editor's `<script src>` URL + the DocsAPI config
     JSON, with both the BharathTax doc-token and the OnlyOffice JWT already
@@ -157,10 +168,10 @@ def oo_config(cid: int, p: Principal = Depends(get_principal),
     if not _OO_SECRET:
         raise HTTPException(503, "Editor not configured: OO_JWT_SECRET is missing")
     case = _get_case_for_user(db, p.user, cid)
-    draft = _latest_draft(db, cid)
+    draft = _latest_draft(db, case.id)
     output_id = draft.id if draft else None
 
-    doc_token = _mint_doc_token(cid=cid, user_id=p.user.id, output_id=output_id)
+    doc_token = _mint_doc_token(cid=case.id, user_id=p.user.id, output_id=output_id)
     # OnlyOffice cache key — held STABLE for the whole editing session.
     #
     # A brand-new document key forces DocumentServer to drop its cache and
@@ -168,9 +179,9 @@ def oo_config(cid: int, p: Principal = Depends(get_principal),
     # has externally saved). WITHIN a session we must keep the same key
     # across autosaves, otherwise force-save calls hit no active session.
     version = draft.version if draft else 0
-    document_key = _document_key(cid, version)
-    prev_key = _SESSION_DOC_KEY.get(cid)
-    if prev_key and prev_key.startswith(f"bt-case-{cid}-v{version}"):
+    document_key = _document_key(case.id, version)
+    prev_key = _SESSION_DOC_KEY.get(case.id)
+    if prev_key and prev_key.startswith(f"bt-case-{case.id}-v{version}"):
         # Existing session on the same draft version — reuse its key so any
         # in-flight edits keep landing under the same coauthoring session.
         document_key = prev_key
@@ -179,7 +190,7 @@ def oo_config(cid: int, p: Principal = Depends(get_principal),
         # since the last open) — mint a fresh, unique key.
         import uuid as _uuid
         document_key = f"{document_key}-{_uuid.uuid4().hex[:8]}"
-        _SESSION_DOC_KEY[cid] = document_key
+        _SESSION_DOC_KEY[case.id] = document_key
     document_title = f"Draft order — {case.title}.docx"
 
     # DocumentServer is on the same docker network as `api`; it talks back to
@@ -248,7 +259,7 @@ async def flush_and_wait(db: Session, cid: int, *, timeout_s: float = 6.0) -> bo
     """
     if not _OO_SECRET:
         return False
-    key = _SESSION_DOC_KEY.get(cid)
+    key = _SESSION_DOC_KEY.get(case.id)
     if not key:
         return False  # no live editor session — nothing to flush
     # Snapshot the current latest draft id so we can detect the callback
@@ -303,7 +314,7 @@ async def flush_and_wait(db: Session, cid: int, *, timeout_s: float = 6.0) -> bo
 
 
 @router.post("/cases/{cid}/oo/forcesave", response_model=OOForceSaveOut)
-async def oo_forcesave(cid: int, p: Principal = Depends(get_principal),
+async def oo_forcesave(cid: str, p: Principal = Depends(get_principal),
                        db: Session = Depends(get_db)) -> OOForceSaveOut:
     """Ask DocumentServer to flush any in-flight edits for this case right now.
 
@@ -317,12 +328,12 @@ async def oo_forcesave(cid: int, p: Principal = Depends(get_principal),
     if not _OO_SECRET:
         return OOForceSaveOut(ok=False, detail="OO_JWT_SECRET not set")
     _get_case_for_user(db, p.user, cid)
-    draft = _latest_draft(db, cid)
+    draft = _latest_draft(db, case.id)
     if not draft:
         return OOForceSaveOut(ok=False, detail="no draft to save")
-    if not _SESSION_DOC_KEY.get(cid):
+    if not _SESSION_DOC_KEY.get(case.id):
         return OOForceSaveOut(ok=False, detail="no active editor session")
-    landed = await flush_and_wait(db, cid, timeout_s=6.0)
+    landed = await flush_and_wait(db, case.id, timeout_s=6.0)
     return OOForceSaveOut(ok=landed, detail="saved" if landed else "no changes or timed out")
 
 
@@ -367,7 +378,7 @@ def oo_get_doc(token: str, db: Session = Depends(get_db)) -> Response:
     case = db.get(AppealCase, cid)
     if not case:
         raise HTTPException(404, "case missing")
-    draft = _latest_draft(db, cid)
+    draft = _latest_draft(db, case.id)
     data = _build_docx_for_draft(case, draft)
     return Response(
         content=data,
@@ -458,7 +469,7 @@ async def oo_save(token: str, body: _OOCallbackBody, request: Request,
     if not case:
         log.warning("oo_save: cid=%s no such case", cid)
         return {"error": 1}
-    draft = _latest_draft(db, cid)
+    draft = _latest_draft(db, case.id)
     if not draft:
         log.warning("oo_save: cid=%s no draft to attach edit to", cid)
         return {"error": 1}

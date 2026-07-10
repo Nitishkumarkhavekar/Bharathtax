@@ -1,6 +1,6 @@
 import { ChangeEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles } from "lucide-react";
 import { StarRating } from "../components/ui/StarRating";
 import { api } from "../api";
 import { Button } from "@/components/ui/button";
@@ -143,7 +143,11 @@ function Section({
 
 export default function AppealCase() {
   const { id } = useParams();
-  const cid = Number(id);
+  // `cid` is the opaque slug from the URL. Every backend route in
+  // /appeal/cases/{cid} accepts EITHER a slug (new default) or the numeric
+  // id (kept working for legacy bookmarks). We pass the raw string through
+  // to the api client, whose types now accept string | number.
+  const cid = String(id || "");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [c, setC] = useState<any>(null);
   const [missing, setMissing] = useState<string[]>([]);
@@ -182,13 +186,14 @@ export default function AppealCase() {
         if (cancelled) return;
         setRun(rr);
         setProgress(rr.progress || rr.status);
+        const terminal = rr.status === "done" || rr.status === "error";
         await loadLatest();
-        if (cancelled) return;
-        if (rr.status === "done" || rr.status === "error") {
+        if (terminal) {
           setBusy(false);
           setProgress("");
-          loadCase();
+          await loadCase();
         }
+        if (cancelled) return;
       } catch (e) {
         // Transient errors (e.g. server restart) — keep polling.
         console.warn("run poll error", e);
@@ -527,7 +532,7 @@ export default function AppealCase() {
   );
 }
 
-function DraftRating({ cid }: { cid: number }) {
+function DraftRating({ cid }: { cid: string | number }) {
   const [stars, setStars] = useState(0);
   useEffect(() => {
     api.getRating("appeal", cid).then((r) => { if (r?.stars) setStars(r.stars); }).catch(() => {});
@@ -557,14 +562,14 @@ function DraftSection({
   saved,
   onSave,
 }: {
-  cid: number;
+  cid: string | number;
   draft: string;
   setDraft: (s: string) => void;
   versions: Ver[];
   saved: string;
   onSave: () => void | Promise<void>;
 }) {
-  const [mode, setMode] = useState<"preview" | "edit">("preview");
+  const [mode, setMode] = useState<"preview" | "edit" | "text">("preview");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewErr, setPreviewErr] = useState<string | null>(null);
@@ -578,6 +583,16 @@ function DraftSection({
   // the parent re-renders (it does, often: every preview state change). We
   // pass this down instead of an inline arrow function.
   const bumpPreview = useCallback(() => setReloadKey((k) => k + 1), []);
+  const refreshDraft = useCallback(async () => {
+    bumpPreview();
+    try {
+      const vs = await api.appealDraftVersions(cid);
+      const latest = [...vs].sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
+      if (latest?.content) setDraft(latest.content);
+    } catch {
+      /* best-effort refresh */
+    }
+  }, [cid, bumpPreview, setDraft]);
   // Bump the cache-buster when the draft text changes so the preview reflects
   // unsaved edits if the user toggles to Preview mid-edit.
   const draftHash = useMemo(() => `${draft.length}:${draft.slice(0, 64)}`, [draft]);
@@ -619,7 +634,7 @@ function DraftSection({
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cid, mode, reloadKey]);
+  }, [cid, mode, reloadKey, draftHash]);
 
   async function saveAndRefreshPreview() {
     await onSave();
@@ -662,7 +677,7 @@ function DraftSection({
         <p className="text-sm text-muted-foreground flex items-center gap-1">
           <BookOpen className="size-4" /> Apply mind and edit before finalising.
         </p>
-        <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-xs">
+        <div className="inline-flex flex-wrap rounded-md border border-input bg-background p-0.5 text-xs max-w-full">
           <button
             type="button"
             onClick={() => setMode("preview")}
@@ -674,6 +689,18 @@ function DraftSection({
             )}
           >
             <Eye className="size-3.5" /> Preview
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("text")}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded font-medium transition-colors",
+              mode === "text"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-slate-600 hover:text-slate-900",
+            )}
+          >
+            <Sparkles className="size-3.5" /> <span className="hidden xs:inline sm:inline">Modify with AI</span><span className="xs:hidden sm:hidden">AI</span>
           </button>
           <button
             type="button"
@@ -735,6 +762,8 @@ function DraftSection({
           {/* hidden ref to silence the hash linter */}
           <span className="hidden">{draftHash}</span>
         </div>
+      ) : mode === "text" ? (
+        <TextModifyView cid={cid} draft={draft} onApplied={refreshDraft} />
       ) : (
         <OnlyOfficeEditor cid={cid} onSaved={bumpPreview} />
       )}
@@ -768,7 +797,325 @@ function DraftSection({
           <FileDown className="size-4" /> Download .docx
         </Button>
       </div>
+
+      <InstructComposer cid={cid} onApplied={bumpPreview} draftText={draft} />
     </Section>
+  );
+}
+
+// ------------------------------------------------------ AI edit composer
+// Natural-language editing pane. The officer types "rewrite the discussion
+// section in shorter paragraphs" and Gemini rewrites the whole draft; the
+// endpoint persists a new draft version and we bump the preview reload key
+// so the iframe re-fetches the fresh PDF.
+function InstructComposer({
+  cid,
+  onApplied,
+  draftText,
+}: {
+  cid: string | number;
+  onApplied: () => void;
+  draftText: string;
+}) {
+  const [text, setText] = useState("");
+  const [quoted, setQuoted] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; text: string } | null>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  function onDraftMouseUp() {
+    const sel = window.getSelection();
+    const t = (sel?.toString() ?? "").trim();
+    if (!sel || sel.rangeCount === 0 || t.length < 3) {
+      setMenu(null);
+      return;
+    }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    setMenu({ x: rect.left + rect.width / 2, y: rect.top - 6, text: t });
+  }
+  function pickSelection() {
+    if (!menu) return;
+    setQuoted(menu.text);
+    setMenu(null);
+    window.getSelection()?.removeAllRanges();
+    taRef.current?.focus();
+  }
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+
+  const suggestions = [
+    "Rewrite the discussion in shorter paragraphs.",
+    "Strengthen the reasoning under Ground 2 with clearer statutory analysis.",
+    "Fix the alignment and numbering of the Grounds of Appeal.",
+    "Make the conclusion firmer — the appeal is dismissed.",
+  ];
+
+  async function submit() {
+    const instruction = text.trim();
+    if (!instruction || busy) return;
+    setBusy(true);
+    setErr(null);
+    setOkMsg(null);
+    try {
+      const res = await api.appealInstructDraft(cid, instruction, quoted ?? undefined);
+      setText("");
+      setQuoted(null);
+      setOkMsg(`Applied — draft v${res.version} saved.`);
+      onApplied();
+      window.setTimeout(() => setOkMsg(null), 4000);
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not apply the edit.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-gradient-to-br from-primary/[0.03] to-transparent p-3">
+      <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-900 mb-1.5">
+        <Sparkles className="size-4 text-primary" />
+        Edit the draft with AI
+      </div>
+      <p className="text-[12px] text-slate-500 mb-2">
+        Type what you want changed — or <b>select any text</b> in the draft below and click
+        &ldquo;Modify with AI&rdquo; to change just that part. Saved as a new version; the preview refreshes.
+      </p>
+      {draftText && (
+        <div className="mb-2">
+          <div className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+            Draft — select text to modify
+          </div>
+          <div
+            onMouseUp={onDraftMouseUp}
+            className="max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] leading-relaxed selection:bg-primary/20 [&_p]:mb-2"
+          >
+            <Markdown text={draftText} />
+          </div>
+        </div>
+      )}
+      {quoted && (
+        <div className="mb-2 flex items-start gap-2 rounded-lg border-l-2 border-primary bg-primary/[0.04] px-3 py-2">
+          <Sparkles className="size-3.5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+              Modifying this selection
+            </div>
+            <div className="text-[12px] text-slate-600 line-clamp-2 mt-0.5">{quoted}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setQuoted(null)}
+            className="shrink-0 text-slate-400 hover:text-slate-700"
+            title="Clear selection"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+      )}
+      <div className="flex items-start gap-2">
+        <textarea
+          ref={taRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
+          }}
+          rows={2}
+          placeholder={
+            quoted
+              ? "Describe how to change the selected text…"
+              : 'e.g. "change the discussion part to focus on Section 68 onus"'
+          }
+          disabled={busy}
+          className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+        />
+        <Button
+          onClick={submit}
+          disabled={busy || !text.trim()}
+          title="Ctrl/⌘ + Enter"
+        >
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+          {busy ? "Applying…" : "Apply"}
+        </Button>
+      </div>
+      {!busy && !okMsg && !err && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setText(s)}
+              className="text-[11.5px] text-slate-600 bg-white ring-1 ring-slate-200 rounded-full px-2.5 py-1 hover:ring-primary/40 hover:text-primary transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+      {okMsg && (
+        <div className="mt-2 text-[12.5px] text-emerald-700 flex items-center gap-1.5">
+          <Check className="size-3.5" /> {okMsg}
+        </div>
+      )}
+      {err && (
+        <div className="mt-2 text-[12.5px] text-rose-700 flex items-center gap-1.5">
+          <AlertCircle className="size-3.5" /> {err}
+        </div>
+      )}
+      {menu && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={pickSelection}
+          style={{
+            position: "fixed",
+            left: menu.x,
+            top: menu.y,
+            transform: "translate(-50%, -100%)",
+            zIndex: 50,
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-white text-[12px] font-medium px-3 py-1.5 shadow-lg ring-1 ring-white/10 hover:bg-slate-800"
+        >
+          <Sparkles className="size-3.5 text-primary" /> Modify with AI
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------- Select-to-modify (right-click)
+// A selectable HTML rendering of the draft. The officer selects any text and
+// right-clicks (or the floating menu) to open an inline "what should change?"
+// prompt; only that excerpt is rewritten by the AI and spliced back in place.
+function TextModifyView({
+  cid,
+  draft,
+  onApplied,
+}: {
+  cid: string | number;
+  draft: string;
+  onApplied: () => void | Promise<void>;
+}) {
+  const [pop, setPop] = useState<{ x: number; y: number; selection: string } | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function openFor(clientX: number, clientY: number): boolean {
+    const sel = window.getSelection();
+    const t = (sel?.toString() ?? "").trim();
+    if (t.length < 3) return false;
+    setErr(null);
+    setPrompt("");
+    setPop({ x: clientX, y: clientY, selection: t });
+    return true;
+  }
+  function onContextMenu(e: React.MouseEvent) {
+    if (openFor(e.clientX, e.clientY)) e.preventDefault();
+  }
+  async function apply() {
+    if (!pop || !prompt.trim() || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.appealInstructDraft(cid, prompt.trim(), pop.selection);
+      setPop(null);
+      setPrompt("");
+      await onApplied();
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not apply the edit.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    if (!pop) return;
+    function onDown(e: MouseEvent) {
+      const el = document.getElementById("ai-modify-pop");
+      if (el && !el.contains(e.target as Node)) setPop(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setPop(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pop]);
+
+  return (
+    <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-4 py-2 text-[11.5px] text-slate-500 flex items-center gap-1.5">
+        <Sparkles className="size-3.5 text-primary" />
+        Select any text, then right-click to modify just that part with AI.
+      </div>
+      <div
+        onContextMenu={onContextMenu}
+        className="max-h-[65vh] sm:max-h-[720px] overflow-auto px-4 sm:px-6 py-4 sm:py-5 text-[13px] sm:text-[14px] leading-relaxed text-slate-800 break-words selection:bg-primary/20 [&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:mb-3 [&_strong]:font-semibold [&_*]:max-w-full"
+      >
+        {draft ? (
+          <Markdown text={draft} />
+        ) : (
+          <div className="text-sm text-slate-500 py-12 text-center">No draft yet.</div>
+        )}
+      </div>
+      {pop && (
+        <div
+          id="ai-modify-pop"
+          style={{
+            position: "fixed",
+            left: Math.max(8, Math.min(pop.x - 24, window.innerWidth - 320 - 8)),
+            top: Math.max(8, Math.min(pop.y + 8, window.innerHeight - 236)),
+            zIndex: 60,
+            width: "min(320px, calc(100vw - 16px))",
+          }}
+          className="rounded-xl border border-slate-200 bg-white shadow-2xl p-3"
+        >
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
+            <Sparkles className="size-3.5" /> Modify with AI
+          </div>
+          <div className="text-[11.5px] text-slate-500 line-clamp-2 mb-2 italic border-l-2 border-slate-200 pl-2">
+            {pop.selection}
+          </div>
+          <textarea
+            autoFocus
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                apply();
+              }
+            }}
+            rows={2}
+            placeholder="What should change? e.g. make it more formal"
+            disabled={busy}
+            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[13px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+          />
+          {err && <div className="mt-1 text-[11px] text-rose-600">{err}</div>}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPop(null)}
+              className="text-[12px] text-slate-500 hover:text-slate-800 px-2 py-1"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={busy || !prompt.trim()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white text-[12.5px] font-medium px-3 py-1.5 disabled:opacity-50 hover:bg-primary/90"
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+              {busy ? "Applying…" : "Apply change"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -787,7 +1134,7 @@ function OnlyOfficeEditor({
   cid,
   onSaved,
 }: {
-  cid: number;
+  cid: string | number;
   onSaved: () => void;
 }) {
   const containerId = useMemo(
@@ -979,7 +1326,7 @@ function DocRow({
   onSaved,
   onDeleted,
 }: {
-  cid: number;
+  cid: string | number;
   doc: { id: number; filename: string; category: string; pages?: number };
   onSaved: (
     updated: { id: number; filename: string; category: string; pages?: number },

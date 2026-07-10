@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, update
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -46,7 +46,23 @@ _APPEAL_MODEL = _os.getenv("APPEAL_MODEL_NAME", "llama-3.1-8b-instruct")
 _GEMINI_KEY = _os.getenv("GEMINI_API_KEY", "").strip()
 _GEMINI_MODELS = [m.strip() for m in _os.getenv(
     "GEMINI_MODELS",
-    "gemini-3.1-pro-preview,gemini-pro-latest,gemini-flash-latest").split(",") if m.strip()]
+    # Flash-first: Pro is 3-4x slower and unnecessary for module-5 drafting on
+    # already-retrieved law + facts. Keep Pro at the tail for edge cases.
+    "gemini-flash-latest,gemini-2.5-flash").split(",") if m.strip()]
+# Separate model list for OCR-only extraction of scanned appeal PDFs. Extract
+# is high-volume + low-reasoning, so we default to cheaper SKUs. Operators
+# can set `GEMINI_OCR_MODELS` to e.g. "gemini-1.5-flash-8b" to cut spend ~3x
+# on this line item.  Falls back to _GEMINI_MODELS if unset.
+_GEMINI_OCR_MODELS = [
+    m.strip() for m in _os.getenv("GEMINI_OCR_MODELS", "").split(",") if m.strip()
+] or _GEMINI_MODELS
+# JSON-mode extraction tier — Modules 1/2/3/4 emit structured JSON (deficiency
+# check, scope, doc compliance, issue matrix). These are classification tasks
+# that Flash-Lite handles cleanly at 3-5x the speed of Flash. Falls back to
+# _GEMINI_MODELS if the operator hasn't tiered them out yet.
+_GEMINI_JSON_MODELS = [
+    m.strip() for m in _os.getenv("GEMINI_JSON_MODELS", "").split(",") if m.strip()
+] or _GEMINI_MODELS
 # With Gemini's ~1M-token context we can feed the figure-bearing documents whole
 # instead of trimming them to fit an 8K window (the source of lost-detail errors).
 _BIG_CTX = bool(_GEMINI_KEY)
@@ -103,7 +119,7 @@ class GeminiLLM:
                 t0 = time.time()
                 try:
                     with _GEMINI_SEM:
-                        with httpx.Client(timeout=httpx.Timeout(300.0)) as client:
+                        with httpx.Client(timeout=httpx.Timeout(150.0)) as client:
                             r = client.post(f"{self._BASE}/{m}:generateContent",
                                             headers={"x-goog-api-key": self.api_key,
                                                      "Content-Type": "application/json"},
@@ -143,11 +159,95 @@ class GeminiLLM:
         raise RuntimeError(f"Gemini failed for {chain}: {last_err}")
 
 
-def _appeal_llm():
-    if _GEMINI_KEY:
-        return GeminiLLM(_GEMINI_KEY, _GEMINI_MODELS)
-    if settings.llm_backend.lower() in ("openai", "vllm", "ollama"):
+def _local_llm():
+    """The local OpenAI-compatible model (vLLM llama on the gateway), or None if
+    no local backend is configured. Used as the automatic fallback when Gemini
+    is out of credits / quota so the project keeps working."""
+    if settings.llm_backend.lower() in ("openai", "vllm", "ollama") and settings.llm_base_url:
         return _OpenAICompatLLM(settings.llm_base_url, _APPEAL_MODEL, settings.llm_api_key)
+    return None
+
+
+# When Gemini fails with credit/quota exhaustion it can take ~40s to walk its
+# retry chain before giving up. Once that happens, skip Gemini for a cooldown
+# window and serve straight from the local model (~6s), re-probing Gemini after
+# the window so service auto-resumes the moment credits are topped up.
+_PRIMARY_COOLDOWN_S = int(_os.getenv("GEMINI_COOLDOWN_SECONDS", "300"))
+_PRIMARY_DOWN_UNTIL = 0.0
+
+
+class FallbackLLM:
+    """Gemini-first client that transparently falls back to the local model on
+    credit / quota exhaustion (HTTP 429 RESOURCE_EXHAUSTED, depleted prepay
+    credits) or any other hard Gemini failure — so drafting and editing keep
+    working when the Gemini bill runs dry. Mirrors the last-call telemetry of
+    whichever client actually answered so token accounting still works."""
+
+    def __init__(self, primary, secondary):
+        self.primary = primary
+        self.secondary = secondary
+        self.last_usage = None
+        self.last_model = None
+        self.last_latency_ms = None
+
+    def _mirror(self, c):
+        self.last_usage = getattr(c, "last_usage", None)
+        self.last_model = getattr(c, "last_model", None)
+        self.last_latency_ms = getattr(c, "last_latency_ms", None)
+
+    def _call(self, client, system, user, *, model, max_tokens, json_mode, files):
+        if isinstance(client, GeminiLLM):
+            out = client.complete(system, user, model=model, max_tokens=max_tokens,
+                                  json_mode=json_mode, files=files)
+        else:
+            # local OpenAI-compat model: no json_mode / files support
+            out = client.complete(system, user, model=None, max_tokens=max_tokens)
+        self._mirror(client)
+        return out
+
+    def complete(self, system, user, *, model=None, max_tokens=None,
+                 json_mode=False, files=None):
+        global _PRIMARY_DOWN_UNTIL
+        import time, logging
+        log = logging.getLogger("appeal")
+        want_primary = self.primary is not None and time.time() >= _PRIMARY_DOWN_UNTIL
+        if want_primary:
+            try:
+                return self._call(self.primary, system, user, model=model,
+                                  max_tokens=max_tokens, json_mode=json_mode, files=files)
+            except Exception as e:  # noqa: BLE001
+                if self.secondary is None:
+                    raise
+                _PRIMARY_DOWN_UNTIL = time.time() + _PRIMARY_COOLDOWN_S
+                log.warning("Gemini failed (%s) — using local model and skipping "
+                            "Gemini for %ss", type(e).__name__, _PRIMARY_COOLDOWN_S)
+                return self._call(self.secondary, system, user, model=None,
+                                  max_tokens=max_tokens, json_mode=False, files=None)
+        # Gemini is in cooldown -> serve from local; if local is also down, give
+        # Gemini one immediate chance rather than hard-failing.
+        if self.secondary is not None:
+            try:
+                return self._call(self.secondary, system, user, model=None,
+                                  max_tokens=max_tokens, json_mode=False, files=None)
+            except Exception:  # noqa: BLE001
+                if self.primary is None:
+                    raise
+                _PRIMARY_DOWN_UNTIL = 0.0
+                return self._call(self.primary, system, user, model=model,
+                                  max_tokens=max_tokens, json_mode=json_mode, files=files)
+        return self._call(self.primary, system, user, model=model,
+                          max_tokens=max_tokens, json_mode=json_mode, files=files)
+
+
+def _appeal_llm():
+    primary = GeminiLLM(_GEMINI_KEY, _GEMINI_MODELS) if _GEMINI_KEY else None
+    secondary = _local_llm()
+    if primary and secondary:
+        return FallbackLLM(primary, secondary)
+    if primary:
+        return primary
+    if secondary:
+        return secondary
     return llm_mod.get_llm()
 
 OFFICER_SYSTEM = (
@@ -283,7 +383,7 @@ def _complete(user: str, *, max_tokens: int = 900) -> str:
 
 def _last_llm_meta() -> dict | None:
     c = _LAST_CLIENT
-    if not isinstance(c, (_OpenAICompatLLM, GeminiLLM)):
+    if not isinstance(c, (_OpenAICompatLLM, GeminiLLM, FallbackLLM)):
         return None
     return {
         "model": c.last_model or _APPEAL_MODEL,
@@ -294,9 +394,17 @@ def _last_llm_meta() -> dict | None:
 
 def _complete_json(user: str, *, max_tokens: int = 1500) -> dict:
     global _LAST_CLIENT
-    client = _appeal_llm()
+    # JSON-mode calls are extraction tasks — route them to the faster/cheaper
+    # tier (Flash-Lite by default) via a dedicated client instance. Falls back
+    # to the standard drafting client when GEMINI_JSON_MODELS is unset.
+    if _GEMINI_KEY and _GEMINI_JSON_MODELS != _GEMINI_MODELS:
+        _json_primary = GeminiLLM(_GEMINI_KEY, _GEMINI_JSON_MODELS)
+        _json_local = _local_llm()
+        client = FallbackLLM(_json_primary, _json_local) if _json_local else _json_primary
+    else:
+        client = _appeal_llm()
     _LAST_CLIENT = client
-    if isinstance(client, GeminiLLM):
+    if isinstance(client, (GeminiLLM, FallbackLLM)):
         txt = client.complete(
             OFFICER_SYSTEM + "\n\nReturn ONLY a single valid JSON object.",
             user, max_tokens=max_tokens, json_mode=True)
@@ -342,10 +450,10 @@ def _extract_case(case, docs_text: str) -> dict:
     form35 = _raw_cat(case, "form_35", "grounds_of_appeal", "statement_of_facts")
     subs = _raw_cat(case, "written_submission")
     if form35 or subs:
-        src = ("=== FORM 35 / STATEMENT OF FACTS ===\n" + _trim(form35, 40000 if _BIG_CTX else 11000) +
-               "\n\n=== WRITTEN SUBMISSION ===\n" + _trim(subs, 30000 if _BIG_CTX else 5000))
+        src = ("=== FORM 35 / STATEMENT OF FACTS ===\n" + _trim(form35, 22000 if _BIG_CTX else 11000) +
+               "\n\n=== WRITTEN SUBMISSION ===\n" + _trim(subs, 16000 if _BIG_CTX else 5000))
     else:
-        src = "=== APPEAL DOCUMENTS ===\n" + _trim(docs_text, 60000 if _BIG_CTX else 12000)
+        src = "=== APPEAL DOCUMENTS ===\n" + _trim(docs_text, 30000 if _BIG_CTX else 12000)
     j = _complete_json(
         "You are reading an income-tax appeal. Extract the appellant's case FAITHFULLY from the "
         "documents (especially the 'Grounds of Appeal' table in FORM No. 35). Return ONLY JSON:\n"
@@ -432,7 +540,11 @@ def _ocr_pdf(minio_key: str, filename: str) -> str:
     if not raw:
         return ""
     try:
-        llm = GeminiLLM(_GEMINI_KEY, _GEMINI_MODELS)
+        # OCR runs on the cheaper `_GEMINI_OCR_MODELS` list (default: same as
+        # drafting, but operators can point it at gemini-1.5-flash-8b to slash
+        # extract cost ~3x — the transcription task doesn't need Pro-level
+        # reasoning).
+        llm = GeminiLLM(_GEMINI_KEY, _GEMINI_OCR_MODELS)
         txt = llm.complete(
             "You are a precise OCR and document-transcription engine.",
             "Transcribe ALL text from this document faithfully and completely. Preserve every "
@@ -445,7 +557,7 @@ def _ocr_pdf(minio_key: str, filename: str) -> str:
         return ""
 
 
-def _docs_text(case: AppealCase, max_chars: int = 120000 if _BIG_CTX else 20000) -> str:
+def _docs_text(case: AppealCase, max_chars: int = 44000 if _BIG_CTX else 20000) -> str:
     """Concatenated text of the case documents, capped to fit the appeal LLM's
     context window (llama-3.1-8b on the gateway = 6K tokens, ~24KB chars; we
     leave room for the system prompt, module instructions, retrieved law and
@@ -572,7 +684,7 @@ def draft_issue(db: Session, case: AppealCase, issue: dict) -> tuple[str, list]:
             f"paid. If this ground was rectified by the AO (e.g. via a section-154 order) or was not "
             f"pressed, say so and treat it as not pressed / infructuous rather than allowing it. Do NOT "
             f"repeat these section headers.\n\n"
-            f"=== ISSUE ===\n{q}\n\n=== APPEAL DOCUMENTS (facts) ===\n{_trim(docs_text, 40000 if _BIG_CTX else 7000)}\n\n"
+            f"=== ISSUE ===\n{q}\n\n=== APPEAL DOCUMENTS (facts) ===\n{_trim(docs_text, 22000 if _BIG_CTX else 7000)}\n\n"
             f"=== RETRIEVED LAW ===\n{_trim(ctx, 3500)}")
     try:
         block = _complete(user, max_tokens=1600)
@@ -770,23 +882,55 @@ def run_case(run_id: int) -> None:
         if _GEMINI_KEY:
             _empties = [d for d in case.documents
                         if len((d.text or "").strip()) < 100 and d.minio_key]
-            if _empties:
-                progress(f"OCR: reading {len(_empties)} scanned document(s)")
+            # ------------------------------------------------------------
+            # Dedup pass FIRST — for every empty doc, look for another
+            # AppealDocument (any case, any user) that already has a good
+            # OCR of the same PDF (same sha256). Reuse its text and skip
+            # the Gemini call entirely.  This is the big cost lever.
+            # ------------------------------------------------------------
+            ocr_deduped: list[str] = []
+            still_empty: list = []
+            for d in _empties:
+                if not d.sha256:
+                    still_empty.append(d)
+                    continue
+                prior = db.scalar(
+                    select(AppealDocument)
+                    .where(
+                        AppealDocument.sha256 == d.sha256,
+                        AppealDocument.id != d.id,
+                        func.length(AppealDocument.text) > 100,
+                    )
+                    .order_by(desc(AppealDocument.id))
+                    .limit(1)
+                )
+                if prior is not None:
+                    d.text = prior.text
+                    ocr_deduped.append(d.filename)
+                else:
+                    still_empty.append(d)
+            if ocr_deduped:
+                db.commit()
+                log.info("appeal %s OCR-dedup skipped Gemini for %d PDFs: %s",
+                         run.id, len(ocr_deduped), ocr_deduped)
+            if still_empty:
+                progress(f"OCR: reading {len(still_empty)} scanned document(s)")
                 def _ocr_one(d):
                     try:
                         capture.set_context(**_cap_snap)
                     except Exception:  # noqa: BLE001
                         pass
                     return d, _ocr_pdf(d.minio_key, d.filename)
-                with ThreadPoolExecutor(max_workers=min(len(_empties), 4)) as _ex:
-                    for _d, _txt in _ex.map(_ocr_one, _empties):
+                with ThreadPoolExecutor(max_workers=min(len(still_empty), 4)) as _ex:
+                    for _d, _txt in _ex.map(_ocr_one, still_empty):
                         if len(_txt.strip()) >= 100:
                             _d.text = _txt
                             ocr_fixed.append(_d.filename)
                         else:
                             ocr_failed.append(_d.filename)
                 db.commit()
-                log.info("appeal %s OCR repaired=%s unreadable=%s", run.id, ocr_fixed, ocr_failed)
+                log.info("appeal %s OCR repaired=%s unreadable=%s (deduped=%s)",
+                         run.id, ocr_fixed, ocr_failed, ocr_deduped)
 
         docs_text = _docs_text(case)
 

@@ -574,7 +574,7 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
 
   return (
     <Link
-      to={`/appeals/${c.id}`}
+      to={`/appeals/${c.slug || c.id}`}
       className="group block rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-0.5 transition-all overflow-hidden"
     >
       <div className="flex items-center gap-4 p-4">

@@ -48,6 +48,7 @@ export interface LicenseStatus {
   required: boolean;
   licensed: boolean;
   license_key: string | null;
+  pending_key?: string | null;
   assigned_to: string | null;
   valid_until: string | null;
   message: string | null;
@@ -115,6 +116,8 @@ export interface RegisterResponse {
   full_name: string | null;
   approval_status: string;
   message: string;
+  license_key: string | null;
+  trial_tokens: number | null;
 }
 
 export interface Profile {
@@ -347,6 +350,100 @@ export interface AdminGeminiStats {
   per_action: TokenActionRow[];
   recent: AdminGeminiRecentRow[];
 }
+
+// ---- billing / subscription types ----
+export interface SubscriptionPlan {
+  id: number;
+  name: string;
+  description: string | null;
+  monthly_price_inr: number;
+  monthly_token_allowance: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+export interface TokenRate {
+  id: number;
+  model_slug: string;
+  provider: string | null;
+  input_price_per_1k_inr: number;
+  output_price_per_1k_inr: number;
+  is_active: boolean;
+  effective_from?: string | null;
+  notes?: string | null;
+  updated_at?: string | null;
+}
+export interface CurrentSubscription {
+  id: number;
+  plan_id: number;
+  plan_name: string | null;
+  monthly_price_inr: number;
+  started_at: string | null;
+  expires_at: string | null;
+  is_free_trial: boolean;
+  status: string;
+  notes: string | null;
+  is_expired: boolean;
+  tokens_allowed: number;
+  tokens_used: number;
+  tokens_left: number;
+  pct_used: number;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    calls: number;
+    grounded_calls?: number;
+    grounding_cost_est_inr?: number;
+  };
+}
+export interface AdminBillingUser {
+  user_id: number;
+  username: string;
+  full_name: string | null;
+  email: string | null;
+  wing_id: number;
+  is_active: boolean;
+  current_subscription: CurrentSubscription | null;
+}
+export interface AdminBillingUsers {
+  users: AdminBillingUser[];
+  count: number;
+}
+export interface MyBillingBreakdown {
+  action: string;
+  calls: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+export interface MyBillingHistoryRow {
+  id: number;
+  plan_name: string | null;
+  monthly_price_inr: number;
+  started_at: string | null;
+  expires_at: string | null;
+  is_free_trial: boolean;
+  status: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    calls: number;
+    grounded_calls?: number;
+    grounding_cost_est_inr?: number;
+  };
+}
+export interface MyBilling {
+  current_subscription: CurrentSubscription | null;
+  spend_breakdown: MyBillingBreakdown[];
+  estimated_period_cost_inr: number;
+  token_cost_inr?: number;
+  grounding_cost_inr?: number;
+  history: MyBillingHistoryRow[];
+}
+
 export interface AdminUserTokenUsage {
   user: { id: number; username: string; full_name: string | null; email: string | null; role: string };
   prompt_tokens: number;
@@ -358,6 +455,26 @@ export interface AdminUserTokenUsage {
   by_action: TokenActionRow[];
   by_model: TokenModelRow[];
   per_day: TokenDayRow[];
+}
+
+export interface AdminModelService {
+  key: string;
+  name: string;
+  role: string;
+  status: "ok" | "degraded" | "down";
+  detail: string | null;
+  latency_ms: number | null;
+  endpoint: string | null;
+  models: string[];
+  meta: Record<string, unknown>;
+}
+
+export interface AdminModelHealth {
+  checked_at: string;
+  services: AdminModelService[];
+  active_generation: "gemini" | "local" | "none";
+  all_healthy: boolean;
+  any_down: boolean;
 }
 
 export interface AdminServer {
@@ -393,9 +510,17 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   if (t) headers["Authorization"] = `Bearer ${t}`;
   const res = await fetch(`${BASE}${path}`, { ...opts, headers });
   if (!res.ok) {
-    let detail = res.statusText;
+    let detail: string = res.statusText;
+    let rawDetail: unknown = null;
     try {
-      detail = (await res.json()).detail ?? detail;
+      const body = await res.json();
+      rawDetail = body?.detail ?? null;
+      // FastAPI HTTPException can carry a str OR a dict/JSON payload as
+      // `detail`. We keep the human-readable message on `.message`, and hand
+      // the structured version to callers via `.detail`.
+      if (typeof rawDetail === "string") detail = rawDetail;
+      else if (rawDetail && typeof rawDetail === "object" && typeof (rawDetail as any).message === "string")
+        detail = (rawDetail as any).message;
     } catch {
       /* ignore */
     }
@@ -405,13 +530,13 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
     if (res.status === 401 && !path.startsWith("/auth/login")) {
       clearSessionAndRedirect();
     }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, detail, rawDetail);
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public detail: unknown = null) {
     super(message);
   }
 }
@@ -482,6 +607,7 @@ export const api = {
   // --- admin: dashboard / model / server ---
   adminDashboard: () => req<AdminDashboard>("/admin/dashboard"),
   adminModel: () => req<AdminModel>("/admin/model"),
+  adminModelHealth: () => req<AdminModelHealth>("/admin/model/health"),
   adminServer: () => req<AdminServer>("/admin/model/server"),
 
   // --- admin: users / admins ---
@@ -532,6 +658,42 @@ export const api = {
   // --- admin: token usage ---
   adminTokenUsage: (days = 30) =>
     req<AdminTokenUsage>(`/admin/token-usage?days=${days}`),
+  // ---- billing (admin + user) ----
+  adminBillingPlans: () => req<SubscriptionPlan[]>("/admin/billing/plans"),
+  adminBillingCreatePlan: (body: Partial<SubscriptionPlan>) =>
+    req<SubscriptionPlan>("/admin/billing/plans", { method: "POST", body: JSON.stringify(body) }),
+  adminBillingPatchPlan: (id: number, body: Partial<SubscriptionPlan>) =>
+    req<SubscriptionPlan>(`/admin/billing/plans/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminBillingDeletePlan: (id: number) =>
+    req<void>(`/admin/billing/plans/${id}`, { method: "DELETE" }),
+  adminBillingRates: () => req<TokenRate[]>("/admin/billing/token-rates"),
+  adminBillingCreateRate: (body: Partial<TokenRate>) =>
+    req<TokenRate>("/admin/billing/token-rates", { method: "POST", body: JSON.stringify(body) }),
+  adminBillingPatchRate: (id: number, body: Partial<TokenRate>) =>
+    req<TokenRate>(`/admin/billing/token-rates/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminBillingDeleteRate: (id: number) =>
+    req<void>(`/admin/billing/token-rates/${id}`, { method: "DELETE" }),
+  adminBillingUsers: () => req<AdminBillingUsers>("/admin/billing/users"),
+  adminBillingAssign: (userId: number, body: {
+    plan_id: number;
+    is_free_trial?: boolean;
+    duration_days?: number | null;
+    tokens_allowed_override?: number | null;
+    notes?: string | null;
+  }) => req<CurrentSubscription>(`/admin/billing/users/${userId}/assign`,
+                                { method: "POST", body: JSON.stringify(body) }),
+  adminBillingPatchSubscription: (subId: number, body: {
+    started_at?: string | null;
+    expires_at?: string | null;
+    tokens_allowed_override?: number | null;
+    status?: string;
+    notes?: string | null;
+    is_free_trial?: boolean;
+  }) => req<CurrentSubscription>(`/admin/billing/subscriptions/${subId}`,
+                                 { method: "PATCH", body: JSON.stringify(body) }),
+  myBilling: () => req<MyBilling>("/billing/me"),
+  publicPlans: () => req<SubscriptionPlan[]>("/billing/plans"),
+
   adminGemini: (days = 30) =>
     req<AdminGeminiStats>(`/admin/gemini?days=${days}`),
   adminUserTokenUsage: (userId: number) =>
@@ -540,42 +702,47 @@ export const api = {
   // --- appeal drafting ---
   appealCases: () => req<any[]>("/appeal/cases"),
   appealCreateCase: (b: any) => req<any>("/appeal/cases", { method: "POST", body: JSON.stringify(b) }),
-  appealCase: (id: number) => req<any>(`/appeal/cases/${id}`),
-  appealUpload: (id: number, files: FileList) => {
+  appealCase: (id: string | number) => req<any>(`/appeal/cases/${id}`),
+  appealUpload: (id: string | number, files: FileList) => {
     const fd = new FormData();
     Array.from(files).forEach((f) => fd.append("files", f));
     return req<any>(`/appeal/cases/${id}/documents`, { method: "POST", body: fd });
   },
-  appealUpdateDocCategory: (cid: number, did: number, category: string) =>
+  appealUpdateDocCategory: (cid: string | number, did: number, category: string) =>
     req<any>(`/appeal/cases/${cid}/documents/${did}`, {
       method: "PUT",
       body: JSON.stringify({ category }),
     }),
-  appealRun: (id: number) => req<any>(`/appeal/cases/${id}/run`, { method: "POST" }),
+  appealRun: (id: string | number) => req<any>(`/appeal/cases/${id}/run`, { method: "POST" }),
   appealRunStatus: (rid: number) => req<any>(`/appeal/runs/${rid}`),
-  appealStopCase: (id: number) => req<any>(`/appeal/cases/${id}/stop`, { method: "POST" }),
+  appealStopCase: (id: string | number) => req<any>(`/appeal/cases/${id}/stop`, { method: "POST" }),
   appealCancelRun: (rid: number) => req<any>(`/appeal/runs/${rid}/cancel`, { method: "POST" }),
   appealPatchCase: (
-    id: number,
+    id: string | number,
     body: { title?: string; assessment_year?: string | null; pan?: string | null; section?: string | null },
   ) =>
     req<any>(`/appeal/cases/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  appealDeleteCase: (id: number) =>
+  appealDeleteCase: (id: string | number) =>
     req<void>(`/appeal/cases/${id}`, { method: "DELETE" }),
-  appealDeleteDoc: (cid: number, did: number) =>
+  appealDeleteDoc: (cid: string | number, did: number) =>
     req<{ deleted_id: number; filename: string; missing: string[] }>(
       `/appeal/cases/${cid}/documents/${did}`,
       { method: "DELETE" },
     ),
-  appealLatest: (id: number) => req<any>(`/appeal/cases/${id}/latest`),
+  appealLatest: (id: string | number) => req<any>(`/appeal/cases/${id}/latest`),
   appealEditOutput: (oid: number, content: string) =>
     req<any>(`/appeal/outputs/${oid}`, { method: "PUT", body: JSON.stringify({ content }) }),
-  appealRegenerate: (id: number, seq: number) => req<any>(`/appeal/cases/${id}/issues/${seq}/regenerate`, { method: "POST" }),
-  appealReassemble: (id: number) => req<any>(`/appeal/cases/${id}/reassemble`, { method: "POST" }),
-  appealDraftVersions: (id: number) => req<any[]>(`/appeal/cases/${id}/draft-versions`),
+  appealRegenerate: (id: string | number, seq: number) => req<any>(`/appeal/cases/${id}/issues/${seq}/regenerate`, { method: "POST" }),
+  appealReassemble: (id: string | number) => req<any>(`/appeal/cases/${id}/reassemble`, { method: "POST" }),
+  appealInstructDraft: (id: string | number, instruction: string, selection?: string) =>
+    req<{ id: number; version: number; edited: boolean; instruction: string; chars: number }>(
+      `/appeal/cases/${id}/draft/instruct`,
+      { method: "POST", body: JSON.stringify({ instruction, selection }) },
+    ),
+  appealDraftVersions: (id: string | number) => req<any[]>(`/appeal/cases/${id}/draft-versions`),
   async appealDownload(path: string, filename: string) {
     const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token()}` } });
     if (!res.ok) throw new ApiError(res.status, "Download failed");
@@ -585,16 +752,16 @@ export const api = {
   // Fetch the rendered PDF preview of the draft, returning a blob URL the
   // caller drops into an <iframe src>. Caller is responsible for revoking
   // the URL when done.
-  appealOnlyOfficeConfig: (cid: number) =>
+  appealOnlyOfficeConfig: (cid: string | number) =>
     req<{ editor_url: string; config: Record<string, unknown> }>(
       `/appeal/cases/${cid}/oo/config`,
     ),
-  appealForcesaveDraft: (cid: number) =>
+  appealForcesaveDraft: (cid: string | number) =>
     req<{ ok: boolean; detail: string | null }>(
       `/appeal/cases/${cid}/oo/forcesave`,
       { method: "POST", body: JSON.stringify({}) },
     ),
-  async appealPreviewPdfUrl(cid: number): Promise<string> {
+  async appealPreviewPdfUrl(cid: string | number): Promise<string> {
     const res = await fetch(`${BASE}/appeal/cases/${cid}/preview.pdf`, {
       headers: { Authorization: `Bearer ${token()}` },
     });
@@ -605,7 +772,7 @@ export const api = {
     }
     return URL.createObjectURL(await res.blob());
   },
-  async appealOpenDoc(cid: number, did: number) {
+  async appealOpenDoc(cid: string | number, did: number) {
     const res = await fetch(`${BASE}/appeal/cases/${cid}/documents/${did}/file`, { headers: { Authorization: `Bearer ${token()}` } });
     if (!res.ok) throw new ApiError(res.status, "Open failed");
     window.open(URL.createObjectURL(await res.blob()), "_blank");

@@ -56,7 +56,11 @@ def _add_runs_with_bold(p, text: str, *, bold_all: bool = False,
             r.italic = italic_all
             any_added = True
         r = p.add_run(m.group(1))
-        r.bold = True
+        # Body text must not be bold — the LLM often wraps whole sentences in
+        # **...**; render those inline as normal weight (headings are rendered
+        # separately with explicit bold) so the order reads like a proper legal
+        # document (bold headings, plain justified body).
+        r.bold = bold_all
         r.italic = italic_all
         any_added = True
         pos = m.end()
@@ -352,18 +356,27 @@ def _collapse_lines(draft_text: str) -> list[str]:
             flush()
             blocks.append("")  # explicit blank between paragraphs
             continue
-        # A line that *starts* a new structural element flushes the previous
-        # paragraph regardless of trailing punctuation.
+        stripped = s.strip()
+        # A markdown heading (#..####) or a fully-**bold** label line is a
+        # STANDALONE block: flush the previous paragraph AND emit the heading on
+        # its own, so the body line that follows is not merged into (and bolded
+        # as part of) the heading.
+        is_heading = bool(re.match(r"^#{1,4}\s", stripped)) or (
+            stripped.startswith("**") and stripped.endswith("**"))
+        if is_heading:
+            flush()
+            blocks.append(stripped)
+            continue
+        # Other structural starts (numbered / lettered / bullet) begin a new
+        # paragraph but may still wrap onto following lines.
         starts_new = bool(
-            _NUM_RE.match(s.strip())
-            or _LETTER_RE.match(s.strip())
-            or _BULLET_RE.match(s.strip())
-            or re.match(r"^#{1,4}\s", s.strip())
-            or (s.strip().startswith("**") and s.strip().endswith("**"))
+            _NUM_RE.match(stripped)
+            or _LETTER_RE.match(stripped)
+            or _BULLET_RE.match(stripped)
         )
         if starts_new and buf:
             flush()
-        buf.append(s.strip())
+        buf.append(stripped)
     flush()
     # Drop leading blanks and double blanks.
     out: list[str] = []

@@ -134,7 +134,12 @@ services:
 
   worker:
     build: ./backend
-    command: celery -A app.ingestion.tasks.celery_app worker --loglevel=INFO --concurrency=4
+    # Threads pool + higher concurrency: Gemini calls are 100% I/O-bound, so
+    # threads scale much cheaper than prefork (one process, one connection
+    # pool). Sizing: 12 concurrent pipeline tasks x per-run parallelism
+    # (Module 5 fans out up to 6 issues) is bounded by the shared Gemini
+    # semaphore (GEMINI_CONCURRENCY), which prevents rate-limit storms.
+    command: celery -A app.ingestion.tasks.celery_app worker --loglevel=INFO --pool=threads --concurrency=12
     restart: unless-stopped
     <<: *backend-env
     extra_hosts:

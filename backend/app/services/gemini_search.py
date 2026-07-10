@@ -18,9 +18,16 @@ from app.core.logging import get_logger
 log = get_logger(__name__)
 
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
-_MODEL = os.getenv("GEMINI_SEARCH_MODEL", "gemini-flash-latest")
+# Web-search fallback for the Ask Bot. Grounding requires Flash or Pro.
+# We use Flash for cost. Envvar `GEMINI_SEARCH_MODEL` lets an operator swap in
+# 2.5 Pro if answer quality on time-sensitive queries needs the upgrade.
+_MODEL = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
 _ENABLED = os.getenv("WEB_SEARCH_ENABLED", "1").lower() not in ("0", "false", "no", "")
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+# Output-token cap. Officer replies are typically 200-400 words (~600 tokens),
+# so 1200 gives ample headroom without paying for a 2600-token ceiling every
+# time. Bring it up via env if answers are getting cut off.
+_MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_SEARCH_MAX_OUTPUT", "1200"))
 
 # Telemetry from the most recent web_answer() call, mirroring OpenAICompatLLM's
 # last_* attributes so the chat route can bill the Gemini token spend.
@@ -28,16 +35,16 @@ last_usage: dict | None = None
 last_model: str | None = None
 last_latency_ms: int | None = None
 
+# Trimmed system prompt. Every non-essential word here costs prompt tokens on
+# every single web-search call, so we keep it tight. Concrete instructions
+# (source preference, output style, no inline citation markers) survive.
 _SYS = (
-    "You are an assistant on Indian income-tax law. Answer the user's question using current web "
-    "information. STRONGLY PREFER official Government of India sources — incometax.gov.in, "
-    "incometaxindia.gov.in, and CBDT circulars/notifications. Be precise about section numbers, "
-    "monetary limits, dates and the assessment year. If sources conflict or you are unsure, say so. "
-    "Never invent a citation.\n"
-    "WRITING RULES: Write clean, plain prose — a short paragraph or a few '- ' bullet points. Do NOT "
-    "put inline citation markers, footnote numbers, or bracketed reference numbers such as [1] or "
-    "[1.1.2] anywhere in the text; the sources are listed separately below your answer. Keep it "
-    "concise and always finish your sentences — never stop mid-list."
+    "Indian income-tax assistant. Answer using current web sources — prefer "
+    "incometax.gov.in / incometaxindia.gov.in / CBDT circulars. Be precise on "
+    "section numbers, limits, dates, and AY. If unsure, say so. Never invent a "
+    "citation.\n"
+    "STYLE: Plain prose or short '- ' bullets. NO inline [1] / [1.1] markers — "
+    "sources render separately. Finish every sentence."
 )
 
 
@@ -61,7 +68,7 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
         "systemInstruction": {"parts": [{"text": dated_sys}]},
         "contents": [{"role": "user", "parts": [{"text": question}]}],
         "tools": [{"google_search": {}}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2600},
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": _MAX_OUTPUT_TOKENS, "thinkingConfig": {"thinkingBudget": 0}},
     }
     last_err = None
     for attempt in range(3):

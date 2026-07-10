@@ -13,6 +13,7 @@ import {
   X,
   UserCircle2,
   Coins,
+  CreditCard,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const NAV: {
   { to: "/documents", label: "Documents", icon: FileText, tone: "sky", hint: "Upload · summarise" },
   { to: "/history", label: "History", icon: Clock, tone: "emerald", hint: "Past queries" },
   { to: "/tokens", label: "Token Usage", icon: Coins, tone: "rose", hint: "Your AI spend" },
+  { to: "/billing", label: "Billing", icon: CreditCard, tone: "emerald", hint: "Plan & spend" },
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
 ];

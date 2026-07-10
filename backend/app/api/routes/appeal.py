@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 from datetime import datetime, timezone
 
 log = logging.getLogger("appeal")
@@ -11,10 +12,11 @@ log = logging.getLogger("appeal")
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select, desc
+from sqlalchemy import func, select, desc
 from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, client_meta, get_principal
+from app.services.quota import require_quota
 from app.core.db import get_db
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
 from app.models.enums import Role
@@ -51,8 +53,23 @@ class OutputEdit(BaseModel):
     content: str
 
 
-def _get_case(db: Session, user: User, cid: int) -> AppealCase:
-    case = db.get(AppealCase, cid)
+def _get_case(db: Session, user: User, cid) -> AppealCase:
+    """Look up a case by EITHER opaque slug OR numeric id.
+
+    Every user-facing URL uses the slug — the numeric id path is kept only
+    for admin tooling and legacy bookmarks. If the parameter looks like an
+    integer (all digits, matches a real primary key) we treat it as an id;
+    otherwise we resolve it as a slug.
+    """
+    case: AppealCase | None = None
+    if isinstance(cid, int):
+        case = db.get(AppealCase, cid)
+    elif isinstance(cid, str):
+        s = cid.strip()
+        if s.isdigit():
+            case = db.get(AppealCase, int(s))
+        else:
+            case = db.scalar(select(AppealCase).where(AppealCase.slug == s))
     if not case:
         raise HTTPException(404, "Case not found")
     if case.owner_user_id == user.id or user.role == Role.super_admin:
@@ -63,7 +80,11 @@ def _get_case(db: Session, user: User, cid: int) -> AppealCase:
 
 
 def _case_out(c: AppealCase) -> dict:
-    return {"id": c.id, "title": c.title, "assessment_year": c.assessment_year, "pan": c.pan,
+    # `slug` is the ONLY identifier the frontend should route on. `id` is
+    # returned too because a few admin views and audit-log calls still need
+    # the numeric key, but no user-facing URL should ever surface it.
+    return {"id": c.id, "slug": c.slug, "title": c.title,
+            "assessment_year": c.assessment_year, "pan": c.pan,
             "section": c.section, "status": c.status, "owner_user_id": c.owner_user_id,
             "created_at": c.created_at.isoformat() if c.created_at else None}
 
@@ -94,8 +115,13 @@ def _latest_outputs(db: Session, run_id: int) -> list[AppealOutput]:
 # --- cases ---
 @router.post("/cases")
 def create_case(body: CaseCreate, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+    import uuid as _uuid
+    # 32-char hex slug (no dashes) — short enough to type / paste, long enough
+    # (128 bits of entropy) to make enumeration hopeless.
+    slug = _uuid.uuid4().hex
     c = AppealCase(owner_user_id=p.user.id, wing_id=p.user.wing_id, title=body.title,
-                   assessment_year=body.assessment_year, pan=body.pan, section=body.section)
+                   assessment_year=body.assessment_year, pan=body.pan,
+                   section=body.section, slug=slug)
     db.add(c); db.commit(); db.refresh(c)
     return _case_out(c)
 
@@ -140,26 +166,26 @@ def list_cases(p: Principal = Depends(get_principal), db: Session = Depends(get_
 
 
 @router.get("/cases/{cid}")
-def get_case(cid: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
-    c = _get_case(db, p.user, cid)
-    return {**_case_out(c), "documents": [{"id": d.id, "filename": d.filename, "category": d.category, "pages": d.pages} for d in c.documents]}
+def get_case(cid: str, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+    case = _get_case(db, p.user, cid)
+    return {**_case_out(case), "documents": [{"id": d.id, "filename": d.filename, "category": d.category, "pages": d.pages} for d in case.documents]}
 
 
 @router.patch("/cases/{cid}")
-def patch_case(cid: int, body: CasePatch,
+def patch_case(cid: str, body: CasePatch,
                p: Principal = Depends(get_principal),
                db: Session = Depends(get_db), request: Request = None):
     """Update the case's identifying metadata — title / AY / PAN / section.
     Every field is optional; a value of empty-string is treated as "clear
     this field" (so the officer can wipe a wrongly-typed PAN)."""
-    c = _get_case(db, p.user, cid)
+    case = _get_case(db, p.user, cid)
     changed: list[str] = []
     if body.title is not None:
         title = (body.title or "").strip()
         if not title:
             raise HTTPException(400, "Title cannot be empty")
-        if title != c.title:
-            c.title = title
+        if title != case.title:
+            case.title = title
             changed.append("title")
     for attr, val in (
         ("assessment_year", body.assessment_year),
@@ -172,21 +198,21 @@ def patch_case(cid: int, body: CasePatch,
         # PAN is always stored uppercase for downstream comparison / audit.
         if attr == "pan" and cleaned:
             cleaned = cleaned.upper()
-        if cleaned != getattr(c, attr):
-            setattr(c, attr, cleaned)
+        if cleaned != getattr(case, attr):
+            setattr(case, attr, cleaned)
             changed.append(attr)
     if changed:
         db.commit()
         audit.log_event(db, action="appeal.case.edit", user_id=p.user.id, wing_id=p.user.wing_id,
-                        resource_type="appeal_case", resource_id=str(cid),
-                        details=",".join(changed), **client_meta(request))
-    return {**_case_out(c),
+                        resource_type="appeal_case", resource_id=str(case.id),
+                        query_text=",".join(changed), **client_meta(request))
+    return {**_case_out(case),
             "documents": [{"id": d.id, "filename": d.filename, "category": d.category, "pages": d.pages}
-                          for d in c.documents]}
+                          for d in case.documents]}
 
 
 @router.delete("/cases/{cid}", status_code=204)
-def delete_case(cid: int, p: Principal = Depends(get_principal),
+def delete_case(cid: str, p: Principal = Depends(get_principal),
                 db: Session = Depends(get_db), request: Request = None):
     """Permanently delete a case AND everything hanging off it — every
     uploaded PDF (with its MinIO object), every pipeline run and every
@@ -196,49 +222,52 @@ def delete_case(cid: int, p: Principal = Depends(get_principal),
     Any active run is cancelled first so the celery worker doesn't keep
     grinding on rows that are about to disappear.
     """
-    c = _get_case(db, p.user, cid)
+    case = _get_case(db, p.user, cid)
+    case_id_int = case.id  # snapshot before any commit refreshes it away
 
     # Cancel the latest run if it's still active — otherwise the celery
     # worker could try to write outputs to a run whose parent case row is
     # about to be gone, and blow up mid-transaction.
     active = db.scalar(
-        select(AppealRun).where(AppealRun.case_id == cid)
+        select(AppealRun).where(AppealRun.case_id == case.id)
         .order_by(desc(AppealRun.id)).limit(1)
     )
     if active and active.status in ("queued", "running"):
         _cancel_run(db, active, user_id=p.user.id)
 
-    # Best-effort MinIO cleanup for every uploaded PDF on this case.
-    for d in list(c.documents):
+    # Best-effort object-store cleanup for every uploaded PDF on this case.
+    for d in list(case.documents):
         if not d.minio_key:
             continue
         try:
-            from app.core.config import settings as _settings
-            from app.services.storage import get_client
-            get_client().remove_object(_settings.minio_bucket_raw, d.minio_key)
+            from app.services.storage import remove_object
+            remove_object(d.minio_key)
         except Exception as e:
-            log.warning("MinIO delete failed for %s: %s", d.minio_key, e)
+            log.warning("storage delete failed for %s: %s", d.minio_key, e)
 
-    # Re-fetch after any intermediate commits from _cancel_run() so the ORM
-    # doesn't complain about a stale instance during the cascade delete.
-    c = db.get(AppealCase, cid)
-    if c is None:  # already gone somehow — treat as success
+    # Re-fetch by numeric id after any intermediate commits from _cancel_run()
+    # so the ORM doesn't complain about a stale instance during the cascade
+    # delete. (Numeric because we already resolved the slug above.)
+    case = db.get(AppealCase, case_id_int)
+    if case is None:  # already gone somehow — treat as success
         return None
     # Snapshot the title BEFORE deletion so the audit row can still show a
     # human-readable name once the case is gone.
-    case_title = c.title
-    db.delete(c)
+    case_title = case.title
+    db.delete(case)
     db.commit()
     audit.log_event(db, action="appeal.case.delete", user_id=p.user.id, wing_id=p.user.wing_id,
-                    resource_type="appeal_case", resource_id=str(cid),
+                    resource_type="appeal_case", resource_id=str(case_id_int),
                     query_text=case_title, **client_meta(request))
     return None
 
 
 # --- documents ---
 @router.post("/cases/{cid}/documents")
-async def upload_docs(cid: int, files: list[UploadFile] = File(...),
-                      p: Principal = Depends(get_principal), db: Session = Depends(get_db), request: Request = None):
+async def upload_docs(cid: str, files: list[UploadFile] = File(...),
+                      p: Principal = Depends(get_principal),
+                      _quota: Principal = Depends(require_quota),
+                      db: Session = Depends(get_db), request: Request = None):
     case = _get_case(db, p.user, cid)
     added = []
     skipped = []
@@ -253,15 +282,36 @@ async def upload_docs(cid: int, files: list[UploadFile] = File(...),
             continue
         raw = await f.read()
         content_type = f.content_type or guessed_type or "application/octet-stream"
+        # SHA-256 the raw bytes BEFORE we upload / extract. This is the key
+        # for the dedup lookup below.
+        import hashlib as _hashlib
+        sha256_hex = _hashlib.sha256(raw).hexdigest()
         key = f"appeal/case_{case.id}/{filename}"
         put_bytes(key, raw, content_type=content_type)
         try:
             text = extract_text(raw, content_type, filename=filename)
         except Exception:
             text = ""
+        # Dedup: if ANY prior AppealDocument already extracted this exact
+        # PDF (same sha256) and produced usable text, reuse it. Saves the
+        # Gemini OCR call for scanned/image PDFs entirely.
+        if not text.strip():
+            prior = db.scalar(
+                select(AppealDocument)
+                .where(
+                    AppealDocument.sha256 == sha256_hex,
+                    func.length(AppealDocument.text) > 100,
+                )
+                .order_by(desc(AppealDocument.id))
+                .limit(1)
+            )
+            if prior is not None:
+                text = prior.text
         pages = text.count("\f") + 1 if ext == ".pdf" and text else 0
-        doc = AppealDocument(case_id=case.id, filename=filename, category=svc.classify(filename, text),
-                             minio_key=key, text=text, pages=pages)
+        doc = AppealDocument(case_id=case.id, filename=filename,
+                             category=svc.classify(filename, text),
+                             minio_key=key, text=text, pages=pages,
+                             sha256=sha256_hex)
         db.add(doc); added.append(doc)
     db.commit()
     present = {d.category for d in case.documents}
@@ -274,10 +324,10 @@ async def upload_docs(cid: int, files: list[UploadFile] = File(...),
 
 
 @router.get("/cases/{cid}/documents/{did}/file")
-def get_doc_file(cid: int, did: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
-    _get_case(db, p.user, cid)
+def get_doc_file(cid: str, did: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+    case = _get_case(db, p.user, cid)
     doc = db.get(AppealDocument, did)
-    if not doc or doc.case_id != cid:
+    if not doc or doc.case_id != case.id:
         raise HTTPException(404, "Not found")
     media_type = mimetypes.guess_type(doc.filename)[0] or "application/octet-stream"
     disposition = "inline" if media_type == "application/pdf" else "attachment"
@@ -306,12 +356,12 @@ class _DocCategoryUpdate(BaseModel):
 
 
 @router.put("/cases/{cid}/documents/{did}")
-def update_doc_category(cid: int, did: int, body: _DocCategoryUpdate,
+def update_doc_category(cid: str, did: int, body: _DocCategoryUpdate,
                        p: Principal = Depends(get_principal),
                        db: Session = Depends(get_db)):
     case = _get_case(db, p.user, cid)
     doc = db.get(AppealDocument, did)
-    if not doc or doc.case_id != cid:
+    if not doc or doc.case_id != case.id:
         raise HTTPException(404, "Not found")
     cat = (body.category or "").strip().lower()
     if cat not in DOC_CATEGORIES:
@@ -327,7 +377,7 @@ def update_doc_category(cid: int, did: int, body: _DocCategoryUpdate,
 
 
 @router.delete("/cases/{cid}/documents/{did}")
-def delete_doc(cid: int, did: int,
+def delete_doc(cid: str, did: int,
                p: Principal = Depends(get_principal),
                db: Session = Depends(get_db), request: Request = None):
     """Delete a single uploaded PDF from a case, plus its MinIO object.
@@ -337,17 +387,16 @@ def delete_doc(cid: int, did: int,
     """
     case = _get_case(db, p.user, cid)
     doc = db.get(AppealDocument, did)
-    if not doc or doc.case_id != cid:
+    if not doc or doc.case_id != case.id:
         raise HTTPException(404, "Not found")
     # Best-effort MinIO cleanup — the DB delete is the source of truth, so
     # a bucket blip must not block the row removal.
     if doc.minio_key:
         try:
-            from app.core.config import settings as _settings
-            from app.services.storage import get_client
-            get_client().remove_object(_settings.minio_bucket_raw, doc.minio_key)
+            from app.services.storage import remove_object
+            remove_object(doc.minio_key)
         except Exception as e:
-            log.warning("MinIO delete failed for %s: %s", doc.minio_key, e)
+            log.warning("storage delete failed for %s: %s", doc.minio_key, e)
     filename = doc.filename
     db.delete(doc)
     db.commit()
@@ -362,7 +411,9 @@ def delete_doc(cid: int, did: int,
 
 # --- run / outputs ---
 @router.post("/cases/{cid}/run")
-def start_run(cid: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db), request: Request = None):
+def start_run(cid: str, p: Principal = Depends(get_principal),
+              _quota: Principal = Depends(require_quota),
+              db: Session = Depends(get_db), request: Request = None):
     case = _get_case(db, p.user, cid)
     if not case.documents:
         raise HTTPException(400, "Upload documents before running")
@@ -436,7 +487,7 @@ def cancel_run(rid: int, p: Principal = Depends(get_principal),
 
 
 @router.post("/cases/{cid}/stop")
-def stop_case(cid: int, p: Principal = Depends(get_principal),
+def stop_case(cid: str, p: Principal = Depends(get_principal),
               db: Session = Depends(get_db), request: Request = None):
     """Convenience: cancel whichever run is currently active on this case,
     without the caller needing to know the run id.
@@ -447,13 +498,13 @@ def stop_case(cid: int, p: Principal = Depends(get_principal),
     healed back to match the run.
     """
     from sqlalchemy import update as _sql_update
-    _get_case(db, p.user, cid)
-    run = _latest_run(db, cid)
+    case = _get_case(db, p.user, cid)
+    run = _latest_run(db, case.id)
     if not run:
         # No runs at all — still heal the case badge if it's somehow stuck.
         db.execute(
             _sql_update(AppealCase)
-            .where(AppealCase.id == cid, AppealCase.status == "running")
+            .where(AppealCase.id == case.id, AppealCase.status == "running")
             .values(status="new")
         )
         db.commit()
@@ -465,7 +516,7 @@ def stop_case(cid: int, p: Principal = Depends(get_principal),
         target = "ready" if run.status == "done" else "error"
         db.execute(
             _sql_update(AppealCase)
-            .where(AppealCase.id == cid, AppealCase.status == "running")
+            .where(AppealCase.id == case.id, AppealCase.status == "running")
             .values(status=target)
         )
         db.commit()
@@ -487,9 +538,9 @@ def get_run(rid: int, p: Principal = Depends(get_principal), db: Session = Depen
 
 
 @router.get("/cases/{cid}/latest")
-def latest(cid: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
-    _get_case(db, p.user, cid)
-    run = _latest_run(db, cid)
+def latest(cid: str, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+    case = _get_case(db, p.user, cid)
+    run = _latest_run(db, case.id)
     if not run:
         return {"run": None, "outputs": [], "findings": []}
     outs = _latest_outputs(db, run.id)
@@ -522,9 +573,11 @@ def edit_output(oid: int, body: OutputEdit, p: Principal = Depends(get_principal
 
 
 @router.post("/cases/{cid}/issues/{seq}/regenerate")
-def regenerate(cid: int, seq: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+def regenerate(cid: str, seq: int, p: Principal = Depends(get_principal),
+               _quota: Principal = Depends(require_quota),
+               db: Session = Depends(get_db)):
     case = _get_case(db, p.user, cid)
-    run = _latest_run(db, cid)
+    run = _latest_run(db, case.id)
     if not run:
         raise HTTPException(400, "Run the pipeline first")
     im = next((o for o in _latest_outputs(db, run.id) if o.kind == "issue_matrix"), None)
@@ -540,9 +593,11 @@ def regenerate(cid: int, seq: int, p: Principal = Depends(get_principal), db: Se
 
 
 @router.post("/cases/{cid}/reassemble")
-def reassemble(cid: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+def reassemble(cid: str, p: Principal = Depends(get_principal),
+               _quota: Principal = Depends(require_quota),
+               db: Session = Depends(get_db)):
     case = _get_case(db, p.user, cid)
-    run = _latest_run(db, cid)
+    run = _latest_run(db, case.id)
     if not run:
         raise HTTPException(400, "Run the pipeline first")
     outs = _latest_outputs(db, run.id)
@@ -558,10 +613,221 @@ def reassemble(cid: int, p: Principal = Depends(get_principal), db: Session = De
     return _out(o)
 
 
+class DraftInstruction(BaseModel):
+    instruction: str
+    # Optional exact excerpt the officer highlighted in the draft. When set
+    # (and found in the draft) ONLY this excerpt is rewritten and spliced
+    # back in place — a precise "modify selection with AI" edit.
+    selection: str | None = None
+
+
+# System prompt used when we can identify the exact section the officer wants
+# changed. Only that section (heading + body) is sent to the LLM; the rest of
+# the order is untouched. Big latency + cost win vs. sending the whole draft.
+_INSTRUCT_SYSTEM_SECTION = (
+    "You are an expert AI editor for Indian income-tax appellate orders (CIT(A) / NFAC). "
+    "You are given ONE SECTION of a draft order and a natural-language INSTRUCTION from "
+    "the reviewing officer. Rewrite ONLY that section to satisfy the instruction.\n"
+    "STRICT RULES:\n"
+    "- Return the FULL revised section INCLUDING its heading line, and nothing else. Do "
+    "not add commentary, acknowledgements, or a 'Sure, here is…' preamble.\n"
+    "- Preserve the heading text verbatim unless the instruction explicitly asks to "
+    "rename it. Preserve numbering, citation markers, and any [not on record] tags.\n"
+    "- Never invent new facts, dates, figures, party names, jurisdictions, sections or "
+    "case citations. Only edit / rearrange / reword the text that is already there.\n"
+    "- Keep the formal CIT(A) register. Use plain markdown for structure — no code "
+    "fences.\n"
+)
+
+# Fallback system prompt when no section could be identified — same as before,
+# whole-draft rewrite.
+_INSTRUCT_SYSTEM_WHOLE = (
+    "You are an expert AI editor for Indian income-tax appellate orders (CIT(A) / NFAC). "
+    "You are given the CURRENT DRAFT of an order and a natural-language INSTRUCTION from the "
+    "reviewing officer. Rewrite the draft to satisfy the instruction.\n"
+    "STRICT RULES:\n"
+    "- Return the FULL revised order, not a diff and not a summary of changes. Do not "
+    "prepend an acknowledgement (\"Sure, here is…\"). The very first line of your output "
+    "must be the first line of the revised order.\n"
+    "- Preserve every heading, numbering scheme and citation marker unless the instruction "
+    "specifically asks you to change it. Never invent new facts, dates, figures, party "
+    "names, jurisdictions, sections or case citations. Only edit / rearrange / reword the "
+    "text that is already there.\n"
+    "- Keep the formal CIT(A) register. Use plain markdown (##, ###, **bold**, numbered "
+    "lists) for structure — no code fences.\n"
+    "- If the instruction is vague, apply the most conservative interpretation and keep "
+    "everything else intact.\n"
+)
+
+# Force Flash for interactive edits — the rewrite task doesn't need Pro-tier
+# reasoning and Pro is 3-4× slower on typical draft sizes. Officer waits less.
+_INSTRUCT_MODEL = "gemini-flash-latest"
+# Fallback chain for interactive edits: if the primary flash model is rate-
+# limited (429), fall through to another fast model rather than 503-ing the
+# officer. Kept Pro-free so edits stay fast.
+_INSTRUCT_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"]
+
+
+@router.post("/cases/{cid}/draft/instruct")
+def instruct_draft(cid: str, body: DraftInstruction,
+                   p: Principal = Depends(get_principal),
+                   _quota: Principal = Depends(require_quota),
+                   db: Session = Depends(get_db)) -> dict:
+    """Rewrite the latest draft using Gemini per a user instruction, then
+    persist as a new draft version. The next preview / download will render
+    the revised text (docx_blob is cleared so it re-renders from markdown)."""
+    from app.services import tokens as _tokens
+    from app.api.routes.appeal_oo import _extract_text as _docx_to_text
+
+    instruction = (body.instruction or "").strip()
+    if not instruction:
+        raise HTTPException(400, "instruction must not be empty")
+    if len(instruction) > 4000:
+        raise HTTPException(400, "instruction too long (max 4000 chars)")
+
+    case = _get_case(db, p.user, cid)
+    run = _latest_run(db, case.id)
+    if not run:
+        raise HTTPException(400, "Run the pipeline first — nothing to edit yet")
+    draft = _latest_draft_for_case(db, case.id)
+    if not draft:
+        raise HTTPException(404, "No draft yet — run the pipeline first")
+
+    # Prefer whatever the officer last saved from OnlyOffice (docx_blob) over
+    # the markdown snapshot, so edits made in the editor are respected as the
+    # starting point for the Gemini rewrite.
+    current_text = ""
+    if draft.docx_blob:
+        current_text = _docx_to_text(draft.docx_blob).strip()
+    if not current_text:
+        current_text = (draft.content or "").strip()
+    if not current_text:
+        raise HTTPException(422, "Draft is empty; cannot instruct an edit")
+
+    # Try to route the instruction to a single section. If we can, we send
+    # only that section to the LLM (much smaller prompt → 3–10× faster) and
+    # splice the rewrite back into the full draft. If we can't identify a
+    # target confidently, fall back to a whole-draft rewrite.
+    from app.services import draft_sections as _sec
+    selection = (body.selection or "").strip()
+    sel_found = bool(selection) and selection in current_text
+    sections = None
+    target_idx = None
+    if sel_found:
+        user_prompt = (
+            f"EXCERPT TO EDIT (verbatim):\n---\n{selection}\n---\n\n"
+            f"USER INSTRUCTION:\n{instruction}\n\n"
+            f"OUTPUT: the revised excerpt only — same coverage, no preamble, no "
+            f"surrounding text. Keep it drop-in for where it was taken from."
+        )
+        system_prompt = _INSTRUCT_SYSTEM_SECTION
+        scope = "selection"
+    else:
+        sections = _sec.split_sections(current_text)
+        target_idx = _sec.find_target_section(instruction, sections)
+
+    if sel_found:
+        pass
+    elif target_idx is not None:
+        target = sections[target_idx]
+        user_prompt = (
+            f"SECTION TO EDIT (verbatim, includes heading line):\n---\n"
+            f"{target['body'].strip()}\n---\n\n"
+            f"USER INSTRUCTION:\n{instruction}\n\n"
+            f"OUTPUT: the full revised section (heading + body)."
+        )
+        system_prompt = _INSTRUCT_SYSTEM_SECTION
+        scope = f"section:{target['title'] or '(preamble)'}"
+    else:
+        user_prompt = (
+            f"CURRENT DRAFT (verbatim):\n---\n{current_text}\n---\n\n"
+            f"USER INSTRUCTION:\n{instruction}\n\n"
+            f"OUTPUT: the full revised order."
+        )
+        system_prompt = _INSTRUCT_SYSTEM_WHOLE
+        scope = "whole_draft"
+
+    try:
+        if getattr(svc, "_GEMINI_KEY", ""):
+            primary = svc.GeminiLLM(svc._GEMINI_KEY, _INSTRUCT_MODELS)
+            local = svc._local_llm()
+            client = svc.FallbackLLM(primary, local) if local else primary
+            revised_piece = client.complete(system_prompt, user_prompt)
+        else:
+            client = svc._appeal_llm()
+            revised_piece = client.complete(system_prompt, user_prompt,
+                                            model=_INSTRUCT_MODEL)
+    except Exception as e:  # noqa: BLE001
+        log.warning("draft.instruct upstream failure: %s", e)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "llm_unavailable",
+                "message": (
+                    "The AI editor is temporarily unavailable. Please try again in "
+                    "a minute — if this keeps happening, contact your administrator."
+                ),
+            },
+        ) from e
+
+    revised_piece = (revised_piece or "").strip()
+    if not revised_piece:
+        raise HTTPException(502, "The AI returned an empty draft — please try rephrasing the instruction")
+
+    # Splice the rewritten section back in, or use it whole if we did a full
+    # rewrite. Either way, ``revised`` is the new complete draft.
+    if sel_found:
+        # Replace the FIRST occurrence of the highlighted excerpt with the rewrite.
+        revised = current_text.replace(selection, revised_piece, 1)
+    elif target_idx is not None:
+        revised = _sec.splice(sections, target_idx, revised_piece)
+    else:
+        revised = revised_piece
+
+    ver = (draft.version or 0) + 1
+    new_row = AppealOutput(
+        run_id=run.id,
+        kind="draft",
+        content=revised,
+        version=ver,
+        edited=True,
+        # Clear docx_blob so the next preview renders freshly from the new
+        # markdown. OnlyOffice will re-save its own docx_blob on next open+edit.
+        docx_blob=None,
+    )
+    db.add(new_row)
+    db.commit()
+    db.refresh(new_row)
+
+    # Book LLM token spend against this officer.
+    usage = getattr(client, "last_usage", None)
+    _tokens.record(
+        db,
+        user_id=p.user.id,
+        action="appeal.instruct",
+        model=getattr(client, "last_model", None),
+        usage=usage,
+        latency_ms=getattr(client, "last_latency_ms", None),
+    )
+    audit.log_event(
+        db, action="appeal.instruct", user_id=p.user.id, wing_id=p.user.wing_id,
+        resource_type="appeal_output", resource_id=str(new_row.id),
+        query_text=instruction[:500],
+    )
+    return {
+        "id": new_row.id,
+        "version": new_row.version,
+        "edited": True,
+        "instruction": instruction,
+        "scope": scope,
+        "chars": len(revised),
+    }
+
+
 @router.get("/cases/{cid}/draft-versions")
-def draft_versions(cid: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
-    _get_case(db, p.user, cid)
-    run = _latest_run(db, cid)
+def draft_versions(cid: str, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+    case = _get_case(db, p.user, cid)
+    run = _latest_run(db, case.id)
     if not run:
         return []
     rows = db.scalars(select(AppealOutput).where(AppealOutput.run_id == run.id, AppealOutput.kind == "draft").order_by(desc(AppealOutput.version)))
@@ -581,7 +847,7 @@ def _latest_draft_for_case(db: Session, cid: int) -> AppealOutput | None:
 
 
 @router.get("/cases/{cid}/preview.pdf")
-async def preview_pdf(cid: int, p: Principal = Depends(get_principal),
+async def preview_pdf(cid: str, p: Principal = Depends(get_principal),
                       db: Session = Depends(get_db)):
     """Render the latest draft as a PDF for in-page preview.
 
@@ -602,13 +868,13 @@ async def preview_pdf(cid: int, p: Principal = Depends(get_principal),
     # session (user hasn't opened it yet) or DocumentServer doesn't return
     # promptly, we render whatever's already persisted.
     try:
-        await flush_and_wait(db, cid, timeout_s=6.0)
+        await flush_and_wait(db, case.id, timeout_s=6.0)
     except Exception:
         pass
     # `flush_and_wait` may have committed a new draft row via the callback.
     # Refresh the SQLAlchemy view before we read the "latest" draft.
     db.expire_all()
-    draft = _latest_draft_for_case(db, cid)
+    draft = _latest_draft_for_case(db, case.id)
     if not draft:
         raise HTTPException(404, "No draft yet — run the pipeline first")
     # Prefer the docx blob that the user last saved from OnlyOffice — that's
@@ -643,9 +909,9 @@ async def preview_pdf(cid: int, p: Principal = Depends(get_principal),
 
 
 @router.get("/cases/{cid}/export.docx")
-def export_docx(cid: int, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
+def export_docx(cid: str, p: Principal = Depends(get_principal), db: Session = Depends(get_db)):
     case = _get_case(db, p.user, cid)
-    run = _latest_run(db, cid)
+    run = _latest_run(db, case.id)
     draft = db.scalar(select(AppealOutput).where(AppealOutput.run_id == run.id, AppealOutput.kind == "draft").order_by(desc(AppealOutput.version)).limit(1)) if run else None
     if not draft:
         raise HTTPException(404, "No draft yet — run the pipeline first")
