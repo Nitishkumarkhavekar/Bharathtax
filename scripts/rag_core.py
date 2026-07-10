@@ -10,6 +10,7 @@ Used by rag_chat.py (interactive) and eval_rag.py (evaluation).
 from __future__ import annotations
 
 import json
+import os
 import re
 import urllib.request
 from datetime import date
@@ -39,9 +40,11 @@ _CHARS_PER_TOKEN = 4         # cheap estimate for legal English (no per-chunk to
 MAX_PASSAGE_CHARS = CONTEXT_TOKEN_BUDGET * _CHARS_PER_TOKEN  # single-chunk hard ceiling
 
 SYSTEM_PROMPT = (
-    "You are BharathTax, a warm, professional AI assistant specialising in Indian "
-    "income-tax law. You help taxpayers and tax officers, from the most basic concepts "
-    "to specific statutory provisions. Sound like a knowledgeable, polite human expert.\n\n"
+    "You are BharathTax, a professional AI assistant specialising in Indian income-tax law. "
+    "Your primary users are TAX OFFICERS and tax professionals using this for departmental and "
+    "research work. Answer procedural / 'what should I do' questions from the officer's (tax "
+    "authority's) standpoint — the correct legal steps THEY should take — not as advice to a "
+    "taxpayer. Sound like a knowledgeable, polite expert.\n\n"
     "How to respond:\n"
     "1. ANSWER DIRECTLY — NO PREAMBLE. For any real question, your VERY FIRST sentence must be "
     "the substantive answer itself. NEVER open with a self-introduction or pleasantry — do NOT "
@@ -57,6 +60,13 @@ SYSTEM_PROMPT = (
     "3. ANSWERING INCOME-TAX QUESTIONS:\n"
     "   - Use the numbered PASSAGES when relevant and cite inline as [1], [2]. Quote exact "
     "figures, rates, limits, dates and section numbers ONLY from the passages.\n"
+    "   - PROCEDURAL / 'WHAT SHOULD I DO' questions about departmental process (a notice returned "
+    "undelivered, how to effect service, best-judgment assessment, limitation, condonation): state "
+    "the correct legal procedure the officer should follow, GROUNDED in and CITING the governing "
+    "provision from the passages (e.g. the modes of service — by post, by affixture, by substituted "
+    "service — under the service-of-notice provision, and the need to record the service attempts, "
+    "since invalid service can vitiate the proceedings). Never tell the user to 'contact the "
+    "Income-tax Department' — they ARE the authority.\n"
     "   - For BASIC concepts (what is income tax / TDS / a deduction), give a SHORT, plain-language "
     "answer (2-3 sentences). If the retrieved sections are not directly about the concept, ignore "
     "them — do not quote, list, or cite tangential provisions just because they were retrieved.\n"
@@ -272,8 +282,13 @@ class Store:
         cand = cand[:MAX_CANDIDATES]
         if not cand:
             return []
-        # rerank (cross-encoder)
-        rr = _post(ML + "/rerank", {"query": query, "passages": [self.rows[i]["text"] for i in cand]})["results"]
+        # rerank (cross-encoder). If the reranker is unavailable (e.g. the shared GPU
+        # is taken by another job) degrade gracefully: keep the candidate order (exact
+        # citations, then dense, then sparse) instead of failing the whole answer.
+        try:
+            rr = _post(ML + "/rerank", {"query": query, "passages": [self.rows[i]["text"] for i in cand]})["results"]
+        except Exception:
+            return [{"row": self.rows[i], "score": 0.0, "idx": i} for i in cand[:RERANK_K]]
 
         def is_target(row) -> bool:
             return ((row.get("section_number") or "").upper() in target_sec
@@ -325,6 +340,47 @@ def _passages_block(passages: list[dict]) -> str:
             + "\n\n".join(blocks))
 
 
+def _load_gemini_key() -> str:
+    try:
+        return open("/root/Income-tax-ai/.secrets/gemini_api_key").read().strip()
+    except Exception:
+        import os
+        return os.getenv("GEMINI_API_KEY", "").strip()
+
+
+_GEMINI_KEY = _load_gemini_key()
+_GEMINI_MODEL = "gemini-flash-latest"
+
+
+def _gemini_chat(messages: list[dict], max_tokens: int = 768) -> str:
+    """Generate via Gemini from an OpenAI-style messages list (system + turns).
+    This is the chatbot's default generation engine (the local GPU is shared)."""
+    system = ""
+    contents = []
+    for m in messages:
+        if m.get("role") == "system":
+            system = m.get("content", "")
+            continue
+        contents.append({"role": "user" if m.get("role") == "user" else "model",
+                         "parts": [{"text": m.get("content", "")}]})
+    if not contents:
+        contents = [{"role": "user", "parts": [{"text": ""}]}]
+    body = {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": contents,
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": max_tokens,
+                             "thinkingConfig": {"thinkingBudget": 0}},
+    }
+    req = urllib.request.Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{_GEMINI_MODEL}:generateContent",
+        data=json.dumps(body).encode(),
+        headers={"x-goog-api-key": _GEMINI_KEY, "Content-Type": "application/json"})
+    d = json.loads(urllib.request.urlopen(req, timeout=60).read())
+    cand = (d.get("candidates") or [{}])[0]
+    parts = (cand.get("content") or {}).get("parts") or []
+    return "".join(p.get("text", "") for p in parts).strip()
+
+
 def generate(question: str, passages: list[dict] | None = None,
              history: list[dict] | None = None, note: str = "",
              fewshot: list[dict] | None = None) -> str:
@@ -353,10 +409,27 @@ def generate(question: str, passages: list[dict] | None = None,
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": user_content})
-    out = _post(LLM + "/chat/completions", {
-        "model": LLM_MODEL, "temperature": 0.2, "max_tokens": GEN_MAX_TOKENS,
-        "messages": messages})
-    text = out["choices"][0]["message"]["content"]
+    # Chat generation runs on GEMINI by default — the local GPU is shared and may be
+    # taken by other jobs. Set CHAT_LLM=local to prefer the local vLLM instead.
+    want_gemini = bool(_GEMINI_KEY) and os.getenv("CHAT_LLM", "gemini").lower() != "local"
+    text = None
+    if want_gemini:
+        try:
+            text = _gemini_chat(messages, max_tokens=GEN_MAX_TOKENS)
+        except Exception:
+            text = None
+    if not text:
+        # Gemini disabled/failed -> try the local vLLM; if that is also down and
+        # Gemini exists, try Gemini once more so we never hard-fail on generation.
+        try:
+            out = _post(LLM + "/chat/completions", {
+                "model": LLM_MODEL, "temperature": 0.2, "max_tokens": GEN_MAX_TOKENS,
+                "messages": messages})
+            text = out["choices"][0]["message"]["content"]
+        except Exception:
+            if not _GEMINI_KEY:
+                raise
+            text = _gemini_chat(messages, max_tokens=GEN_MAX_TOKENS)
     # Safety net: drop any trailing line that is only separators/symbols (stray "|", "-", "—")
     text = re.sub(r"(?:\n[ \t]*[|\-—*_:]+[ \t]*)+\s*$", "", text)
     return text.strip()
@@ -372,6 +445,31 @@ def complete(system: str, user: str, *, max_tokens: int = 1024, temperature: flo
     return out["choices"][0]["message"]["content"].strip()
 
 
+def _expand_query(question: str) -> str:
+    """Rewrite a natural/procedural question into a concise statutory search query
+    (legal terminology + the likely section/rule topic) so retrieval surfaces the
+    right provisions. E.g. 'a notice was returned undelivered, what do I do' ->
+    'service of notice section 282 modes of service substituted service affixture'.
+    Returns '' on failure."""
+    try:
+        prompt = (
+            "Rewrite the following Indian income-tax question into a concise retrieval query by "
+            "adding formal legal terminology and related statutory concepts/synonyms for the key "
+            "terms, so a search over the Income-tax Act and Rules finds the governing provision. "
+            "Do NOT guess or invent section or rule numbers. Output ONLY the query on one line.\n\n"
+            "Example: 'a notice was returned undelivered, what do I do' -> 'service and delivery of "
+            "a notice under the Income-tax Act, modes of service, substituted service, service by "
+            "affixture, notice returned unserved or undelivered'\n\n"
+            f"Question: {question}\nSearch query:")
+        out = _post(LLM + "/chat/completions", {
+            "model": LLM_MODEL, "temperature": 0.0, "max_tokens": 60,
+            "messages": [{"role": "user", "content": prompt}]})
+        q = out["choices"][0]["message"]["content"].strip().strip('"').splitlines()[0]
+        return q[:300]
+    except Exception:
+        return ""
+
+
 def answer(question: str, *, version=None, source=None, history=None) -> dict:
     # Greetings / small talk: reply conversationally, no retrieval.
     if is_smalltalk(question):
@@ -385,9 +483,27 @@ def answer(question: str, *, version=None, source=None, history=None) -> dict:
         if inc:
             return {"grounded": True, "text": _calc_answer(inc), "passages": []}
     store = Store_singleton()
-    qemb = _post(ML + "/embed", {"texts": [question]})["embeddings"][0]   # embed once
-    fewshot = Verified_singleton().similar(qemb)                          # learn from past accepted answers
-    passages = store.retrieve(question, version=version, source=source, query_emb=qemb)
+    fewshot: list[dict] = []
+    passages: list[dict] = []
+    try:
+        qemb = _post(ML + "/embed", {"texts": [question]})["embeddings"][0]   # embed once
+        fewshot = Verified_singleton().similar(qemb)                          # learn from past accepted answers
+        passages = store.retrieve(question, version=version, source=source, query_emb=qemb)
+    except Exception:
+        # Retrieval stack (ml-server) unavailable — answer ungrounded via Gemini
+        # rather than returning a 500. A helpful general answer beats an error.
+        passages, fewshot = [], []
+    if not passages:
+        # Conversational/procedural questions often don't lexically match the statute
+        # (e.g. "a notice was returned undelivered" scores ~0 against s.282's text).
+        # Rewrite into statutory search terms and retry once before giving up.
+        try:
+            eq = _expand_query(question)
+            if eq and eq.strip().lower() != question.strip().lower():
+                eqemb = _post(ML + "/embed", {"texts": [eq]})["embeddings"][0]
+                passages = store.retrieve(eq, version=version, source=source, query_emb=eqemb)
+        except Exception:
+            pass
     missing = store.cited_missing(question)
     note = ""
     if missing:
