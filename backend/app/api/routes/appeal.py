@@ -619,6 +619,10 @@ class DraftInstruction(BaseModel):
     # (and found in the draft) ONLY this excerpt is rewritten and spliced
     # back in place — a precise "modify selection with AI" edit.
     selection: str | None = None
+    # Undo/redo: the draft version the edit should build ON (what the officer is
+    # currently viewing). When omitted, we edit the latest version. This lets an
+    # edit made after Undo branch from the viewed version rather than the newest.
+    base_version: int | None = None
 
 
 # System prompt used when we can identify the exact section the officer wants
@@ -732,15 +736,24 @@ def instruct_draft(cid: str, body: DraftInstruction,
     run = _latest_run(db, case.id)
     if not run:
         raise HTTPException(400, "Run the pipeline first — nothing to edit yet")
-    draft = _latest_draft_for_case(db, case.id)
+    # Undo/redo: build ON the version the officer is viewing (base_version) if given,
+    # otherwise the latest. A new edit after Undo therefore branches from what they see.
+    draft = None
+    if body.base_version is not None:
+        draft = db.scalar(select(AppealOutput).where(
+            AppealOutput.run_id == run.id, AppealOutput.kind == "draft",
+            AppealOutput.version == body.base_version))
+    if draft is None:
+        draft = _latest_draft_for_case(db, case.id)
     if not draft:
         raise HTTPException(404, "No draft yet — run the pipeline first")
 
     # Prefer whatever the officer last saved from OnlyOffice (docx_blob) over
     # the markdown snapshot, so edits made in the editor are respected as the
-    # starting point for the Gemini rewrite.
+    # starting point for the Gemini rewrite. (When editing a specific base_version
+    # we use its markdown content directly.)
     current_text = ""
-    if draft.docx_blob:
+    if body.base_version is None and draft.docx_blob:
         current_text = _docx_to_text(draft.docx_blob).strip()
     if not current_text:
         current_text = (draft.content or "").strip()
@@ -830,7 +843,18 @@ def instruct_draft(cid: str, body: DraftInstruction,
     else:
         revised = revised_piece
 
-    ver = (draft.version or 0) + 1
+    # Character span of the changed region in the NEW draft, so the UI can flash-
+    # highlight exactly what the AI touched. revised_piece is inserted verbatim, so
+    # we locate it. For a whole-draft rewrite the whole thing changed (span = None).
+    change_start = change_end = None
+    if scope != "whole_draft":
+        pos = revised.find(revised_piece)
+        if pos >= 0:
+            change_start, change_end = pos, pos + len(revised_piece)
+
+    # New version = max existing + 1 (NOT base+1 — base may be an older version).
+    ver = (db.scalar(select(func.max(AppealOutput.version)).where(
+        AppealOutput.run_id == run.id, AppealOutput.kind == "draft")) or 0) + 1
     new_row = AppealOutput(
         run_id=run.id,
         kind="draft",
@@ -867,6 +891,9 @@ def instruct_draft(cid: str, body: DraftInstruction,
         "instruction": instruction,
         "scope": scope,
         "chars": len(revised),
+        "content": revised,          # the new full draft (UI sets it without a refetch)
+        "change_start": change_start,  # char offsets of the AI-touched region, for
+        "change_end": change_end,      # flash-highlight; null on a whole-draft rewrite
     }
 
 

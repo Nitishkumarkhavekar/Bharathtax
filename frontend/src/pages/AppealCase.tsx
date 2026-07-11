@@ -1,7 +1,7 @@
 import { ChangeEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles, Undo2, Redo2 } from "lucide-react";
 import { StarRating } from "../components/ui/StarRating";
 import { api } from "../api";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
-import { Markdown } from "@/lib/markdown";
+import { Markdown, injectHighlight } from "@/lib/markdown";
 
 type Cite = { n: number; breadcrumb: string; section_number?: string | null; source_url?: string | null };
 type Out = { id: number; kind: string; seq: number; label?: string; content: string; citations?: Cite[]; edited: boolean; version: number };
@@ -584,16 +584,50 @@ function DraftSection({
   // the parent re-renders (it does, often: every preview state change). We
   // pass this down instead of an inline arrow function.
   const bumpPreview = useCallback(() => setReloadKey((k) => k + 1), []);
-  const refreshDraft = useCallback(async () => {
-    bumpPreview();
-    try {
-      const vs = await api.appealDraftVersions(cid);
-      const latest = [...vs].sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
-      if (latest?.content) setDraft(latest.content);
-    } catch {
-      /* best-effort refresh */
+  // ---- Undo / redo over the draft version history ----
+  // Each AI edit is one version in the DB; undo/redo just steps the pointer and
+  // shows that version. A new edit builds ON the viewed version (base_version).
+  const [vers, setVers] = useState<Ver[]>(versions);
+  const [activeVer, setActiveVer] = useState<number | null>(null);
+  const [flash, setFlash] = useState<{ start: number; end: number } | null>(null);
+  useEffect(() => { setVers(versions); }, [versions]);
+  const sortedVers = useMemo(() => [...vers].sort((a, b) => a.version - b.version), [vers]);
+  useEffect(() => {
+    if (sortedVers.length && (activeVer == null || !sortedVers.some((v) => v.version === activeVer))) {
+      setActiveVer(sortedVers[sortedVers.length - 1].version);
     }
-  }, [cid, bumpPreview, setDraft]);
+  }, [sortedVers, activeVer]);
+  const curIdx = sortedVers.findIndex((v) => v.version === activeVer);
+  const canUndo = curIdx > 0;
+  const canRedo = curIdx >= 0 && curIdx < sortedVers.length - 1;
+  const goToIdx = useCallback(
+    (idx: number) => {
+      if (idx < 0 || idx >= sortedVers.length) return;
+      const v = sortedVers[idx];
+      setActiveVer(v.version);
+      setDraft(v.content);
+      setFlash(null);
+      bumpPreview();
+    },
+    [sortedVers, setDraft, bumpPreview],
+  );
+  const onEdited = useCallback(
+    async (res: { content?: string; version: number; change_start?: number | null; change_end?: number | null }) => {
+      if (res.content != null) setDraft(res.content);
+      try { setVers(await api.appealDraftVersions(cid)); } catch { /* best-effort */ }
+      setActiveVer(res.version);
+      if (res.change_start != null && res.change_end != null) {
+        const span = { start: res.change_start, end: res.change_end };
+        setFlash(span);
+        window.setTimeout(() => setFlash((f) => (f === span ? null : f)), 6000);
+      } else {
+        setFlash(null);
+      }
+      bumpPreview();
+    },
+    [cid, setDraft, bumpPreview],
+  );
+
   // Bump the cache-buster when the draft text changes so the preview reflects
   // unsaved edits if the user toggles to Preview mid-edit.
   const draftHash = useMemo(() => `${draft.length}:${draft.slice(0, 64)}`, [draft]);
@@ -650,19 +684,16 @@ function DraftSection({
       defaultOpen
       extra={
         <div className="flex items-center gap-2">
-          {versions.length > 1 && (
+          {sortedVers.length > 1 && (
             <select
               className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+              value={sortedVers.find((v) => v.version === activeVer)?.id ?? ""}
               onChange={(e) => {
-                const v = versions.find((x) => x.id === Number(e.target.value));
-                if (v) {
-                  setDraft(v.content);
-                  setReloadKey((k) => k + 1);
-                }
+                const v = sortedVers.find((x) => x.id === Number(e.target.value));
+                if (v) goToIdx(sortedVers.indexOf(v));
               }}
-              defaultValue={versions[0]?.id}
             >
-              {versions.map((v) => (
+              {[...sortedVers].reverse().map((v) => (
                 <option key={v.id} value={v.id}>
                   v{v.version}
                   {v.edited ? " (edited)" : ""}
@@ -679,6 +710,25 @@ function DraftSection({
           <BookOpen className="size-4" /> Apply mind and edit before finalising.
         </p>
         <div className="inline-flex flex-wrap rounded-md border border-input bg-background p-0.5 text-xs max-w-full">
+          <button
+            type="button"
+            onClick={() => goToIdx(curIdx - 1)}
+            disabled={!canUndo}
+            title="Undo — previous version"
+            className="inline-flex items-center px-2.5 py-1.5 rounded font-medium text-slate-600 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => goToIdx(curIdx + 1)}
+            disabled={!canRedo}
+            title="Redo — next version"
+            className="inline-flex items-center px-2.5 py-1.5 rounded font-medium text-slate-600 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Redo2 className="size-3.5" />
+          </button>
+          <span className="mx-0.5 my-1 w-px self-stretch bg-slate-200" />
           <button
             type="button"
             onClick={() => setMode("preview")}
@@ -764,7 +814,7 @@ function DraftSection({
           <span className="hidden">{draftHash}</span>
         </div>
       ) : mode === "text" ? (
-        <TextModifyView cid={cid} draft={draft} onApplied={refreshDraft} />
+        <TextModifyView cid={cid} draft={draft} baseVersion={activeVer} flash={flash} onEdited={onEdited} />
       ) : (
         <OnlyOfficeEditor cid={cid} onSaved={bumpPreview} />
       )}
@@ -809,11 +859,15 @@ function DraftSection({
 function TextModifyView({
   cid,
   draft,
-  onApplied,
+  baseVersion,
+  flash,
+  onEdited,
 }: {
   cid: string | number;
   draft: string;
-  onApplied: () => void | Promise<void>;
+  baseVersion: number | null;
+  flash: { start: number; end: number } | null;
+  onEdited: (res: { content?: string; version: number; change_start?: number | null; change_end?: number | null }) => void | Promise<void>;
 }) {
   // Anchor = the selection's bounding rect in viewport coords, so the floating
   // "Ask AI" chip and the popover both position relative to the SELECTION.
@@ -825,6 +879,14 @@ function TextModifyView({
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Scroll the freshly AI-edited (flash-highlighted) text into view.
+  useEffect(() => {
+    if (!flash) return;
+    const el = scrollRef.current?.querySelector(".ai-flash");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [flash]);
 
   function selectionAnchor(): (Anchor & { selection: string }) | null {
     const sel = window.getSelection();
@@ -866,10 +928,12 @@ function TextModifyView({
     setBusy(true);
     setErr(null);
     try {
-      await api.appealInstructDraft(cid, prompt.trim(), pop.selection);
+      const res = await api.appealInstructDraft(
+        cid, prompt.trim(), pop.selection, baseVersion ?? undefined,
+      );
       setPop(null);
       setPrompt("");
-      await onApplied();
+      await onEdited(res);
     } catch (e: any) {
       setErr(e?.message ?? "Could not apply the edit.");
     } finally {
@@ -908,13 +972,14 @@ function TextModifyView({
         Select any text and click <b>Ask AI</b> to rewrite just that part (right-click also works).
       </div>
       <div
+        ref={scrollRef}
         onContextMenu={onContextMenu}
         onMouseUp={onSelectMouseUp}
         onScroll={() => setHint(null)}
         className="max-h-[65vh] sm:max-h-[720px] overflow-auto px-4 sm:px-6 py-4 sm:py-5 text-[13px] sm:text-[14px] leading-relaxed text-slate-800 break-words selection:bg-primary/20 [&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:mb-3 [&_strong]:font-semibold [&_*]:max-w-full"
       >
         {draft ? (
-          <Markdown text={draft} />
+          <Markdown text={flash ? injectHighlight(draft, flash.start, flash.end) : draft} />
         ) : (
           <div className="text-sm text-slate-500 py-12 text-center">No draft yet.</div>
         )}

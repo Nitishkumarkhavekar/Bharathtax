@@ -737,10 +737,18 @@ export const api = {
     req<any>(`/appeal/outputs/${oid}`, { method: "PUT", body: JSON.stringify({ content }) }),
   appealRegenerate: (id: string | number, seq: number) => req<any>(`/appeal/cases/${id}/issues/${seq}/regenerate`, { method: "POST" }),
   appealReassemble: (id: string | number) => req<any>(`/appeal/cases/${id}/reassemble`, { method: "POST" }),
-  appealInstructDraft: (id: string | number, instruction: string, selection?: string) =>
-    req<{ id: number; version: number; edited: boolean; instruction: string; chars: number }>(
+  appealInstructDraft: (
+    id: string | number,
+    instruction: string,
+    selection?: string,
+    base_version?: number,
+  ) =>
+    req<{
+      id: number; version: number; edited: boolean; instruction: string; chars: number;
+      content?: string; change_start?: number | null; change_end?: number | null;
+    }>(
       `/appeal/cases/${id}/draft/instruct`,
-      { method: "POST", body: JSON.stringify({ instruction, selection }) },
+      { method: "POST", body: JSON.stringify({ instruction, selection, base_version }) },
     ),
   appealDraftVersions: (id: string | number) => req<any[]>(`/appeal/cases/${id}/draft-versions`),
   async appealDownload(path: string, filename: string) {
