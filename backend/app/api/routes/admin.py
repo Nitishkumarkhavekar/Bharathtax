@@ -28,7 +28,7 @@ from app.models.activity import Query
 from app.models.admin import LicenseKey, RevenueEntry
 from app.models.corpus import CorpusChunk
 from app.models.enums import Role
-from app.models.org import SeatLease, User, Wing
+from app.models.org import Department, SeatLease, User, Wing
 from app.models.token_usage import TokenUsage
 from app.schemas import (
     DashboardOut,
@@ -82,7 +82,18 @@ def list_wings(admin: User = Depends(_admin), db: Session = Depends(get_db)) -> 
 @router.post("/wings", response_model=WingOut)
 def create_wing(body: WingCreate, db: Session = Depends(get_db),
                 admin: User = Depends(_super)) -> Wing:
-    wing = Wing(department_id=body.department_id, name=body.name, code=body.code,
+    # In single-department deployments the caller need not supply a department;
+    # fall back to the first one, creating a default if the table is empty.
+    dept_id = body.department_id
+    if dept_id is None:
+        dept = db.scalars(select(Department).order_by(Department.id)).first()
+        if dept is None:
+            dept = Department(name="Income Tax Department")
+            db.add(dept); db.flush()
+        dept_id = dept.id
+    if db.scalar(select(Wing).where(Wing.code == body.code)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=f"Wing code '{body.code}' already exists.")
+    wing = Wing(department_id=dept_id, name=body.name, code=body.code,
                 seat_limit=body.seat_limit)
     db.add(wing); db.commit()
     return wing

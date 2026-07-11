@@ -144,10 +144,10 @@ class HistoryItem(BaseModel):
 
 # ---- admin ----
 class WingCreate(BaseModel):
-    department_id: int
+    department_id: int | None = None   # defaults to the first/only department
     name: str
     code: str
-    seat_limit: int
+    seat_limit: int = 0
 
 
 class WingOut(BaseModel):

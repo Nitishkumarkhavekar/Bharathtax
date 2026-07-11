@@ -592,6 +592,11 @@ export const api = {
     req<void>(`/history?kind=${kind}`, { method: "DELETE" }),
   seatUsage: (wingId: number) => req<SeatUsage>(`/admin/wings/${wingId}/seats`),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
+  adminCreateWing: (body: { name: string; code: string; seat_limit?: number }) =>
+    req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // --- authoring helpers ---
   improvePrompt: (text: string, context: "ask" | "document" = "ask") =>
