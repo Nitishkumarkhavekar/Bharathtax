@@ -5,6 +5,7 @@ interface Session {
   username: string;
   role: string;
   wingId: number;
+  features: string[] | null;   // allowed modules; null = all
 }
 interface AuthCtx {
   session: Session | null;
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .me()
       .then((me) => {
-        setSession({ username: me.username, role: me.role, wingId: me.wing_id });
+        setSession({ username: me.username, role: me.role, wingId: me.wing_id, features: me.features ?? null });
       })
       .catch(() => {
         localStorage.removeItem(KEY);
@@ -82,7 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(u: string, p: string): Promise<Session> {
     const tok: TokenResponse = await api.login(u, p);
     localStorage.setItem(KEY, tok.access_token);
-    const s = { username: tok.username, role: tok.role, wingId: tok.wing_id };
+    // Pull the full profile (incl. allowed modules) so the session is complete.
+    const me = await api.me();
+    const s: Session = { username: me.username, role: me.role, wingId: me.wing_id, features: me.features ?? null };
     localStorage.setItem(SESS, JSON.stringify(s));
     setSession(s);
     return s;

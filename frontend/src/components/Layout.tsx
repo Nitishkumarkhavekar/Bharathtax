@@ -25,14 +25,15 @@ const NAV: {
   label: string;
   icon: typeof MessageSquareText;
   roles?: string[];
+  feature?: string;   // gateable module key; hidden unless the user is allotted it
   tone: NavTone;
   hint: string;
 }[] = [
-  { to: "/ask", label: "Chat", icon: MessageSquareText, tone: "primary", hint: "Citation-grounded chat" },
-  { to: "/appeals", label: "Appeals", icon: Gavel, tone: "amber", hint: "Draft CIT(A) orders" },
-  { to: "/rulings", label: "Rulings", icon: BookOpen, tone: "violet", hint: "Case-law search" },
-  { to: "/documents", label: "Documents", icon: FileText, tone: "sky", hint: "Upload · summarise" },
-  { to: "/history", label: "History", icon: Clock, tone: "emerald", hint: "Past queries" },
+  { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
+  { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },
+  { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
+  { to: "/documents", label: "Documents", icon: FileText, feature: "documents", tone: "sky", hint: "Upload · summarise" },
+  { to: "/history", label: "History", icon: Clock, feature: "history", tone: "emerald", hint: "Past queries" },
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
 ];
@@ -89,7 +90,13 @@ function SidebarBody({
 }) {
   const { session, logout } = useAuth();
   const loc = useLocation();
-  const nav = NAV.filter((n) => !n.roles || (session && n.roles.includes(session.role)));
+  const isAdmin = !!session && ["super_admin", "wing_admin"].includes(session.role);
+  const feats = session?.features ?? null; // null = all modules
+  const nav = NAV.filter(
+    (n) =>
+      (!n.roles || (session && n.roles.includes(session.role))) &&
+      (!n.feature || isAdmin || !feats || feats.includes(n.feature)),
+  );
   const firstLetter = (session?.username || "?").slice(0, 1).toUpperCase();
   return (
     <>

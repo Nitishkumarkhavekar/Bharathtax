@@ -42,6 +42,16 @@ interface Props {
 const ROLES_USER: AdminRole[] = ["officer", "auditor"];
 const ROLES_ADMIN: AdminRole[] = ["super_admin", "wing_admin"];
 
+// Gateable user-facing modules (mirror of backend deps.ALL_FEATURES).
+const MODULES: { key: string; label: string }[] = [
+  { key: "chat", label: "Chat" },
+  { key: "appeals", label: "Appeals" },
+  { key: "rulings", label: "Case Law" },
+  { key: "documents", label: "Documents" },
+  { key: "history", label: "History" },
+];
+const ALL_MODULE_KEYS = MODULES.map((m) => m.key);
+
 type StatusTab = "all" | "pending" | "approved" | "rejected";
 
 export default function UserManagement({ mode }: Props) {
@@ -409,6 +419,8 @@ function UserForm({
   const [role, setRole] = useState<AdminRole>(current?.role ?? allowedRoles[0]);
   const [wingId, setWingId] = useState<number>(current?.wing_id ?? wings[0]?.id ?? 0);
   const [isActive, setIsActive] = useState(current?.is_active ?? true);
+  // Module access. null (all) -> everything checked; else the allotted subset.
+  const [features, setFeatures] = useState<string[]>(current?.features ?? ALL_MODULE_KEYS);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -425,6 +437,7 @@ function UserForm({
           email: email || undefined,
           role,
           wing_id: wingId,
+          features,
         };
         await api.adminCreateUser(body);
       } else {
@@ -434,6 +447,7 @@ function UserForm({
           role,
           wing_id: wingId,
           is_active: isActive,
+          features,
         };
         if (password) body.password = password;
         await api.adminUpdateUser(current!.id, body);
@@ -564,6 +578,44 @@ function UserForm({
             </div>
           </div>
         </label>
+      )}
+
+      {!isAdminRole && (
+        <Field
+          label="Sections this user can access"
+          hint="Uncheck any the user shouldn't see. Applies on their next page load; admins are never restricted."
+        >
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <div className="flex items-center gap-2 pb-2 mb-2 border-b border-slate-200">
+              <button type="button" onClick={() => setFeatures(ALL_MODULE_KEYS)} className="text-[11.5px] font-medium text-primary hover:underline">
+                Provide all
+              </button>
+              <span className="text-slate-300">·</span>
+              <button type="button" onClick={() => setFeatures([])} className="text-[11.5px] font-medium text-slate-500 hover:underline">
+                Clear
+              </button>
+              <span className="ml-auto text-[11px] text-slate-400">{features.length}/{ALL_MODULE_KEYS.length} allotted</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {MODULES.map((m) => {
+                const on = features.includes(m.key);
+                return (
+                  <label key={m.key} className="flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-white">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) =>
+                        setFeatures((f) => (e.target.checked ? [...new Set([...f, m.key])] : f.filter((x) => x !== m.key)))
+                      }
+                      className="size-4 accent-primary"
+                    />
+                    <span className="text-[13px] text-slate-700">{m.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </Field>
       )}
 
       {err && (

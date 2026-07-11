@@ -78,6 +78,7 @@ class MeResponse(BaseModel):
     full_name: str | None
     role: Role
     wing_id: int
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 # ---- ask / answers ----
@@ -172,6 +173,7 @@ class UserCreate(BaseModel):
     role: Role = Role.officer
     wing_id: int
     office_id: int | None = None
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 class UserOut(BaseModel):
@@ -188,6 +190,7 @@ class UserOut(BaseModel):
     approval_status: str = "approved"
     approved_at: datetime | None = None
     created_at: datetime | None = None
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 class UserUpdate(BaseModel):
@@ -198,6 +201,7 @@ class UserUpdate(BaseModel):
     office_id: int | None = None
     is_active: bool | None = None
     password: str | None = None    # optional reset
+    features: list[str] | None = None   # allowed modules; null = all (only applied when key present)
 
 
 # ---- licenses ----

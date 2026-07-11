@@ -95,6 +95,7 @@ export interface AdminUser {
   approval_status: "pending" | "approved" | "rejected";
   approved_at: string | null;
   created_at: string | null;
+  features: string[] | null;   // allowed modules; null = all
 }
 
 export interface PublicWing {
@@ -147,6 +148,7 @@ export interface AdminUserCreate {
   role: AdminRole;
   wing_id: number;
   office_id?: number;
+  features?: string[] | null;   // allowed modules; null/omitted = all
 }
 export interface AdminUserUpdate {
   full_name?: string;
@@ -156,6 +158,7 @@ export interface AdminUserUpdate {
   office_id?: number;
   is_active?: boolean;
   password?: string;
+  features?: string[] | null;   // allowed modules; null = all
 }
 
 export interface License {
@@ -555,7 +558,7 @@ export const api = {
   updateProfile: (b: ProfileUpdate) =>
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
-  me: () => req<{ id: number; username: string; role: string; wing_id: number }>("/auth/me"),
+  me: () => req<{ id: number; username: string; role: string; wing_id: number; features: string[] | null }>("/auth/me"),
 
   // --- license activation (gates the chat for non-admin users) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),

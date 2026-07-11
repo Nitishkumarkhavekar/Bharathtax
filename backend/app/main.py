@@ -1,9 +1,10 @@
 """BharathTax API entrypoint."""
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref
 from app.core.config import settings
@@ -88,14 +89,16 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(ask.router)
-app.include_router(documents.router)
-app.include_router(history.router)
+# Per-user module gating: a non-admin without the feature gets 403 on the whole
+# router (belt-and-braces with the sidebar hiding it). Admins bypass.
+app.include_router(ask.router, dependencies=[Depends(require_feature("chat"))])
+app.include_router(documents.router, dependencies=[Depends(require_feature("documents"))])
+app.include_router(history.router, dependencies=[Depends(require_feature("history"))])
 app.include_router(admin.router)
-app.include_router(appeal.router)
-app.include_router(appeal_oo.router)
-app.include_router(rulings.router)
-app.include_router(crossref.router)
+app.include_router(appeal.router, dependencies=[Depends(require_feature("appeals"))])
+app.include_router(appeal_oo.router, dependencies=[Depends(require_feature("appeals"))])
+app.include_router(rulings.router, dependencies=[Depends(require_feature("rulings"))])
+app.include_router(crossref.router, dependencies=[Depends(require_feature("rulings"))])
 app.include_router(assist.router)
 app.include_router(ratings.router)
 app.include_router(billing.router)
