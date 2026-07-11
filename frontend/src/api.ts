@@ -599,6 +599,8 @@ export const api = {
 
   // --- rulings (case-law search) ---
   rulings: (q: string) => req<any>(`/rulings?q=${encodeURIComponent(q)}`),
+  // section hub (#11): statute + circulars + leading cases (with headnotes) for a section
+  crossref: (section: string) => req<any>(`/crossref?section=${encodeURIComponent(section)}`),
 
   // --- admin corpus ---
   corpusStats: () => req<{ chunks: number; by_domain: Record<string, number> }>("/admin/corpus/stats"),
