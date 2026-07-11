@@ -77,6 +77,7 @@ class MeResponse(BaseModel):
     username: str
     full_name: str | None
     role: Role
+    designation: str | None = None
     wing_id: int
     features: list[str] | None = None   # allowed modules; null = all
 
@@ -171,6 +172,7 @@ class UserCreate(BaseModel):
     full_name: str | None = None
     email: str | None = None
     role: Role = Role.officer
+    designation: str | None = None      # free-text job title
     wing_id: int
     office_id: int | None = None
     features: list[str] | None = None   # allowed modules; null = all
@@ -184,6 +186,7 @@ class UserOut(BaseModel):
     email: str | None = None
     organisation: str | None = None
     role: Role
+    designation: str | None = None
     wing_id: int
     office_id: int | None = None
     is_active: bool
@@ -197,6 +200,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     email: str | None = None
     role: Role | None = None
+    designation: str | None = None
     wing_id: int | None = None
     office_id: int | None = None
     is_active: bool | None = None

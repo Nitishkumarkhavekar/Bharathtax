@@ -261,7 +261,9 @@ export default function UserManagement({ mode }: Props) {
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium">User</th>
                   <th className="text-left px-4 py-2.5 font-medium">Email</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Role</th>
+                  <th className="text-left px-4 py-2.5 font-medium">
+                    {isAdminMode ? "Role" : "Designation"}
+                  </th>
                   <th className="text-left px-4 py-2.5 font-medium">Wing</th>
                   <th className="text-left px-4 py-2.5 font-medium">Status</th>
                   <th className="text-right px-4 py-2.5 font-medium">Actions</th>
@@ -288,7 +290,14 @@ export default function UserManagement({ mode }: Props) {
                       </td>
                       <td className="px-4 py-2.5 text-slate-700">{u.email ?? "—"}</td>
                       <td className="px-4 py-2.5">
-                        <RoleBadge role={u.role} />
+                        {isAdminMode ? (
+                          <RoleBadge role={u.role} />
+                        ) : (
+                          <span className="text-slate-700">
+                            {u.designation ||
+                              u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-slate-600">
                         {wing ? `${wing.name} (${wing.code})` : `#${u.wing_id}`}
@@ -414,12 +423,19 @@ function UserForm({
 }) {
   const { session } = useAuth();
   const isSuper = session?.role === "super_admin";
+  const isAdminMode = allowedRoles.some((r) => r.includes("admin"));
   const isNew = !current;
   const [username, setUsername] = useState(current?.username ?? "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState(current?.full_name ?? "");
   const [email, setEmail] = useState(current?.email ?? "");
   const [role, setRole] = useState<AdminRole>(current?.role ?? allowedRoles[0]);
+  // For regular users, "role" is presented as a free-text designation/title;
+  // the permission role stays "officer" under the hood.
+  const cap = (s?: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+  const [designation, setDesignation] = useState<string>(
+    current?.designation ?? (current && !current.role.includes("admin") ? cap(current.role) : ""),
+  );
   // Wings can be extended inline (super admins only), so keep a local copy.
   const [wingList, setWingList] = useState<Wing[]>(wings);
   const [wingId, setWingId] = useState<number>(current?.wing_id ?? wings[0]?.id ?? 0);
@@ -467,6 +483,7 @@ function UserForm({
           full_name: fullName || undefined,
           email: email || undefined,
           role,
+          designation: isAdminMode ? undefined : designation.trim() || undefined,
           wing_id: wingId,
           features,
         };
@@ -476,6 +493,7 @@ function UserForm({
           full_name: fullName || undefined,
           email: email || undefined,
           role,
+          designation: isAdminMode ? undefined : designation.trim() || undefined,
           wing_id: wingId,
           is_active: isActive,
           features,
@@ -564,19 +582,42 @@ function UserForm({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Role" required hint="Determines access and the admin features available.">
-          <IconSelect
-            icon={<ShieldCheck className="size-4" />}
-            value={role}
-            onChange={(e) => setRole(e.target.value as AdminRole)}
+        {isAdminMode ? (
+          <Field label="Role" required hint="Determines access and the admin features available.">
+            <IconSelect
+              icon={<ShieldCheck className="size-4" />}
+              value={role}
+              onChange={(e) => setRole(e.target.value as AdminRole)}
+            >
+              {allowedRoles.map((r) => (
+                <option key={r} value={r}>
+                  {r.replace("_", " ")}
+                </option>
+              ))}
+            </IconSelect>
+          </Field>
+        ) : (
+          <Field
+            label="Designation"
+            hint="Their job title — Officer, Auditor, Inspector, CA, Consultant, anything. Just a label; access is set by the sections below."
           >
-            {allowedRoles.map((r) => (
-              <option key={r} value={r}>
-                {r.replace("_", " ")}
-              </option>
-            ))}
-          </IconSelect>
-        </Field>
+            <IconInput
+              icon={<ShieldCheck className="size-4" />}
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              placeholder="e.g. Assessing Officer"
+              list="designation-suggestions"
+            />
+            <datalist id="designation-suggestions">
+              <option value="Officer" />
+              <option value="Assessing Officer" />
+              <option value="Auditor" />
+              <option value="Inspector" />
+              <option value="CA" />
+              <option value="Consultant" />
+            </datalist>
+          </Field>
+        )}
         <Field
           label="Wing"
           required

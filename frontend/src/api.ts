@@ -89,6 +89,7 @@ export interface AdminUser {
   full_name: string | null;
   email: string | null;
   role: AdminRole;
+  designation: string | null;
   wing_id: number;
   office_id: number | null;
   is_active: boolean;
@@ -146,6 +147,7 @@ export interface AdminUserCreate {
   full_name?: string;
   email?: string;
   role: AdminRole;
+  designation?: string | null;
   wing_id: number;
   office_id?: number;
   features?: string[] | null;   // allowed modules; null/omitted = all
@@ -154,6 +156,7 @@ export interface AdminUserUpdate {
   full_name?: string;
   email?: string;
   role?: AdminRole;
+  designation?: string | null;
   wing_id?: number;
   office_id?: number;
   is_active?: boolean;
@@ -558,7 +561,7 @@ export const api = {
   updateProfile: (b: ProfileUpdate) =>
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
-  me: () => req<{ id: number; username: string; role: string; wing_id: number; features: string[] | null }>("/auth/me"),
+  me: () => req<{ id: number; username: string; role: string; designation: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
 
   // --- license activation (gates the chat for non-admin users) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),

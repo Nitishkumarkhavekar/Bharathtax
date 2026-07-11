@@ -69,6 +69,10 @@ class User(Base):
     organisation: Mapped[str | None] = mapped_column(String(200), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(default=Role.officer)
+    # Free-text job title shown across the console (Officer, Auditor, Inspector,
+    # CA, Consultant, …). Purely a label — access is governed by `role`
+    # (admin vs user) and `features`. NULL falls back to the role name.
+    designation: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Self-service registrations land as 'pending' and cannot log in until an
     # admin moves them to 'approved'. 'rejected' is terminal.
