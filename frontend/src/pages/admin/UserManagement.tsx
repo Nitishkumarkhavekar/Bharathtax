@@ -425,33 +425,27 @@ function UserForm({
   const [wingId, setWingId] = useState<number>(current?.wing_id ?? wings[0]?.id ?? 0);
   const [addingWing, setAddingWing] = useState(false);
   const [newWingName, setNewWingName] = useState("");
-  const [newWingCode, setNewWingCode] = useState("");
-  const [newWingSeats, setNewWingSeats] = useState("0");
   const [wingBusy, setWingBusy] = useState(false);
   const [wingErr, setWingErr] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(current?.is_active ?? true);
 
   async function createWing() {
     setWingErr(null);
-    if (!newWingName.trim() || !newWingCode.trim()) {
-      setWingErr("Name and code are required.");
+    if (!newWingName.trim()) {
+      setWingErr("Enter a name.");
       return;
     }
     setWingBusy(true);
     try {
-      const w = await api.adminCreateWing({
-        name: newWingName.trim(),
-        code: newWingCode.trim(),
-        seat_limit: Number(newWingSeats) || 0,
-      });
+      // Just a name — the server derives the internal code and leaves the
+      // seat pool open (0 = unlimited); both can be tuned later if needed.
+      const w = await api.adminCreateWing({ name: newWingName.trim() });
       setWingList((prev) => [...prev, w as Wing]);
       setWingId(w.id);
       setAddingWing(false);
       setNewWingName("");
-      setNewWingCode("");
-      setNewWingSeats("0");
     } catch (e: any) {
-      setWingErr(e?.message ?? "Could not create wing.");
+      setWingErr(e?.message ?? "Could not create department.");
     } finally {
       setWingBusy(false);
     }
@@ -603,52 +597,43 @@ function UserForm({
         >
           {addingWing ? (
             <div className="rounded-lg border border-primary/30 bg-primary/[0.03] p-2.5 space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  autoFocus
-                  value={newWingName}
-                  onChange={(e) => setNewWingName(e.target.value)}
-                  placeholder="Wing name"
-                  className="sm:col-span-2 h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-                <input
-                  value={newWingCode}
-                  onChange={(e) => setNewWingCode(e.target.value.toUpperCase())}
-                  placeholder="CODE"
-                  className="h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm uppercase focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  value={newWingSeats}
-                  onChange={(e) => setNewWingSeats(e.target.value)}
-                  placeholder="Seats"
-                  title="Concurrent-session seat pool for this wing"
-                  className="h-9 w-24 rounded-md border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-                <span className="text-[11px] text-slate-500">seats</span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddingWing(false);
-                      setWingErr(null);
+                <div className="relative flex-1">
+                  <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Building2 className="size-4" />
+                  </div>
+                  <input
+                    autoFocus
+                    value={newWingName}
+                    onChange={(e) => setNewWingName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        createWing();
+                      }
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-md text-slate-600 hover:bg-slate-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={createWing}
-                    disabled={wingBusy}
-                    className="text-xs px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-                  >
-                    {wingBusy ? "Adding…" : "Add wing"}
-                  </button>
+                    placeholder="Name, e.g. Investigation"
+                    className="w-full h-9 rounded-md border border-slate-200 bg-white pl-9 pr-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingWing(false);
+                    setWingErr(null);
+                  }}
+                  className="text-xs px-2.5 py-1.5 rounded-md text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={createWing}
+                  disabled={wingBusy}
+                  className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {wingBusy ? "Adding…" : "Add"}
+                </button>
               </div>
               {wingErr && <div className="text-[11px] text-rose-600">{wingErr}</div>}
             </div>

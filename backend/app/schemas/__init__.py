@@ -146,8 +146,8 @@ class HistoryItem(BaseModel):
 class WingCreate(BaseModel):
     department_id: int | None = None   # defaults to the first/only department
     name: str
-    code: str
-    seat_limit: int = 0
+    code: str | None = None            # auto-derived from name when omitted
+    seat_limit: int = 0                # 0 = unlimited
 
 
 class WingOut(BaseModel):

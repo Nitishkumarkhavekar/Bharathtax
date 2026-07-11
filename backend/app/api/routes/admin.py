@@ -91,9 +91,21 @@ def create_wing(body: WingCreate, db: Session = Depends(get_db),
             dept = Department(name="Income Tax Department")
             db.add(dept); db.flush()
         dept_id = dept.id
-    if db.scalar(select(Wing).where(Wing.code == body.code)):
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=f"Wing code '{body.code}' already exists.")
-    wing = Wing(department_id=dept_id, name=body.name, code=body.code,
+
+    # Code is an internal handle — derive a clean, unique one from the name when
+    # the caller doesn't supply it (the UI only asks for a name).
+    code = (body.code or "").strip().upper()
+    if not code:
+        base = "".join(c for c in body.name.upper() if c.isalnum())[:10] or "WING"
+        code = base
+        n = 2
+        while db.scalar(select(Wing).where(Wing.code == code)):
+            code = f"{base}{n}"
+            n += 1
+    elif db.scalar(select(Wing).where(Wing.code == code)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=f"Wing code '{code}' already exists.")
+
+    wing = Wing(department_id=dept_id, name=body.name, code=code,
                 seat_limit=body.seat_limit)
     db.add(wing); db.commit()
     return wing

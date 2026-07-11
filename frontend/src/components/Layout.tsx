@@ -59,7 +59,8 @@ function SeatWidget() {
     api.seatUsage(session.wingId).then(setUsage).catch(() => setUsage(null));
   }, [isAdmin, session]);
   if (!usage) return null;
-  const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
+  const unlimited = usage.limit <= 0;
+  const pct = unlimited ? 0 : Math.min(100, Math.round((usage.used / usage.limit) * 100));
   return (
     <div
       className="px-3 py-2 rounded-lg bg-white ring-1 ring-slate-200"
@@ -68,13 +69,13 @@ function SeatWidget() {
       <div className="flex justify-between text-[11px] text-slate-500 mb-1">
         <span className="font-medium text-slate-700">Wing seats</span>
         <span className="tabular-nums">
-          {usage.used}/{usage.limit}
+          {unlimited ? `${usage.used} active` : `${usage.used}/${usage.limit}`}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500"
-          style={{ width: `${pct}%` }}
+          style={{ width: `${unlimited ? 8 : pct}%` }}
         />
       </div>
     </div>
