@@ -7,8 +7,6 @@ import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 import Ask from "./pages/Ask";
 import ProfilePage from "./pages/Profile";
-import UserTokenUsagePage from "./pages/TokenUsage";
-import BillingPage from "./pages/Billing";
 import Documents from "./pages/Documents";
 import History from "./pages/History";
 import Appeals from "./pages/Appeals";
@@ -79,8 +77,10 @@ export default function App() {
       <Route path="/documents" element={<NonAdminOnly><Documents /></NonAdminOnly>} />
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />
       <Route path="/profile" element={<NonAdminOnly><ProfilePage /></NonAdminOnly>} />
-      <Route path="/tokens" element={<NonAdminOnly><UserTokenUsagePage /></NonAdminOnly>} />
-      <Route path="/billing" element={<NonAdminOnly><BillingPage /></NonAdminOnly>} />
+      {/* Token Usage + Billing merged into Profile's "Plan & Usage" tab. Keep the
+          old paths working by redirecting to it. */}
+      <Route path="/tokens" element={<Navigate to="/profile?tab=plan" replace />} />
+      <Route path="/billing" element={<Navigate to="/profile?tab=plan" replace />} />
 
       {/* Admin console — full-screen with its own sidebar (no outer Layout). */}
       <Route

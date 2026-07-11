@@ -281,7 +281,7 @@ function SpendBreakdownCard({ rows }: { rows: MyBilling["spend_breakdown"] }) {
 
 // ============================================================ available plans
 
-function AvailablePlansCard({
+export function AvailablePlansCard({
   plans, currentPlanId,
 }: { plans: SubscriptionPlan[]; currentPlanId: number | null }) {
   return (

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   User as UserIcon,
   Mail,
@@ -11,16 +12,23 @@ import {
   AlertCircle,
   Pencil,
   Copy,
+  UserCog,
+  Wallet,
 } from "lucide-react";
 import { ApiError, LicenseStatus, Profile as ProfileT, api } from "../api";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth";
+import { PlanUsage } from "@/components/PlanUsage";
+import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const { session } = useAuth();
   const [profile, setProfile] = useState<ProfileT | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [params] = useSearchParams();
+  // /billing and /tokens redirect here with ?tab=plan so old links land right.
+  const [tab, setTab] = useState<"account" | "plan">(params.get("tab") === "plan" ? "plan" : "account");
 
   useEffect(() => {
     api
@@ -45,8 +53,8 @@ export default function ProfilePage() {
     );
   }
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Header card */}
+    <div className="space-y-4">
+      {/* Header banner — full width */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#0b1d36] via-[#13325b] to-[#1c4a85] text-white shadow-md">
         <div className="absolute inset-0 opacity-40 pointer-events-none" aria-hidden>
           <div className="absolute -top-16 -right-12 size-56 rounded-full bg-sky-400/30 blur-3xl" />
@@ -73,42 +81,65 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Personal details */}
-      <PersonalDetailsCard profile={profile} onSaved={setProfile} />
-
-      {/* License key */}
-      <LicenseCard />
-
-      {/* Password change */}
-      <ChangePasswordCard />
-
-      {/* Account meta */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-1.5">
-          <KeyRound className="size-4 text-primary" /> Account
-        </div>
-        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <Stat label="User ID" value={String(profile.id)} />
-          <Stat label="Username" value={"@" + profile.username} />
-          <Stat label="Role" value={profile.role.replace("_", " ")} />
-          <Stat label="Approval" value={profile.approval_status} />
-          <Stat
-            label="Member since"
-            value={
-              profile.created_at
-                ? new Date(profile.created_at).toLocaleDateString()
-                : "—"
-            }
-          />
-          <Stat label="Status" value={profile.is_active ? "Active" : "Inactive"} />
-        </div>
-        {session?.role !== "super_admin" && session?.role !== "wing_admin" && (
-          <div className="mt-4 text-[11.5px] text-slate-500 leading-relaxed">
-            Your role and seat assignment are managed by your administrator.
-            Reach out to them if any of these details need to change.
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="inline-flex rounded-lg border border-input bg-background p-0.5 text-sm">
+        <button
+          type="button"
+          onClick={() => setTab("account")}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded font-medium transition-colors",
+            tab === "account" ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-600 hover:text-slate-900",
+          )}
+        >
+          <UserCog className="size-4" /> Account
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("plan")}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded font-medium transition-colors",
+            tab === "plan" ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-600 hover:text-slate-900",
+          )}
+        >
+          <Wallet className="size-4" /> Plan &amp; Usage
+        </button>
       </div>
+
+      {tab === "account" ? (
+        <div className="grid gap-4 lg:grid-cols-2 items-start">
+          <div className="space-y-4">
+            <PersonalDetailsCard profile={profile} onSaved={setProfile} />
+            <ChangePasswordCard />
+          </div>
+          <div className="space-y-4">
+            <LicenseCard />
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-1.5">
+                <KeyRound className="size-4 text-primary" /> Account
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <Stat label="User ID" value={String(profile.id)} />
+                <Stat label="Username" value={"@" + profile.username} />
+                <Stat label="Role" value={profile.role.replace("_", " ")} />
+                <Stat label="Approval" value={profile.approval_status} />
+                <Stat
+                  label="Member since"
+                  value={profile.created_at ? new Date(profile.created_at).toLocaleDateString() : "—"}
+                />
+                <Stat label="Status" value={profile.is_active ? "Active" : "Inactive"} />
+              </div>
+              {session?.role !== "super_admin" && session?.role !== "wing_admin" && (
+                <div className="mt-4 text-[11.5px] text-slate-500 leading-relaxed">
+                  Your role and seat assignment are managed by your administrator.
+                  Reach out to them if any of these details need to change.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <PlanUsage />
+      )}
     </div>
   );
 }
