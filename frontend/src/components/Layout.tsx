@@ -28,7 +28,7 @@ const NAV: {
   tone: NavTone;
   hint: string;
 }[] = [
-  { to: "/ask", label: "Ask Bot", icon: MessageSquareText, tone: "primary", hint: "Citation-grounded chat" },
+  { to: "/ask", label: "Chat", icon: MessageSquareText, tone: "primary", hint: "Citation-grounded chat" },
   { to: "/appeals", label: "Appeals", icon: Gavel, tone: "amber", hint: "Draft CIT(A) orders" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, tone: "violet", hint: "Case-law search" },
   { to: "/documents", label: "Documents", icon: FileText, tone: "sky", hint: "Upload · summarise" },

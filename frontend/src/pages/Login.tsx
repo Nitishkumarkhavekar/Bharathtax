@@ -354,7 +354,7 @@ function PreviewCard() {
           <span className="size-2.5 rounded-full bg-amber-400/70" />
           <span className="size-2.5 rounded-full bg-emerald-400/70" />
           <span className="ml-2 text-[10.5px] text-slate-500 font-medium">
-            bharathtax — Ask Bot
+            bharathtax — Chat
           </span>
           <span className="ml-auto text-[10.5px] text-slate-400">
             citation-grounded
