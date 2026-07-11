@@ -275,7 +275,10 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, [loc.pathname]);
 
   return (
-    <div className="min-h-screen flex bg-background">
+    // h-screen + overflow-hidden pins the shell to the viewport so the sidebar and
+    // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
+    // whole page grow, scrolling the body — sidebar and all).
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Desktop sidebar — collapses to a 4rem icon rail when the header
           toggle is clicked. The width is animated so the transition feels
           intentional. */}
@@ -342,8 +345,8 @@ export default function Layout({ children }: { children: ReactNode }) {
             Citation-grounded · primary Indian tax law
           </div>
         </header>
-        <main className="flex-1 overflow-auto bt-app-bg">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <main className="flex-1 min-h-0 overflow-auto bt-app-bg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
             {children}
           </div>
         </main>

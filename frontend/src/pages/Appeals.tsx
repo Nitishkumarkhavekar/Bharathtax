@@ -128,7 +128,7 @@ export default function Appeals() {
   }, [cases, q, filter]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ---------- Hero header ---------- */}
       <HeroHeader />
 

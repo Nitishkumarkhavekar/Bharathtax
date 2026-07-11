@@ -274,7 +274,7 @@ export default function AppealCase() {
   const compliance = parse("compliance"); const matrix = parse("issue_matrix");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {confirmDialog}
       <Link to="/appeals" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"><ArrowLeft className="size-4" /> All cases</Link>
       {c && (
