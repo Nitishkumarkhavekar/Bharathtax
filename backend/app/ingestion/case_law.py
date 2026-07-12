@@ -119,6 +119,28 @@ def ingest_pdf(db, src, raw: bytes, title: str, source_url: str | None = None) -
                           chunks=_chunks(title, text), embed_vectors=not _NO_EMBED)
 
 
+def ingest_text(db, src, text: str, title: str, source_url: str | None = None) -> int:
+    """Ingest a judgment whose plain TEXT we already have (e.g. fetched from the
+    indiankanoon API) — skips the PDF extract + object-store steps but keeps the
+    same content-hash dedup, paragraph chunking and embed/index path as ingest_pdf."""
+    text = (text or "").replace("\x00", "")   # PostgreSQL text can't store NUL bytes
+    if not text.strip():
+        return 0
+    checksum = _content_hash(text)
+    if db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum,
+                                              CorpusDocument.source_id == src.id)):
+        return 0  # same judgment text already ingested
+    status = CorpusDocStatus.parsed if _NO_EMBED else CorpusDocStatus.indexed
+    doc = CorpusDocument(source_id=src.id, title=title[:300], doc_type=SourceType.judgment,
+                         source_url=source_url, raw_minio_key=None, extracted_text=text,
+                         checksum=checksum, status=status)
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return index_document(db, document=doc, source_id=src.id, domain=Domain.case_law,
+                          chunks=_chunks(title, text), embed_vectors=not _NO_EMBED)
+
+
 def _load_manifest(path: str) -> dict:
     """Optional manifest.jsonl in the dir: maps fname -> {title, court_name, pdf_key, ...}
     (e.g. the AWS Open-Data acquisition manifest) so judgments get proper case titles."""
