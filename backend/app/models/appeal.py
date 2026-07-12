@@ -56,6 +56,10 @@ class AppealDocument(Base):
     # Nullable so historic rows uploaded before this migration keep working
     # (they simply skip the dedup path).
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Cached faithful digest of `text` (see appeal_draft._digest_one). An uploaded
+    # doc is immutable, so we compute this once and reuse it on every re-run of the
+    # case instead of paying the LLM digest cost each time.
+    digest: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     case: Mapped[AppealCase] = relationship(back_populates="documents")

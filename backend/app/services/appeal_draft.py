@@ -73,7 +73,7 @@ _THINK_BUDGET = int(_os.getenv("GEMINI_THINKING_BUDGET", "0"))
 # Cap concurrent Gemini calls (across the parallel drafts of all in-flight runs
 # in this worker process) so bursts stay within the API rate limit; excess calls
 # wait on the semaphore rather than 429-storming.
-_GEMINI_CONCURRENCY = int(_os.getenv("GEMINI_CONCURRENCY", "4"))
+_GEMINI_CONCURRENCY = int(_os.getenv("GEMINI_CONCURRENCY", "8"))
 _GEMINI_SEM = threading.Semaphore(_GEMINI_CONCURRENCY)
 _GEMINI_RETRIES = int(_os.getenv("GEMINI_RETRIES", "3"))
 
@@ -172,7 +172,7 @@ def _local_llm():
 # retry chain before giving up. Once that happens, skip Gemini for a cooldown
 # window and serve straight from the local model (~6s), re-probing Gemini after
 # the window so service auto-resumes the moment credits are topped up.
-_PRIMARY_COOLDOWN_S = int(_os.getenv("GEMINI_COOLDOWN_SECONDS", "300"))
+_PRIMARY_COOLDOWN_S = int(_os.getenv("GEMINI_COOLDOWN_SECONDS", "120"))
 _PRIMARY_DOWN_UNTIL = 0.0
 
 
@@ -608,31 +608,42 @@ def _ocr_pdf(minio_key: str, filename: str) -> str:
         return ""
 
 
-def _docs_text(case: AppealCase, max_chars: int = 44000 if _BIG_CTX else 20000) -> str:
+def _docs_text(case: AppealCase, db: Session | None = None,
+               max_chars: int = 44000 if _BIG_CTX else 20000) -> str:
     """Concatenated text of the case documents, capped to fit the appeal LLM's
     context window (llama-3.1-8b on the gateway = 6K tokens, ~24KB chars; we
     leave room for the system prompt, module instructions, retrieved law and
     the output). Pre-trims very long individual documents so we don't pack the
     whole budget into one assessment order.
+
+    Digests are cached on `AppealDocument.digest`: an uploaded doc is immutable,
+    so we compute its digest ONCE and reuse it on every subsequent run of the
+    case. Only the not-yet-digested docs are sent to the LLM, in parallel. When
+    `db` is provided the freshly-computed digests are persisted.
     """
-    # Digest each document (keeps downstream context small -> calls stay fast) but do
-    # the digests IN PARALLEL so they complete concurrently rather than one-by-one.
     per_doc = 10**9  # digests are already condensed
     _docs = list(case.documents)
-    _pctx = capture.get_context()
-    def _digest_doc(d):
-        try:
-            capture.set_context(**_pctx)
-        except Exception:  # noqa: BLE001
-            pass
-        return _digest_one(d.filename, d.category, (d.text or "").strip()).strip()
-    if _docs:
-        with ThreadPoolExecutor(max_workers=min(len(_docs), 6)) as _ex:
-            _bodies = list(_ex.map(_digest_doc, _docs))
-    else:
-        _bodies = []
+    need = [d for d in _docs if not (d.digest and d.digest.strip())]
+    if need:
+        _pctx = capture.get_context()
+        def _digest_doc(d):
+            try:
+                capture.set_context(**_pctx)
+            except Exception:  # noqa: BLE001
+                pass
+            return _digest_one(d.filename, d.category, (d.text or "").strip()).strip()
+        with ThreadPoolExecutor(max_workers=min(len(need), _GEMINI_CONCURRENCY)) as _ex:
+            _bodies = list(_ex.map(_digest_doc, need))
+        for d, body in zip(need, _bodies):
+            d.digest = body or (d.text or "")
+        if db is not None:
+            try:
+                db.commit()
+            except Exception:  # noqa: BLE001 — caching is best-effort, never fail the run
+                db.rollback()
     parts = []
-    for d, body in zip(_docs, _bodies):
+    for d in _docs:
+        body = (d.digest or d.text or "").strip()
         if len(body) > per_doc:
             body = body[:per_doc] + "\n…[truncated]…"
         parts.append(f"===== {d.filename} (category: {d.category}) =====\n{body}")
@@ -1000,7 +1011,7 @@ def run_case(run_id: int) -> None:
                 log.info("appeal %s OCR repaired=%s unreadable=%s (deduped=%s)",
                          run.id, ocr_fixed, ocr_failed, ocr_deduped)
 
-        docs_text = _docs_text(case)
+        docs_text = _docs_text(case, db)
 
         progress("Module 3: Document compliance")
         comp = document_compliance(case)
@@ -1056,7 +1067,7 @@ def run_case(run_id: int) -> None:
             finally:
                 tdb.close()
             return idx, iss, block, cites
-        with ThreadPoolExecutor(max_workers=min(len(issues) or 1, 6)) as _ex:
+        with ThreadPoolExecutor(max_workers=min(len(issues) or 1, _GEMINI_CONCURRENCY)) as _ex:
             _drafts = sorted(_ex.map(_draft_one, list(enumerate(issues))), key=lambda x: x[0])
         blocks = []
         for idx, iss, block, cites in _drafts:
