@@ -419,21 +419,22 @@ def _precedent(db: Session, query: str, *, k: int = _PRECEDENT_K) -> tuple[str, 
 # The most recent LLM client used by _complete / _complete_json — kept as
 # module-level state so `run_case()` can pluck the last call's `usage` and
 # persist it into `token_usage` without threading a tuple through everything.
-_LAST_CLIENT: _OpenAICompatLLM | None = None
+# Thread-local so parallel modules/grounds each track the client THEY used, and
+# _last_llm_meta() bills the right call's tokens even under concurrency.
+_LAST = threading.local()
 
 
 def _complete(user: str, *, max_tokens: int = 900) -> str:
-    global _LAST_CLIENT
     # llama-3.1-8b-instruct on the gateway has a 6K context window; keep the
     # output budget low so the *input* prompt has room to fit the docs +
     # retrieved law. Pass a bigger max_tokens explicitly for assembly.
     client = _appeal_llm()
-    _LAST_CLIENT = client
+    _LAST.client = client
     return client.complete(OFFICER_SYSTEM, user, max_tokens=max_tokens)
 
 
 def _last_llm_meta() -> dict | None:
-    c = _LAST_CLIENT
+    c = getattr(_LAST, "client", None)
     if not isinstance(c, (_OpenAICompatLLM, GeminiLLM, FallbackLLM)):
         return None
     return {
@@ -444,7 +445,6 @@ def _last_llm_meta() -> dict | None:
 
 
 def _complete_json(user: str, *, max_tokens: int = 1500) -> dict:
-    global _LAST_CLIENT
     # JSON-mode calls are extraction tasks — route them to the faster/cheaper
     # tier (Flash-Lite by default) via a dedicated client instance. Falls back
     # to the standard drafting client when GEMINI_JSON_MODELS is unset.
@@ -454,7 +454,7 @@ def _complete_json(user: str, *, max_tokens: int = 1500) -> dict:
         client = FallbackLLM(_json_primary, _json_local) if _json_local else _json_primary
     else:
         client = _appeal_llm()
-    _LAST_CLIENT = client
+    _LAST.client = client
     if isinstance(client, (GeminiLLM, FallbackLLM)):
         txt = client.complete(
             OFFICER_SYSTEM + "\n\nReturn ONLY a single valid JSON object.",
@@ -1019,28 +1019,84 @@ def run_case(run_id: int) -> None:
         comp["unreadable"] = ocr_failed
         db.add(AppealOutput(run_id=run.id, kind="compliance", content=json.dumps(comp, ensure_ascii=False)))
 
-        progress("Module 1: Deficiency check")
-        ctx, cites = _ground(db, "section 249 appeal limitation condonation of delay Rule 45 Rule 46A appeal fee Form 35")
-        defi = _complete("MODULE 1 — DEFICIENCY CHECKER (s.249/Rule 45/Rule 46A). Check completeness of Form 35, "
-                         "verification, appeal fee, tax on returned income; LIMITATION (order date, service date, "
-                         "filing date, delay, condonation needed & sufficient?); mandatory attachments; Rule 46A "
-                         "new-evidence (before AO? admit/reject/remand). Output a Deficiency Report.\n\n"
-                         f"=== APPEAL DOCUMENTS ===\n{_trim(docs_text, 7000)}\n\n=== RETRIEVED LAW ===\n{_trim(ctx, 2500)}")
-        _bill("appeal.module1")
-        db.add(AppealOutput(run_id=run.id, kind="deficiency", content=defi, citations=cites))
+        _case_id = case.id
 
-        progress("Module 2: Scope validation")
-        ctx, cites = _ground(db, "section 246A appealable orders Faceless Appeal Scheme 2021 excluded categories")
-        scope = _complete("MODULE 2 — SCOPE VALIDATION (Faceless Appeal Scheme 2021). Identify the section appealed "
-                          "(143(3)/144/147/154/271B/270A), check appealability u/s 246A, flag excluded/sensitive "
-                          "categories. Output a Scope Validation Report.\n\n"
-                          f"=== APPEAL DOCUMENTS ===\n{_trim(docs_text, 7000)}\n\n=== RETRIEVED LAW ===\n{_trim(ctx, 2500)}")
-        _bill("appeal.module2")
-        db.add(AppealOutput(run_id=run.id, kind="scope", content=scope, citations=cites))
+        def _bill_meta(action: str, meta: dict | None) -> None:
+            """Meter a call's tokens against the owner, given the meta captured in
+            whichever thread made the call (works under parallelism)."""
+            if not meta:
+                return
+            tokens.record(db, user_id=owner_id, action=action,
+                          model=meta.get("model"), usage=meta.get("usage"),
+                          latency_ms=meta.get("latency_ms"))
 
-        progress("Module 4: Grounds & issue matrix")
-        extracted = _extract_case(case, docs_text)
-        _bill("appeal.module4")
+        # Modules 1 (deficiency), 2 (scope) and 4 (grounds extraction) are
+        # INDEPENDENT of one another, so run their LLM calls CONCURRENTLY instead
+        # of three sequential Gemini round-trips — the main critical-path win.
+        # Each task uses its own session + capture context and returns its result
+        # plus token meta; the main thread persists and meters. Module 5 depends
+        # on Module 4's grounds, so it still runs after this batch.
+        progress("Modules 1–4: deficiency, scope & grounds (parallel)")
+
+        def _mod_deficiency():
+            try: capture.set_context(**_cap_snap)
+            except Exception: pass  # noqa: E722
+            mdb = SessionLocal()
+            try:
+                ctx, cites = _ground(mdb, "section 249 appeal limitation condonation of delay Rule 45 Rule 46A appeal fee Form 35")
+                defi = _complete("MODULE 1 — DEFICIENCY CHECKER (s.249/Rule 45/Rule 46A). Check completeness of Form 35, "
+                                 "verification, appeal fee, tax on returned income; LIMITATION (order date, service date, "
+                                 "filing date, delay, condonation needed & sufficient?); mandatory attachments; Rule 46A "
+                                 "new-evidence (before AO? admit/reject/remand). Output a Deficiency Report.\n\n"
+                                 f"=== APPEAL DOCUMENTS ===\n{_trim(docs_text, 7000)}\n\n=== RETRIEVED LAW ===\n{_trim(ctx, 2500)}")
+                return ("deficiency", defi, cites, _last_llm_meta())
+            except Exception as e:  # auxiliary report — never fail the whole run
+                return ("deficiency", f"_[Deficiency check failed: {type(e).__name__}. Retry.]_", [], None)
+            finally:
+                mdb.close()
+
+        def _mod_scope():
+            try: capture.set_context(**_cap_snap)
+            except Exception: pass  # noqa: E722
+            mdb = SessionLocal()
+            try:
+                ctx, cites = _ground(mdb, "section 246A appealable orders Faceless Appeal Scheme 2021 excluded categories")
+                scope = _complete("MODULE 2 — SCOPE VALIDATION (Faceless Appeal Scheme 2021). Identify the section appealed "
+                                  "(143(3)/144/147/154/271B/270A), check appealability u/s 246A, flag excluded/sensitive "
+                                  "categories. Output a Scope Validation Report.\n\n"
+                                  f"=== APPEAL DOCUMENTS ===\n{_trim(docs_text, 7000)}\n\n=== RETRIEVED LAW ===\n{_trim(ctx, 2500)}")
+                return ("scope", scope, cites, _last_llm_meta())
+            except Exception as e:
+                return ("scope", f"_[Scope validation failed: {type(e).__name__}. Retry.]_", [], None)
+            finally:
+                mdb.close()
+
+        def _mod_extract():
+            try: capture.set_context(**_cap_snap)
+            except Exception: pass  # noqa: E722
+            mdb = SessionLocal()
+            try:
+                tcase = mdb.get(AppealCase, _case_id)
+                return ("extract", _extract_case(tcase, docs_text), None, _last_llm_meta())
+            except Exception:  # fall back to heuristic grounds below
+                return ("extract", {"grounds": [], "facts": "", "submissions": "",
+                                    "institution_date": ""}, None, None)
+            finally:
+                mdb.close()
+
+        with ThreadPoolExecutor(max_workers=3) as _ex:
+            _f_def, _f_scope, _f_ext = (_ex.submit(_mod_deficiency),
+                                        _ex.submit(_mod_scope),
+                                        _ex.submit(_mod_extract))
+            _r_def, _r_scope, _r_ext = _f_def.result(), _f_scope.result(), _f_ext.result()
+
+        db.add(AppealOutput(run_id=run.id, kind="deficiency", content=_r_def[1], citations=_r_def[2]))
+        _bill_meta("appeal.module1", _r_def[3])
+        db.add(AppealOutput(run_id=run.id, kind="scope", content=_r_scope[1], citations=_r_scope[2]))
+        _bill_meta("appeal.module2", _r_scope[3])
+
+        extracted = _r_ext[1]
+        _bill_meta("appeal.module4", _r_ext[3])
         grounds = extracted["grounds"]
         if grounds:
             issues = [{"issue": g} for g in grounds]
@@ -1053,7 +1109,6 @@ def run_case(run_id: int) -> None:
         db.add(AppealOutput(run_id=run.id, kind="issue_matrix", content=json.dumps(understanding, ensure_ascii=False)))
 
         progress(f"Module 5: Drafting {len(issues)} ground(s) in parallel")
-        _case_id = case.id
         def _draft_one(idx_issue):
             idx, iss = idx_issue
             try:
@@ -1064,17 +1119,18 @@ def run_case(run_id: int) -> None:
             try:
                 tcase = tdb.get(AppealCase, _case_id)  # case bound to THIS thread's session
                 block, cites = draft_issue(tdb, tcase, iss)
+                meta = _last_llm_meta()
             finally:
                 tdb.close()
-            return idx, iss, block, cites
+            return idx, iss, block, cites, meta
         with ThreadPoolExecutor(max_workers=min(len(issues) or 1, _GEMINI_CONCURRENCY)) as _ex:
             _drafts = sorted(_ex.map(_draft_one, list(enumerate(issues))), key=lambda x: x[0])
         blocks = []
-        for idx, iss, block, cites in _drafts:
+        for idx, iss, block, cites, meta in _drafts:
             db.add(AppealOutput(run_id=run.id, kind="finding", seq=idx,
                                 label=iss["issue"][:290], content=block, citations=cites))
             blocks.append(block)
-        _bill("appeal.module5")  # best-effort token entry (parallel calls not individually metered)
+            _bill_meta("appeal.module5", meta)  # now metered per-ground
 
         progress("Module 6: Assembling draft order")
         draft = assemble(understanding, blocks, docs_text)
