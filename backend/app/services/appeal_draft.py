@@ -269,10 +269,11 @@ OFFICER_SYSTEM = (
     "- Use ONLY facts, dates, figures, names and jurisdiction that appear in the appeal documents. "
     "NEVER invent a date, amount, party name, ward/jurisdiction or case citation. If a detail is "
     "missing, write [not on record].\n"
-    "- Cite a section/rule/case ONLY if it is quoted in the RETRIEVED LAW section or in the appeal "
-    "documents. If the RETRIEVED LAW says none was retrieved (or is empty), do NOT use [n] "
-    "citations and do NOT name any case law or section that is not in the documents; reason from "
-    "the documents instead.\n"
+    "- Cite a section/rule as [n] ONLY if it is quoted in the RETRIEVED LAW section, and name a "
+    "judicial precedent ONLY if it appears in the RETRIEVED PRECEDENTS section or in the appeal "
+    "documents (refer to a retrieved case as [C1], [C2] …). If neither was retrieved (or they are "
+    "empty), do NOT use [n]/[C] citations and do NOT name any case law or section that is not in the "
+    "documents; reason from the documents instead.\n"
     "- If a ground was withdrawn, not pressed, or the grievance was already rectified by the AO "
     "(e.g. a rectification order under section 154), say so and treat that ground as not pressed / "
     "infructuous; do NOT 'allow' it.\n"
@@ -374,6 +375,45 @@ def _ground(db: Session, query: str, *, domain: Domain | None = Domain.income_ta
         cites.append({"n": i, "chunk_id": lp.chunk_id, "breadcrumb": lp.breadcrumb,
                       "section_number": lp.section_number, "source_url": lp.source_url})
     return ("\n\n".join(blocks) if blocks else "(no relevant primary law retrieved)"), cites
+
+
+# How many decided cases to weigh per ground. Precedent grounding is what lets
+# the drafter SUSTAIN or ALLOW a ground firmly (on real, matched case law) instead
+# of hedging to a vague "partly allowed" — the fix for one-sided shell orders.
+_PRECEDENT_K = int(_os.getenv("APPEAL_PRECEDENT_K", "4"))
+
+
+def _precedent(db: Session, query: str, *, k: int = _PRECEDENT_K) -> tuple[str, list]:
+    """Retrieve factually-similar DECIDED CASES from the case-law corpus (ITAT/HC/SC
+    judgments) so a ground is weighed against real precedent — both the cases that
+    support the AO's addition and those that support the appellant. Returns
+    (precedent_block_text, citations); empty when nothing relevant is found, so the
+    drafter falls back to statute + facts and names no case."""
+    try:
+        res = retrieve(db, query, domain=Domain.case_law)
+    except Exception:  # embeddings/retrieval unavailable -> draft without precedent
+        return "", []
+    passages = [p for p in res.passages if (p.text or p.match_text)][:k]
+    if not passages:
+        return "", []
+    blocks, cites = [], []
+    for i, p in enumerate(passages, start=1):
+        case = (p.breadcrumb or "Decided case").strip()
+        held = (p.digest or "").strip()
+        extract = _trim((p.text or p.match_text or "").strip(), 1100)
+        line = f"[C{i}] {case}"
+        if p.sections_cited:
+            line += f"  (sections: {', '.join(str(s) for s in p.sections_cited[:6])})"
+        if held:
+            line += f"\nHeld: {held}"
+        if extract:
+            line += f"\nExtract: {extract}"
+        blocks.append(line)
+        cites.append({"n": f"C{i}", "type": "case", "case": case,
+                      "breadcrumb": p.breadcrumb, "digest": held or None,
+                      "sections_cited": p.sections_cited, "source_url": p.source_url,
+                      "score": p.score})
+    return "\n\n".join(blocks), cites
 
 
 # The most recent LLM client used by _complete / _complete_json — kept as
@@ -667,42 +707,53 @@ def document_compliance(case: AppealCase) -> dict:
 def draft_issue(db: Session, case: AppealCase, issue: dict) -> tuple[str, list]:
     q = issue.get("issue", "")
     docs_text = _issue_doc_context(case, q)
-    ctx, cites = _ground(db, q, domain=None)   # ground on statutes AND case law
+    ctx, cites = _ground(db, q, domain=None)   # statutes (Act & Rules)
+    # Weigh the ground against REAL decided cases matched to this section + these
+    # facts, so the finding can firmly SUSTAIN or ALLOW instead of hedging.
+    prec_text, prec_cites = _precedent(db, f"{q}. {_trim(docs_text, 600)}")
+    cites = list(cites) + list(prec_cites)
     user = (f"You are drafting the issue-wise DISCUSSION AND FINDINGS for ONE ground of a formal "
             f"CIT(A)/NFAC appellate order. This is a Government legal order: write in dignified, "
             f"formal legal English in FULL, well-reasoned PARAGRAPHS. Do NOT use one-line notes, "
             f"telegraphic fragments, or one-word conclusions. Under the labelled sub-parts "
-            f"Facts / Submissions / AO's view / Legal position / Analysis / Finding / Decision, set "
-            f"out: (a) the material facts and figures; (b) the appellant's contentions in substance; "
-            f"(c) the AO's stand; (d) the applicable statutory provisions and principles, stating "
-            f"WHAT THE PROVISION REQUIRES — the legal test and each of its limbs; (e) a reasoned "
-            f"ANALYSIS that TESTS the appellant's contention against each limb of that test on the "
-            f"facts on record, applying the settled BURDEN OF PROOF (the appellant must establish the "
-            f"AO erred; where a limb is not satisfied on the record, that point goes AGAINST the "
-            f"appellant — do not allow the ground merely because it is raised or unrebutted); (f) a "
-            f"clear FINDING with reasons that grants relief ONLY where both the law and the record "
-            f"support it and otherwise SUSTAINS the AO's addition/disallowance; and (g) a DECISION "
-            f"that states the outcome together with the reasons for it. Then give the Result "
-            f"(Allowed / Partly Allowed / Dismissed / Set Aside) "
-            f"and specific, actionable Directions to the AO. Each of Analysis, Finding and Decision "
-            f"must be a proper paragraph of several sentences — never a bare word like 'Dismissed.'. "
-            f"Cite a statutory section/rule as [n] ONLY if it appears in the RETRIEVED LAW below; if "
-            f"that says none was retrieved, do NOT use [n] and do NOT invent any provision. Do NOT cite "
-            f"a section that is not directly relevant to THIS ground; if the retrieved law is off-point, "
-            f"reason from the facts without naming an irrelevant provision. You MAY refer by name to a "
-            f"judicial precedent ONLY if the APPELLANT has actually cited it in the appeal documents "
-            f"below; where the appellant relies on such case law, briefly note the precedent and either "
-            f"accept or distinguish it with reasons; never invent a case that is not on record. If the "
-            f"documents state the section under which an addition was charged to tax (for example "
-            f"section 115BBE for an addition under section 69A), state that charging section. State an "
-            f"amount, date or demand ONLY as it appears in the documents (use the reduced figure if a "
-            f"section-154 rectification lowered it). Do NOT state that the appellant paid or deposited "
-            f"the tax, and do NOT direct any refund, unless the documents EXPLICITLY say the tax was "
-            f"paid. If this ground was rectified by the AO (e.g. via a section-154 order) or was not "
-            f"pressed, say so and treat it as not pressed / infructuous rather than allowing it. Do NOT "
-            f"repeat these section headers.\n\n"
-            f"=== ISSUE ===\n{q}\n\n=== APPEAL DOCUMENTS (facts) ===\n{_trim(docs_text, 22000 if _BIG_CTX else 7000)}\n\n"
-            f"=== RETRIEVED LAW ===\n{_trim(ctx, 3500)}")
+            f"Facts / Submissions / AO's view / Legal position / Precedent / Analysis / Finding / "
+            f"Decision, set out: (a) the material facts and figures; (b) the appellant's contentions "
+            f"in substance; (c) the AO's stand; (d) the applicable statutory provisions, stating WHAT "
+            f"THE PROVISION REQUIRES — the legal test and each of its limbs; (e) the RETRIEVED "
+            f"PRECEDENTS below that bear on this ground — for each relevant one, state briefly what it "
+            f"HELD, then either APPLY it (where its ratio, on these facts, supports the AO / the "
+            f"addition) or DISTINGUISH it (where the facts materially differ), with reasons; weigh the "
+            f"cases that favour the Revenue AND those that favour the appellant; (f) a reasoned "
+            f"ANALYSIS that TESTS the appellant's contention against each limb of the statutory test "
+            f"AND against the weight of that precedent, applying the settled BURDEN OF PROOF (the "
+            f"appellant must establish the AO erred; where a limb is not satisfied on the record, that "
+            f"point goes AGAINST the appellant); (g) a clear FINDING with reasons; and (h) a DECISION "
+            f"stating the outcome and the reasons for it. "
+            f"REACH A DEFINITE OUTCOME: SUSTAIN the AO's addition/disallowance and DISMISS the ground "
+            f"where the statutory test and the weight of precedent are NOT displaced on the facts, or "
+            f"ALLOW the ground where they genuinely are. Do NOT default to a vague compromise; use "
+            f"'Partly Allowed' ONLY where the ground has distinct parts that are genuinely decided "
+            f"differently, and state which part and why. Then give the Result "
+            f"(Allowed / Partly Allowed / Dismissed / Set Aside) and specific, actionable Directions "
+            f"to the AO. Each of Analysis, Finding and Decision must be a proper paragraph of several "
+            f"sentences — never a bare word like 'Dismissed.'. "
+            f"CITATION RULES: cite a statutory section/rule as [n] ONLY if it appears in the RETRIEVED "
+            f"LAW below (do not cite one that is off-point for THIS ground). You MAY name a judicial "
+            f"precedent ONLY if it appears in the RETRIEVED PRECEDENTS below (refer to it as [C1], "
+            f"[C2] …) or was expressly cited by the appellant in the documents; NEVER invent, assume, "
+            f"or name any other case. If the documents state the section under which an addition was "
+            f"charged to tax (e.g. section 115BBE for an addition under section 69A), state that "
+            f"charging section. State an amount, date or demand ONLY as it appears in the documents "
+            f"(use the reduced figure if a section-154 rectification lowered it). Do NOT state that the "
+            f"appellant paid or deposited the tax, and do NOT direct any refund, unless the documents "
+            f"EXPLICITLY say the tax was paid. If this ground was rectified by the AO (e.g. via a "
+            f"section-154 order) or was not pressed, say so and treat it as not pressed / infructuous "
+            f"rather than allowing it. Do NOT repeat these section headers.\n\n"
+            f"=== ISSUE ===\n{q}\n\n"
+            f"=== APPEAL DOCUMENTS (facts) ===\n{_trim(docs_text, 22000 if _BIG_CTX else 7000)}\n\n"
+            f"=== RETRIEVED LAW (statutes) ===\n{_trim(ctx, 3000)}\n\n"
+            f"=== RETRIEVED PRECEDENTS (decided cases) ===\n"
+            f"{prec_text or '(no closely matching precedent retrieved — decide on the statute and the facts on record; do NOT name any case.)'}")
     try:
         block = _complete(user, max_tokens=1600)
     except Exception as e:  # one issue must not fail the order
