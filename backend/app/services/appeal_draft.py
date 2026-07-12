@@ -11,7 +11,7 @@ import base64
 import json
 import re
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 
@@ -832,19 +832,22 @@ def _build_intro(understanding: dict, docs_text: str) -> str:
             f"for A.Y. {ay}.{delay_txt}")
 
 
-def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "") -> str:
+def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "",
+             intro: str | None = None) -> str:
     """Stitch the drafted parts into a complete, properly-structured order. Grounds,
     Facts and Submissions sections are always populated; each finding gets ONE clean
     'Ground No. N' heading (leading duplicates stripped); the operative Result is
-    concise and does not repeat the detailed directions."""
+    concise and does not repeat the detailed directions. `intro` may be precomputed
+    (built concurrently with the findings) to keep it off the critical path."""
     grounds = understanding.get("grounds", []) or []
     grounds = [re.sub(r"^\s*\d+[.)]\s*", "", (g or "").strip()) for g in grounds if (g or "").strip()]
     facts = (understanding.get("facts", "") or "").strip()
     submissions = (understanding.get("appellant_submissions", "") or "").strip()
-    try:
-        intro = _build_intro(understanding, docs_text or facts)
-    except Exception:
-        intro = facts[:1200]
+    if not intro:
+        try:
+            intro = _build_intro(understanding, docs_text or facts)
+        except Exception:
+            intro = facts[:1200]
     try:
         result = _clean(_appeal_llm().complete(
             OFFICER_SYSTEM,
@@ -1123,17 +1126,48 @@ def run_case(run_id: int) -> None:
             finally:
                 tdb.close()
             return idx, iss, block, cites, meta
-        with ThreadPoolExecutor(max_workers=min(len(issues) or 1, _GEMINI_CONCURRENCY)) as _ex:
-            _drafts = sorted(_ex.map(_draft_one, list(enumerate(issues))), key=lambda x: x[0])
-        blocks = []
-        for idx, iss, block, cites, meta in _drafts:
-            db.add(AppealOutput(run_id=run.id, kind="finding", seq=idx,
-                                label=iss["issue"][:290], content=block, citations=cites))
-            blocks.append(block)
-            _bill_meta("appeal.module5", meta)  # now metered per-ground
+
+        # The intro only needs the extracted `understanding` + docs — not the
+        # findings — so build it CONCURRENTLY with the drafting instead of as a
+        # separate call afterwards (keeps it off the critical path).
+        _intro_box: dict = {}
+        def _do_intro():
+            try:
+                capture.set_context(**_cap_snap)
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                _intro_box["intro"] = _build_intro(understanding, docs_text)
+                _intro_box["meta"] = _last_llm_meta()
+            except Exception:  # noqa: BLE001
+                _intro_box["intro"] = ""
+
+        blocks_by_idx: dict = {}
+        with ThreadPoolExecutor(
+            max_workers=min((len(issues) or 1) + 1, _GEMINI_CONCURRENCY)
+        ) as _ex:
+            _intro_fut = _ex.submit(_do_intro)
+            _fut_to_idx = {_ex.submit(_draft_one, (i, iss)): i
+                           for i, iss in enumerate(issues)}
+            # Persist + stream each ground the MOMENT it finishes drafting, so the
+            # officer watches findings appear one-by-one instead of all at the end.
+            for fut in as_completed(_fut_to_idx):
+                idx, iss, block, cites, meta = fut.result()
+                db.add(AppealOutput(run_id=run.id, kind="finding", seq=idx,
+                                    label=iss["issue"][:290], content=block, citations=cites))
+                _bill_meta("appeal.module5", meta)  # metered per-ground
+                try:
+                    db.commit()   # make this finding visible to the polling UI now
+                except Exception:  # noqa: BLE001
+                    db.rollback()
+                blocks_by_idx[idx] = block
+            _intro_fut.result()
+        blocks = [blocks_by_idx[i] for i in sorted(blocks_by_idx)]
 
         progress("Module 6: Assembling draft order")
-        draft = assemble(understanding, blocks, docs_text)
+        draft = assemble(understanding, blocks, docs_text,
+                         intro=_intro_box.get("intro"))
+        _bill_meta("appeal.module6.intro", _intro_box.get("meta"))
         _bill("appeal.module6")
         db.add(AppealOutput(run_id=run.id, kind="draft", content=draft))
         try:
