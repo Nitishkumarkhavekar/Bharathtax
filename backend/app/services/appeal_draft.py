@@ -483,6 +483,24 @@ def _detect_issues(text: str) -> list[dict]:
     return [{"issue": name} for name, pat in _ISSUE_PATTERNS if re.search(pat, text, re.I)]
 
 
+# General / reservation grounds that appear in almost every Form 35 but raise NO
+# specific grievance to adjudicate — the appeal order must NOT record a finding on
+# these (they are the source of the phantom "extra" ground the drafter used to add).
+_BOILERPLATE_GROUND = re.compile(
+    r"(?i)("
+    r"craves?\s+leave|"
+    r"leave\s+to\s+(add|alter|amend|modify|withdraw|raise|adduce)|"
+    r"add[\s,]+alter[\s,]+amend|alter[\s,]+amend|amend[\s,]+or\s+withdraw|"
+    r"reserve[sd]?\s+.{0,25}\bright\s+to\s+(add|amend|alter|raise)|"
+    r"\bany\s+other\s+grounds?\b|"
+    r"grounds?\b.{0,40}\bmay\s+be\s+(urged|added|raised|taken|adduced)"
+    r")")
+
+
+def _is_boilerplate_ground(g: str) -> bool:
+    return bool(_BOILERPLATE_GROUND.search(g or ""))
+
+
 def _raw_cat(case, *cats) -> str:
     """Raw (un-digested) text of the first document(s) in the given categories."""
     out = []
@@ -507,10 +525,19 @@ def _extract_case(case, docs_text: str) -> dict:
         src = "=== APPEAL DOCUMENTS ===\n" + _trim(docs_text, 30000 if _BIG_CTX else 12000)
     j = _complete_json(
         "You are reading an income-tax appeal. Extract the appellant's case FAITHFULLY from the "
-        "documents (especially the 'Grounds of Appeal' table in FORM No. 35). Return ONLY JSON:\n"
-        "- grounds: an array of the numbered Grounds of Appeal EXACTLY as raised by the appellant. "
-        "Do NOT invent, merge away, or add any ground that is not actually raised. Keep the "
-        "appellant's own substance, condensed to ONE clear sentence per ground. Usually 2-4 grounds.\n"
+        "documents. The Grounds of Appeal come ONLY from the 'Grounds of Appeal' in FORM No. 35. "
+        "Return ONLY JSON:\n"
+        "- grounds: the array of the numbered substantive Grounds of Appeal EXACTLY as raised in the "
+        "FORM No. 35 'Grounds of Appeal' — no more and no fewer. Copy the appellant's own grounds, "
+        "condensed to ONE clear sentence each. STRICT RULES: (a) Take grounds ONLY from the Form 35 "
+        "Grounds of Appeal list; do NOT create, infer, split, combine, or add ANY ground from the "
+        "Statement of Facts, the assessment order, the written submissions, or your own reasoning. "
+        "(b) EXCLUDE purely general or reservation grounds that raise no specific grievance — e.g. "
+        "'the appellant craves leave to add / alter / amend / withdraw any ground of appeal', 'any "
+        "other ground that may be urged at the time of hearing', or a bare 'the order is bad in law' "
+        "stated only as a general catch-all. (c) If the Form 35 lists N substantive grounds, return "
+        "EXACTLY those N — never invent an (N+1)th ground. If you cannot find the Form 35 grounds, "
+        "return an empty grounds array rather than guessing.\n"
         "- facts: a faithful narrative of the facts (6-12 sentences): the assessment and its section; "
         "the income assessed; each addition with its EXACT amount and the section it was made/taxed "
         "under (e.g. 69A, 115BBE); the demand raised BEFORE and, if a rectification order under "
@@ -525,6 +552,10 @@ def _extract_case(case, docs_text: str) -> dict:
         j = {}
     grounds = [str(g).strip() for g in (j.get("grounds") or [])
                if str(g).strip() not in ("", "...")]
+    # Drop general/reservation grounds ("craves leave to add/amend…", "any other
+    # ground…") — these carry no specific grievance and must not get a finding.
+    # This is the deterministic guard against the phantom extra ground.
+    grounds = [g for g in grounds if not _is_boilerplate_ground(g)]
     # Deterministic date of institution = Form 35 e-verification date (falls back to
     # the appeal-fee payment date). The LLM sometimes mis-reads this, so anchor it.
     inst = ""
