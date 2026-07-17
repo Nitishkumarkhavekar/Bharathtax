@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "@/lib/toast";
 import {
   Tag,
   Coins,
@@ -90,7 +91,7 @@ function PlansTab() {
       await api.adminBillingDeletePlan(p.id);
       refresh();
     } catch (e: any) {
-      alert(e?.message ?? "delete failed");
+      toast.error(e?.message ?? "Delete failed");
     }
   }
 
@@ -301,7 +302,7 @@ function RatesTab() {
     });
     if (!ok) return;
     try { await api.adminBillingDeleteRate(r.id); refresh(); }
-    catch (e: any) { alert(e?.message ?? "delete failed"); }
+    catch (e: any) { toast.error(e?.message ?? "Delete failed"); }
   }
 
   if (err) return <ErrorBanner msg={err} />;

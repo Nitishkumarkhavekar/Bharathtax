@@ -179,6 +179,8 @@ _TIME_MARKERS = (
     "today", "yesterday", "latest", "recent", "recently", "just issued",
     "just announced", "just released", "this week", "last week", "past week",
     "this month", "past month", "as of now", "as of today",
+    "current", "currently", "these days", "nowadays", "this year",
+    "right now", "trending", "happening", "going on", "as of",
 )
 _TIME_SUBJECTS = (
     "circular", "notification", "press release", "ruling", "order",
@@ -186,6 +188,21 @@ _TIME_SUBJECTS = (
     "annouoncement", "announcement", "cabinet", "finance minister",
     "cbdt press", "cbdt release",
 )
+
+
+_LIVE_DISCLAIMER_HINTS = (
+    "real-time", "real time", "do not have access to", "don't have access to",
+    "cannot provide the latest", "can't provide the latest", "no access to live",
+    "cannot access live", "not have access to live", "unable to access",
+)
+
+
+def _is_live_disclaimer(text: str) -> bool:
+    """True when the corpus answer is essentially 'I can't see live/real-time
+    data' — for a time-sensitive query we should show the web answer instead of
+    prepending this disclaimer to it."""
+    t = (text or "").lower()
+    return any(p in t for p in _LIVE_DISCLAIMER_HINTS)
 
 
 def _is_time_sensitive(q: str) -> bool:
@@ -215,6 +232,44 @@ def _is_document_query(q: str) -> bool:
     cannot hold — better answered live from the web than from a stray fragment."""
     t = (q or "").lower()
     return any(k in t for k in _DOC_MARKERS)
+
+
+_CASELAW_HINTS = (
+    "case law", "case laws", "caselaw", "case-law", "judgment", "judgement",
+    "judgments", "judgements", "precedent", "precedents", "in favour of",
+    "in favor of", "held that", "landmark", "verdict", "itat", "apex court",
+    "case in favour", "favourable case", "favorable case", "supreme court decision",
+    "high court decision", "supreme court judgment", "high court judgment",
+    "supreme court ruling", "high court ruling", "decided case", "cited case",
+)
+
+
+def _is_caselaw_query(q: str) -> bool:
+    """True for questions asking for judicial case law / judgments / precedents.
+    The static corpus (Act + Rules) has NO case law, so these must be answered
+    from the web to avoid a deflecting half-answer."""
+    t = (q or "").lower()
+    return any(k in t for k in _CASELAW_HINTS)
+
+
+_DEFLECTION_HINTS = (
+    "do not contain", "does not contain", "not contain a list", "do not provide a list",
+    "cannot provide a list", "please specify", "could you specify",
+    "specify the section or topic", "i can assist you further",
+    "i would be happy to assist", "i do not have specific", "i don't have specific",
+    "not covered in the provided", "outside the scope of the provided",
+    "the provided passages do not", "provided statutory passages",
+    "they do not contain", "if you require", "please provide more",
+    "do not have a list", "does not include a list",
+)
+
+
+def _looks_like_deflection(text: str) -> bool:
+    """A SOFTER refusal than _looks_like_refusal: the corpus produced a long,
+    citation-bearing answer that nonetheless deflects ('the passages don't
+    contain that — please specify…'). Treat as low-confidence → web search."""
+    t = (text or "").lower()
+    return any(p in t for p in _DEFLECTION_HINTS)
 
 
 @dataclass
@@ -305,7 +360,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     # Time-sensitive queries ("latest/today") always go live; everything else —
     # including STABLE document lookups (a circular's content never changes) — may be
     # served instantly from cache.
-    cached = None if _is_time_sensitive(q) else _qcache.get(q, domain=domain_slug)
+    cached = None if (_is_time_sensitive(q) or _is_caselaw_query(q)) else _qcache.get(q, domain=domain_slug)
     if cached:
         meta = dict(cached.get("meta") or {})
         meta["cache_hit"] = True
@@ -317,15 +372,22 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         )
 
     client = client or llm_mod.get_llm()
-    primary_text = client.complete(SYSTEM_PROMPT_NATIVE, q)
-    # Telemetry the caller can persist into the token_usage table.
     llm_calls: list[dict] = []
-    if isinstance(client, llm_mod.OpenAICompatLLM):
-        llm_calls.append({
-            "model": client.last_model or settings.llm_model_name,
-            "usage": client.last_usage,
-            "latency_ms": client.last_latency_ms,
-        })
+
+    def _primary_call() -> str:
+        txt = client.complete(SYSTEM_PROMPT_NATIVE, q)
+        if isinstance(client, llm_mod.OpenAICompatLLM):
+            llm_calls.append({
+                "model": client.last_model or settings.llm_model_name,
+                "usage": client.last_usage,
+                "latency_ms": client.last_latency_ms,
+            })
+        return txt
+
+    # Case-law queries are never in the static corpus, so the primary call is
+    # pure wasted latency — skip it and go straight to web search.
+    caselaw_query = _is_caselaw_query(q)
+    primary_text = "" if caselaw_query else _primary_call()
 
     # If the grounded model refused (no match in primary sources) AND a fallback
     # is configured, retry with a general income-tax LLM. The fallback prompt
@@ -347,8 +409,12 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     #       "latest" even when the corpus already answered it).
     # ------------------------------------------------------------------
     document_query = _is_document_query(q)
-    should_call_gemini = refused or time_sensitive or document_query
-    supplement_mode = time_sensitive and not refused and not document_query
+    deflected = _looks_like_deflection(primary_text)
+    should_call_gemini = (refused or time_sensitive or document_query
+                          or caselaw_query or deflected)
+    supplement_mode = (time_sensitive and not refused and not document_query
+                       and not caselaw_query and not deflected
+                       and not _is_live_disclaimer(primary_text))
     # For a "this circular / notification" question, pull the document identifier
     # the corpus matched (e.g. "F. No. 225/205/2024/ITA-II") into the web query so
     # the live search targets the RIGHT document rather than a generic one.
@@ -363,6 +429,13 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             web_query = (f"{q} This refers to the CBDT communication {_idstr}. Give its "
                          f"circular/notification number, date, subject and key contents in "
                          f"simple terms.")[:320]
+    if caselaw_query and not document_query:
+        web_query = (
+            f"{q}. Cover the 6-8 most important Indian income-tax cases. Write each as "
+            f"**Case name** (citation, court) followed by the key principle in one "
+            f"sentence, grouped under Supreme Court then High Courts. Finish with a short "
+            f"conclusion of the key propositions the Department relies on."
+        )[:380]
     if should_call_gemini:
         try:
             from app.services import gemini_search as _gs
@@ -378,27 +451,28 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
                         "latency_ms": _gs.last_latency_ms,
                     })
                 if _wtext:
-                    src_block = ""
-                    if web_sources:
-                        src_block = "\n\nSources:\n" + "\n".join(
-                            f"- {srcs['title']}: {srcs['url']}" for srcs in web_sources[:6])
+                    # Sources are returned as structured meta["web_sources"] and
+                    # rendered as favicon chips by the UI — do NOT inline the raw
+                    # (ugly grounding-redirect) URLs into the answer text.
                     if supplement_mode:
-                        # Append rather than replace — the corpus already
-                        # gave a good grounded answer; Gemini just adds
-                        # what's happened since.
                         primary_text = (
                             primary_text
                             + "\n\n---\n\n"
                             + "🌐 **Recent updates from the web** *(external sources — verify before relying):*\n\n"
                             + _wtext
-                            + src_block
                         )
                         used = "corpus+web-search:gemini"
                     else:
-                        primary_text = _wtext + src_block
+                        primary_text = _wtext
                         used = "web-search:gemini"
         except Exception:  # noqa: BLE001
             pass
+    if caselaw_query and not (primary_text or "").strip():
+        # Web search failed — fall back to a native answer so we never
+        # return an empty response.
+        primary_text = _primary_call()
+        used = "model-native"
+
     # Only a genuine REFUSAL (not mere time-sensitivity) lets the general LLM
     # replace an otherwise-valid corpus answer; if web search failed on a
     # time-sensitive query we keep the corpus answer.
@@ -442,7 +516,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         # a STABLE document lookup (circular/notification content does not change),
         # but never a time-sensitive "latest" answer.
         stable_web = document_query and not time_sensitive and used == "web-search:gemini"
-        if _qcache.should_cache(meta=result_meta) or stable_web:
+        if (_qcache.should_cache(meta=result_meta) and not deflected) or stable_web:
             _qcache.put(
                 q,
                 {"text": primary_text, "grounded": True, "meta": result_meta},

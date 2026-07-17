@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "@/lib/toast";
 import {
   Plus,
   Pencil,
@@ -118,8 +119,9 @@ export default function UserManagement({ mode }: Props) {
     try {
       await api.adminDeleteUser(u.id);
       await refresh();
+      toast.success(`${u.username} deleted`);
     } catch (e: any) {
-      alert(e?.message ?? "delete failed");
+      toast.error(e?.message ?? "Delete failed");
     }
   }
 
@@ -127,8 +129,9 @@ export default function UserManagement({ mode }: Props) {
     try {
       await api.adminApproveUser(u.id);
       await refresh();
+      toast.success(`${u.username} approved`);
     } catch (e: any) {
-      alert(e?.message ?? "approve failed");
+      toast.error(e?.message ?? "Approve failed");
     }
   }
 
@@ -137,8 +140,9 @@ export default function UserManagement({ mode }: Props) {
     try {
       await api.adminRejectUser(u.id);
       await refresh();
+      toast.success(`${u.username} rejected`);
     } catch (e: any) {
-      alert(e?.message ?? "reject failed");
+      toast.error(e?.message ?? "Reject failed");
     }
   }
 
@@ -460,6 +464,7 @@ function UserForm({
       setWingId(w.id);
       setAddingWing(false);
       setNewWingName("");
+      toast.success("Department created");
     } catch (e: any) {
       setWingErr(e?.message ?? "Could not create department.");
     } finally {
@@ -501,6 +506,7 @@ function UserForm({
         if (password) body.password = password;
         await api.adminUpdateUser(current!.id, body);
       }
+      toast.success(isNew ? `User "${username}" created successfully` : "User updated successfully");
       onSaved();
     } catch (e: any) {
       setErr(e?.message ?? "failed");
