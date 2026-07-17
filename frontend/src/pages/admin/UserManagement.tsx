@@ -17,6 +17,7 @@ import {
   Clock as ClockIcon,
 } from "lucide-react";
 import { AdminRole, AdminUser, AdminUserCreate, AdminUserUpdate, api } from "@/api";
+import { useAuth } from "@/auth";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
 import { Section, StatCard } from "@/components/admin/charts";
 import {
@@ -42,6 +43,16 @@ interface Props {
 const ROLES_USER: AdminRole[] = ["officer", "auditor"];
 const ROLES_ADMIN: AdminRole[] = ["super_admin", "wing_admin"];
 
+// Gateable user-facing modules (mirror of backend deps.ALL_FEATURES).
+const MODULES: { key: string; label: string }[] = [
+  { key: "chat", label: "Chat" },
+  { key: "appeals", label: "Appeals" },
+  { key: "rulings", label: "Case Law" },
+  { key: "documents", label: "Documents" },
+  { key: "history", label: "History" },
+];
+const ALL_MODULE_KEYS = MODULES.map((m) => m.key);
+
 type StatusTab = "all" | "pending" | "approved" | "rejected";
 
 export default function UserManagement({ mode }: Props) {
@@ -58,7 +69,7 @@ export default function UserManagement({ mode }: Props) {
   const title = isAdminMode ? "Admin Management" : "User Management";
   const subtitle = isAdminMode
     ? "Manage super admins and wing admins."
-    : "Manage officers and auditors. New registrations land in the Pending tab — approve or reject them here.";
+    : "Manage all user accounts. New registrations land in the Pending tab — approve or reject them here.";
 
   async function refresh() {
     setLoading(true);
@@ -250,7 +261,9 @@ export default function UserManagement({ mode }: Props) {
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium">User</th>
                   <th className="text-left px-4 py-2.5 font-medium">Email</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Role</th>
+                  <th className="text-left px-4 py-2.5 font-medium">
+                    {isAdminMode ? "Role" : "Designation"}
+                  </th>
                   <th className="text-left px-4 py-2.5 font-medium">Wing</th>
                   <th className="text-left px-4 py-2.5 font-medium">Status</th>
                   <th className="text-right px-4 py-2.5 font-medium">Actions</th>
@@ -277,7 +290,14 @@ export default function UserManagement({ mode }: Props) {
                       </td>
                       <td className="px-4 py-2.5 text-slate-700">{u.email ?? "—"}</td>
                       <td className="px-4 py-2.5">
-                        <RoleBadge role={u.role} />
+                        {isAdminMode ? (
+                          <RoleBadge role={u.role} />
+                        ) : (
+                          <span className="text-slate-700">
+                            {u.designation ||
+                              u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-slate-600">
                         {wing ? `${wing.name} (${wing.code})` : `#${u.wing_id}`}
@@ -401,14 +421,53 @@ function UserForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { session } = useAuth();
+  const isSuper = session?.role === "super_admin";
+  const isAdminMode = allowedRoles.some((r) => r.includes("admin"));
   const isNew = !current;
   const [username, setUsername] = useState(current?.username ?? "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState(current?.full_name ?? "");
   const [email, setEmail] = useState(current?.email ?? "");
   const [role, setRole] = useState<AdminRole>(current?.role ?? allowedRoles[0]);
+  // For regular users, "role" is presented as a free-text designation/title;
+  // the permission role stays "officer" under the hood.
+  const cap = (s?: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+  const [designation, setDesignation] = useState<string>(
+    current?.designation ?? (current && !current.role.includes("admin") ? cap(current.role) : ""),
+  );
+  // Wings can be extended inline (super admins only), so keep a local copy.
+  const [wingList, setWingList] = useState<Wing[]>(wings);
   const [wingId, setWingId] = useState<number>(current?.wing_id ?? wings[0]?.id ?? 0);
+  const [addingWing, setAddingWing] = useState(false);
+  const [newWingName, setNewWingName] = useState("");
+  const [wingBusy, setWingBusy] = useState(false);
+  const [wingErr, setWingErr] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(current?.is_active ?? true);
+
+  async function createWing() {
+    setWingErr(null);
+    if (!newWingName.trim()) {
+      setWingErr("Enter a name.");
+      return;
+    }
+    setWingBusy(true);
+    try {
+      // Just a name — the server derives the internal code and leaves the
+      // seat pool open (0 = unlimited); both can be tuned later if needed.
+      const w = await api.adminCreateWing({ name: newWingName.trim() });
+      setWingList((prev) => [...prev, w as Wing]);
+      setWingId(w.id);
+      setAddingWing(false);
+      setNewWingName("");
+    } catch (e: any) {
+      setWingErr(e?.message ?? "Could not create department.");
+    } finally {
+      setWingBusy(false);
+    }
+  }
+  // Module access. null (all) -> everything checked; else the allotted subset.
+  const [features, setFeatures] = useState<string[]>(current?.features ?? ALL_MODULE_KEYS);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -424,7 +483,9 @@ function UserForm({
           full_name: fullName || undefined,
           email: email || undefined,
           role,
+          designation: isAdminMode ? undefined : designation.trim() || undefined,
           wing_id: wingId,
+          features,
         };
         await api.adminCreateUser(body);
       } else {
@@ -432,8 +493,10 @@ function UserForm({
           full_name: fullName || undefined,
           email: email || undefined,
           role,
+          designation: isAdminMode ? undefined : designation.trim() || undefined,
           wing_id: wingId,
           is_active: isActive,
+          features,
         };
         if (password) body.password = password;
         await api.adminUpdateUser(current!.id, body);
@@ -519,31 +582,115 @@ function UserForm({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Role" required hint="Determines access and the admin features available.">
-          <IconSelect
-            icon={<ShieldCheck className="size-4" />}
-            value={role}
-            onChange={(e) => setRole(e.target.value as AdminRole)}
+        {isAdminMode ? (
+          <Field label="Role" required hint="Determines access and the admin features available.">
+            <IconSelect
+              icon={<ShieldCheck className="size-4" />}
+              value={role}
+              onChange={(e) => setRole(e.target.value as AdminRole)}
+            >
+              {allowedRoles.map((r) => (
+                <option key={r} value={r}>
+                  {r.replace("_", " ")}
+                </option>
+              ))}
+            </IconSelect>
+          </Field>
+        ) : (
+          <Field
+            label="Designation"
+            hint="Their job title — Officer, Auditor, Inspector, CA, Consultant, anything. Just a label; access is set by the sections below."
           >
-            {allowedRoles.map((r) => (
-              <option key={r} value={r}>
-                {r.replace("_", " ")}
-              </option>
-            ))}
-          </IconSelect>
-        </Field>
-        <Field label="Wing" required>
-          <IconSelect
-            icon={<Building2 className="size-4" />}
-            value={wingId}
-            onChange={(e) => setWingId(Number(e.target.value))}
-          >
-            {wings.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.code})
-              </option>
-            ))}
-          </IconSelect>
+            <IconInput
+              icon={<ShieldCheck className="size-4" />}
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              placeholder="e.g. Assessing Officer"
+              list="designation-suggestions"
+            />
+            <datalist id="designation-suggestions">
+              <option value="Officer" />
+              <option value="Assessing Officer" />
+              <option value="Auditor" />
+              <option value="Inspector" />
+              <option value="CA" />
+              <option value="Consultant" />
+            </datalist>
+          </Field>
+        )}
+        <Field
+          label="Wing"
+          required
+          rightSlot={
+            isSuper && !addingWing ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingWing(true);
+                  setWingErr(null);
+                }}
+                className="text-[11.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
+              >
+                <Plus className="size-3" /> New wing
+              </button>
+            ) : undefined
+          }
+        >
+          {addingWing ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/[0.03] p-2.5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Building2 className="size-4" />
+                  </div>
+                  <input
+                    autoFocus
+                    value={newWingName}
+                    onChange={(e) => setNewWingName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        createWing();
+                      }
+                    }}
+                    placeholder="Name, e.g. Investigation"
+                    className="w-full h-9 rounded-md border border-slate-200 bg-white pl-9 pr-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingWing(false);
+                    setWingErr(null);
+                  }}
+                  className="text-xs px-2.5 py-1.5 rounded-md text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={createWing}
+                  disabled={wingBusy}
+                  className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {wingBusy ? "Adding…" : "Add"}
+                </button>
+              </div>
+              {wingErr && <div className="text-[11px] text-rose-600">{wingErr}</div>}
+            </div>
+          ) : (
+            <IconSelect
+              icon={<Building2 className="size-4" />}
+              value={wingId}
+              onChange={(e) => setWingId(Number(e.target.value))}
+            >
+              {wingList.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({w.code})
+                </option>
+              ))}
+            </IconSelect>
+          )}
         </Field>
       </div>
 
@@ -564,6 +711,44 @@ function UserForm({
             </div>
           </div>
         </label>
+      )}
+
+      {!isAdminRole && (
+        <Field
+          label="Sections this user can access"
+          hint="Uncheck any the user shouldn't see. Applies on their next page load; admins are never restricted."
+        >
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <div className="flex items-center gap-2 pb-2 mb-2 border-b border-slate-200">
+              <button type="button" onClick={() => setFeatures(ALL_MODULE_KEYS)} className="text-[11.5px] font-medium text-primary hover:underline">
+                Provide all
+              </button>
+              <span className="text-slate-300">·</span>
+              <button type="button" onClick={() => setFeatures([])} className="text-[11.5px] font-medium text-slate-500 hover:underline">
+                Clear
+              </button>
+              <span className="ml-auto text-[11px] text-slate-400">{features.length}/{ALL_MODULE_KEYS.length} allotted</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {MODULES.map((m) => {
+                const on = features.includes(m.key);
+                return (
+                  <label key={m.key} className="flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-white">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) =>
+                        setFeatures((f) => (e.target.checked ? [...new Set([...f, m.key])] : f.filter((x) => x !== m.key)))
+                      }
+                      className="size-4 accent-primary"
+                    />
+                    <span className="text-[13px] text-slate-700">{m.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </Field>
       )}
 
       {err && (

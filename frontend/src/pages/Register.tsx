@@ -17,6 +17,9 @@ import {
   EyeOff,
   UserCheck,
   Rocket,
+  KeyRound,
+  Copy,
+  Check,
 } from "lucide-react";
 import { ApiError, api } from "../api";
 
@@ -28,6 +31,7 @@ export default function Register() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneMsg, setDoneMsg] = useState<string | null>(null);
+  const [license, setLicense] = useState<string | null>(null);
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -49,6 +53,7 @@ export default function Register() {
         password,
         full_name: fullName.trim() || undefined,
       });
+      setLicense(r.license_key ?? null);
       setDoneMsg(r.message);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Registration failed");
@@ -65,7 +70,7 @@ export default function Register() {
     : "empty";
 
   if (doneMsg) {
-    return <RegistrationSuccess email={email} message={doneMsg} />;
+    return <RegistrationSuccess email={email} message={doneMsg} licenseKey={license} />;
   }
 
   return (
@@ -539,8 +544,27 @@ function passwordStrength(pw: string): {
 }
 
 // ================================================================ success view
-function RegistrationSuccess({ email, message }: { email: string; message: string }) {
+function RegistrationSuccess({
+  email,
+  message,
+  licenseKey,
+}: {
+  email: string;
+  message: string;
+  licenseKey: string | null;
+}) {
   const nav = useNavigate();
+  const [copied, setCopied] = useState(false);
+  function copyKey() {
+    if (!licenseKey) return;
+    navigator.clipboard
+      ?.writeText(licenseKey)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      })
+      .catch(() => {});
+  }
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-slate-50 flex items-center justify-center p-6">
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
@@ -577,15 +601,45 @@ function RegistrationSuccess({ email, message }: { email: string; message: strin
                 </div>
               </div>
               <h2 className="mt-4 text-[22px] font-semibold tracking-tight">
-                Account request submitted
+                You're all set
               </h2>
               <p className="text-[12.5px] text-white/90 mt-1">
-                An administrator will review your details shortly.
+                Account approved &middot; 100,000-token free trial active
               </p>
             </div>
           </div>
           <div className="p-6 space-y-4 text-sm text-slate-700">
             <p className="text-[13.5px] leading-relaxed">{message}</p>
+            {licenseKey && (
+              <div className="rounded-xl bg-indigo-50 ring-1 ring-indigo-200 px-3.5 py-3">
+                <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-indigo-600">
+                  <KeyRound className="size-3.5" /> Your license key
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <code className="flex-1 font-mono text-[15px] font-semibold text-slate-900 tracking-wide select-all break-all">
+                    {licenseKey}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={copyKey}
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white ring-1 ring-slate-200 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="size-3.5 text-emerald-600" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-3.5" /> Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="mt-2 text-[11.5px] text-indigo-700/80 leading-relaxed">
+                  Save this key now. Paste it when you sign in to activate your account.
+                </p>
+              </div>
+            )}
             <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3.5 py-2.5 text-[12.5px] text-slate-700">
               <div className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">
                 Signed in email
@@ -595,9 +649,8 @@ function RegistrationSuccess({ email, message }: { email: string; message: strin
               </div>
             </div>
             <p className="text-[12px] text-slate-500 leading-relaxed">
-              You'll be able to sign in as soon as your account is approved.
-              We'll send a confirmation if email is configured on this
-              deployment.
+              Your account is approved &mdash; sign in now and paste your
+              license key when prompted to start using BharathTax.
             </p>
             <button
               onClick={() => nav("/login", { replace: true })}

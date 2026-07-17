@@ -2,21 +2,38 @@
 Every query is persisted and audit-logged."""
 from __future__ import annotations
 
+import logging
 import time
 
-from fastapi import APIRouter, Depends, Request
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, client_meta, get_principal, require_license
 from app.core.db import get_db
 from app.models.org import User
 from app.services import tokens
+from app.services.quota import require_quota
 from app.core.enums import Domain, QueryScope
 from app.models.activity import Query
 from app.schemas import AnswerResponse, AskRequest, CitationOut
 from app.services import audit, capture, rag
 
 router = APIRouter(prefix="/ask", tags=["ask"])
+log = logging.getLogger(__name__)
+
+
+# Anything raised by the LLM/Gemini path when the upstream is unreachable or
+# broken. Not our bug — but we translate to a friendly 503 so the user isn't
+# staring at "Internal Server Error".
+_UPSTREAM_EXC = (
+    httpx.HTTPStatusError,
+    httpx.ConnectError,
+    httpx.ReadError,
+    httpx.RemoteProtocolError,
+    httpx.TimeoutException,
+    ConnectionError,
+)
 
 
 def _domain(value: str | None) -> Domain | None:
@@ -32,10 +49,25 @@ def _domain(value: str | None) -> Domain | None:
 def ask(body: AskRequest, request: Request,
         p: Principal = Depends(get_principal),
         _licensed: User = Depends(require_license),
+        _quota: Principal = Depends(require_quota),
         db: Session = Depends(get_db)) -> AnswerResponse:
     started = time.monotonic()
     domain = _domain(body.domain)
-    result = rag.answer_question(db, body.question, domain=domain)
+    try:
+        result = rag.answer_question(db, body.question, domain=domain)
+    except _UPSTREAM_EXC as e:
+        log.warning("Ask Bot upstream error: %s", e)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "llm_unavailable",
+                "message": (
+                    "The AI service is temporarily unavailable. Please try "
+                    "again in a minute — if this keeps happening, contact your "
+                    "administrator."
+                ),
+            },
+        ) from e
     latency = int((time.monotonic() - started) * 1000)
 
     citations = [

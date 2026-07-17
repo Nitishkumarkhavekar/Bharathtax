@@ -49,14 +49,14 @@ export function ModalShell({
     >
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200",
+          "relative w-full max-h-[90vh] flex flex-col overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200",
           widths[size],
         )}
       >
         {/* Gradient header band */}
         <div
           className={cn(
-            "relative px-6 py-5 text-white overflow-hidden bg-gradient-to-br",
+            "relative shrink-0 px-6 py-5 text-white overflow-hidden bg-gradient-to-br",
             HEADER_GRADIENT[tone],
           )}
         >
@@ -88,12 +88,12 @@ export function ModalShell({
 
         {/* Body — sits cleanly below the header; the soft shadow under the
             white surface gives depth without the previous label-overlap bug. */}
-        <div className="bg-white">
+        <div className="bg-white flex-1 min-h-0 overflow-y-auto">
           <div className="px-6 py-5 space-y-4">{children}</div>
         </div>
 
         {footer && (
-          <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2">
+          <div className="shrink-0 px-6 py-3 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2">
             {footer}
           </div>
         )}

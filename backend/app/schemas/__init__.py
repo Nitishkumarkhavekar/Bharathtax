@@ -28,6 +28,8 @@ class RegisterResponse(BaseModel):
     full_name: str | None = None
     approval_status: str
     message: str
+    license_key: str | None = None
+    trial_tokens: int | None = None
 
 
 class PublicWingOut(BaseModel):
@@ -75,7 +77,9 @@ class MeResponse(BaseModel):
     username: str
     full_name: str | None
     role: Role
+    designation: str | None = None
     wing_id: int
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 # ---- ask / answers ----
@@ -141,10 +145,10 @@ class HistoryItem(BaseModel):
 
 # ---- admin ----
 class WingCreate(BaseModel):
-    department_id: int
+    department_id: int | None = None   # defaults to the first/only department
     name: str
-    code: str
-    seat_limit: int
+    code: str | None = None            # auto-derived from name when omitted
+    seat_limit: int = 0                # 0 = unlimited
 
 
 class WingOut(BaseModel):
@@ -168,8 +172,10 @@ class UserCreate(BaseModel):
     full_name: str | None = None
     email: str | None = None
     role: Role = Role.officer
+    designation: str | None = None      # free-text job title
     wing_id: int
     office_id: int | None = None
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 class UserOut(BaseModel):
@@ -180,22 +186,26 @@ class UserOut(BaseModel):
     email: str | None = None
     organisation: str | None = None
     role: Role
+    designation: str | None = None
     wing_id: int
     office_id: int | None = None
     is_active: bool
     approval_status: str = "approved"
     approved_at: datetime | None = None
     created_at: datetime | None = None
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
     email: str | None = None
     role: Role | None = None
+    designation: str | None = None
     wing_id: int | None = None
     office_id: int | None = None
     is_active: bool | None = None
     password: str | None = None    # optional reset
+    features: list[str] | None = None   # allowed modules; null = all (only applied when key present)
 
 
 # ---- licenses ----

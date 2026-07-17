@@ -1,6 +1,7 @@
 import { ChangeEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles, Undo2, Redo2 } from "lucide-react";
 import { StarRating } from "../components/ui/StarRating";
 import { api } from "../api";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
-import { Markdown } from "@/lib/markdown";
+import { Markdown, injectHighlight } from "@/lib/markdown";
 
 type Cite = { n: number; breadcrumb: string; section_number?: string | null; source_url?: string | null };
 type Out = { id: number; kind: string; seq: number; label?: string; content: string; citations?: Cite[]; edited: boolean; version: number };
@@ -143,7 +144,11 @@ function Section({
 
 export default function AppealCase() {
   const { id } = useParams();
-  const cid = Number(id);
+  // `cid` is the opaque slug from the URL. Every backend route in
+  // /appeal/cases/{cid} accepts EITHER a slug (new default) or the numeric
+  // id (kept working for legacy bookmarks). We pass the raw string through
+  // to the api client, whose types now accept string | number.
+  const cid = String(id || "");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [c, setC] = useState<any>(null);
   const [missing, setMissing] = useState<string[]>([]);
@@ -182,13 +187,14 @@ export default function AppealCase() {
         if (cancelled) return;
         setRun(rr);
         setProgress(rr.progress || rr.status);
+        const terminal = rr.status === "done" || rr.status === "error";
         await loadLatest();
-        if (cancelled) return;
-        if (rr.status === "done" || rr.status === "error") {
+        if (terminal) {
           setBusy(false);
           setProgress("");
-          loadCase();
+          await loadCase();
         }
+        if (cancelled) return;
       } catch (e) {
         // Transient errors (e.g. server restart) — keep polling.
         console.warn("run poll error", e);
@@ -268,7 +274,7 @@ export default function AppealCase() {
   const compliance = parse("compliance"); const matrix = parse("issue_matrix");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {confirmDialog}
       <Link to="/appeals" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"><ArrowLeft className="size-4" /> All cases</Link>
       {c && (
@@ -527,7 +533,7 @@ export default function AppealCase() {
   );
 }
 
-function DraftRating({ cid }: { cid: number }) {
+function DraftRating({ cid }: { cid: string | number }) {
   const [stars, setStars] = useState(0);
   useEffect(() => {
     api.getRating("appeal", cid).then((r) => { if (r?.stars) setStars(r.stars); }).catch(() => {});
@@ -557,14 +563,14 @@ function DraftSection({
   saved,
   onSave,
 }: {
-  cid: number;
+  cid: string | number;
   draft: string;
   setDraft: (s: string) => void;
   versions: Ver[];
   saved: string;
   onSave: () => void | Promise<void>;
 }) {
-  const [mode, setMode] = useState<"preview" | "edit">("preview");
+  const [mode, setMode] = useState<"preview" | "edit" | "text">("preview");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewErr, setPreviewErr] = useState<string | null>(null);
@@ -578,6 +584,50 @@ function DraftSection({
   // the parent re-renders (it does, often: every preview state change). We
   // pass this down instead of an inline arrow function.
   const bumpPreview = useCallback(() => setReloadKey((k) => k + 1), []);
+  // ---- Undo / redo over the draft version history ----
+  // Each AI edit is one version in the DB; undo/redo just steps the pointer and
+  // shows that version. A new edit builds ON the viewed version (base_version).
+  const [vers, setVers] = useState<Ver[]>(versions);
+  const [activeVer, setActiveVer] = useState<number | null>(null);
+  const [flash, setFlash] = useState<{ start: number; end: number } | null>(null);
+  useEffect(() => { setVers(versions); }, [versions]);
+  const sortedVers = useMemo(() => [...vers].sort((a, b) => a.version - b.version), [vers]);
+  useEffect(() => {
+    if (sortedVers.length && (activeVer == null || !sortedVers.some((v) => v.version === activeVer))) {
+      setActiveVer(sortedVers[sortedVers.length - 1].version);
+    }
+  }, [sortedVers, activeVer]);
+  const curIdx = sortedVers.findIndex((v) => v.version === activeVer);
+  const canUndo = curIdx > 0;
+  const canRedo = curIdx >= 0 && curIdx < sortedVers.length - 1;
+  const goToIdx = useCallback(
+    (idx: number) => {
+      if (idx < 0 || idx >= sortedVers.length) return;
+      const v = sortedVers[idx];
+      setActiveVer(v.version);
+      setDraft(v.content);
+      setFlash(null);
+      bumpPreview();
+    },
+    [sortedVers, setDraft, bumpPreview],
+  );
+  const onEdited = useCallback(
+    async (res: { content?: string; version: number; change_start?: number | null; change_end?: number | null }) => {
+      if (res.content != null) setDraft(res.content);
+      try { setVers(await api.appealDraftVersions(cid)); } catch { /* best-effort */ }
+      setActiveVer(res.version);
+      if (res.change_start != null && res.change_end != null) {
+        const span = { start: res.change_start, end: res.change_end };
+        setFlash(span);
+        window.setTimeout(() => setFlash((f) => (f === span ? null : f)), 6000);
+      } else {
+        setFlash(null);
+      }
+      bumpPreview();
+    },
+    [cid, setDraft, bumpPreview],
+  );
+
   // Bump the cache-buster when the draft text changes so the preview reflects
   // unsaved edits if the user toggles to Preview mid-edit.
   const draftHash = useMemo(() => `${draft.length}:${draft.slice(0, 64)}`, [draft]);
@@ -619,7 +669,7 @@ function DraftSection({
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cid, mode, reloadKey]);
+  }, [cid, mode, reloadKey, draftHash]);
 
   async function saveAndRefreshPreview() {
     await onSave();
@@ -634,19 +684,16 @@ function DraftSection({
       defaultOpen
       extra={
         <div className="flex items-center gap-2">
-          {versions.length > 1 && (
+          {sortedVers.length > 1 && (
             <select
               className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+              value={sortedVers.find((v) => v.version === activeVer)?.id ?? ""}
               onChange={(e) => {
-                const v = versions.find((x) => x.id === Number(e.target.value));
-                if (v) {
-                  setDraft(v.content);
-                  setReloadKey((k) => k + 1);
-                }
+                const v = sortedVers.find((x) => x.id === Number(e.target.value));
+                if (v) goToIdx(sortedVers.indexOf(v));
               }}
-              defaultValue={versions[0]?.id}
             >
-              {versions.map((v) => (
+              {[...sortedVers].reverse().map((v) => (
                 <option key={v.id} value={v.id}>
                   v{v.version}
                   {v.edited ? " (edited)" : ""}
@@ -662,7 +709,26 @@ function DraftSection({
         <p className="text-sm text-muted-foreground flex items-center gap-1">
           <BookOpen className="size-4" /> Apply mind and edit before finalising.
         </p>
-        <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-xs">
+        <div className="inline-flex flex-wrap rounded-md border border-input bg-background p-0.5 text-xs max-w-full">
+          <button
+            type="button"
+            onClick={() => goToIdx(curIdx - 1)}
+            disabled={!canUndo}
+            title="Undo — previous version"
+            className="inline-flex items-center px-2.5 py-1.5 rounded font-medium text-slate-600 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => goToIdx(curIdx + 1)}
+            disabled={!canRedo}
+            title="Redo — next version"
+            className="inline-flex items-center px-2.5 py-1.5 rounded font-medium text-slate-600 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Redo2 className="size-3.5" />
+          </button>
+          <span className="mx-0.5 my-1 w-px self-stretch bg-slate-200" />
           <button
             type="button"
             onClick={() => setMode("preview")}
@@ -674,6 +740,18 @@ function DraftSection({
             )}
           >
             <Eye className="size-3.5" /> Preview
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("text")}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded font-medium transition-colors",
+              mode === "text"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-slate-600 hover:text-slate-900",
+            )}
+          >
+            <Sparkles className="size-3.5" /> <span className="hidden xs:inline sm:inline">Modify with AI</span><span className="xs:hidden sm:hidden">AI</span>
           </button>
           <button
             type="button"
@@ -735,6 +813,8 @@ function DraftSection({
           {/* hidden ref to silence the hash linter */}
           <span className="hidden">{draftHash}</span>
         </div>
+      ) : mode === "text" ? (
+        <TextModifyView cid={cid} draft={draft} baseVersion={activeVer} flash={flash} onEdited={onEdited} />
       ) : (
         <OnlyOfficeEditor cid={cid} onSaved={bumpPreview} />
       )}
@@ -772,6 +852,210 @@ function DraftSection({
   );
 }
 
+// ---------------------------------------------- Select-to-modify (right-click)
+// A selectable HTML rendering of the draft. The officer selects any text and
+// right-clicks (or the floating menu) to open an inline "what should change?"
+// prompt; only that excerpt is rewritten by the AI and spliced back in place.
+function TextModifyView({
+  cid,
+  draft,
+  baseVersion,
+  flash,
+  onEdited,
+}: {
+  cid: string | number;
+  draft: string;
+  baseVersion: number | null;
+  flash: { start: number; end: number } | null;
+  onEdited: (res: { content?: string; version: number; change_start?: number | null; change_end?: number | null }) => void | Promise<void>;
+}) {
+  // Anchor = the selection's bounding rect in viewport coords, so the floating
+  // "Ask AI" chip and the popover both position relative to the SELECTION.
+  type Anchor = { cx: number; top: number; bottom: number };
+  const [pop, setPop] = useState<(Anchor & { selection: string }) | null>(null);
+  // Floating "Ask AI" button shown when the user selects text (ChatGPT-style),
+  // so editing is discoverable without needing a right-click.
+  const [hint, setHint] = useState<Anchor | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Scroll the freshly AI-edited (flash-highlighted) text into view.
+  useEffect(() => {
+    if (!flash) return;
+    const el = scrollRef.current?.querySelector(".ai-flash");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [flash]);
+
+  function selectionAnchor(): (Anchor & { selection: string }) | null {
+    const sel = window.getSelection();
+    const t = (sel?.toString() ?? "").trim();
+    if (t.length < 3 || !sel || sel.rangeCount === 0) return null;
+    const r = sel.getRangeAt(0).getBoundingClientRect();
+    return { cx: r.left + r.width / 2, top: r.top, bottom: r.bottom, selection: t };
+  }
+  // Centered under the selection, clamped so the box is always fully on screen.
+  function anchoredStyle(a: Anchor, boxW: number, boxH: number): React.CSSProperties {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const w = Math.min(boxW, vw - 16);
+    const left = Math.max(8, Math.min(a.cx - w / 2, vw - w - 8));
+    const below = a.bottom + 8;
+    const top = below + boxH <= vh - 8 ? below : Math.max(8, a.top - boxH - 8);
+    return { position: "fixed", left, top, width: w, zIndex: 1000 };
+  }
+  function openFor(): boolean {
+    const a = selectionAnchor();
+    if (!a) return false;
+    setErr(null);
+    setPrompt("");
+    setHint(null);
+    setPop(a);
+    return true;
+  }
+  function onContextMenu(e: React.MouseEvent) {
+    if (openFor()) e.preventDefault();
+  }
+  // On text selection inside the draft, float an "Ask AI" chip above it.
+  function onSelectMouseUp() {
+    if (pop) return;
+    const a = selectionAnchor();
+    if (!a) { setHint(null); return; }
+    setHint({ cx: a.cx, top: a.top, bottom: a.bottom });
+  }
+  async function apply() {
+    if (!pop || !prompt.trim() || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await api.appealInstructDraft(
+        cid, prompt.trim(), pop.selection, baseVersion ?? undefined,
+      );
+      setPop(null);
+      setPrompt("");
+      await onEdited(res);
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not apply the edit.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    if (!hint) return;
+    function onDown(e: MouseEvent) {
+      if (!(e.target as HTMLElement)?.closest?.("#ai-ask-btn")) setHint(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [hint]);
+  useEffect(() => {
+    if (!pop) return;
+    function onDown(e: MouseEvent) {
+      const el = document.getElementById("ai-modify-pop");
+      if (el && !el.contains(e.target as Node)) setPop(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setPop(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pop]);
+
+  return (
+    <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-4 py-2 text-[11.5px] text-slate-500 flex items-center gap-1.5">
+        <Sparkles className="size-3.5 text-primary" />
+        Select any text and click <b>Ask AI</b> to rewrite just that part (right-click also works).
+      </div>
+      <div
+        ref={scrollRef}
+        onContextMenu={onContextMenu}
+        onMouseUp={onSelectMouseUp}
+        onScroll={() => setHint(null)}
+        className="max-h-[65vh] sm:max-h-[720px] overflow-auto px-4 sm:px-6 py-4 sm:py-5 text-[13px] sm:text-[14px] leading-relaxed text-slate-800 break-words selection:bg-primary/20 [&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:mb-3 [&_strong]:font-semibold [&_*]:max-w-full"
+      >
+        {draft ? (
+          <Markdown text={flash ? injectHighlight(draft, flash.start, flash.end) : draft} />
+        ) : (
+          <div className="text-sm text-slate-500 py-12 text-center">No draft yet.</div>
+        )}
+      </div>
+      {hint && !pop && createPortal(
+        <button
+          id="ai-ask-btn"
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => openFor()}
+          style={{
+            position: "fixed",
+            left: Math.max(56, Math.min(hint.cx, window.innerWidth - 56)),
+            top: hint.top > 44 ? hint.top - 8 : hint.bottom + 8,
+            transform: hint.top > 44 ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+            zIndex: 1000,
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-white text-[12px] font-medium px-3 py-1.5 shadow-lg ring-1 ring-white/10 hover:bg-slate-800"
+        >
+          <Sparkles className="size-3.5 text-primary" /> Ask AI
+        </button>,
+        document.body,
+      )}
+      {pop && createPortal(
+        <div
+          id="ai-modify-pop"
+          style={anchoredStyle(pop, 340, 210)}
+          className="rounded-xl border border-slate-200 bg-white shadow-2xl p-3"
+        >
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
+            <Sparkles className="size-3.5" /> Modify with AI
+          </div>
+          <div className="text-[11.5px] text-slate-500 line-clamp-2 mb-2 italic border-l-2 border-slate-200 pl-2">
+            {pop.selection}
+          </div>
+          <textarea
+            autoFocus
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                apply();
+              }
+            }}
+            rows={2}
+            placeholder="What should change? e.g. make it more formal"
+            disabled={busy}
+            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[13px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+          />
+          {err && <div className="mt-1 text-[11px] text-rose-600">{err}</div>}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPop(null)}
+              className="text-[12px] text-slate-500 hover:text-slate-800 px-2 py-1"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={busy || !prompt.trim()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-white text-[12.5px] font-medium px-3 py-1.5 disabled:opacity-50 hover:bg-primary/90"
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+              {busy ? "Applying…" : "Apply change"}
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- OnlyOffice
 declare global {
   interface Window {
@@ -787,7 +1071,7 @@ function OnlyOfficeEditor({
   cid,
   onSaved,
 }: {
-  cid: number;
+  cid: string | number;
   onSaved: () => void;
 }) {
   const containerId = useMemo(
@@ -979,7 +1263,7 @@ function DocRow({
   onSaved,
   onDeleted,
 }: {
-  cid: number;
+  cid: string | number;
   doc: { id: number; filename: string; category: string; pages?: number };
   onSaved: (
     updated: { id: number; filename: string; category: string; pages?: number },

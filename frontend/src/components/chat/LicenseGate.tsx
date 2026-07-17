@@ -17,6 +17,7 @@ import {
   AlertCircle,
   LogOut,
   CheckCircle2,
+  Copy,
 } from "lucide-react";
 import { ApiError, LicenseStatus, api } from "@/api";
 import { useAuth } from "@/auth";
@@ -34,15 +35,31 @@ export default function LicenseGate({ children }: LicenseGateProps) {
   const [key, setKey] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [justActivated, setJustActivated] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  function copyKey() {
+    const k = status?.pending_key;
+    if (!k) return;
+    navigator.clipboard
+      ?.writeText(k)
+      .then(() => {
+        setCopiedKey(true);
+        setTimeout(() => setCopiedKey(false), 1500);
+      })
+      .catch(() => {});
+  }
 
   useEffect(() => {
     api
       .licenseStatus()
-      .then(setStatus)
+      .then((s) => {
+        setStatus(s);
+        if (s.pending_key) setKey(s.pending_key);
+      })
       .catch(() => setStatus({
         required: true,
         licensed: false,
         license_key: null,
+        pending_key: null,
         assigned_to: null,
         valid_until: null,
         message: "Could not verify your license. Please enter a key to continue.",
@@ -127,6 +144,36 @@ export default function LicenseGate({ children }: LicenseGateProps) {
               </div>
             ) : (
               <>
+                {status?.pending_key && (
+                  <div className="rounded-xl bg-indigo-50 ring-1 ring-indigo-200 px-3.5 py-3">
+                    <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-indigo-600">
+                      <Sparkles className="size-3.5" /> Your license key
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <code className="flex-1 font-mono text-[14px] font-semibold text-slate-900 tracking-wide select-all break-all">
+                        {status.pending_key}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={copyKey}
+                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white ring-1 ring-slate-200 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        {copiedKey ? (
+                          <>
+                            <CheckCircle2 className="size-3.5 text-emerald-600" /> Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="size-3.5" /> Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-indigo-700/80">
+                      It's already filled in below — just click Activate.
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="text-[12.5px] font-semibold text-slate-800 flex items-center gap-1 mb-1.5">
                     License key <span className="text-rose-500">*</span>
@@ -146,11 +193,19 @@ export default function LicenseGate({ children }: LicenseGateProps) {
                       className="w-full h-11 rounded-lg border border-slate-200 bg-white shadow-sm pl-10 pr-3 font-mono tracking-wider text-[14px] text-slate-900 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-slate-300"
                     />
                   </div>
-                  <div className="mt-2 text-[11px] text-slate-600 leading-snug flex items-start gap-1.5">
-                    <ShieldCheck className="size-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                    The key links this account to a licensed seat. It's
-                    case-insensitive — paste it as-is.
-                  </div>
+                  {status?.pending_key ? (
+                    <div className="mt-2 text-[11px] text-primary leading-snug flex items-start gap-1.5">
+                      <Sparkles className="size-3.5 shrink-0 mt-0.5" />
+                      Your trial license key is filled in for you — just click
+                      &ldquo;Activate&rdquo; to start.
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-[11px] text-slate-600 leading-snug flex items-start gap-1.5">
+                      <ShieldCheck className="size-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      The key links this account to a licensed seat. It's
+                      case-insensitive — paste it as-is.
+                    </div>
+                  )}
                 </div>
 
                 {err && (

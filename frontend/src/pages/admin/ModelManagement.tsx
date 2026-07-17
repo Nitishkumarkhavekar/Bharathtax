@@ -3,12 +3,17 @@ import {
   Brain,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
+  XCircle,
   Clock,
   CircleCheck,
   Server,
   TrendingUp,
+  Activity,
+  Zap,
+  RefreshCw,
 } from "lucide-react";
-import { AdminModel, api } from "@/api";
+import { AdminModel, AdminModelHealth, api } from "@/api";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
 import { BarChart, PercentBar, Section, StatCard } from "@/components/admin/charts";
 
@@ -16,12 +21,25 @@ export default function ModelManagementPage() {
   const [data, setData] = useState<AdminModel | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [health, setHealth] = useState<AdminModelHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
 
   useEffect(() => {
     api.adminModel()
       .then(setData)
       .catch((e) => setErr(e?.message ?? "failed"))
       .finally(() => setLoading(false));
+  }, []);
+
+  function loadHealth() {
+    setHealthLoading(true);
+    api.adminModelHealth()
+      .then(setHealth)
+      .catch(() => setHealth(null))
+      .finally(() => setHealthLoading(false));
+  }
+  useEffect(() => {
+    loadHealth();
   }, []);
 
   if (loading) return <Loading label="Loading model details…" />;
@@ -42,6 +60,8 @@ export default function ModelManagementPage() {
         title="Model Management"
         subtitle="Performance, traffic and configuration of the connected LLM models."
       />
+
+      <HealthPanel health={health} loading={healthLoading} onRefresh={loadHealth} />
 
       {/* Gateway status banner */}
       <div
@@ -192,6 +212,98 @@ export default function ModelManagementPage() {
     </div>
   );
 }
+
+function statusStyle(st: string) {
+  if (st === "ok")
+    return { dot: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-700 ring-emerald-200", label: "Operational", Icon: CheckCircle2 };
+  if (st === "degraded")
+    return { dot: "bg-amber-500", chip: "bg-amber-100 text-amber-700 ring-amber-200", label: "Degraded", Icon: AlertTriangle };
+  return { dot: "bg-rose-500", chip: "bg-rose-100 text-rose-700 ring-rose-200", label: "Down", Icon: XCircle };
+}
+
+function HealthPanel({
+  health,
+  loading,
+  onRefresh,
+}: {
+  health: AdminModelHealth | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const active = health?.active_generation;
+  const activeLabel =
+    active === "gemini" ? "Gemini" : active === "local" ? "Local model" : "None available";
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 admin-rise">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Activity className="size-4 text-slate-500" />
+          <h3 className="text-sm font-semibold text-slate-900">Model status</h3>
+          {active && (
+            <span
+              className={`ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                active === "none" ? "bg-rose-100 text-rose-700" : "bg-indigo-100 text-indigo-700"
+              }`}
+            >
+              <Zap className="size-3" /> Serving: {activeLabel}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </button>
+      </div>
+
+      {!health ? (
+        <div className="text-xs text-slate-400">
+          {loading ? "Checking model health…" : "Could not load model health."}
+        </div>
+      ) : (
+        <>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {health.services.map((svc) => {
+              const st = statusStyle(svc.status);
+              return (
+                <div key={svc.key} className="rounded-xl border border-slate-200 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`size-2.5 rounded-full ${st.dot} shrink-0`} />
+                      <span className="text-sm font-medium text-slate-900 truncate">{svc.name}</span>
+                    </div>
+                    <span
+                      className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold ring-1 ${st.chip}`}
+                    >
+                      <st.Icon className="size-3" /> {st.label}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">{svc.role}</div>
+                  {svc.detail && <div className="text-xs text-slate-700">{svc.detail}</div>}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-400">
+                    {svc.latency_ms != null && <span>⏱ {Math.round(svc.latency_ms)} ms</span>}
+                    {svc.models.length > 0 && (
+                      <span className="font-mono truncate max-w-full">{svc.models.join(", ")}</span>
+                    )}
+                  </div>
+                  {svc.endpoint && (
+                    <div className="font-mono text-[10px] text-slate-400 truncate">{svc.endpoint}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="text-[10.5px] text-slate-400">
+            Last checked {new Date(health.checked_at).toLocaleTimeString()}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 
 function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   return (

@@ -47,6 +47,7 @@ class LicenseStatusResponse(BaseModel):
     assigned_to: str | None = None
     valid_until: datetime | None = None
     message: str | None = None    # human-readable hint when not licensed
+    pending_key: str | None = None  # the user's auto-generated (unassigned) trial key
 
 
 def _user_active_license(db: Session, user: User) -> LicenseKey | None:
@@ -77,9 +78,34 @@ def license_status(user: User = Depends(get_current_user),
 
     lic = _user_active_license(db, user)
     if lic is None:
+        # Surface the user's auto-generated trial key (minted at signup, still
+        # unassigned) so the activation dialog can pre-fill it and the profile
+        # can display it — no manual copy/paste needed.
+        now = datetime.now(timezone.utc)
+        pending = db.scalar(
+            select(LicenseKey).where(
+                LicenseKey.assigned_to.is_(None),
+                LicenseKey.status == "active",
+                LicenseKey.valid_until > now,
+                LicenseKey.notes == f"Trial license for {user.username}",
+            ).order_by(LicenseKey.id.desc())
+        )
+        pkey = pending.key if pending else None
+        if pkey is None:
+            # Account has no trial key yet (e.g. created before trials existed) —
+            # mint one now so the activation dialog always has a key to show and
+            # pre-fill. Idempotent: skips the subscription if one already exists.
+            try:
+                from app.services.provisioning import provision_trial
+                pkey = provision_trial(db, user)
+                db.commit()
+            except Exception:
+                db.rollback()
+                pkey = None
         return LicenseStatusResponse(
             required=True, licensed=False,
-            message="Please enter your license key to start using BharathTax.",
+            pending_key=pkey,
+            message=None if pkey else "Please enter your license key to start using BharathTax.",
         )
     return LicenseStatusResponse(
         required=True, licensed=True,
@@ -210,7 +236,7 @@ def register(body: RegisterRequest, request: Request,
         role=Role.officer,
         wing_id=default_wing.id,
         is_active=True,
-        approval_status="pending",
+        approval_status="approved",
     )
     db.add(user)
     db.commit()
@@ -219,12 +245,22 @@ def register(body: RegisterRequest, request: Request,
         db, action="register", user_id=user.id, wing_id=user.wing_id,
         **client_meta(request),
     )
+    # Auto-provision: free-trial subscription (100K tokens) + a license key the
+    # user activates by pasting it on first login.
+    from app.services.provisioning import provision_trial, TRIAL_TOKENS
+    lic_key = provision_trial(db, user)
+    db.commit()
     return RegisterResponse(
         id=user.id,
         email=user.email or email,
         full_name=user.full_name,
         approval_status=user.approval_status,
-        message="Account created. An administrator will review and approve it shortly.",
+        license_key=lic_key,
+        trial_tokens=TRIAL_TOKENS,
+        message=(
+            "Account created and approved. Your free trial with 100,000 tokens is active. "
+            "Save your license key below and paste it when you sign in to start using BharathTax."
+        ),
     )
 
 

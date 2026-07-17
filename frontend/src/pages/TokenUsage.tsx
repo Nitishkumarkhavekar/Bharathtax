@@ -316,7 +316,7 @@ function pageWindow(current: number, total: number): (number | "…")[] {
 /** Attractive daily-token bar chart. Handles 1..30 days gracefully — bars
  *  cap at a max width so a 2-day view doesn't render as two giant blocks,
  *  and the grid + axis labels give real context instead of anonymous bars. */
-function TokensBarChart({
+export function TokensBarChart({
   rows,
   maxDay,
 }: {

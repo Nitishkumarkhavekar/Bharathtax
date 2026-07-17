@@ -5,6 +5,28 @@
 
 import { ReactNode } from "react";
 
+// Private-use sentinels flag an AI-edited span for flash-highlight. They never
+// occur in legal text; injectHighlight() wraps the changed region with them
+// (re-balanced per line so each block stays valid) and renderInline turns a pair
+// into a <mark>. Stray/unpaired sentinels are stripped so they never render.
+export const HL_OPEN = "";
+export const HL_CLOSE = "";
+
+export function injectHighlight(content: string, start: number, end: number): string {
+  if (
+    content == null || start == null || end == null ||
+    start < 0 || end > content.length || start >= end
+  ) {
+    return content;
+  }
+  const before = content.slice(0, start);
+  const mid = content.slice(start, end).replace(/\n/g, `${HL_CLOSE}\n${HL_OPEN}`);
+  const after = content.slice(end);
+  return `${before}${HL_OPEN}${mid}${HL_CLOSE}${after}`;
+}
+
+const _stripHl = (s: string) => s.replace(/[]/g, "");
+
 function renderInline(text: string): ReactNode[] {
   // Order matters: **bold** must be tried BEFORE single-asterisk *italic* so
   // `**foo**` doesn't get eaten as an italic. The `(?<!\*)` / `(?!\*)`
@@ -13,13 +35,19 @@ function renderInline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
   let i = 0;
   const re =
-    /(\*\*[^*\n]+\*\*|(?<!\*)\*(?!\*)[^*\n]+?(?<!\*)\*(?!\*)|_[^_\n]+?_|`[^`\n]+`|\[\d+\]|https?:\/\/[^\s)]+|\b§\s?\d+[A-Z]*(?:\(\d+\))?)/g;
+    /([^\n]*|\*\*[^*\n]+\*\*|(?<!\*)\*(?!\*)[^*\n]+?(?<!\*)\*(?!\*)|_[^_\n]+?_|`[^`\n]+`|\[\d+\]|https?:\/\/[^\s)]+|\b§\s?\d+[A-Z]*(?:\(\d+\))?)/g;
   let match: RegExpExecArray | null;
   let key = 0;
   while ((match = re.exec(text)) !== null) {
-    if (match.index > i) parts.push(text.slice(i, match.index));
+    if (match.index > i) parts.push(_stripHl(text.slice(i, match.index)));
     const token = match[0];
-    if (token.startsWith("**") && token.endsWith("**")) {
+    if (token.charCodeAt(0) === 0xe000) {
+      parts.push(
+        <mark key={`hl${key++}`} className="ai-flash rounded px-0.5 bg-emerald-200/70 text-inherit">
+          {renderInline(token.slice(1, -1))}
+        </mark>,
+      );
+    } else if (token.startsWith("**") && token.endsWith("**")) {
       parts.push(
         <strong key={`b${key++}`} className="font-semibold text-foreground">
           {token.slice(2, -2)}

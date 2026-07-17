@@ -78,7 +78,7 @@ export default function Chat() {
   const { session } = useAuth();
   const username = session?.username ?? "guest";
 
-  // Every visit to /ask (including via the "Ask Bot" link from other pages)
+  // Every visit to /ask (including via the "Chat" link from other pages)
   // starts on a fresh new-chat hero. Past chats remain in the rail and can be
   // re-opened by clicking them.
   const [threads, setThreads] = useState<ChatThread[]>(() => loadThreads(username));
@@ -131,7 +131,7 @@ export default function Chat() {
     }
   }, [username]);
 
-  // Re-clicking the "Ask Bot" link from another page (or this page) routes to
+  // Re-clicking the "Chat" link from another page (or this page) routes to
   // /ask again. react-router doesn't remount the component when the path is
   // the same, so listen on location.key — every navigation gets a new key.
   const loc = useLocation();

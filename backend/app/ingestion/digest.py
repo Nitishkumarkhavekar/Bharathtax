@@ -74,7 +74,12 @@ async def _gen_one(client: httpx.AsyncClient, sem: asyncio.Semaphore, url: str,
 async def _gen_batch(rows: list[tuple[int, str, str]], url: str, model: str,
                      concurrency: int) -> dict[int, str]:
     sem = asyncio.Semaphore(concurrency)
-    async with httpx.AsyncClient(timeout=httpx.Timeout(180.0)) as client:
+    # Auth for the gateway/LiteLLM path (raw vLLM ignores it). Lets the batch run
+    # from inside the app container against the same authenticated endpoint that
+    # chat/appeals use, instead of only the direct-to-vLLM address.
+    key = (settings.llm_api_key or "").strip()
+    headers = {"Authorization": f"Bearer {key}"} if key and key != "not-needed" else {}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(180.0), headers=headers) as client:
         results = await asyncio.gather(
             *[_gen_one(client, sem, url, model, title, text) for _, title, text in rows]
         )

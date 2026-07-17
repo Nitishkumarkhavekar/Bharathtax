@@ -53,6 +53,27 @@ def require_role(*roles: Role) -> Callable[..., User]:
     return guard
 
 
+# The gateable user-facing modules. Adding a new section = add its key here and a
+# require_feature() guard on its router in main.py. (Profile is always available.)
+ALL_FEATURES = ["chat", "appeals", "rulings", "documents", "history"]
+
+
+def require_feature(feature: str) -> Callable[..., User]:
+    """Router guard: reject a non-admin user who hasn't been allotted `feature`.
+    user.features == None means all modules (default / legacy); admins bypass."""
+    def guard(user: User = Depends(get_current_user)) -> User:
+        if user.role in (Role.super_admin, Role.wing_admin):
+            return user
+        if user.features is not None and feature not in user.features:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail=f"The '{feature}' section is not enabled for your account. "
+                       f"Contact your administrator.",
+            )
+        return user
+    return guard
+
+
 def require_license(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

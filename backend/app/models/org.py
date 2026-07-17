@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -68,6 +69,10 @@ class User(Base):
     organisation: Mapped[str | None] = mapped_column(String(200), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(default=Role.officer)
+    # Free-text job title shown across the console (Officer, Auditor, Inspector,
+    # CA, Consultant, …). Purely a label — access is governed by `role`
+    # (admin vs user) and `features`. NULL falls back to the role name.
+    designation: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Self-service registrations land as 'pending' and cannot log in until an
     # admin moves them to 'approved'. 'rejected' is terminal.
@@ -76,6 +81,9 @@ class User(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Per-user module access, e.g. ["chat","appeals","rulings","documents","history"].
+    # NULL == all modules. Admins are never gated. Set by an admin from the console.
+    features: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     wing: Mapped[Wing] = relationship(back_populates="users")

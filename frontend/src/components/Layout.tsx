@@ -12,7 +12,6 @@ import {
   Menu,
   X,
   UserCircle2,
-  Coins,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -26,15 +25,15 @@ const NAV: {
   label: string;
   icon: typeof MessageSquareText;
   roles?: string[];
+  feature?: string;   // gateable module key; hidden unless the user is allotted it
   tone: NavTone;
   hint: string;
 }[] = [
-  { to: "/ask", label: "Ask Bot", icon: MessageSquareText, tone: "primary", hint: "Citation-grounded chat" },
-  { to: "/appeals", label: "Appeals", icon: Gavel, tone: "amber", hint: "Draft CIT(A) orders" },
-  { to: "/rulings", label: "Rulings", icon: BookOpen, tone: "violet", hint: "Case-law search" },
-  { to: "/documents", label: "Documents", icon: FileText, tone: "sky", hint: "Upload · summarise" },
-  { to: "/history", label: "History", icon: Clock, tone: "emerald", hint: "Past queries" },
-  { to: "/tokens", label: "Token Usage", icon: Coins, tone: "rose", hint: "Your AI spend" },
+  { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
+  { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },
+  { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
+  { to: "/documents", label: "Documents", icon: FileText, feature: "documents", tone: "sky", hint: "Upload · summarise" },
+  { to: "/history", label: "History", icon: Clock, feature: "history", tone: "emerald", hint: "Past queries" },
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
 ];
@@ -60,7 +59,8 @@ function SeatWidget() {
     api.seatUsage(session.wingId).then(setUsage).catch(() => setUsage(null));
   }, [isAdmin, session]);
   if (!usage) return null;
-  const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
+  const unlimited = usage.limit <= 0;
+  const pct = unlimited ? 0 : Math.min(100, Math.round((usage.used / usage.limit) * 100));
   return (
     <div
       className="px-3 py-2 rounded-lg bg-white ring-1 ring-slate-200"
@@ -69,13 +69,13 @@ function SeatWidget() {
       <div className="flex justify-between text-[11px] text-slate-500 mb-1">
         <span className="font-medium text-slate-700">Wing seats</span>
         <span className="tabular-nums">
-          {usage.used}/{usage.limit}
+          {unlimited ? `${usage.used} active` : `${usage.used}/${usage.limit}`}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500"
-          style={{ width: `${pct}%` }}
+          style={{ width: `${unlimited ? 8 : pct}%` }}
         />
       </div>
     </div>
@@ -91,7 +91,13 @@ function SidebarBody({
 }) {
   const { session, logout } = useAuth();
   const loc = useLocation();
-  const nav = NAV.filter((n) => !n.roles || (session && n.roles.includes(session.role)));
+  const isAdmin = !!session && ["super_admin", "wing_admin"].includes(session.role);
+  const feats = session?.features ?? null; // null = all modules
+  const nav = NAV.filter(
+    (n) =>
+      (!n.roles || (session && n.roles.includes(session.role))) &&
+      (!n.feature || isAdmin || !feats || feats.includes(n.feature)),
+  );
   const firstLetter = (session?.username || "?").slice(0, 1).toUpperCase();
   return (
     <>
@@ -273,7 +279,10 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, [loc.pathname]);
 
   return (
-    <div className="min-h-screen flex bg-background">
+    // h-screen + overflow-hidden pins the shell to the viewport so the sidebar and
+    // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
+    // whole page grow, scrolling the body — sidebar and all).
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Desktop sidebar — collapses to a 4rem icon rail when the header
           toggle is clicked. The width is animated so the transition feels
           intentional. */}
@@ -340,8 +349,8 @@ export default function Layout({ children }: { children: ReactNode }) {
             Citation-grounded · primary Indian tax law
           </div>
         </header>
-        <main className="flex-1 overflow-auto bt-app-bg">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <main className="flex-1 min-h-0 overflow-auto bt-app-bg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
             {children}
           </div>
         </main>

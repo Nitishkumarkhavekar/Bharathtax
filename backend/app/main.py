@@ -1,10 +1,11 @@
 """BharathTax API entrypoint."""
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import admin, appeal, assist, ask, auth, documents, history, ratings, rulings
+from app.api.deps import require_feature
+from app.api.routes import admin, appeal, assist, ask, auth, billing, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref
 from app.core.config import settings
 from app.core.db import Base, engine
@@ -45,6 +46,19 @@ def _patch_user_columns() -> None:
         "ALTER TABLE appeal_outputs ADD COLUMN IF NOT EXISTS docx_blob BYTEA",
         # Celery task id per run so /appeal/runs/{id}/cancel can revoke it.
         "ALTER TABLE appeal_runs ADD COLUMN IF NOT EXISTS task_id VARCHAR(64)",
+        # SHA-256 dedup on uploaded appeal PDFs so we skip Gemini OCR when
+        # the same PDF has already been extracted (across ANY case in the
+        # department). Biggest single Gemini-cost lever.
+        "ALTER TABLE appeal_documents ADD COLUMN IF NOT EXISTS sha256 VARCHAR(64)",
+        "CREATE INDEX IF NOT EXISTS appeal_documents_sha256_idx ON appeal_documents (sha256)",
+        # Opaque public slug on appeal_cases — hides the sequential id from
+        # URLs. Backfill uses gen_random_uuid(); requires pgcrypto (loaded
+        # into postgres by default in the current image).
+        "CREATE EXTENSION IF NOT EXISTS pgcrypto",
+        "ALTER TABLE appeal_cases ADD COLUMN IF NOT EXISTS slug VARCHAR(36)",
+        "UPDATE appeal_cases SET slug = replace(gen_random_uuid()::text, '-', '') WHERE slug IS NULL",
+        "ALTER TABLE appeal_cases ALTER COLUMN slug SET NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS appeal_cases_slug_uq ON appeal_cases (slug)",
         # Backfill email for old seeded users so they can log in by email.
         "UPDATE users SET email = lower(username) || '@bharathtax.com' WHERE email IS NULL",
         # Migrate any previously-seeded @bharathtax.local addresses to the new
@@ -75,16 +89,19 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(ask.router)
-app.include_router(documents.router)
-app.include_router(history.router)
+# Per-user module gating: a non-admin without the feature gets 403 on the whole
+# router (belt-and-braces with the sidebar hiding it). Admins bypass.
+app.include_router(ask.router, dependencies=[Depends(require_feature("chat"))])
+app.include_router(documents.router, dependencies=[Depends(require_feature("documents"))])
+app.include_router(history.router, dependencies=[Depends(require_feature("history"))])
 app.include_router(admin.router)
-app.include_router(appeal.router)
-app.include_router(appeal_oo.router)
-app.include_router(rulings.router)
-app.include_router(crossref.router)
+app.include_router(appeal.router, dependencies=[Depends(require_feature("appeals"))])
+app.include_router(appeal_oo.router, dependencies=[Depends(require_feature("appeals"))])
+app.include_router(rulings.router, dependencies=[Depends(require_feature("rulings"))])
+app.include_router(crossref.router, dependencies=[Depends(require_feature("rulings"))])
 app.include_router(assist.router)
 app.include_router(ratings.router)
+app.include_router(billing.router)
 
 
 @app.get("/health", tags=["meta"])

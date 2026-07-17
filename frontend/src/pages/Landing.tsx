@@ -199,7 +199,7 @@ function HeroPreview() {
           <span className="size-2.5 rounded-full bg-amber-300" />
           <span className="size-2.5 rounded-full bg-emerald-300" />
           <span className="ml-3 text-[11px] font-medium text-slate-500">
-            BharathTax · Ask Bot
+            BharathTax · Chat
           </span>
         </div>
         <div className="p-5 space-y-4 bg-gradient-to-br from-white via-slate-50/40 to-white">
