@@ -43,13 +43,61 @@ _SYS = (
     "incometax.gov.in / incometaxindia.gov.in / CBDT circulars. Be precise on "
     "section numbers, limits, dates, and AY. If unsure, say so. Never invent a "
     "citation.\n"
-    "STYLE: Plain prose or short '- ' bullets. NO inline [1] / [1.1] markers — "
-    "sources render separately. Finish every sentence."
+    "COMPOSE A PROPER ANSWER — not a raw data dump:\n"
+    "1) Open with ONE short framing sentence that directly answers the question.\n"
+    "2) Then the substance, grouped logically, with **bold** key terms. For case "
+    "law write each as a flowing line: **Case name** (citation, court) \u2014 the "
+    "principle in one sentence. Do NOT use 'Court:' / 'Citation:' / 'Key Principle:' "
+    "as separate labelled bullets.\n"
+    "3) Close with a short **Conclusion** (1\u20133 sentences) synthesising the key "
+    "takeaway.\n"
+    "If a citation is unavailable, give the year or omit it \u2014 NEVER write "
+    "meta-comments like 'not provided in snippets' or 'based on the sources'.\n"
+    "STYLE: Clean prose with short bold sub-headings and '- ' bullets where they "
+    "help. NO inline [1] / [1.1] markers \u2014 sources render separately. Finish "
+    "every sentence."
 )
 
 
 def available() -> bool:
     return bool(_KEY) and _ENABLED
+
+
+def _domain_of(title: str) -> str:
+    return (title or "").replace("https://", "").replace("http://", "").split("/")[0].strip()
+
+
+def _insert_inline_cites(text: str, supports: list, chunks: list) -> str:
+    """Insert {{cite:domain}} markers at each grounded segment end using Gemini's
+    groundingSupports (segment byte-offsets -> source chunk indices). The UI turns
+    each marker into a small favicon chip next to that point."""
+    if not text or not supports or not chunks:
+        return (text or "").strip()
+    by_end: dict = {}
+    for sup in supports:
+        seg = sup.get("segment") or {}
+        end = seg.get("endIndex")
+        if end is None:
+            continue
+        doms: list = []
+        for ci in (sup.get("groundingChunkIndices") or []):
+            if isinstance(ci, int) and 0 <= ci < len(chunks):
+                dm = _domain_of((chunks[ci].get("web") or {}).get("title") or "")
+                if dm and dm not in doms:
+                    doms.append(dm)
+        if doms:
+            slot = by_end.setdefault(int(end), [])
+            for dm in doms:
+                if dm not in slot:
+                    slot.append(dm)
+    if not by_end:
+        return text.strip()
+    b = text.encode("utf-8")
+    for end in sorted(by_end, reverse=True):
+        marker = "".join("{{cite:%s}}" % dm for dm in by_end[end][:2])
+        e = max(0, min(int(end), len(b)))
+        b = b[:e] + marker.encode("utf-8") + b[e:]
+    return b.decode("utf-8", errors="ignore").strip()
 
 
 def web_answer(question: str) -> tuple[str, list[dict]]:
@@ -87,26 +135,27 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
             d = r.json()
             cand = (d.get("candidates") or [{}])[0]
             parts = (cand.get("content") or {}).get("parts") or []
-            text = "".join(p.get("text", "") for p in parts).strip()
-            # Strip any inline bracketed reference/citation clutter the model still emits
-            # (e.g. "[1.1.2, 1.1.3, 2.1.1]" or a trailing unclosed "[1.1.2,") — we render a
-            # clean Sources list separately.
-            text = re.sub(r"\s*\[[\d.,\s]+\]", "", text)
-            text = re.sub(r"\s*\[[\d.,\s]*$", "", text).strip()
-            if not text:
-                last_err = "empty response"
-                time.sleep(min(1.5 * (2 ** attempt), 8.0))
-                continue
-            sources: list[dict] = []
+            raw_text = "".join(p.get("text", "") for p in parts)
             gm = cand.get("groundingMetadata") or {}
+            chunks = gm.get("groundingChunks") or []
+            sources: list[dict] = []
             seen = set()
-            for ch in (gm.get("groundingChunks") or []):
+            for ch in chunks:
                 web = ch.get("web") or {}
                 uri = web.get("uri")
                 title = web.get("title") or uri or ""
                 if uri and uri not in seen:
                     seen.add(uri)
                     sources.append({"title": title, "url": uri})
+            # Insert inline {{cite:domain}} chips at each grounded segment BEFORE
+            # stripping bracket clutter (so byte offsets stay valid).
+            text = _insert_inline_cites(raw_text, gm.get("groundingSupports") or [], chunks)
+            text = re.sub(r"\s*\[[\d.,\s]+\]", "", text)
+            text = re.sub(r"\s*\[[\d.,\s]*$", "", text).strip()
+            if not text:
+                last_err = "empty response"
+                time.sleep(min(1.5 * (2 ** attempt), 8.0))
+                continue
             um = d.get("usageMetadata") or {}
             last_usage = ({"prompt_tokens": um.get("promptTokenCount"),
                            "completion_tokens": um.get("candidatesTokenCount"),

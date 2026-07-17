@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "@/lib/toast";
 import {
   Plus,
   Pencil,
@@ -76,8 +77,9 @@ export default function LicenseManagementPage() {
     try {
       await api.adminDeactivateLicense(l.id);
       await refresh();
+      toast.success("License deactivated");
     } catch (e: any) {
-      alert(e?.message ?? "failed");
+      toast.error(e?.message ?? "Action failed");
     }
   }
 
@@ -86,8 +88,9 @@ export default function LicenseManagementPage() {
     try {
       await api.adminDeleteLicense(l.id);
       await refresh();
+      toast.success("License deleted");
     } catch (e: any) {
-      alert(e?.message ?? "failed");
+      toast.error(e?.message ?? "Action failed");
     }
   }
 
@@ -332,6 +335,7 @@ function LicenseForm({
         };
         const issued = await api.adminCreateLicense(body);
         setNewlyIssuedKey(issued.key);
+        toast.success("License key issued");
       } else {
         const body: LicenseUpdate = {
           valid_until: validUntilISO,
@@ -340,6 +344,7 @@ function LicenseForm({
           status,
         };
         await api.adminUpdateLicense(current!.id, body);
+        toast.success("License updated");
         onSaved();
       }
     } catch (e: any) {

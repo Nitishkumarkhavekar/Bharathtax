@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "@/lib/toast";
 import {
   Plus,
   Pencil,
@@ -53,8 +54,9 @@ export default function RevenueManagementPage() {
     try {
       await api.adminDeleteRevenue(e.id);
       await refresh();
+      toast.success("Entry deleted");
     } catch (err: any) {
-      alert(err?.message ?? "delete failed");
+      toast.error(err?.message ?? "Delete failed");
     }
   }
 
@@ -213,6 +215,7 @@ function RevenueForm({
       };
       if (isNew) await api.adminCreateRevenue(body as RevenueCreate);
       else await api.adminUpdateRevenue(current!.id, body);
+      toast.success(isNew ? "Revenue entry added" : "Revenue entry updated");
       onSaved();
     } catch (e: any) {
       setErr(e?.message ?? "failed");

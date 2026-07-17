@@ -20,6 +20,7 @@ import {
   Copy,
 } from "lucide-react";
 import { ApiError, LicenseStatus, api } from "@/api";
+import { toast } from "@/lib/toast";
 import { useAuth } from "@/auth";
 import { Button } from "@/components/ui/button";
 
@@ -74,6 +75,7 @@ export default function LicenseGate({ children }: LicenseGateProps) {
       const normalized = key.trim().toUpperCase().replace(/\s+/g, "");
       const s = await api.activateLicense(normalized);
       setStatus(s);
+      toast.success("License activated \u2014 welcome to BharathTax!");
       setJustActivated(true);
       // Brief success flash, then mount the chat.
       setTimeout(() => setJustActivated(false), 1200);

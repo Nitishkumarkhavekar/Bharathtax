@@ -852,6 +852,22 @@ function DraftSection({
   );
 }
 
+// Promote numbered ALL-CAPS section headings ("2. GROUNDS OF APPEAL",
+// "1. INTRODUCTION") to markdown headings so the plain-text markdown renderer
+// shows them as section titles instead of merging them into the grounds' ordered
+// list (which the browser would then renumber 1..N, pushing the grounds to 2..N+1).
+// The visible heading text keeps the section number, so selections still match the
+// source for the "modify selection" splice.
+function structureDraft(md: string): string {
+  return (md || "")
+    .split("\n")
+    .map((ln) => {
+      const m = /^(\d+)\.\s+([A-Z0-9][A-Z0-9 .,&/()'\-]{1,70})\s*$/.exec(ln.trim());
+      return m ? `### ${m[1]}. ${m[2].trim()}` : ln;
+    })
+    .join("\n");
+}
+
 // ---------------------------------------------- Select-to-modify (right-click)
 // A selectable HTML rendering of the draft. The officer selects any text and
 // right-clicks (or the floating menu) to open an inline "what should change?"
@@ -979,7 +995,7 @@ function TextModifyView({
         className="max-h-[65vh] sm:max-h-[720px] overflow-auto px-4 sm:px-6 py-4 sm:py-5 text-[13px] sm:text-[14px] leading-relaxed text-slate-800 break-words selection:bg-primary/20 [&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:mb-3 [&_strong]:font-semibold [&_*]:max-w-full"
       >
         {draft ? (
-          <Markdown text={flash ? injectHighlight(draft, flash.start, flash.end) : draft} />
+          <Markdown text={structureDraft(flash ? injectHighlight(draft, flash.start, flash.end) : draft)} />
         ) : (
           <div className="text-sm text-slate-500 py-12 text-center">No draft yet.</div>
         )}

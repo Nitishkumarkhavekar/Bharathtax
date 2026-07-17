@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { toast } from "@/lib/toast";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -99,8 +100,10 @@ export default function Appeals() {
       });
       setF({ title: "", assessment_year: "", pan: "", section: "" });
       await load();
+      toast.success("Appeal case created");
     } catch (e: any) {
       setErr(e?.message ?? "Failed to create case.");
+      toast.error(e?.message ?? "Failed to create case.");
     } finally {
       setBusyCreate(false);
     }
@@ -561,8 +564,9 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
     try {
       await api.appealDeleteCase(c.id);
       onChanged();
+      toast.success("Appeal case deleted");
     } catch (err: any) {
-      alert(err?.message ?? "Could not delete the case.");
+      toast.error(err?.message ?? "Could not delete the case.");
       setDeleting(false);
     }
   }
@@ -702,6 +706,7 @@ function EditCaseModal({
         pan: pan.trim() || null,
         section: section.trim() || null,
       });
+      toast.success("Appeal case updated");
       onSaved();
     } catch (e: any) {
       setErr(e?.message ?? "Save failed.");

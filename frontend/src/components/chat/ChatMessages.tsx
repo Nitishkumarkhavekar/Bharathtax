@@ -167,11 +167,45 @@ function Message({
             </div>
           </div>
         )}
-        {msg.meta && typeof msg.meta["retrieval"] === "string" && !streaming && (
-          <div className="text-[11px] text-slate-400">
-            via {String(msg.meta["retrieval"])}
-          </div>
-        )}
+        {!streaming &&
+          Array.isArray(msg.meta?.["web_sources"]) &&
+          (msg.meta["web_sources"] as unknown[]).length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-slate-400 mr-0.5">Sources</span>
+              {(msg.meta["web_sources"] as { title?: string; url?: string }[])
+                .slice(0, 8)
+                .map((src, i) => {
+                  const domain = (src.title || "")
+                    .replace(/^https?:\/\//, "")
+                    .replace(/\/.*$/, "")
+                    .trim();
+                  if (!domain) return null;
+                  return (
+                    <a
+                      key={i}
+                      href={src.url || `https://${domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={domain}
+                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 px-2 py-0.5 text-[11px] text-slate-600 transition-colors"
+                    >
+                      <img
+                        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+                          domain,
+                        )}&sz=32`}
+                        alt=""
+                        loading="lazy"
+                        className="size-3.5 rounded-sm"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                      <span className="max-w-[150px] truncate">{domain}</span>
+                    </a>
+                  );
+                })}
+            </div>
+          )}
         {!streaming && msg.grounded !== false && (
           <FeedbackRow question={question} answer={msg.content} />
         )}

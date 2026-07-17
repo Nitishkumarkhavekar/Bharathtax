@@ -35,7 +35,7 @@ function renderInline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
   let i = 0;
   const re =
-    /([^\n]*|\*\*[^*\n]+\*\*|(?<!\*)\*(?!\*)[^*\n]+?(?<!\*)\*(?!\*)|_[^_\n]+?_|`[^`\n]+`|\[\d+\]|https?:\/\/[^\s)]+|\b§\s?\d+[A-Z]*(?:\(\d+\))?)/g;
+    /([^\n]*|\*\*[^*\n]+\*\*|(?<!\*)\*(?!\*)[^*\n]+?(?<!\*)\*(?!\*)|_[^_\n]+?_|`[^`\n]+`|\{\{cite:[^}]+\}\}|\[\d+\]|https?:\/\/[^\s)]+|\b§\s?\d+[A-Z]*(?:\(\d+\))?)/g;
   let match: RegExpExecArray | null;
   let key = 0;
   while ((match = re.exec(text)) !== null) {
@@ -82,6 +82,27 @@ function renderInline(text: string): ReactNode[] {
         >
           {token.slice(1, -1)}
         </span>,
+      );
+    } else if (token.startsWith("{{cite:")) {
+      const domain = token.slice(7, -2);
+      parts.push(
+        <a
+          key={`cite${key++}`}
+          href={`https://${domain}`}
+          target="_blank"
+          rel="noreferrer"
+          title={domain}
+          className="inline-flex items-center justify-center align-middle mx-0.5 size-[18px] rounded-full ring-1 ring-slate-200 bg-white overflow-hidden no-underline hover:ring-primary/40"
+        >
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`}
+            alt=""
+            className="size-3"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </a>,
       );
     } else if (/^https?:\/\//.test(token)) {
       parts.push(
