@@ -84,11 +84,16 @@ function renderInline(text: string): ReactNode[] {
         </span>,
       );
     } else if (token.startsWith("{{cite:")) {
-      const domain = token.slice(7, -2);
+      // Marker payload is "domain|url"; older/degenerate markers carry just the
+      // domain (no "|"), so fall back to the bare domain link in that case.
+      const inner = token.slice(7, -2);
+      const sep = inner.indexOf("|");
+      const domain = sep === -1 ? inner : inner.slice(0, sep);
+      const url = sep === -1 ? "" : inner.slice(sep + 1);
       parts.push(
         <a
           key={`cite${key++}`}
-          href={`https://${domain}`}
+          href={url || `https://${domain}`}
           target="_blank"
           rel="noreferrer"
           title={domain}

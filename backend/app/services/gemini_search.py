@@ -68,9 +68,11 @@ def _domain_of(title: str) -> str:
 
 
 def _insert_inline_cites(text: str, supports: list, chunks: list) -> str:
-    """Insert {{cite:domain}} markers at each grounded segment end using Gemini's
+    """Insert {{cite:domain|url}} markers at each grounded segment end using Gemini's
     groundingSupports (segment byte-offsets -> source chunk indices). The UI turns
-    each marker into a small favicon chip next to that point."""
+    each marker into a small favicon chip linking to that source. The url is the
+    grounding-redirect that resolves to the exact page (e.g. a specific YouTube
+    video), so the chip must NOT be reduced to the bare domain."""
     if not text or not supports or not chunks:
         return (text or "").strip()
     by_end: dict = {}
@@ -79,22 +81,24 @@ def _insert_inline_cites(text: str, supports: list, chunks: list) -> str:
         end = seg.get("endIndex")
         if end is None:
             continue
-        doms: list = []
+        pairs: list = []
         for ci in (sup.get("groundingChunkIndices") or []):
             if isinstance(ci, int) and 0 <= ci < len(chunks):
-                dm = _domain_of((chunks[ci].get("web") or {}).get("title") or "")
-                if dm and dm not in doms:
-                    doms.append(dm)
-        if doms:
+                web = chunks[ci].get("web") or {}
+                dm = _domain_of(web.get("title") or "")
+                uri = (web.get("uri") or "").strip()
+                if dm and (dm, uri) not in pairs:
+                    pairs.append((dm, uri))
+        if pairs:
             slot = by_end.setdefault(int(end), [])
-            for dm in doms:
-                if dm not in slot:
-                    slot.append(dm)
+            for pair in pairs:
+                if pair not in slot:
+                    slot.append(pair)
     if not by_end:
         return text.strip()
     b = text.encode("utf-8")
     for end in sorted(by_end, reverse=True):
-        marker = "".join("{{cite:%s}}" % dm for dm in by_end[end][:2])
+        marker = "".join("{{cite:%s|%s}}" % (dm, uri) for dm, uri in by_end[end][:2])
         e = max(0, min(int(end), len(b)))
         b = b[:e] + marker.encode("utf-8") + b[e:]
     return b.decode("utf-8", errors="ignore").strip()
