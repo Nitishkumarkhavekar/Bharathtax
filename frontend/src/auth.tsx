@@ -3,6 +3,7 @@ import { api, ApiError, TokenResponse } from "./api";
 
 interface Session {
   username: string;
+  fullName: string | null;
   role: string;
   wingId: number;
   features: string[] | null;   // allowed modules; null = all
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .me()
       .then((me) => {
-        setSession({ username: me.username, role: me.role, wingId: me.wing_id, features: me.features ?? null });
+        setSession({ username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, features: me.features ?? null });
       })
       .catch(() => {
         localStorage.removeItem(KEY);
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(KEY, tok.access_token);
     // Pull the full profile (incl. allowed modules) so the session is complete.
     const me = await api.me();
-    const s: Session = { username: me.username, role: me.role, wingId: me.wing_id, features: me.features ?? null };
+    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, features: me.features ?? null };
     localStorage.setItem(SESS, JSON.stringify(s));
     setSession(s);
     return s;

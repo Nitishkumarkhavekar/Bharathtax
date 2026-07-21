@@ -81,7 +81,7 @@ export default function Chat() {
   // Every visit to /ask (including via the "Chat" link from other pages)
   // starts on a fresh new-chat hero. Past chats remain in the rail and can be
   // re-opened by clicking them.
-  const [threads, setThreads] = useState<ChatThread[]>(() => loadThreads(username));
+  const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [module, setModule] = useState("");
@@ -113,17 +113,43 @@ export default function Chat() {
   // in word-by-word. Cleared when the typewriter reaches the end.
   const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
 
-  // Persist on every change.
+  // Persist a local cache on every change (fallback only).
   useEffect(() => {
     saveThreads(username, threads);
   }, [username, threads]);
+
+  // Load chats from the SERVER (source of truth; syncs across devices). Falls
+  // back to the local cache only if the server is unreachable.
+  useEffect(() => {
+    let alive = true;
+    api
+      .chatList()
+      .then((chats) => {
+        if (!alive) return;
+        setThreads(
+          chats.map((c) => ({
+            id: `s_${c.id}`,
+            serverId: c.id,
+            title: c.title,
+            createdAt: Date.parse(c.created_at ?? "") || Date.now(),
+            updatedAt: Date.parse(c.updated_at ?? "") || Date.now(),
+            messages: [],
+          })),
+        );
+      })
+      .catch(() => {
+        if (alive) setThreads(loadThreads(username));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [username]);
 
   // When username changes (login/logout in same tab), reload threads and clear
   // the active selection so the user lands on the empty hero.
   const lastUser = useRef(username);
   useEffect(() => {
     if (lastUser.current !== username) {
-      setThreads(loadThreads(username));
       setActiveId(null);
       setInput("");
       setError(null);
@@ -153,13 +179,34 @@ export default function Chat() {
     setMobileSidebar(false);
   }
 
-  function selectThread(id: string) {
+  async function selectThread(id: string) {
     setActiveId(id);
     setError(null);
     setMobileSidebar(false);
+    const t = threads.find((x) => x.id === id);
+    if (t?.serverId != null && t.messages.length === 0) {
+      try {
+        const full = await api.chatGet(t.serverId);
+        const msgs: ChatMessage[] = (full.messages || []).map((m) => ({
+          role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
+          content: m.content,
+          citations: m.citations,
+          grounded: (m.meta as { grounded?: boolean })?.grounded,
+          meta: m.meta,
+          ts: Date.parse(m.created_at ?? "") || Date.now(),
+        }));
+        setThreads((prev) => prev.map((x) => (x.id === id ? { ...x, messages: msgs } : x)));
+      } catch {
+        /* keep whatever we have */
+      }
+    }
   }
 
   function deleteThread(id: string) {
+    const gone = threads.find((t) => t.id === id);
+    if (gone?.serverId != null) {
+      api.chatDelete(gone.serverId).catch(() => {});
+    }
     setThreads((prev) => {
       const next = prev.filter((t) => t.id !== id);
       if (activeId === id) setActiveId(next[0]?.id ?? null);
@@ -204,9 +251,23 @@ export default function Chat() {
     setInput("");
     setBusy(true);
 
-    // 3. Call backend.
+    // 2b. Ensure a server-owned chat exists so this turn is persisted
+    // server-side, isolated to this user. Best-effort — chat still works locally.
+    let serverId = thread.serverId ?? null;
+    if (serverId == null) {
+      try {
+        const sc = await api.chatCreate(deriveTitle(text));
+        serverId = sc.id;
+        const tid = thread.id;
+        setThreads((prev) => prev.map((t) => (t.id === tid ? { ...t, serverId: sc.id } : t)));
+      } catch {
+        /* server persistence is best-effort */
+      }
+    }
+
+    // 3. Call backend (chat_id -> server persists this turn).
     try {
-      const res = await api.ask(text, module || undefined, style);
+      const res = await api.ask(text, module || undefined, style, serverId ?? undefined);
       const asstMsg: ChatMessage = {
         role: "assistant",
         content: res.answer,
@@ -302,7 +363,7 @@ export default function Chat() {
             onPick={(s) => {
               setInput(s);
             }}
-            displayName={session?.username}
+            displayName={session?.fullName || session?.username}
             error={error}
           />
         ) : (

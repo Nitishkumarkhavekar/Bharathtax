@@ -87,6 +87,7 @@ class AskRequest(BaseModel):
     question: str
     domain: str | None = None        # module filter (income_tax | gst | ...)
     style: str | None = "explanatory"
+    chat_id: int | None = None       # persist this turn into a server-owned chat
 
 
 class ImprovePromptRequest(BaseModel):
