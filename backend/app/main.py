@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import require_feature
-from app.api.routes import admin, appeal, assist, ask, auth, billing, documents, history, ratings, rulings
+from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref
 from app.core.config import settings
 from app.core.db import Base, engine
@@ -92,6 +92,7 @@ app.include_router(auth.router)
 # Per-user module gating: a non-admin without the feature gets 403 on the whole
 # router (belt-and-braces with the sidebar hiding it). Admins bypass.
 app.include_router(ask.router, dependencies=[Depends(require_feature("chat"))])
+app.include_router(chats.router, dependencies=[Depends(require_feature("chat"))])
 app.include_router(documents.router, dependencies=[Depends(require_feature("documents"))])
 app.include_router(history.router, dependencies=[Depends(require_feature("history"))])
 app.include_router(admin.router)

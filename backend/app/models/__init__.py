@@ -2,6 +2,7 @@
 from app.models.activity import AuditLog, Query
 from app.models.admin import LicenseKey, RevenueEntry
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
+from app.models.chat import Chat, ChatMessage, ChatMemory, ChatSummary
 from app.models.billing import SubscriptionPlan, TokenPrice, UserSubscription
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
 from app.models.documents import Document, DocumentChunk

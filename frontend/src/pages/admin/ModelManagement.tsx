@@ -258,6 +258,24 @@ function HealthPanel({
         </button>
       </div>
 
+      {health?.alert && (
+        <div
+          className={`rounded-lg px-3.5 py-2.5 text-[12.5px] flex items-start gap-2 ${
+            health.alert.level === "critical"
+              ? "bg-rose-50 ring-1 ring-rose-200 text-rose-800"
+              : "bg-amber-50 ring-1 ring-amber-200 text-amber-800"
+          }`}
+        >
+          <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-semibold">
+              {health.alert.level === "critical" ? "Critical: " : "Warning: "}
+            </span>
+            {health.alert.message}
+          </div>
+        </div>
+      )}
+
       {!health ? (
         <div className="text-xs text-slate-400">
           {loading ? "Checking model health…" : "Could not load model health."}

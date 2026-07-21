@@ -19,6 +19,7 @@ export interface ChatMessage {
 
 export interface ChatThread {
   id: string;
+  serverId?: number; // id of the owning server-side chat row (if persisted)
   title: string;
   createdAt: number;
   updatedAt: number;

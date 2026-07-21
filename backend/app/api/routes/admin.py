@@ -659,12 +659,22 @@ def model_health(admin: User = Depends(_admin)) -> dict:
     gemini_ok = any(x["key"] == "gemini" and x["status"] == "ok" for x in services)
     local_ok = any(x["key"] == "local_llm" and x["status"] == "ok" for x in services)
     active = "gemini" if gemini_ok else ("local" if local_ok else "none")
+    alert = None
+    try:
+        import redis as _redis, json as _json
+        _rc = _redis.from_url(settings.redis_url)
+        _raw = _rc.get("bt:alert:gemini")
+        if _raw:
+            alert = _json.loads(_raw)
+    except Exception:
+        alert = None
     return {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "services": services,
         "active_generation": active,
         "all_healthy": all(x["status"] == "ok" for x in services),
         "any_down": any(x["status"] == "down" for x in services),
+        "alert": alert,
     }
 
 

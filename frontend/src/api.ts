@@ -35,6 +35,25 @@ export interface AnswerResponse {
   meta: Record<string, unknown>;
   latency_ms: number | null;
 }
+export interface ServerChat {
+  id: number;
+  title: string;
+  archived: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  message_count: number | null;
+}
+export interface ServerChatMessage {
+  id: number;
+  role: string;
+  content: string;
+  citations: Citation[];
+  meta: Record<string, unknown>;
+  created_at: string | null;
+}
+export interface ServerChatFull extends ServerChat {
+  messages: ServerChatMessage[];
+}
 export interface TokenResponse {
   access_token: string;
   token_type: string;
@@ -481,6 +500,13 @@ export interface AdminModelHealth {
   active_generation: "gemini" | "local" | "none";
   all_healthy: boolean;
   any_down: boolean;
+  alert?: {
+    level: string;
+    code: string;
+    message: string;
+    spend_24h_tokens?: number;
+    at?: string;
+  } | null;
 }
 
 export interface AdminServer {
@@ -561,7 +587,7 @@ export const api = {
   updateProfile: (b: ProfileUpdate) =>
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
-  me: () => req<{ id: number; username: string; role: string; designation: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
+  me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
 
   // --- license activation (gates the chat for non-admin users) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),
@@ -570,8 +596,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ key }),
     }),
-  ask: (question: string, domain?: string, style?: string) =>
-    req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style }) }),
+  ask: (question: string, domain?: string, style?: string, chat_id?: number) =>
+    req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style, chat_id }) }),
+  // Server-owned chat conversations (per-user isolated).
+  chatList: () => req<ServerChat[]>("/chats"),
+  chatCreate: (title?: string) =>
+    req<ServerChat>("/chats", { method: "POST", body: JSON.stringify({ title }) }),
+  chatGet: (id: number) => req<ServerChatFull>(`/chats/${id}`),
+  chatPatch: (id: number, b: { title?: string; archived?: boolean }) =>
+    req<ServerChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
+  chatDelete: (id: number) => req<void>(`/chats/${id}`, { method: "DELETE" }),
   feedback: (b: { question?: string; answer?: string; rating?: string; correction?: string }) =>
     req<{ ok: boolean }>("/assist/feedback", { method: "POST", body: JSON.stringify(b) }),
   rate: (b: { target_type: "appeal" | "chat"; target_id?: string | number; stars: number; question?: string; answer?: string; comment?: string }) =>
