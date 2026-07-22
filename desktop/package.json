@@ -1,7 +1,7 @@
 {
   "name": "bharattax-appeal-desktop",
   "productName": "BharatTax Appeal Order",
-  "version": "1.0.0",
+  "version": "1.0.11",
   "description": "Desktop app that drafts CIT(A) / NFAC appeal orders via the BharatTax server.",
   "main": "dist-electron/main.js",
   "author": "BharatTax",
@@ -13,12 +13,13 @@
     "dev:electron": "wait-on tcp:5173 && tsc -p electron && electron .",
     "build": "npm run build:renderer && npm run build:main",
     "build:renderer": "vite build",
-    "build:main": "tsc -p electron",
+    "build:main": "node scripts/write-build-config.js && tsc -p electron",
     "dist": "npm run build && electron-builder --win",
     "dist:portable": "npm run build && electron-builder --win portable"
   },
   "dependencies": {
-    "electron-store": "^8.2.0"
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.1.7"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -64,6 +65,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "BharatTax Appeal Order"
-    }
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://bharattax.wenvia.global/api/desktop/update/",
+        "channel": "latest",
+        "useMultipleRangeRequest": false
+      }
+    ]
   }
 }

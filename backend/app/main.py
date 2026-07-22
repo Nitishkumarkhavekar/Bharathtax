@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
-from app.api.routes import appeal_oo, crossref
+from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin
 from app.core.config import settings
 from app.core.db import Base, engine
 from app.core.logging import configure_logging, get_logger
@@ -103,6 +103,14 @@ app.include_router(crossref.router, dependencies=[Depends(require_feature("rulin
 app.include_router(assist.router)
 app.include_router(ratings.router)
 app.include_router(billing.router)
+# Auto-update feed for the packaged desktop app. Unauthenticated on purpose —
+# electron-updater cannot carry a JWT and the artefacts already live behind
+# a signed URL layer with a whitelist by suffix.
+app.include_router(desktop_update.router)
+# Public listing (used by the landing-page /releases section).
+app.include_router(desktop_update.public_router)
+# Admin CRUD for uploading / publishing / deleting desktop releases.
+app.include_router(desktop_admin.router)
 
 
 @app.get("/health", tags=["meta"])

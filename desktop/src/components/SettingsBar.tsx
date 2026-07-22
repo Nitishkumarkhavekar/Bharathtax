@@ -1,29 +1,14 @@
-import { useEffect, useState } from "react";
-import { getServerUrl, setServerUrl } from "../api";
-
 interface Props {
   username: string | null;
   onSignOut?: () => void;
 }
 
-// Slim top bar: brand, current server URL (click to edit), user + sign-out.
+// Slim top bar: brand on the left, signed-in user + sign-out on the right.
+// The server URL is intentionally NOT surfaced anywhere — it is baked into
+// the build at package time (see electron/build-config.ts) and migrated
+// silently on upgrade (see electron/main.ts).  Officers should never need
+// to see or think about it.
 export default function SettingsBar({ username, onSignOut }: Props) {
-  const [serverUrl, setUrl] = useState<string>("");
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-
-  useEffect(() => {
-    getServerUrl().then(setUrl);
-  }, []);
-
-  const save = async () => {
-    const clean = draft.trim().replace(/\/+$/, "");
-    if (!clean) return;
-    await setServerUrl(clean);
-    setUrl(clean);
-    setEditing(false);
-  };
-
   return (
     <header className="flex items-center gap-4 px-6 h-14 border-b border-slate-200 bg-white/70 backdrop-blur">
       <div className="flex items-center gap-2 font-semibold text-slate-800">
@@ -44,49 +29,9 @@ export default function SettingsBar({ username, onSignOut }: Props) {
 
       <div className="flex-1" />
 
-      <div className="text-xs text-slate-500 flex items-center gap-2">
-        {editing ? (
-          <>
-            <input
-              className="border border-slate-300 rounded px-2 py-1 text-sm w-72"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="https://api.example.com"
-              autoFocus
-            />
-            <button
-              onClick={save}
-              className="text-brand-600 hover:text-brand-700 font-medium"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => setEditing(false)}
-              className="text-slate-500 hover:text-slate-700"
-            >
-              Cancel
-            </button>
-          </>
-        ) : (
-          <>
-            <span className="text-slate-400">Server:</span>
-            <button
-              className="text-slate-700 hover:text-brand-600 underline decoration-dotted"
-              onClick={() => {
-                setDraft(serverUrl);
-                setEditing(true);
-              }}
-              title="Change the BharatTax server URL"
-            >
-              {serverUrl || "(not set)"}
-            </button>
-          </>
-        )}
-      </div>
-
       {username && (
-        <div className="flex items-center gap-3 pl-4 border-l border-slate-200 ml-2">
-          <div className="text-sm">
+        <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+          <div className="text-sm text-right">
             <div className="font-medium text-slate-800">{username}</div>
             <div className="text-xs text-slate-500">Signed in</div>
           </div>

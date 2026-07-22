@@ -5,6 +5,7 @@ import { landingPath, useAuth } from "./auth";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
+import ReleasesLanding from "./pages/Releases";
 import Ask from "./pages/Ask";
 import ProfilePage from "./pages/Profile";
 import Documents from "./pages/Documents";
@@ -24,6 +25,7 @@ import LicenseManagementPage from "./pages/admin/LicenseManagement";
 import TokenUsagePage from "./pages/admin/TokenUsage";
 import AdminPricingPage from "./pages/admin/Pricing";
 import AdminBillingPage from "./pages/admin/Billing";
+import AdminReleasesPage from "./pages/admin/Releases";
 import GeminiPage from "./pages/admin/Gemini";
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
@@ -65,6 +67,7 @@ export default function App() {
       {/* Public landing page — the front door for logged-out visitors;
           signed-in users skip straight to their role's home. */}
       <Route path="/" element={session ? <Navigate to={landing} replace /> : <Landing />} />
+      <Route path="/releases" element={<ReleasesLanding />} />
       <Route path="/login" element={session ? <Navigate to={landing} replace /> : <Login />} />
       <Route path="/register" element={session ? <Navigate to={landing} replace /> : <Register />} />
 
@@ -103,6 +106,7 @@ export default function App() {
         <Route path="gemini" element={<GeminiPage />} />
         <Route path="pricing" element={<AdminPricingPage />} />
         <Route path="billing" element={<AdminBillingPage />} />
+        <Route path="releases" element={<AdminReleasesPage />} />
         <Route
           path="revenue"
           element={

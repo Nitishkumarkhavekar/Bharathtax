@@ -4,3 +4,8 @@ dist-electron
 release
 *.log
 .DS_Store
+
+# Overwritten every build by scripts/write-build-config.js from
+# BHARATTAX_SERVER_URL. Committed as a stub so a fresh checkout still
+# compiles; ignored so the build-time URL never ends up in git.
+electron/build-config.ts
