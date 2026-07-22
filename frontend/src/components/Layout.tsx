@@ -98,7 +98,11 @@ function SidebarBody({
       (!n.roles || (session && n.roles.includes(session.role))) &&
       (!n.feature || isAdmin || !feats || feats.includes(n.feature)),
   );
-  const firstLetter = (session?.username || "?").slice(0, 1).toUpperCase();
+  // Prefer the human-facing full name over the login handle so the sidebar
+  // and greeting agree ("Hello, Avinash" vs. an initial from "ceo").  Fall
+  // back to the username when full_name isn't set on the user record.
+  const displayName = session?.fullName?.trim() || session?.username || "";
+  const firstLetter = (displayName || "?").slice(0, 1).toUpperCase();
   return (
     <>
       {/* Aurora accents in the light sidebar */}
@@ -201,7 +205,7 @@ function SidebarBody({
         {!collapsed && <SeatWidget />}
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
-            <div className="relative" title={session?.username}>
+            <div className="relative" title={displayName}>
               <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
               <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
                 {firstLetter}
@@ -225,8 +229,11 @@ function SidebarBody({
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold truncate text-slate-900">
-                {session?.username}
+              <div
+                className="text-[13px] font-semibold truncate text-slate-900"
+                title={session?.username && displayName !== session.username ? `@${session.username}` : undefined}
+              >
+                {displayName}
               </div>
               <div className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-slate-500 capitalize">
                 <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />

@@ -220,6 +220,9 @@ export interface AppealCase {
   pan: string | null;
   section: string | null;
   status: string;
+  documents?: AppealDocument[];
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface AppealDocument {
@@ -227,6 +230,7 @@ export interface AppealDocument {
   filename: string;
   category: string;
   pages: number;
+  size_bytes?: number | null;
 }
 
 export interface AppealRun {
@@ -254,6 +258,13 @@ export interface AppealLatest {
   run: AppealRun | null;
   outputs: AppealOutput[];
   findings: AppealOutput[];
+}
+
+export interface DraftVersion {
+  id: number;
+  version: number;
+  edited: boolean;
+  content: string;
 }
 
 export const api = {
@@ -285,6 +296,22 @@ export const api = {
       body: JSON.stringify(b),
     }),
 
+  listCases: () => request<AppealCase[]>("/appeal/cases"),
+
+  getCase: (slug: string) => request<AppealCase>(`/appeal/cases/${slug}`),
+
+  patchCase: (
+    slug: string,
+    b: { title?: string; assessment_year?: string | null; pan?: string | null; section?: string | null },
+  ) =>
+    request<AppealCase>(`/appeal/cases/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify(b),
+    }),
+
+  deleteCase: (slug: string) =>
+    request<void>(`/appeal/cases/${slug}`, { method: "DELETE" }),
+
   uploadDocuments: (slug: string, files: Array<{ name: string; bytes: ArrayBuffer }>) => {
     const fd = new FormData();
     for (const f of files) {
@@ -296,10 +323,66 @@ export const api = {
     );
   },
 
+  updateDocCategory: (slug: string, did: number, category: string) =>
+    request<AppealDocument>(`/appeal/cases/${slug}/documents/${did}`, {
+      method: "PUT",
+      body: JSON.stringify({ category }),
+    }),
+
+  deleteDoc: (slug: string, did: number) =>
+    request<{ deleted_id: number; filename: string }>(
+      `/appeal/cases/${slug}/documents/${did}`,
+      { method: "DELETE" },
+    ),
+
+  downloadDoc: (slug: string, did: number) =>
+    requestBlob(`/appeal/cases/${slug}/documents/${did}/file`),
+
   startRun: (slug: string) =>
     request<AppealRun>(`/appeal/cases/${slug}/run`, { method: "POST" }),
 
+  stopCase: (slug: string) =>
+    request<{ status: string }>(`/appeal/cases/${slug}/stop`, { method: "POST" }),
+
   latest: (slug: string) => request<AppealLatest>(`/appeal/cases/${slug}/latest`),
 
+  reassemble: (slug: string) =>
+    request<AppealOutput>(`/appeal/cases/${slug}/reassemble`, { method: "POST" }),
+
+  instructDraft: (
+    slug: string,
+    instruction: string,
+    opts?: { selection?: string | null; base_version?: number | null },
+  ) =>
+    request<{
+      id: number; version: number; edited: boolean;
+      instruction: string; scope?: string; chars: number;
+      content?: string;
+      change_start?: number | null; change_end?: number | null;
+    }>(`/appeal/cases/${slug}/draft/instruct`, {
+      method: "POST",
+      body: JSON.stringify({
+        instruction,
+        selection: opts?.selection ?? null,
+        base_version: opts?.base_version ?? null,
+      }),
+    }),
+
+  draftVersions: (slug: string) =>
+    request<DraftVersion[]>(`/appeal/cases/${slug}/draft-versions`),
+
   exportDocx: (slug: string) => requestBlob(`/appeal/cases/${slug}/export.docx`),
+
+  // Fetch the LibreOffice-rendered PDF preview of the latest draft.  Returns
+  // an ArrayBuffer the caller wraps in a Blob + object URL for an <iframe>.
+  previewPdf: (slug: string) => requestBlob(`/appeal/cases/${slug}/preview.pdf`),
+
+  uploadEditedDraft: (slug: string, bytes: ArrayBuffer, filename: string) => {
+    const fd = new FormData();
+    fd.append("docx", new Blob([bytes]), filename);
+    return request<{ id: number; version: number; size: number; edited: boolean }>(
+      `/appeal/cases/${slug}/draft/upload`,
+      { method: "POST", body: fd },
+    );
+  },
 };

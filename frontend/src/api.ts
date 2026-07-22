@@ -573,6 +573,42 @@ export class ApiError extends Error {
   }
 }
 
+// Public shape returned by GET /desktop/releases (landing-page consumer).
+export interface PublicRelease {
+  version: string;
+  channel: string;
+  notes: string | null;
+  is_current: boolean;
+  installer_size: number | null;
+  portable_size: number | null;
+  installer_download_url: string | null;
+  portable_download_url: string | null;
+  installer_filename: string | null;
+  portable_filename: string | null;
+  released_at: string | null;
+}
+export interface PublicReleaseCatalogue {
+  current: PublicRelease | null;
+  releases: PublicRelease[];
+}
+
+// Admin CRUD shape (private).
+export interface DesktopRelease {
+  id: number;
+  version: string;
+  channel: string;
+  notes: string | null;
+  installer_key: string | null;
+  portable_key: string | null;
+  blockmap_key: string | null;
+  installer_size: number | null;
+  portable_size: number | null;
+  installer_sha512: string | null;
+  is_current: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     req<TokenResponse>("/auth/login", {
@@ -832,4 +868,35 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, "Open failed");
     window.open(URL.createObjectURL(await res.blob()), "_blank");
   },
+
+  // ----- Public releases catalogue (landing page) -----
+  publicReleases: () => req<PublicReleaseCatalogue>("/desktop/releases"),
+
+  // ----- Desktop release management (admin) -----
+  adminListReleases: () => req<DesktopRelease[]>("/admin/desktop-releases"),
+  async adminCreateRelease(input: {
+    version: string;
+    channel?: string;
+    notes?: string;
+    publish?: boolean;
+    installer: File;
+    portable?: File | null;
+    blockmap?: File | null;
+  }): Promise<DesktopRelease> {
+    const fd = new FormData();
+    fd.append("version", input.version);
+    if (input.channel) fd.append("channel", input.channel);
+    if (input.notes) fd.append("notes", input.notes);
+    fd.append("publish", input.publish === false ? "false" : "true");
+    fd.append("installer", input.installer);
+    if (input.portable) fd.append("portable", input.portable);
+    if (input.blockmap) fd.append("blockmap", input.blockmap);
+    return req<DesktopRelease>("/admin/desktop-releases", { method: "POST", body: fd });
+  },
+  adminPatchRelease: (id: number, body: { notes?: string | null; channel?: string | null }) =>
+    req<DesktopRelease>(`/admin/desktop-releases/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminPublishRelease: (id: number) =>
+    req<DesktopRelease>(`/admin/desktop-releases/${id}/publish`, { method: "POST" }),
+  adminDeleteRelease: (id: number) =>
+    req<void>(`/admin/desktop-releases/${id}`, { method: "DELETE" }),
 };

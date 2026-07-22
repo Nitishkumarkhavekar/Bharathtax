@@ -919,6 +919,70 @@ def _latest_draft_for_case(db: Session, cid: int) -> AppealOutput | None:
     )
 
 
+@router.post("/cases/{cid}/draft/upload")
+async def upload_edited_draft(
+    cid: str,
+    docx: UploadFile = File(...),
+    p: Principal = Depends(get_principal),
+    _quota: Principal = Depends(require_quota),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Accept an edited .docx and persist it as the new current draft version.
+
+    Used by the desktop app's "Open in Word" flow: officer opens the draft
+    locally, edits it in Word, and the desktop app POSTs the saved file back
+    here on every save.  We keep the raw docx blob (so subsequent Downloads
+    hand back the officer's formatting verbatim) and also extract a plain-
+    text snapshot into `content` for the markdown-based flows (instruct
+    edits, PDF preview from markdown when no blob).
+    """
+    from app.api.routes.appeal_oo import _extract_text as _docx_to_text
+
+    case = _get_case(db, p.user, cid)
+    run = _latest_run(db, case.id)
+    if not run:
+        raise HTTPException(400, "Run the pipeline first — no draft to replace")
+
+    raw = await docx.read()
+    if not raw:
+        raise HTTPException(400, "Empty upload")
+    # Cheap sanity check — .docx files are always zip archives ("PK\x03\x04").
+    if raw[:2] != b"PK":
+        raise HTTPException(400, "Uploaded file is not a valid .docx")
+
+    text = _docx_to_text(raw) or ""
+
+    prev = db.scalar(
+        select(AppealOutput)
+        .where(AppealOutput.run_id == run.id, AppealOutput.kind == "draft")
+        .order_by(desc(AppealOutput.version))
+        .limit(1)
+    )
+    ver = (prev.version if prev else 0) + 1
+
+    new_row = AppealOutput(
+        run_id=run.id,
+        kind="draft",
+        content=text,
+        docx_blob=raw,
+        version=ver,
+        edited=True,
+    )
+    db.add(new_row); db.commit(); db.refresh(new_row)
+
+    audit.log_event(
+        db, action="appeal.draft.upload",
+        user_id=p.user.id, wing_id=p.user.wing_id,
+        resource_type="appeal_output", resource_id=str(new_row.id),
+    )
+    return {
+        "id": new_row.id,
+        "version": new_row.version,
+        "size": len(raw),
+        "edited": True,
+    }
+
+
 @router.get("/cases/{cid}/preview.pdf")
 async def preview_pdf(cid: str, p: Principal = Depends(get_principal),
                       db: Session = Depends(get_db)):

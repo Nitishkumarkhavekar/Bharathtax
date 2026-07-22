@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
-import { api, clearSession, resetSessionState, subscribeSession } from "./api";
+import { api, clearSession, resetSessionState, subscribeSession, type AppealCase } from "./api";
 import LoginScreen from "./screens/LoginScreen";
 import LicenseScreen from "./screens/LicenseScreen";
-import AppealFlow from "./screens/AppealFlow";
+import AppealsList from "./screens/AppealsList";
+import AppealCaseScreen from "./screens/AppealCase";
 import LicenseExpired from "./screens/LicenseExpired";
 import SettingsBar from "./components/SettingsBar";
+import UpdateBanner from "./components/UpdateBanner";
 
 type Stage =
   | { kind: "boot" }
   | { kind: "login" }
   | { kind: "license"; pendingKey: string | null }
-  | { kind: "ready"; username: string; licenseValidUntil: string | null }
+  | { kind: "ready"; username: string; licenseValidUntil: string | null; openCase: AppealCase | null }
   | { kind: "locked"; reason: string; message: string };
 
 export default function App() {
@@ -45,6 +47,7 @@ export default function App() {
             kind: "ready",
             username: me.username,
             licenseValidUntil: lic.valid_until,
+            openCase: null,
           });
         }
       } catch {
@@ -82,10 +85,18 @@ export default function App() {
         kind: "ready",
         username: me.username,
         licenseValidUntil: lic.valid_until,
+        openCase: null,
       });
     } catch {
       setStage({ kind: "login" });
     }
+  };
+
+  const openCase = (c: AppealCase) => {
+    setStage((s) => (s.kind === "ready" ? { ...s, openCase: c } : s));
+  };
+  const closeCase = () => {
+    setStage((s) => (s.kind === "ready" ? { ...s, openCase: null } : s));
   };
 
   const handleSignOut = async () => {
@@ -100,6 +111,7 @@ export default function App() {
         username={stage.kind === "ready" ? stage.username : null}
         onSignOut={stage.kind === "ready" ? handleSignOut : undefined}
       />
+      <UpdateBanner />
 
       <main className="flex-1 flex items-stretch">
         {stage.kind === "boot" && <BootScreen />}
@@ -112,10 +124,14 @@ export default function App() {
           />
         )}
         {stage.kind === "ready" && (
-          <AppealFlow
-            username={stage.username}
-            licenseValidUntil={stage.licenseValidUntil}
-          />
+          stage.openCase ? (
+            <AppealCaseScreen slug={stage.openCase.slug} onBack={closeCase} />
+          ) : (
+            <AppealsList
+              onOpenCase={openCase}
+              licenseValidUntil={stage.licenseValidUntil}
+            />
+          )
         )}
         {stage.kind === "locked" && (
           <LicenseExpired

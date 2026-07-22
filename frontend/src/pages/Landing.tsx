@@ -73,6 +73,7 @@ function Nav() {
           <a href="#features" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Features</a>
           <a href="#how-it-works" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">How it works</a>
           <a href="#pricing" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Pricing</a>
+          <Link to="/releases" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Releases</Link>
           <a href="#faq" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">FAQ</a>
         </nav>
         <div className="ml-auto flex items-center gap-2">
