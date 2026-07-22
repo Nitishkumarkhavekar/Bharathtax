@@ -8,6 +8,7 @@ import time
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, client_meta, get_principal, require_license
@@ -259,3 +260,51 @@ def ask_stream(body: AskRequest, request: Request,
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+class _FollowupsRequest(BaseModel):
+    question: str
+    answer: str
+    domain: str | None = None
+
+
+@router.post("/followups")
+def ask_followups(body: _FollowupsRequest,
+                  p: Principal = Depends(get_principal),
+                  db: Session = Depends(get_db)) -> dict:
+    """Return 3 short, topic-relevant follow-up questions for the last Q&A, so the
+    UI can offer them as one-tap suggestions. Best-effort + cheap (flash-lite);
+    returns [] on any failure so it never blocks the chat."""
+    import os as _os
+    import json as _json
+
+    key = (_os.getenv("GEMINI_API_KEY") or "").strip()
+    if not key or not (body.question or "").strip():
+        return {"suggestions": []}
+    model = _os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-2.5-flash")
+    prompt = (
+        f"A tax officer asked: {body.question}\n"
+        f"The assistant answered: {(body.answer or '')[:1400]}\n\n"
+        "Suggest exactly 3 short, natural follow-up questions the officer would "
+        "likely ask NEXT about this Indian income-tax topic. Each under 12 words, "
+        "specific and useful. Return ONLY a JSON array of 3 strings."
+    )
+    try:
+        r = httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}],
+                  "generationConfig": {"temperature": 0.4, "maxOutputTokens": 200,
+                                       "responseMimeType": "application/json",
+                                       "thinkingConfig": {"thinkingBudget": 0}}},
+            timeout=12.0,
+        )
+        if r.status_code != 200:
+            return {"suggestions": []}
+        txt = "".join(pt.get("text", "") for pt in
+                      ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+        arr = _json.loads(txt)
+        sugg = [str(x).strip() for x in arr if str(x).strip()][:3]
+        return {"suggestions": sugg}
+    except Exception:  # noqa: BLE001
+        return {"suggestions": []}

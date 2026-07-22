@@ -338,6 +338,19 @@ def _render_line(doc, line: str) -> None:
     _apply_body_font(p)
 
 
+def _normalize_asterisks(text: str) -> str:
+    """Clean stray asterisks the LLM sometimes emits (e.g. "****Result:"):
+    collapse runs of 3+ to a pair, and drop unbalanced ** on a line so no raw
+    asterisks render in the order. Balanced **bold** is preserved."""
+    out = []
+    for ln in (text or "").split("\n"):
+        s = re.sub(r"\*{3,}", "**", ln)
+        if len(re.findall(r"\*\*", s)) % 2 != 0:
+            s = s.replace("**", "")
+        out.append(s)
+    return "\n".join(out)
+
+
 def _collapse_lines(draft_text: str) -> list[str]:
     """Group wrapped lines together so a single logical paragraph (which the
     LLM may have wrapped at ~80 chars) renders as one Word paragraph."""
@@ -430,7 +443,7 @@ def build_order_docx(
         r.font.name = BODY_FONT
         r.font.size = Pt(11)
 
-    for block in _collapse_lines(draft_text):
+    for block in _collapse_lines(_normalize_asterisks(draft_text)):
         if not block:
             # Blank separator: a small gap is already provided by space_after
             # on each paragraph — only add an explicit empty paragraph if the

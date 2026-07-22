@@ -105,9 +105,36 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
     return {"error": "unknown tool"}
 
 
+def _recent_history(db: Session, *, chat_id, user_id, limit: int = 6) -> list:
+    """Last few turns of THIS chat, verbatim, so a vague follow-up
+    ('what is the max limit?') always carries its immediate context."""
+    if chat_id is None:
+        return []
+    try:
+        from app.models.chat import ChatMessage
+        rows = db.execute(
+            select(ChatMessage.role, ChatMessage.content)
+            .where(ChatMessage.chat_id == chat_id, ChatMessage.user_id == user_id)
+            .order_by(ChatMessage.id.desc()).limit(limit)
+        ).all()
+        turns = []
+        for role, content in reversed(rows):
+            if not (content or "").strip():
+                continue
+            g = "model" if role == "assistant" else "user"
+            turns.append({"role": g, "parts": [{"text": content[:2000]}]})
+        # Gemini requires the first turn to be role=user.
+        while turns and turns[0]["role"] == "model":
+            turns.pop(0)
+        return turns
+    except Exception as e:  # noqa: BLE001
+        log.warning("history load failed: %s", e)
+        return []
+
+
 def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, domain=None):
     """Run the tool-calling loop. Returns (text, meta)."""
-    contents = [{"role": "user", "parts": [{"text": question}]}]
+    contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
     tools_used, all_sources, usage_calls = [], [], []
     cfg = {"temperature": 0.2, "maxOutputTokens": 1400, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}

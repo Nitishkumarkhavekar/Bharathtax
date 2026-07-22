@@ -70,7 +70,7 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-6 space-y-5">
+      <div className="w-full px-8 py-6 space-y-5">
         <Hero licenseSuffix={licenseValidUntil} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

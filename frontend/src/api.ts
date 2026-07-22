@@ -634,6 +634,8 @@ export const api = {
     }),
   ask: (question: string, domain?: string, style?: string, chat_id?: number) =>
     req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style, chat_id }) }),
+  askFollowups: (question: string, answer: string, domain?: string) =>
+    req<{ suggestions: string[] }>("/ask/followups", { method: "POST", body: JSON.stringify({ question, answer, domain }) }),
   // Server-owned chat conversations (per-user isolated).
   chatList: () => req<ServerChat[]>("/chats"),
   chatCreate: (title?: string) =>

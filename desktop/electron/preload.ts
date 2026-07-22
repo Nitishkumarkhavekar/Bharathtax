@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld("bharat", {
         saved: boolean;
         path?: string;
       }>,
+    saveFile: (defaultName: string, bytes: ArrayBuffer) =>
+      ipcRenderer.invoke("dialog:saveFile", { defaultName, bytes }) as Promise<{
+        saved: boolean;
+        path?: string;
+      }>,
   },
   app: {
     openLog: () => ipcRenderer.invoke("app:openLog"),
