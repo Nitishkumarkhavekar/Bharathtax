@@ -27,6 +27,10 @@ declare global {
           defaultName: string,
           bytes: ArrayBuffer,
         ) => Promise<{ saved: boolean; path?: string }>;
+        saveFile: (
+          defaultName: string,
+          bytes: ArrayBuffer,
+        ) => Promise<{ saved: boolean; path?: string }>;
       };
       app: {
         openLog: () => Promise<void>;

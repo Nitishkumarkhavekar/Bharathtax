@@ -83,6 +83,7 @@ export default function Chat() {
   // re-opened by clicking them.
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [followups, setFollowups] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [module, setModule] = useState("");
   const [style, setStyle] = useState("explanatory");
@@ -224,10 +225,11 @@ export default function Chat() {
     );
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(override?: string) {
+    const text = (typeof override === "string" ? override : input).trim();
     if (!text || busy) return;
     setError(null);
+    setFollowups([]);
 
     // 1. Ensure we have an active thread; create if not.
     let thread = active;
@@ -285,6 +287,11 @@ export default function Chat() {
         const newCount = thread.messages.length + 2; // user + assistant just added
         setStreamingIdx(newCount - 1);
       }
+      // Topic-relevant follow-up suggestions (best-effort, non-blocking).
+      api
+        .askFollowups(text, res.answer, module || undefined)
+        .then((f) => setFollowups(f.suggestions || []))
+        .catch(() => {});
     } catch (err) {
       const detail = err instanceof ApiError ? err.message : "Request failed";
       // Don't append a fake assistant turn for transport errors — keep the
@@ -380,6 +387,8 @@ export default function Chat() {
             error={error}
             streamingIdx={streamingIdx}
             onStreamingDone={() => setStreamingIdx(null)}
+            followups={followups}
+            onPickFollowup={(q) => { setFollowups([]); send(q); }}
           />
         )}
       </div>
@@ -602,6 +611,8 @@ function ActiveChat(props: {
   error: string | null;
   streamingIdx: number | null;
   onStreamingDone: () => void;
+  followups: string[];
+  onPickFollowup: (q: string) => void;
 }) {
   return (
     <>
@@ -611,6 +622,8 @@ function ActiveChat(props: {
           busy={props.busy}
           streamingIdx={props.streamingIdx}
           onStreamingDone={props.onStreamingDone}
+          followups={props.followups}
+          onPickFollowup={props.onPickFollowup}
         />
       </div>
       <div className={cn("shrink-0 border-t border-slate-200 bg-white/60 backdrop-blur")}>

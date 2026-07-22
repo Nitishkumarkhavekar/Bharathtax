@@ -184,6 +184,34 @@ function registerIpc(): void {
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   });
 
+  // Generic "save any file" dialog — the renderer picks the filename +
+  // extension, we infer a reasonable filter from the extension so the
+  // dialog defaults to the right file type but the user can still switch.
+  ipcMain.handle(
+    "dialog:saveFile",
+    async (_e, args: { defaultName: string; bytes: ArrayBuffer }) => {
+      if (!mainWindow) return { saved: false };
+      const name = args.defaultName || "download";
+      const ext = (name.match(/\.([^./\\]+)$/)?.[1] || "").toLowerCase();
+      const filterName: Record<string, string> = {
+        pdf: "PDF document", docx: "Word document", doc: "Word document",
+        txt: "Text file", html: "HTML file", htm: "HTML file", zip: "Archive",
+      };
+      const filters = ext
+        ? [{ name: filterName[ext] || `${ext.toUpperCase()} file`, extensions: [ext] },
+           { name: "All files", extensions: ["*"] }]
+        : [{ name: "All files", extensions: ["*"] }];
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: "Save file",
+        defaultPath: args.defaultName,
+        filters,
+      });
+      if (result.canceled || !result.filePath) return { saved: false };
+      await fs.promises.writeFile(result.filePath, Buffer.from(args.bytes));
+      return { saved: true, path: result.filePath };
+    },
+  );
+
   // Save-as dialog for the final DOCX. Renderer supplies the bytes; main
   // handles the platform-native dialog + write.
   ipcMain.handle(

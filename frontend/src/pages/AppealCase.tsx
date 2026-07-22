@@ -862,8 +862,13 @@ function structureDraft(md: string): string {
   return (md || "")
     .split("\n")
     .map((ln) => {
-      const m = /^(\d+)\.\s+([A-Z0-9][A-Z0-9 .,&/()'\-]{1,70})\s*$/.exec(ln.trim());
-      return m ? `### ${m[1]}. ${m[2].trim()}` : ln;
+      // Normalise stray asterisks the LLM sometimes emits (e.g. "****Result:"):
+      // collapse runs of 3+ to a pair, and drop unbalanced ** so no raw
+      // asterisks leak into the rendered order.
+      let s = ln.replace(/\*{3,}/g, "**");
+      if (((s.match(/\*\*/g) || []).length) % 2 !== 0) s = s.replace(/\*\*/g, "");
+      const m = /^(\d+)\.\s+([A-Z0-9][A-Z0-9 .,&/()'\-]{1,70})\s*$/.exec(s.trim());
+      return m ? `### ${m[1]}. ${m[2].trim()}` : s;
     })
     .join("\n");
 }

@@ -211,7 +211,7 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-6 space-y-5">
+      <div className="w-full px-8 py-6 space-y-5">
         {/* header */}
         <div className="flex items-start gap-4">
           <button onClick={onBack}
@@ -323,7 +323,12 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
         {/* Per-module outputs — one collapsible section per module so the
             officer can inspect what each stage produced. */}
         {(outputs.length > 0 || findings.length > 0) && (
-          <ModulesPanel outputs={outputs} findings={findings} />
+          <ModulesPanel
+            outputs={outputs}
+            findings={findings}
+            slug={slug}
+            documents={c.documents ?? []}
+          />
         )}
 
         {/* Draft — Preview / Modify with AI / Manual edit */}
@@ -361,8 +366,9 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
 //   4. Issues      → JSON matrix of {issue, grounds, ...}
 //   5. Findings    → many outputs (one per issue), keyed by seq
 //   6. Draft Order → the assembled draft (also shown in the Preview pane)
-function ModulesPanel({ outputs, findings }: {
+function ModulesPanel({ outputs, findings, slug, documents }: {
   outputs: AppealOutput[]; findings: AppealOutput[];
+  slug: string; documents: AppealDocument[];
 }) {
   const get = (kind: string) => outputs.find((o) => o.kind === kind);
 
@@ -371,7 +377,8 @@ function ModulesPanel({ outputs, findings }: {
       <div className="space-y-2">
         <ModuleCard n={1} title="Deficiency Report" out={get("deficiency")} render="markdown" />
         <ModuleCard n={2} title="Scope Validation"  out={get("scope")}      render="markdown" />
-        <ModuleCard n={3} title="Document Compliance" out={get("compliance")} render="json" />
+        <ModuleCard n={3} title="Document Compliance" out={get("compliance")} render="compliance"
+          extra={{ slug, documents }} />
         <ModuleCard n={4} title="Issue Matrix"      out={get("issue_matrix")} render="issues" />
         <FindingsCard findings={findings} />
         <ModuleCard n={6} title="Draft Order"       out={get("draft")}      render="markdown" />
@@ -380,9 +387,10 @@ function ModulesPanel({ outputs, findings }: {
   );
 }
 
-function ModuleCard({ n, title, out, render }: {
+function ModuleCard({ n, title, out, render, extra }: {
   n: number; title: string; out: AppealOutput | undefined;
-  render: "markdown" | "json" | "issues";
+  render: "markdown" | "json" | "issues" | "compliance";
+  extra?: { slug: string; documents: AppealDocument[] };
 }) {
   const [open, setOpen] = useState(false);
   const hasContent = !!out?.content;
@@ -413,9 +421,12 @@ function ModuleCard({ n, title, out, render }: {
       </button>
       {open && hasContent && (
         <div className="px-4 pb-3 pt-1 border-t border-slate-100 bg-slate-50/50 max-h-96 overflow-y-auto">
-          {render === "markdown" && <MarkdownBlock text={out!.content} />}
-          {render === "json"     && <JsonBlock text={out!.content} />}
-          {render === "issues"   && <IssuesBlock text={out!.content} />}
+          {render === "markdown"   && <MarkdownBlock text={out!.content} />}
+          {render === "json"       && <JsonBlock text={out!.content} />}
+          {render === "issues"     && <IssuesBlock text={out!.content} />}
+          {render === "compliance" && extra && (
+            <ComplianceBlock text={out!.content} slug={extra.slug} documents={extra.documents} />
+          )}
         </div>
       )}
     </div>
@@ -472,8 +483,22 @@ function FindingsCard({ findings }: { findings: AppealOutput[] }) {
 // Renders the draft in the "formal legal document" style so Modify-with-AI
 // matches the PDF preview: serif body, justified paragraphs, centered
 // section headings, numbered indents.  Works from markdown OR plain text.
+// Normalise stray asterisks the LLM sometimes emits (e.g. "****Result:"):
+// collapse runs of 3+ to a pair, and drop unbalanced ** per line so no raw
+// asterisks render. Balanced **bold** is preserved.
+function normalizeAsterisks(text: string): string {
+  return (text || "")
+    .split("\n")
+    .map((ln) => {
+      let x = ln.replace(/\*{3,}/g, "**");
+      if (((x.match(/\*\*/g) || []).length) % 2 !== 0) x = x.replace(/\*\*/g, "");
+      return x;
+    })
+    .join("\n");
+}
+
 function DocumentRender({ text }: { text: string }) {
-  const lines = text.split(/\n/);
+  const lines = normalizeAsterisks(text).split(/\n/);
   const out: React.ReactNode[] = [];
   let para: string[] = [];
   let ol: string[] = [];
@@ -509,6 +534,13 @@ function DocumentRender({ text }: { text: string }) {
   lines.forEach((raw, i) => {
     const line = raw.trimEnd();
     if (!line.trim()) { flushPara(`p${i}`); flushOl(`o${i}`); return; }
+    // Strip stray heading markers that carry no text ("###" on its own line).
+    // These appear when Gemini's rewrite leaves a section boundary but no
+    // title — rendering them as literal '###' looks broken.
+    if (/^#{1,6}\s*$/.test(line.trim())) {
+      flushPara(`p${i}`); flushOl(`o${i}`);
+      return;
+    }
 
     // MD heading
     let m: RegExpMatchArray | null;
@@ -574,7 +606,7 @@ function MarkdownBlock({ text }: { text: string }) {
   // Very small markdown renderer — enough for headings, bold, lists,
   // paragraphs and inline code.  We deliberately avoid pulling in a full
   // library to keep the desktop bundle tight.
-  const lines = text.split(/\n/);
+  const lines = normalizeAsterisks(text).split(/\n/);
   const rendered: React.ReactNode[] = [];
   let paragraph: string[] = [];
   let listItems: string[] = [];
@@ -643,6 +675,99 @@ function JsonBlock({ text }: { text: string }) {
     <pre className="text-[12px] font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
       {pretty}
     </pre>
+  );
+}
+
+// Module 3's output is a compliance sheet listing every uploaded document with
+// its detected category, size and extracted-chars.  Officers care about the
+// files, not the raw JSON — so we render a clean per-file list with a
+// download button that maps the filename back to the uploaded document id.
+function ComplianceBlock({ text, slug, documents }: {
+  text: string; slug: string; documents: AppealDocument[];
+}) {
+  let parsed: any = null;
+  try { parsed = JSON.parse(text); } catch { /* fall through */ }
+  const rows: Array<{ filename: string; category?: string; group?: string; pages?: number; extracted_chars?: number }>
+    = (parsed?.compliance_sheet as any[]) || [];
+  if (!rows.length) return <JsonBlock text={text} />;
+
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const byFilename = new Map(documents.map((d) => [d.filename, d]));
+
+  async function download(filename: string) {
+    const d = byFilename.get(filename);
+    if (!d) { setErr(`Original file "${filename}" is no longer attached to this case.`); return; }
+    setBusy(filename); setErr(null);
+    try {
+      const bytes = await api.downloadDoc(slug, d.id);
+      // Save via native dialog with the extension inferred from the filename.
+      await window.bharat.files.saveFile(filename, bytes);
+    } catch (e: any) { setErr(e instanceof ApiError ? e.message : String(e)); }
+    finally { setBusy(null); }
+  }
+
+  // Bucket rows by group so the compliance sheet reads as an organised index.
+  const groups = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const g = r.group || "Other documents";
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(r);
+  }
+
+  return (
+    <div className="space-y-3">
+      {err && (
+        <div className="text-[12px] text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-1.5">
+          {err}
+        </div>
+      )}
+      {[...groups.entries()].map(([group, items]) => (
+        <div key={group} className="rounded-md bg-white ring-1 ring-slate-200">
+          <div className="px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 border-b border-slate-100 bg-slate-50">
+            {group}
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {items.map((r, i) => {
+              const d = byFilename.get(r.filename);
+              const tone = CATEGORY_TONES[r.category || "unclassified"] || CATEGORY_TONES["unclassified"];
+              const isDownloading = busy === r.filename;
+              return (
+                <li key={i} className="px-3 py-2 flex items-center gap-3">
+                  <div className="size-8 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12.5px] text-slate-800 truncate" title={r.filename}>{r.filename}</div>
+                    <div className="text-[10.5px] text-slate-500 mt-0.5 flex items-center gap-2">
+                      {r.category && (
+                        <span className={"inline-flex items-center px-1.5 py-0.5 rounded-full ring-1 text-[9.5px] font-semibold capitalize " + tone}>
+                          {r.category.replace(/_/g, " ")}
+                        </span>
+                      )}
+                      {typeof r.pages === "number" && <span>{r.pages} page{r.pages === 1 ? "" : "s"}</span>}
+                      {typeof r.extracted_chars === "number" && <span>{r.extracted_chars.toLocaleString()} chars extracted</span>}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => download(r.filename)}
+                    disabled={!d || isDownloading}
+                    title={d ? "Download this file" : "File not attached to the case anymore"}
+                    className="h-8 w-8 rounded-md flex items-center justify-center text-slate-500 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isDownloading ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin"><circle cx="12" cy="12" r="10" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1181,6 +1306,10 @@ function ModifyWithAI({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  // Local copy of the draft so a successful rewrite renders instantly on the
+  // sheet, without waiting for the parent's `refresh()` to finish.
+  const [liveText, setLiveText] = useState(draftText);
+  useEffect(() => { setLiveText(draftText); }, [draftText]);
 
   function captureSelection() {
     const sel = window.getSelection();
@@ -1224,8 +1353,10 @@ function ModifyWithAI({
         selection: selText,
         base_version: baseVersion,
       });
-      // Success — clear popover state, flash the version, and ask the parent
-      // to re-fetch outputs so the sheet re-renders with the rewritten text.
+      // Success — clear popover state, flash the version, update the sheet
+      // immediately from the response so the officer sees the change without
+      // waiting for the parent refresh.
+      if (r?.content) setLiveText(r.content);
       setPopover(null);
       setInstruction("");
       setSelText("");
@@ -1271,7 +1402,7 @@ function ModifyWithAI({
         className="draft-page relative mx-auto max-w-[820px] bg-white rounded-md ring-1 ring-slate-200 shadow-md px-10 py-12 sm:px-16 sm:py-16 selection:bg-brand-200/60"
         style={{ minHeight: 720 }}
       >
-        <DocumentRender text={draftText || "(no draft content)"} />
+        <DocumentRender text={liveText || "(no draft content)"} />
       </div>
 
       {/* Floating popover, positioned just above the selection. */}
@@ -1299,15 +1430,28 @@ function ModifyWithAI({
               className="input resize-y"
             />
             {err && <div className="mt-2 text-[11.5px] text-rose-700">{err}</div>}
+            {!err && !instruction.trim() && !busy && (
+              <div className="mt-1.5 text-[11px] text-slate-400">Type an instruction to enable Apply.</div>
+            )}
             <div className="mt-2 flex items-center justify-end gap-1.5">
-              <button onClick={() => { setPopover(null); setInstruction(""); }}
+              <button onClick={() => { setPopover(null); setInstruction(""); setErr(null); }}
                 disabled={busy}
-                className="h-8 px-3 rounded-md text-slate-500 hover:bg-slate-100 text-[12.5px] font-medium">
+                className="h-8 px-3 rounded-md text-slate-500 hover:bg-slate-100 text-[12.5px] font-medium disabled:opacity-60">
                 Cancel
               </button>
               <button onClick={apply} disabled={busy || !instruction.trim()}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-brand-600 text-white text-[12.5px] font-semibold hover:bg-brand-700 disabled:opacity-60">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                className={
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12.5px] font-semibold transition-colors " +
+                  (busy || !instruction.trim()
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    : "bg-brand-600 text-white hover:bg-brand-700")
+                }
+              >
+                {busy ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin"><circle cx="12" cy="12" r="10" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                )}
                 {busy ? "Applying…" : "Apply change"}
               </button>
             </div>

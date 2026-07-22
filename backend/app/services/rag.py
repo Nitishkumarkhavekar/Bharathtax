@@ -261,6 +261,14 @@ _DEFLECTION_HINTS = (
     "the provided passages do not", "provided statutory passages",
     "they do not contain", "if you require", "please provide more",
     "do not have a list", "does not include a list",
+    # "can't answer from the passage / not stated / not specified" family — any
+    # of these means the corpus couldn't actually answer, so fall through to web.
+    "not explicitly stated", "not stated in the", "not specified in",
+    "does not specify", "do not specify", "the passage does not",
+    "the passages do not", "not mentioned in the passage", "not found in the",
+    "provided passage", "provided passages", "the provided text",
+    "unfortunately, the passage", "unfortunately, the provided",
+    "not available in the provided", "is not defined in the", "not detailed in the",
 )
 
 

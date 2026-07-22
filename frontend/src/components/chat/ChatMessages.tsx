@@ -13,6 +13,9 @@ interface ChatMessagesProps {
   // Set when a brand-new reply arrives; clear after the animation completes.
   streamingIdx: number | null;
   onStreamingDone?: () => void;
+  // Topic follow-up suggestions for the latest answer (rendered under it).
+  followups?: string[];
+  onPickFollowup?: (q: string) => void;
 }
 
 export default function ChatMessages({
@@ -20,6 +23,8 @@ export default function ChatMessages({
   busy,
   streamingIdx,
   onStreamingDone,
+  followups,
+  onPickFollowup,
 }: ChatMessagesProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -38,6 +43,20 @@ export default function ChatMessages({
         />
       ))}
       {busy && <ThinkingBubble />}
+      {!busy && onPickFollowup && followups && followups.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 sm:pl-11">
+          {followups.map((q, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onPickFollowup(q)}
+              className="inline-flex items-center gap-1 text-[12.5px] text-slate-600 bg-white ring-1 ring-slate-200 rounded-full px-3 py-1.5 hover:ring-primary/40 hover:text-primary transition-colors text-left animate-fade-up"
+            >
+              <span className="text-primary font-semibold">+</span> {q}
+            </button>
+          ))}
+        </div>
+      )}
       <div ref={endRef} />
     </div>
   );
