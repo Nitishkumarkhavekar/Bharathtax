@@ -18,7 +18,6 @@ import {
   Plus,
   Minus,
   Quote,
-  Github,
   Mail,
   Search,
   Layers,
@@ -969,11 +968,9 @@ function Footer() {
             <li className="flex items-center gap-2">
               <Mail className="size-4 text-slate-400" />
               hello@bharathtax.com
+              
             </li>
-            <li className="flex items-center gap-2">
-              <Github className="size-4 text-slate-400" />
-              github.com/bharathtax
-            </li>
+            
             <li className="flex items-center gap-2">
               <Clock className="size-4 text-slate-400" />
               Replies within 1 working day
