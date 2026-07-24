@@ -222,11 +222,11 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{c.title}</h1>
-              <span className={"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold capitalize " + status.tone}>
+              <span className={"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12px] font-semibold capitalize " + status.tone}>
                 <span className="size-1.5 rounded-full bg-current" /> {status.label}
               </span>
             </div>
-            <div className="text-[13px] text-slate-500 mt-1">
+            <div className="text-[14.5px] text-slate-500 mt-1">
               AY {c.assessment_year || "—"} · PAN {c.pan || "—"} · s.{c.section || "—"}
             </div>
           </div>
@@ -235,12 +235,19 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
         {flash && <FlashBanner tone="ok" msg={flash} />}
         {err && <FlashBanner tone="err" msg={err} onDismiss={() => setErr(null)} />}
 
-        {/* Documents */}
+        {/* Documents — collapsible, defaults to open on first paint but the
+            officer can hide it after the pipeline has run so the pipeline
+            + draft workspace is easier to reach. */}
         <Section
           title="Documents"
+          collapsible
+          defaultOpen
+          subtitle={c.documents && c.documents.length > 0
+            ? `· ${c.documents.length} file${c.documents.length === 1 ? "" : "s"}`
+            : undefined}
           right={
             <button onClick={onUpload} disabled={busy === "upload"}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[13px] hover:bg-brand-700 disabled:opacity-60">
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[14.5px] hover:bg-brand-700 disabled:opacity-60">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
               {busy === "upload" ? "Uploading…" : "Upload case files"}
             </button>
@@ -288,7 +295,7 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
                       <span className="text-xs font-semibold">{m.key}</span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-600 mt-1.5 leading-tight">{m.key}. {m.label}</div>
+                  <div className="text-[12.5px] text-slate-600 mt-1.5 leading-tight">{m.key}. {m.label}</div>
                 </div>
               );
             })}
@@ -301,19 +308,19 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
           <div className="mt-4 flex flex-wrap gap-2">
             {(!run || !["queued", "running"].includes(run.status)) && (
               <button onClick={onRun} disabled={busy === "run" || !c.documents?.length}
-                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[13px] hover:bg-brand-700 disabled:opacity-60">
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[14.5px] hover:bg-brand-700 disabled:opacity-60">
                 {busy === "run" ? "Starting…" : run?.status === "done" ? "Re-run pipeline" : "Run pipeline"}
               </button>
             )}
             {run && ["queued", "running"].includes(run.status) && (
               <button onClick={onStop} disabled={busy === "stop"}
-                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-rose-600 text-white font-semibold text-[13px] hover:bg-rose-700 disabled:opacity-60">
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-rose-600 text-white font-semibold text-[14.5px] hover:bg-rose-700 disabled:opacity-60">
                 {busy === "stop" ? "Stopping…" : "Stop"}
               </button>
             )}
             {run?.status === "done" && (
               <button onClick={onReassemble} disabled={busy === "reassemble"}
-                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-white ring-1 ring-slate-200 text-slate-700 font-medium text-[13px] hover:bg-slate-50 disabled:opacity-60">
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-white ring-1 ring-slate-200 text-slate-700 font-medium text-[14.5px] hover:bg-slate-50 disabled:opacity-60">
                 {busy === "reassemble" ? "Reassembling…" : "Reassemble draft"}
               </button>
             )}
@@ -347,7 +354,7 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
           />
         )}
 
-        <div className="text-[11px] text-slate-400 text-center pb-2">
+        <div className="text-[12.5px] text-slate-400 text-center pb-2">
           Case slug: <span className="font-mono">{c.slug}</span>
         </div>
       </div>
@@ -410,8 +417,8 @@ function ModuleCard({ n, title, out, render, extra }: {
           ) : n}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-semibold text-slate-900">Module {n} — {title}</div>
-          <div className="text-[11.5px] text-slate-500">
+          <div className="text-[14.5px] font-semibold text-slate-900">Module {n} — {title}</div>
+          <div className="text-[13px] text-slate-500">
             {hasContent ? `ready · ${out!.content.length.toLocaleString()} chars${out!.edited ? " · edited" : ""}` : "not yet produced"}
           </div>
         </div>
@@ -452,8 +459,8 @@ function FindingsCard({ findings }: { findings: AppealOutput[] }) {
           ) : 5}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-semibold text-slate-900">Module 5 — Issue-wise Findings</div>
-          <div className="text-[11.5px] text-slate-500">
+          <div className="text-[14.5px] font-semibold text-slate-900">Module 5 — Issue-wise Findings</div>
+          <div className="text-[13px] text-slate-500">
             {ready ? `${findings.length} finding${findings.length > 1 ? "s" : ""} drafted` : "not yet produced"}
           </div>
         </div>
@@ -465,7 +472,7 @@ function FindingsCard({ findings }: { findings: AppealOutput[] }) {
         <div className="px-4 pb-3 pt-1 border-t border-slate-100 bg-slate-50/50 max-h-[500px] overflow-y-auto space-y-3">
           {findings.map((f) => (
             <div key={f.id} className="rounded-md bg-white ring-1 ring-slate-200 p-3">
-              <div className="text-[12px] font-semibold text-slate-800 mb-1">
+              <div className="text-[13.5px] font-semibold text-slate-800 mb-1">
                 {typeof f.seq === "number" ? `Issue ${f.seq + 1}` : "Issue"}
                 {f.label && <span className="ml-2 font-normal text-slate-500">— {f.label}</span>}
               </div>
@@ -498,15 +505,24 @@ function normalizeAsterisks(text: string): string {
 }
 
 function DocumentRender({ text }: { text: string }) {
+  // Matches the LibreOffice → PDF preview so Modify-with-AI reads identically
+  // to Preview: italic Times New Roman body, centred bold headings for the
+  // very top block and for ALL-CAPS numbered sections, tab-indented numbered
+  // items with bold-italic markers, generous line-height and 1-inch-ish
+  // margins on a paper-white sheet.
   const lines = normalizeAsterisks(text).split(/\n/);
   const out: React.ReactNode[] = [];
   let para: string[] = [];
   let ol: string[] = [];
+  // Track whether we're still in the top "cover" block (before the first
+  // numbered heading) so we can centre those title lines the way LibreOffice
+  // does with the leading bold/underlined party header.
+  let inCoverBlock = true;
 
   const flushPara = (key: string) => {
     if (!para.length) return;
     out.push(
-      <p key={key} className="text-[13.5px] leading-[1.85] text-slate-800 text-justify indent-0 mb-3">
+      <p key={key} className="text-[15px] leading-[1.9] text-slate-900 text-justify indent-0 mb-4 italic">
         {inlineFormal(para.join(" "))}
       </p>,
     );
@@ -515,8 +531,13 @@ function DocumentRender({ text }: { text: string }) {
   const flushOl = (key: string) => {
     if (!ol.length) return;
     out.push(
-      <ol key={key} className="list-decimal pl-6 mb-3 text-[13.5px] leading-[1.85] text-slate-800 space-y-1.5 text-justify">
-        {ol.map((li, i) => <li key={i}>{inlineFormal(li)}</li>)}
+      <ol key={key} className="mb-4 space-y-3 list-none pl-0">
+        {ol.map((li, i) => (
+          <li key={i} className="grid grid-cols-[3rem_1fr] gap-2 text-[15px] leading-[1.9] text-slate-900 text-justify">
+            <span className="font-bold italic text-right pr-2">{i + 1}.</span>
+            <span className="italic">{inlineFormal(li)}</span>
+          </li>
+        ))}
       </ol>,
     );
     ol = [];
@@ -526,56 +547,83 @@ function DocumentRender({ text }: { text: string }) {
   //   markdown `## Heading`, `### Heading`
   //   ALL-CAPS bold `**1. INTRODUCTION**`
   //   plain ALL-CAPS numbered `1. INTRODUCTION`
+  //   bold-wrapped title `**DRAFT APPELLATE ORDER**`
   const H_MD    = /^(#{1,4})\s+(.+?)\s*$/;
   const H_CAPS  = /^\s*(?:\*\*)?\s*(\d{1,2})\.\s+([A-Z][A-Z0-9 &/()\-–—.,]{2,})\s*(?:\*\*)?\s*$/;
   const OL_ITEM = /^\s*(\d{1,2})\.\s+(.+)$/;                 // numbered lists inside a section
   const UL_ITEM = /^\s*[-*]\s+(.+)$/;
+  // A short line that is entirely bold + wrapped in ** ... ** — used for the
+  // "DRAFT APPELLATE ORDER" and "RAJU (PAN:…) A.Y. …" cover heading.
+  const H_BOLD  = /^\s*\*\*(.+?)\*\*\s*$/;
 
   lines.forEach((raw, i) => {
     const line = raw.trimEnd();
-    if (!line.trim()) { flushPara(`p${i}`); flushOl(`o${i}`); return; }
-    // Strip stray heading markers that carry no text ("###" on its own line).
-    // These appear when Gemini's rewrite leaves a section boundary but no
-    // title — rendering them as literal '###' looks broken.
+    if (!line.trim()) {
+      flushPara(`p${i}`);
+      return;
+    }
     if (/^#{1,6}\s*$/.test(line.trim())) {
       flushPara(`p${i}`); flushOl(`o${i}`);
       return;
     }
 
-    // MD heading
+    // MD heading — centred + bold on the top two levels, matching PDF.
     let m: RegExpMatchArray | null;
     if ((m = line.match(H_MD))) {
       flushPara(`p${i}`); flushOl(`o${i}`);
       const level = m[1].length;
       const cls =
         level <= 2
-          ? "text-[16px] font-bold tracking-wide text-slate-900 text-center mt-6 mb-3 uppercase"
-          : "text-[14px] font-bold text-slate-900 mt-4 mb-2";
+          ? "text-[17px] font-bold text-slate-900 text-center mt-6 mb-4 tracking-wide"
+          : "text-[15.5px] font-bold italic text-slate-900 mt-4 mb-2";
       out.push(<div key={`h${i}`} className={cls}>{inlineFormal(m[2])}</div>);
+      inCoverBlock = false;
       return;
     }
-    // ALL-CAPS numbered heading (Indian legal-doc style)
+
+    // ALL-CAPS numbered heading (e.g. "2. GROUNDS OF APPEAL") — centred bold
+    // to match the PDF.
     if ((m = line.match(H_CAPS))) {
       flushPara(`p${i}`); flushOl(`o${i}`);
       out.push(
-        <div key={`c${i}`} className="text-[14px] font-bold tracking-wide text-slate-900 mt-5 mb-2 uppercase">
+        <div key={`c${i}`} className="text-[16px] font-bold text-slate-900 text-center mt-6 mb-4 tracking-wide">
           {m[1]}. {inlineFormal(m[2])}
+        </div>,
+      );
+      inCoverBlock = false;
+      return;
+    }
+
+    // Bold-wrapped standalone title ("**DRAFT APPELLATE ORDER**",
+    // "**RAJU (PAN:…) A.Y. …**") — centred, larger, bold.  Only fires while
+    // we're still in the cover block so a stray inline **bold** in the middle
+    // of a paragraph doesn't get promoted.
+    if (inCoverBlock && (m = line.match(H_BOLD)) && m[1].length < 90) {
+      flushPara(`p${i}`); flushOl(`o${i}`);
+      out.push(
+        <div key={`b${i}`} className="text-[16.5px] font-bold text-slate-900 text-center mt-4 mb-3 tracking-wide underline underline-offset-4 decoration-1">
+          {m[1]}
         </div>,
       );
       return;
     }
-    // Numbered list item (kick in when NOT the very first sentence of a section)
+
+    // Numbered list item.
     if ((m = line.match(OL_ITEM))) {
       flushPara(`p${i}`);
       ol.push(m[2]);
+      inCoverBlock = false;
       return;
     }
-    // Bullet list item
+    // Bullet list item.
     if ((m = line.match(UL_ITEM))) {
       flushPara(`p${i}`); flushOl(`o${i}`);
-      out.push(<div key={`u${i}`} className="text-[13.5px] leading-[1.85] text-slate-800 pl-6 relative text-justify mb-1">
-        <span className="absolute left-2">•</span> {inlineFormal(m[1])}
-      </div>);
+      out.push(
+        <div key={`u${i}`} className="text-[15px] leading-[1.9] text-slate-900 pl-6 relative text-justify mb-1 italic">
+          <span className="absolute left-2">•</span> {inlineFormal(m[1])}
+        </div>,
+      );
+      inCoverBlock = false;
       return;
     }
     flushOl(`o${i}`);
@@ -594,7 +642,7 @@ function inlineFormal(s: string): React.ReactNode[] {
     if (m.index > last) parts.push(s.slice(last, m.index));
     const t = m[0];
     if (t.startsWith("**")) parts.push(<b key={i++}>{t.slice(2, -2)}</b>);
-    else if (t.startsWith("`")) parts.push(<code key={i++} className="px-1 py-0.5 rounded bg-slate-100 text-[12px] font-mono">{t.slice(1, -1)}</code>);
+    else if (t.startsWith("`")) parts.push(<code key={i++} className="px-1 py-0.5 rounded bg-slate-100 text-[13.5px] font-mono">{t.slice(1, -1)}</code>);
     else parts.push(<sup key={i++} className="text-brand-700 font-medium">{t.replace(/[\[\]]/g, "")}</sup>);
     last = m.index + t.length;
   }
@@ -613,13 +661,13 @@ function MarkdownBlock({ text }: { text: string }) {
 
   const flushParagraph = (key: string) => {
     if (paragraph.length) {
-      rendered.push(<p key={key} className="text-[13px] text-slate-700 leading-relaxed mb-2">{inline(paragraph.join(" "))}</p>);
+      rendered.push(<p key={key} className="text-[14.5px] text-slate-700 leading-relaxed mb-2">{inline(paragraph.join(" "))}</p>);
       paragraph = [];
     }
   };
   const flushList = (key: string) => {
     if (listItems.length) {
-      rendered.push(<ul key={key} className="list-disc pl-5 mb-2 text-[13px] text-slate-700 space-y-0.5">
+      rendered.push(<ul key={key} className="list-disc pl-5 mb-2 text-[14.5px] text-slate-700 space-y-0.5">
         {listItems.map((li, i) => <li key={i}>{inline(li)}</li>)}
       </ul>);
       listItems = [];
@@ -633,9 +681,9 @@ function MarkdownBlock({ text }: { text: string }) {
       const level = line.match(/^(#+)/)![1].length;
       const txt = line.replace(/^#+\s+/, "");
       const cls =
-        level === 1 ? "text-[16px] font-semibold text-slate-900 mt-3 mb-1.5" :
-        level === 2 ? "text-[14.5px] font-semibold text-slate-900 mt-3 mb-1.5" :
-        "text-[13.5px] font-semibold text-slate-800 mt-2 mb-1";
+        level === 1 ? "text-[17.5px] font-semibold text-slate-900 mt-3 mb-1.5" :
+        level === 2 ? "text-[16px] font-semibold text-slate-900 mt-3 mb-1.5" :
+        "text-[15px] font-semibold text-slate-800 mt-2 mb-1";
       rendered.push(<div key={`h${i}`} className={cls}>{inline(txt)}</div>);
     } else if (/^\s*[-*]\s+/.test(line)) {
       flushParagraph(`p${i}`);
@@ -660,8 +708,8 @@ function inline(s: string): React.ReactNode[] {
     if (m.index > last) parts.push(s.slice(last, m.index));
     const t = m[0];
     if (t.startsWith("**")) parts.push(<b key={i++}>{t.slice(2, -2)}</b>);
-    else if (t.startsWith("`")) parts.push(<code key={i++} className="px-1 py-0.5 rounded bg-slate-100 text-[12px] font-mono">{t.slice(1, -1)}</code>);
-    else parts.push(<span key={i++} className="inline-block bg-brand-50 text-brand-700 rounded px-1 text-[11px] font-mono mx-0.5">{t}</span>);
+    else if (t.startsWith("`")) parts.push(<code key={i++} className="px-1 py-0.5 rounded bg-slate-100 text-[13.5px] font-mono">{t.slice(1, -1)}</code>);
+    else parts.push(<span key={i++} className="inline-block bg-brand-50 text-brand-700 rounded px-1 text-[12.5px] font-mono mx-0.5">{t}</span>);
     last = m.index + t.length;
   }
   if (last < s.length) parts.push(s.slice(last));
@@ -672,7 +720,7 @@ function JsonBlock({ text }: { text: string }) {
   let pretty = text;
   try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch { /* leave as-is */ }
   return (
-    <pre className="text-[12px] font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
+    <pre className="text-[13.5px] font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
       {pretty}
     </pre>
   );
@@ -718,13 +766,13 @@ function ComplianceBlock({ text, slug, documents }: {
   return (
     <div className="space-y-3">
       {err && (
-        <div className="text-[12px] text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-1.5">
+        <div className="text-[13.5px] text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2.5 py-1.5">
           {err}
         </div>
       )}
       {[...groups.entries()].map(([group, items]) => (
         <div key={group} className="rounded-md bg-white ring-1 ring-slate-200">
-          <div className="px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 border-b border-slate-100 bg-slate-50">
+          <div className="px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-slate-500 border-b border-slate-100 bg-slate-50">
             {group}
           </div>
           <ul className="divide-y divide-slate-100">
@@ -738,8 +786,8 @@ function ComplianceBlock({ text, slug, documents }: {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12.5px] text-slate-800 truncate" title={r.filename}>{r.filename}</div>
-                    <div className="text-[10.5px] text-slate-500 mt-0.5 flex items-center gap-2">
+                    <div className="text-[14px] text-slate-800 truncate" title={r.filename}>{r.filename}</div>
+                    <div className="text-[12px] text-slate-500 mt-0.5 flex items-center gap-2">
                       {r.category && (
                         <span className={"inline-flex items-center px-1.5 py-0.5 rounded-full ring-1 text-[9.5px] font-semibold capitalize " + tone}>
                           {r.category.replace(/_/g, " ")}
@@ -780,17 +828,17 @@ function IssuesBlock({ text }: { text: string }) {
     <div className="space-y-2">
       {issues.map((it: any, i: number) => (
         <div key={i} className="rounded-md bg-white ring-1 ring-slate-200 p-3">
-          <div className="text-[12.5px] font-semibold text-slate-900">
+          <div className="text-[14px] font-semibold text-slate-900">
             <span className="text-slate-400">#{i + 1}</span> {it.issue || it.title || "(untitled issue)"}
           </div>
-          {it.grounds && <div className="mt-1 text-[12px] text-slate-600"><b>Grounds:</b> {it.grounds}</div>}
-          {it.rationale && <div className="mt-1 text-[12px] text-slate-600"><b>Rationale:</b> {it.rationale}</div>}
+          {it.grounds && <div className="mt-1 text-[13.5px] text-slate-600"><b>Grounds:</b> {it.grounds}</div>}
+          {it.rationale && <div className="mt-1 text-[13.5px] text-slate-600"><b>Rationale:</b> {it.rationale}</div>}
         </div>
       ))}
       {parsed?.facts && (
         <div className="mt-2 rounded-md bg-white ring-1 ring-slate-200 p-3">
-          <div className="text-[12px] font-semibold text-slate-800 mb-1">Facts</div>
-          <div className="text-[12px] text-slate-600 whitespace-pre-wrap">{parsed.facts}</div>
+          <div className="text-[13.5px] font-semibold text-slate-800 mb-1">Facts</div>
+          <div className="text-[13.5px] text-slate-600 whitespace-pre-wrap">{parsed.facts}</div>
         </div>
       )}
     </div>
@@ -802,7 +850,7 @@ function IssuesBlock({ text }: { text: string }) {
 // Draft PDF preview — asks the server to LibreOffice-render the current
 // draft, wraps the bytes in a blob URL, drops it into an iframe.  Refreshes
 // whenever the outputs list changes (e.g. after an instruct-edit).
-function PreviewPane({ slug, refreshKey, embedded }: { slug: string; refreshKey: number; embedded?: boolean }) {
+function PreviewPane({ slug, refreshKey, embedded, caseTitle }: { slug: string; refreshKey: number; embedded?: boolean; caseTitle?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -819,7 +867,7 @@ function PreviewPane({ slug, refreshKey, embedded }: { slug: string; refreshKey:
         // Chromium's PDF viewer is unreliable against blob: URLs inside a
         // sandboxed iframe under Electron; file:// in a webview works out
         // of the box.  Cache-bust with a nonce so refreshes reload.
-        const r = await window.bharat.preview.writePdf(buf, slug);
+        const r = await window.bharat.preview.writePdf(buf, slug, caseTitle);
         if (!alive) return;
         setUrl(`${r.url}?v=${Date.now()}`);
       } catch (e: any) {
@@ -836,7 +884,7 @@ function PreviewPane({ slug, refreshKey, embedded }: { slug: string; refreshKey:
     <>
       {!embedded && (
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="text-[15px] font-semibold text-slate-900">Draft preview</h2>
+          <h2 className="text-[16.5px] font-semibold text-slate-900">Draft preview</h2>
           <button
             onClick={() => setNonce((n) => n + 1)}
             disabled={busy}
@@ -871,7 +919,7 @@ function PreviewPane({ slug, refreshKey, embedded }: { slug: string; refreshKey:
         </div>
       )}
       {!embedded && (
-        <div className="mt-2 text-[11px] text-slate-400">
+        <div className="mt-2 text-[12.5px] text-slate-400">
           This is a read-only preview.  For rich editing, use Modify with AI or Open in Word.
         </div>
       )}
@@ -895,14 +943,37 @@ function statusBadge(c: AppealCase, run: AppealRun | null | undefined): { label:
   return { label: "draft", tone: "bg-slate-100 text-slate-600" };
 }
 
-function Section({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
+function Section({ title, children, right, collapsible, defaultOpen = true, subtitle }:
+  { title: string; children: React.ReactNode; right?: React.ReactNode;
+    collapsible?: boolean; defaultOpen?: boolean; subtitle?: string }) {
+  const [open, setOpen] = useState<boolean>(defaultOpen);
+  const isCollapsible = !!collapsible;
   return (
     <section className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
+        {isCollapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="group inline-flex items-center gap-2 rounded-md -mx-1 px-1 py-0.5 hover:bg-slate-50 transition-colors"
+            aria-expanded={open}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              className={"text-slate-400 group-hover:text-navy-700 transition-transform " + (open ? "rotate-90" : "")}>
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <h2 className="text-[16.5px] font-semibold text-slate-900">{title}</h2>
+            {subtitle && <span className="text-[13.5px] text-slate-500 font-normal">{subtitle}</span>}
+          </button>
+        ) : (
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[16.5px] font-semibold text-slate-900">{title}</h2>
+            {subtitle && <span className="text-[13.5px] text-slate-500 font-normal">{subtitle}</span>}
+          </div>
+        )}
         {right}
       </div>
-      {children}
+      {(!isCollapsible || open) && children}
     </section>
   );
 }
@@ -936,7 +1007,7 @@ function DocumentRow({ d, onOpen, onDelete, onCategorise }: {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm text-slate-800 truncate" title={d.filename}>{d.filename}</div>
-        <div className="text-[11px] text-slate-500 mt-0.5">
+        <div className="text-[12.5px] text-slate-500 mt-0.5">
           {d.pages > 0 ? `${d.pages} page${d.pages > 1 ? "s" : ""}` : "—"}
         </div>
       </div>
@@ -956,7 +1027,7 @@ function CategorySelect({ value, tone, onChange }: {
   value: string; tone: string; onChange: (c: string) => void;
 }) {
   return (
-    <div className={"relative inline-flex items-center gap-1 pl-2.5 pr-6 py-0.5 rounded-full ring-1 text-[10.5px] font-semibold capitalize hover:brightness-95 cursor-pointer " + tone}>
+    <div className={"relative inline-flex items-center gap-1 pl-2.5 pr-6 py-0.5 rounded-full ring-1 text-[12px] font-semibold capitalize hover:brightness-95 cursor-pointer " + tone}>
       <span>{value}</span>
       <svg
         width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -995,11 +1066,11 @@ function InstructComposer({ onSubmit, busy }: { onSubmit: (t: string) => Promise
 
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-brand-500/[0.03] to-transparent p-3">
-      <div className="text-[13px] font-semibold text-slate-900 mb-1.5 flex items-center gap-1.5">
+      <div className="text-[14.5px] font-semibold text-slate-900 mb-1.5 flex items-center gap-1.5">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-600"><path d="M9.5 3 12 8l5.5 1.5-4 4L14 19 9.5 15.5 5 17l1.5-5-4-4L8 8Z" /></svg>
         Edit the draft with AI
       </div>
-      <p className="text-[12px] text-slate-500 mb-2">
+      <p className="text-[13.5px] text-slate-500 mb-2">
         Type what you want changed. BharatTax will rewrite the draft and save it as a new version.
       </p>
       <form onSubmit={submit} className="flex gap-2 items-start">
@@ -1015,7 +1086,7 @@ function InstructComposer({ onSubmit, busy }: { onSubmit: (t: string) => Promise
         <button
           type="submit"
           disabled={busy || !text.trim()}
-          className="h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[13px] hover:bg-brand-700 disabled:opacity-60"
+          className="h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[14.5px] hover:bg-brand-700 disabled:opacity-60"
           title="Ctrl/⌘ + Enter"
         >
           {busy ? "Applying…" : "Apply"}
@@ -1025,7 +1096,7 @@ function InstructComposer({ onSubmit, busy }: { onSubmit: (t: string) => Promise
         <div className="mt-2 flex flex-wrap gap-1.5">
           {suggestions.map((s) => (
             <button key={s} type="button" onClick={() => setText(s)}
-              className="text-[11.5px] text-slate-600 bg-white ring-1 ring-slate-200 rounded-full px-2.5 py-1 hover:ring-brand-500/40 hover:text-brand-700 transition-colors">
+              className="text-[13px] text-slate-600 bg-white ring-1 ring-slate-200 rounded-full px-2.5 py-1 hover:ring-brand-500/40 hover:text-brand-700 transition-colors">
               {s}
             </button>
           ))}
@@ -1095,6 +1166,7 @@ function ManualEditButton({ slug, caseTitle, onSynced }: {
         bytes,
         suggestedName: `${caseTitle.replace(/[^\w.\-() ]/g, "_") || "draft"}.docx`,
         sessionId,
+        caseTitle,
       });
       setState({ kind: "watching", localPath: r.path, sessionId: r.sessionId });
     } catch (e: any) {
@@ -1116,7 +1188,7 @@ function ManualEditButton({ slug, caseTitle, onSynced }: {
     return (
       <div className="flex items-center gap-2">
         <button onClick={open}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-white ring-1 ring-slate-200 text-slate-700 font-medium text-[13px] hover:bg-slate-50">
+          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-white ring-1 ring-slate-200 text-slate-700 font-medium text-[14.5px] hover:bg-slate-50">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
             <polyline points="14 2 14 8 20 8" />
@@ -1124,7 +1196,7 @@ function ManualEditButton({ slug, caseTitle, onSynced }: {
           Open in Word
         </button>
         {state.kind === "error" && (
-          <span className="text-[11.5px] text-rose-700" title={state.message}>
+          <span className="text-[13px] text-rose-700" title={state.message}>
             Sync failed — click Open in Word to retry
           </span>
         )}
@@ -1140,7 +1212,7 @@ function ManualEditButton({ slug, caseTitle, onSynced }: {
 
   return (
     <div className="inline-flex items-stretch h-9 rounded-md ring-1 ring-emerald-200 bg-emerald-50 overflow-hidden">
-      <span className="inline-flex items-center gap-2 px-3 text-[12.5px] font-medium text-emerald-800">
+      <span className="inline-flex items-center gap-2 px-3 text-[14px] font-medium text-emerald-800">
         <span className={"size-2 rounded-full " + (state.kind === "uploading" ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse")} />
         {label}
         {lastSaved && (
@@ -1153,14 +1225,14 @@ function ManualEditButton({ slug, caseTitle, onSynced }: {
         <>
           <button
             onClick={() => sessionRef.current && window.bharat.manualEdit.openContainingFolder(sessionRef.current)}
-            className="px-2.5 border-l border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-[12.5px]"
+            className="px-2.5 border-l border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-[14px]"
             title="Show file in Explorer"
           >
             📂
           </button>
           <button
             onClick={stop}
-            className="px-3 border-l border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-[12.5px] font-medium"
+            className="px-3 border-l border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-[14px] font-medium"
             title="Stop syncing and remove the local copy"
           >
             Stop
@@ -1204,11 +1276,19 @@ function DraftPane({
       {/* Header: title + mode toggle + action strip */}
       <div className="px-4 sm:px-5 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
         <div>
-          <div className="text-[15px] font-semibold text-slate-900">Draft appellate order</div>
-          <div className="text-[12px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+          <div className="text-[16.5px] font-semibold text-slate-900">Draft appellate order</div>
+          <div className="text-[13.5px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
             Apply mind and edit before finalising.
             {draftVersion !== null && <span className="text-slate-400">· v{draftVersion}</span>}
+            <button
+              onClick={() => window.bharat.drafts.openFolder()}
+              className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-navy-700 hover:bg-navy-100 font-medium"
+              title="Open the Appeal Drafts folder in File Explorer"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h4l2 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
+              Open drafts folder
+            </button>
           </div>
         </div>
         <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs">
@@ -1223,7 +1303,7 @@ function DraftPane({
 
       <div className="px-4 sm:px-5 py-3 flex flex-wrap gap-2 border-b border-slate-100 bg-slate-50/60">
         <button onClick={onDownload} disabled={downloadBusy}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[13px] hover:bg-brand-700 disabled:opacity-60">
+          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-brand-600 text-white font-semibold text-[14.5px] hover:bg-brand-700 disabled:opacity-60">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           {downloadBusy ? "Preparing…" : "Download .docx"}
         </button>
@@ -1231,7 +1311,7 @@ function DraftPane({
       </div>
 
       <div className="p-4 sm:p-5 bg-slate-100/60">
-        {mode === "preview" && <PreviewPane slug={slug} refreshKey={refreshKey} embedded />}
+        {mode === "preview" && <PreviewPane slug={slug} refreshKey={refreshKey} embedded caseTitle={caseTitle} />}
         {mode === "modify"  && (
           <ModifyWithAI slug={slug} draftText={draftText} baseVersion={draftVersion}
             onApplied={onSynced} onFullInstruct={onFullInstruct} fullBusy={fullBusy} />
@@ -1269,8 +1349,8 @@ function ManualHint({ slug, caseTitle, onSynced }: {
           <polyline points="14 2 14 8 20 8" />
         </svg>
       </div>
-      <div className="text-[15px] font-semibold text-slate-900">Edit the draft in Microsoft Word</div>
-      <div className="text-[13px] text-slate-500 mt-1 max-w-md mx-auto">
+      <div className="text-[16.5px] font-semibold text-slate-900">Edit the draft in Microsoft Word</div>
+      <div className="text-[14.5px] text-slate-500 mt-1 max-w-md mx-auto">
         Click <b>Open in Word</b> above.  The .docx opens in your default word
         processor.  Every save is auto-synced back to BharatTax as a new draft
         version.
@@ -1381,12 +1461,12 @@ function ModifyWithAI({
   return (
     <div ref={rootRef} className="relative">
       {flash && (
-        <div className="mb-2 text-[12.5px] rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 inline-flex items-center gap-1.5">
+        <div className="mb-2 text-[14px] rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 inline-flex items-center gap-1.5">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
           {flash}
         </div>
       )}
-      <div className="mb-2 text-[12px] text-slate-600 flex items-center gap-1.5">
+      <div className="mb-2 text-[13.5px] text-slate-600 flex items-center gap-1.5">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-600"><path d="M9.5 3 12 8l5.5 1.5-4 4L14 19 9.5 15.5 5 17l1.5-5-4-4L8 8Z"/></svg>
         {hint}
       </div>
@@ -1412,11 +1492,11 @@ function ModifyWithAI({
           style={{ left: popover.x, top: popover.y }}
         >
           <div className="w-[360px] rounded-xl bg-white ring-1 ring-slate-200 shadow-xl p-3.5">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand-700 flex items-center gap-1 mb-1">
+            <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-brand-700 flex items-center gap-1 mb-1">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 3 12 8l5.5 1.5-4 4L14 19 9.5 15.5 5 17l1.5-5-4-4L8 8Z"/></svg>
               Modify with AI
             </div>
-            <div className="text-[12px] italic text-slate-500 line-clamp-3 border-l-2 border-brand-300 pl-2 mb-2">
+            <div className="text-[13.5px] italic text-slate-500 line-clamp-3 border-l-2 border-brand-300 pl-2 mb-2">
               {selText.length > 200 ? selText.slice(0, 200) + "…" : selText}
             </div>
             <textarea
@@ -1429,19 +1509,19 @@ function ModifyWithAI({
               autoFocus
               className="input resize-y"
             />
-            {err && <div className="mt-2 text-[11.5px] text-rose-700">{err}</div>}
+            {err && <div className="mt-2 text-[13px] text-rose-700">{err}</div>}
             {!err && !instruction.trim() && !busy && (
-              <div className="mt-1.5 text-[11px] text-slate-400">Type an instruction to enable Apply.</div>
+              <div className="mt-1.5 text-[12.5px] text-slate-400">Type an instruction to enable Apply.</div>
             )}
             <div className="mt-2 flex items-center justify-end gap-1.5">
               <button onClick={() => { setPopover(null); setInstruction(""); setErr(null); }}
                 disabled={busy}
-                className="h-8 px-3 rounded-md text-slate-500 hover:bg-slate-100 text-[12.5px] font-medium disabled:opacity-60">
+                className="h-8 px-3 rounded-md text-slate-500 hover:bg-slate-100 text-[14px] font-medium disabled:opacity-60">
                 Cancel
               </button>
               <button onClick={apply} disabled={busy || !instruction.trim()}
                 className={
-                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12.5px] font-semibold transition-colors " +
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[14px] font-semibold transition-colors " +
                   (busy || !instruction.trim()
                     ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                     : "bg-brand-600 text-white hover:bg-brand-700")
@@ -1461,7 +1541,7 @@ function ModifyWithAI({
 
       {/* Fallback: full-draft instruct composer, tucked below. */}
       <div className="mt-6">
-        <div className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 mb-2">Or rewrite the whole draft</div>
+        <div className="text-[13px] font-semibold uppercase tracking-[0.14em] text-slate-500 mb-2">Or rewrite the whole draft</div>
         <InstructComposer onSubmit={onFullInstruct} busy={fullBusy} />
       </div>
     </div>

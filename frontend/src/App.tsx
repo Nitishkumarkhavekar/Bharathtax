@@ -26,6 +26,10 @@ import TokenUsagePage from "./pages/admin/TokenUsage";
 import AdminPricingPage from "./pages/admin/Pricing";
 import AdminBillingPage from "./pages/admin/Billing";
 import AdminReleasesPage from "./pages/admin/Releases";
+import AdminSupportTicketsPage from "./pages/admin/SupportTickets";
+import AdminDesktopLogsPage from "./pages/admin/DesktopLogs";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import GeminiPage from "./pages/admin/Gemini";
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
@@ -70,6 +74,8 @@ export default function App() {
       <Route path="/releases" element={<ReleasesLanding />} />
       <Route path="/login" element={session ? <Navigate to={landing} replace /> : <Login />} />
       <Route path="/register" element={session ? <Navigate to={landing} replace /> : <Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Chat + user-facing tools are not for admin accounts — admins are
           bounced to the admin console. */}
@@ -107,6 +113,8 @@ export default function App() {
         <Route path="pricing" element={<AdminPricingPage />} />
         <Route path="billing" element={<AdminBillingPage />} />
         <Route path="releases" element={<AdminReleasesPage />} />
+        <Route path="support" element={<AdminSupportTicketsPage />} />
+        <Route path="desktop-logs" element={<AdminDesktopLogsPage />} />
         <Route
           path="revenue"
           element={

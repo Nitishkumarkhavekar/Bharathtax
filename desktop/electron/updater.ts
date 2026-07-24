@@ -69,8 +69,8 @@ export function setupAutoUpdater(): void {
   });
 
   // Kick off the first check ~5s after launch so we don't fight the window
-  // opening for CPU, then poll every 6 hours in case the officer keeps the
-  // app open across a release.
+  // opening for CPU, then poll every 30 minutes so a fresh release surfaces
+  // to the officer within the same working session it was published.
   setTimeout(() => {
     void autoUpdater.checkForUpdates().catch((err) => {
       broadcast({ kind: "error", message: `${err?.message || err}` });
@@ -78,7 +78,7 @@ export function setupAutoUpdater(): void {
   }, 5_000);
   setInterval(() => {
     void autoUpdater.checkForUpdates().catch(() => {});
-  }, 6 * 60 * 60 * 1000);
+  }, 30 * 60 * 1000);
 }
 
 export function checkNow(): void {

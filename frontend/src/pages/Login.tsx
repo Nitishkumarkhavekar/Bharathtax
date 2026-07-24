@@ -272,14 +272,21 @@ export default function Login() {
                 </span>
               </button>
 
-              <div className="text-center text-[13px] text-slate-600">
-                New to BharathTax?{" "}
-                <Link
-                  to="/register"
-                  className="font-semibold text-primary hover:underline"
-                >
-                  Request an account
-                </Link>
+              <div className="text-center text-[13px] text-slate-600 space-y-1">
+                <div>
+                  <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+                    Forgot your password?
+                  </Link>
+                </div>
+                <div>
+                  New to BharathTax?{" "}
+                  <Link
+                    to="/register"
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Request an account
+                  </Link>
+                </div>
               </div>
 
               <div className="pt-3 mt-1 border-t border-slate-200/80 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">

@@ -40,8 +40,12 @@ contextBridge.exposeInMainWorld("bharat", {
     version: () => ipcRenderer.invoke("app:version") as Promise<string>,
   },
   preview: {
-    writePdf: (bytes: ArrayBuffer, slug: string) =>
-      ipcRenderer.invoke("preview:write", { bytes, slug }) as Promise<{ url: string }>,
+    writePdf: (bytes: ArrayBuffer, slug: string, caseTitle?: string) =>
+      ipcRenderer.invoke("preview:write", { bytes, slug, caseTitle }) as Promise<{ url: string; path: string }>,
+  },
+  drafts: {
+    openFolder: () => ipcRenderer.invoke("drafts:openFolder") as Promise<void>,
+    root: () => ipcRenderer.invoke("drafts:root") as Promise<string>,
   },
   updater: {
     // Subscribe to update lifecycle events. Returns an unsubscribe fn.
@@ -56,7 +60,7 @@ contextBridge.exposeInMainWorld("bharat", {
     install: () => ipcRenderer.invoke("updater:install"),
   },
   manualEdit: {
-    start: (args: { bytes: ArrayBuffer; suggestedName: string; sessionId: string }) =>
+    start: (args: { bytes: ArrayBuffer; suggestedName: string; sessionId: string; caseTitle?: string }) =>
       ipcRenderer.invoke("manualEdit:start", args) as Promise<{ sessionId: string; path: string }>,
     stop: (sessionId: string) =>
       ipcRenderer.invoke("manualEdit:stop", { sessionId }) as Promise<void>,

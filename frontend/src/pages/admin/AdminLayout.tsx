@@ -17,6 +17,8 @@ import {
   Tag,
   CreditCard,
   Package,
+  LifeBuoy,
+  MonitorSmartphone,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -39,6 +41,8 @@ const NAV: {
   { to: "/admin/pricing", label: "Pricing Management", icon: Tag, desc: "Plans & token rates" },
   { to: "/admin/billing", label: "User Billing", icon: CreditCard, desc: "Assign plans, watch balances" },
   { to: "/admin/releases", label: "Release Management", icon: Package, desc: "Desktop app releases & auto-update" },
+  { to: "/admin/support", label: "Support Tickets", icon: LifeBuoy, desc: "Officer-reported issues" },
+  { to: "/admin/desktop-logs", label: "Desktop User Logs", icon: MonitorSmartphone, desc: "Who used the desktop app and when" },
   { to: "/admin/server", label: "Model Server", icon: Server, desc: "System health" },
   { to: "/admin/revenue", label: "Revenue Management", icon: IndianRupee, super: true, desc: "Sales ledger" },
   { to: "/admin/licenses", label: "License Keys", icon: KeyRound, super: true, desc: "Issue & revoke" },

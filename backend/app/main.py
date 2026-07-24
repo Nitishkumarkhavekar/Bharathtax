@@ -7,6 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin
+from app.api.routes import support as support_routes
+from app.api.routes import desktop_session as ds_routes
+from app.api.routes import password_reset as pw_reset_routes
 from app.core.config import settings
 from app.core.db import Base, engine
 from app.core.logging import configure_logging, get_logger
@@ -111,6 +114,14 @@ app.include_router(desktop_update.router)
 app.include_router(desktop_update.public_router)
 # Admin CRUD for uploading / publishing / deleting desktop releases.
 app.include_router(desktop_admin.router)
+# Support (Report Issue) — officer + admin sides.
+app.include_router(support_routes.router)
+app.include_router(support_routes.admin_router)
+# Desktop-session tracking + admin log listing.
+app.include_router(ds_routes.router)
+app.include_router(ds_routes.admin_router)
+# Public password-reset flow.
+app.include_router(pw_reset_routes.router)
 
 
 @app.get("/health", tags=["meta"])

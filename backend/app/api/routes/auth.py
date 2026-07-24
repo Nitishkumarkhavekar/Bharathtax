@@ -315,6 +315,75 @@ def me(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+class SessionStatusResponse(BaseModel):
+    # "ok"       -> session is valid and license (if any) is fine
+    # "logout"   -> desktop MUST clear the session and drop to the login screen
+    # "blocked"  -> stay signed in, but the current feature is unavailable (quota
+    #               exhausted, subscription expired, license expired). The user
+    #               keeps their token and can retry once the admin restores access.
+    state: str
+    reason: str
+    message: str | None = None
+
+
+@router.get("/session/status", response_model=SessionStatusResponse)
+def session_status(user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> SessionStatusResponse:
+    """Lightweight probe the desktop polls to react to admin actions.
+
+    The rule the desktop enforces:
+      * license was deactivated by an admin  -> force logout
+      * user account was disabled by an admin -> force logout
+      * license expired / quota exhausted / subscription completed -> stay
+        signed in, just block the paid features
+    """
+    # Belt & braces: the auth layer already 401s a disabled user, but if the
+    # token was cached and this endpoint is called with a still-valid JWT, we
+    # want the desktop to log out proactively.
+    if not user.is_active:
+        return SessionStatusResponse(
+            state="logout", reason="user_disabled",
+            message="Your account has been disabled by the administrator.",
+        )
+
+    # Admins are unaffected by the license lifecycle.
+    if user.role in (Role.super_admin, Role.wing_admin):
+        return SessionStatusResponse(state="ok", reason="ok")
+
+    # A deactivated license *supersedes* everything else -> immediate logout.
+    deactivated = db.scalar(
+        select(LicenseKey).where(
+            LicenseKey.assigned_to == user.username,
+            LicenseKey.status == "deactivated",
+        ).order_by(LicenseKey.updated_at.desc())
+    )
+    if deactivated is not None:
+        return SessionStatusResponse(
+            state="logout", reason="license_deactivated",
+            message="Your license has been deactivated by the administrator. "
+                    "Please contact your admin to restore access.",
+        )
+
+    now = datetime.now(timezone.utc)
+    active = db.scalar(
+        select(LicenseKey).where(
+            LicenseKey.assigned_to == user.username,
+            LicenseKey.status == "active",
+            LicenseKey.valid_until > now,
+        )
+    )
+    if active is None:
+        # Either the license expired naturally, or the user was never assigned
+        # one yet. In both cases we DO NOT log them out -- they simply cannot
+        # use the paid features until an admin sorts it out.
+        return SessionStatusResponse(
+            state="blocked", reason="license_expired",
+            message="Your license is not currently active. Please contact "
+                    "your administrator to renew it.",
+        )
+    return SessionStatusResponse(state="ok", reason="ok")
+
+
 # -------- personal token usage -------------------------------------------
 class _TokenSummaryOut(BaseModel):
     """User-facing summary. Model identifiers are deliberately NOT included —

@@ -81,11 +81,31 @@ def require_license(
     """Block officer/auditor users from protected routes until they hold a
     valid license. Admins are exempt.
 
-    Raises HTTP 402 (Payment Required) so the frontend can recognize the
-    error and surface the license-activation modal.
+    Semantics the desktop relies on:
+      * License was *deactivated* by an admin -> raise 401. The desktop treats
+        401 as "session revoked" and forces sign-out (per admin request:
+        deactivation kicks the user out immediately).
+      * License is missing or expired -> raise 402. The desktop shows a
+        "license expired / please contact admin" screen but keeps the user
+        signed in so quota / subscription issues don't burn their session.
     """
     if user.role in (Role.super_admin, Role.wing_admin):
         return user
+
+    # Look for an explicitly-deactivated license first — that's the "kick this
+    # user out now" signal admins reach for.
+    deactivated = db.scalar(
+        select(LicenseKey).where(
+            LicenseKey.assigned_to == user.username,
+            LicenseKey.status == "deactivated",
+        ).order_by(LicenseKey.updated_at.desc())
+    )
+    if deactivated is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your license has been deactivated by the administrator.",
+        )
+
     now = datetime.now(timezone.utc)
     lic = db.scalar(
         select(LicenseKey).where(
