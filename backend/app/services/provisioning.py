@@ -78,7 +78,10 @@ def provision_trial(db: Session, user, *, admin_id: int | None = None) -> str | 
             )
         )
 
-    # 2) License key (unassigned; the user pastes it to claim/activate).
+    # 2) License key. Assigned to the user on creation so they can start
+    #    using the app immediately -- users no longer paste a key to
+    #    activate. If an admin later flips the license to `deactivated`,
+    #    the session-status probe forces sign-out on the desktop and web.
     candidate = None
     for _ in range(6):
         c = _gen_key()
@@ -92,7 +95,7 @@ def provision_trial(db: Session, user, *, admin_id: int | None = None) -> str | 
             key=candidate,
             status="active",
             valid_until=now + timedelta(days=TRIAL_DAYS),
-            assigned_to=None,
+            assigned_to=user.username,
             created_by_user_id=admin_id,
             notes=f"Trial license for {user.username}",
         )

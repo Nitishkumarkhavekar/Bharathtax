@@ -37,7 +37,11 @@ declare global {
         version: () => Promise<string>;
       };
       preview: {
-        writePdf: (bytes: ArrayBuffer, slug: string) => Promise<{ url: string }>;
+        writePdf: (bytes: ArrayBuffer, slug: string, caseTitle?: string) => Promise<{ url: string; path: string }>;
+      };
+      drafts: {
+        openFolder: () => Promise<void>;
+        root: () => Promise<string>;
       };
       updater: {
         on: (cb: (ev: UpdaterEvent) => void) => () => void;
@@ -45,7 +49,7 @@ declare global {
         install: () => Promise<void>;
       };
       manualEdit: {
-        start: (args: { bytes: ArrayBuffer; suggestedName: string; sessionId: string }) =>
+        start: (args: { bytes: ArrayBuffer; suggestedName: string; sessionId: string; caseTitle?: string }) =>
           Promise<{ sessionId: string; path: string }>;
         stop: (sessionId: string) => Promise<void>;
         openContainingFolder: (sessionId: string) => Promise<void>;

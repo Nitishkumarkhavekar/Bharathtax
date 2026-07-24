@@ -55,9 +55,10 @@ export default function LicenseExpired({ reason, message, onSignIn }: Props) {
         {isLicense && (
           <div className="mt-6 text-xs bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-left text-slate-600">
             <div className="font-semibold text-slate-700 mb-1">What this means</div>
-            Your license key is no longer valid — it has either expired or been
-            deactivated by your administrator. Once a new key is issued, sign
-            in again and activate it from the license screen.
+            Your license is no longer valid — it has either expired or been
+            deactivated by your administrator. Please contact your
+            administrator to restore access; once your license is reactivated
+            you can sign in again.
           </div>
         )}
 

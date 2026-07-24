@@ -5,6 +5,9 @@ from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRu
 from app.models.chat import Chat, ChatMessage, ChatMemory, ChatSummary
 from app.models.billing import SubscriptionPlan, TokenPrice, UserSubscription
 from app.models.desktop import DesktopRelease
+from app.models.support import SupportAttachment, SupportMessage, SupportTicket
+from app.models.desktop_session import DesktopSession
+from app.models.password_reset import PasswordResetToken
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
 from app.models.documents import Document, DocumentChunk
 from app.models.enums import (
@@ -24,4 +27,7 @@ __all__ = [
     "TokenUsage",
     "SubscriptionPlan", "TokenPrice", "UserSubscription",
     "DesktopRelease",
+    "SupportAttachment", "SupportMessage", "SupportTicket",
+    "DesktopSession",
+    "PasswordResetToken",
 ]

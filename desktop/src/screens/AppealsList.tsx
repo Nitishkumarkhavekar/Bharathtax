@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError, type AppealCase } from "../api";
 
-// The desktop's mirror of the web's /appeals landing page: stat cards, a
-// new-case form, search + status-filter chips, and a scrollable row list.
-// Clicking a row hands the slug up to the parent so App.tsx swaps to the
-// case-detail screen.
+// The desktop's mirror of the web's /appeals landing page: stat pills, a
+// search box + status-filter chips, and a scrollable row list.  Clicking a
+// row hands the slug up to the parent so App.tsx swaps to the case-detail
+// screen.  The Dashboard hero and New-Appeal button live in AppShell now,
+// so this screen skips them.
 interface Props {
   onOpenCase: (c: AppealCase) => void;
   licenseValidUntil: string | null;
+  onNewCase: () => void;
 }
 
 type Filter = "all" | "draft" | "running" | "ready" | "error";
@@ -28,7 +30,7 @@ function bucket(c: AppealCase): Filter {
   return "draft";
 }
 
-export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
+export default function AppealsList({ onOpenCase, licenseValidUntil: _licenseValidUntil, onNewCase }: Props) {
   const [cases, setCases] = useState<AppealCase[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -69,18 +71,21 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
   }, [cases, q, filter]);
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50">
-      <div className="w-full px-8 py-6 space-y-5">
-        <Hero licenseSuffix={licenseValidUntil} />
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Total cases" value={stats.total} tone="indigo" sub={`${stats.draft} drafts`} />
-          <StatCard label="Running" value={stats.running} tone="amber" sub="pipeline in progress" />
-          <StatCard label="Ready" value={stats.ready} tone="emerald" sub="orders drafted" />
-          <StatCard label="Errors" value={stats.error} tone="rose" sub="attention needed" />
+    <div className="w-full px-8 py-8 space-y-5">
+        {/* Compact header — the Dashboard hero is above; this screen is the
+            operational list, so we lead with a section title + stat pills */}
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Appeals</h1>
+            <p className="text-[14.5px] text-slate-500 mt-0.5">All cases you own · click a row to open, or search below.</p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <StatPill label="Total"   value={stats.total}   tone="navy" />
+            <StatPill label="Running" value={stats.running} tone="amber" />
+            <StatPill label="Ready"   value={stats.ready}   tone="green" />
+            <StatPill label="Errors"  value={stats.error}   tone="red" />
+          </div>
         </div>
-
-        <NewCaseButton onClick={() => setCreating(true)} />
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <div className="relative flex-1">
@@ -88,7 +93,7 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by title, PAN, AY, or section…"
-              className="w-full pl-10 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full pl-10 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/20"
             />
             <svg className="absolute left-3 top-2.5 size-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -102,7 +107,7 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
                 className={
                   "h-9 px-3 rounded-md text-xs font-medium capitalize transition-colors " +
                   (filter === f
-                    ? "bg-brand-600 text-white"
+                    ? "bg-navy-800 text-white"
                     : "text-slate-600 bg-white ring-1 ring-slate-200 hover:bg-slate-100")
                 }
               >
@@ -118,7 +123,7 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
         {err && <ErrorBanner msg={err} />}
         {!cases && !err && <Loading />}
         {cases && filtered.length === 0 && (
-          <EmptyState hasCases={cases.length > 0} onClickNew={() => setCreating(true)} />
+          <EmptyState hasCases={cases.length > 0} onClickNew={onNewCase} />
         )}
 
         <ul className="space-y-2">
@@ -132,7 +137,6 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
             />
           ))}
         </ul>
-      </div>
 
       {creating && (
         <NewCaseModal
@@ -158,23 +162,40 @@ export default function AppealsList({ onOpenCase, licenseValidUntil }: Props) {
   );
 }
 
+// Compact tint-only pill used in the AppealsList header.  StatCard below is
+// the fuller version used elsewhere; both live in this file.
+function StatPill({ label, value, tone }: { label: string; value: number; tone: "navy" | "amber" | "green" | "red" }) {
+  const cls = {
+    navy:  "bg-navy-100 text-navy-800 ring-navy-200",
+    amber: "bg-amber-100 text-amber-800 ring-amber-200",
+    green: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+    red:   "bg-ashoka-100 text-ashoka-700 ring-ashoka-200",
+  }[tone];
+  return (
+    <div className={"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full ring-1 text-[12.5px] font-semibold " + cls}>
+      <span className="uppercase tracking-wider">{label}</span>
+      <span className="tabular-nums">{value}</span>
+    </div>
+  );
+}
+
 // ----------------------------------------------------------------- Hero
 
-function Hero({ licenseSuffix }: { licenseSuffix: string | null }) {
+function _Hero({ licenseSuffix }: { licenseSuffix: string | null }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 via-brand-600 to-violet-600 text-white p-5 sm:p-6 shadow-lg shadow-brand-900/10">
       <div className="pointer-events-none absolute -right-10 -top-10 size-56 rounded-full bg-white/15 blur-3xl" />
       <div className="relative">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-2 py-0.5 text-[11px] font-semibold tracking-wide backdrop-blur">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-2 py-0.5 text-[12.5px] font-semibold tracking-wide backdrop-blur">
           CIT(A) · NFAC appeal drafting
         </div>
-        <h1 className="mt-2 text-2xl sm:text-[28px] font-semibold tracking-tight">Appeal cases</h1>
-        <p className="mt-1 text-white/85 text-[13.5px] max-w-xl">
+        <h1 className="mt-2 text-2xl sm:text-[30px] font-semibold tracking-tight">Appeal cases</h1>
+        <p className="mt-1 text-white/85 text-[15px] max-w-xl">
           Upload the appeal file, run the six-module pipeline, and produce a
           draft appellate order grounded in the Act, Rules and case law.
         </p>
         {licenseSuffix && (
-          <div className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] text-white/75 bg-white/10 ring-1 ring-white/20 rounded-full px-2.5 py-0.5">
+          <div className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-white/75 bg-white/10 ring-1 ring-white/20 rounded-full px-2.5 py-0.5">
             License valid until {new Date(licenseSuffix).toLocaleDateString()}
           </div>
         )}
@@ -183,7 +204,7 @@ function Hero({ licenseSuffix }: { licenseSuffix: string | null }) {
   );
 }
 
-function StatCard({ label, value, sub, tone }: {
+function _StatCard({ label, value, sub, tone }: {
   label: string; value: number; sub: string;
   tone: "indigo" | "amber" | "emerald" | "rose";
 }) {
@@ -195,14 +216,14 @@ function StatCard({ label, value, sub, tone }: {
   }[tone];
   return (
     <div className={"rounded-xl bg-gradient-to-br to-white ring-1 border border-slate-200/70 shadow-sm p-3.5 " + styles}>
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em]">{label}</div>
+      <div className="text-[12px] font-semibold uppercase tracking-[0.14em]">{label}</div>
       <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{value}</div>
-      <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>
+      <div className="text-[12.5px] text-slate-500 mt-0.5">{sub}</div>
     </div>
   );
 }
 
-function NewCaseButton({ onClick }: { onClick: () => void }) {
+function _NewCaseButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -263,7 +284,7 @@ function CaseRow({ c, onOpen, onEdit, onDelete }: {
         {/* Status pill + action group in a single right-aligned column so
             they never overlap.  Actions fade in on hover. */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className={"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold capitalize " + tone}>
+          <div className={"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12px] font-semibold capitalize " + tone}>
             <span className="size-1.5 rounded-full bg-current" /> {b}
           </div>
           <div className="w-px h-6 bg-slate-200/80" />
@@ -349,10 +370,10 @@ function EmptyState({ hasCases, onClickNew }: { hasCases: boolean; onClickNew: (
           <polyline points="14 2 14 8 20 8" />
         </svg>
       </div>
-      <div className="text-[15px] font-semibold text-slate-900">
+      <div className="text-[16.5px] font-semibold text-slate-900">
         {hasCases ? "No cases match your filters" : "No appeal cases yet"}
       </div>
-      <div className="text-[12.5px] text-slate-500 mt-1">
+      <div className="text-[14px] text-slate-500 mt-1">
         {hasCases
           ? "Try clearing the search box or picking a different filter."
           : "Create your first case to start drafting."}
@@ -507,7 +528,7 @@ function DeleteCaseModal({ c, onClose, onDeleted }: {
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+      <label className="text-[12.5px] font-semibold uppercase tracking-wider text-slate-500">
         {label} {required && <span className="text-rose-500">*</span>}
       </label>
       {children}
@@ -521,7 +542,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-brand-500/[0.06] to-transparent flex items-center justify-between">
-          <div className="text-[14px] font-semibold text-slate-900">{title}</div>
+          <div className="text-[15.5px] font-semibold text-slate-900">{title}</div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>

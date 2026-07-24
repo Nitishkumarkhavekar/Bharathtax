@@ -625,13 +625,12 @@ export const api = {
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
 
-  // --- license activation (gates the chat for non-admin users) ---
+  // --- license status (read-only; users no longer activate their own key) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),
-  activateLicense: (key: string) =>
-    req<LicenseStatus>("/auth/license/activate", {
-      method: "POST",
-      body: JSON.stringify({ key }),
-    }),
+  sessionStatus: () =>
+    req<{ state: "ok" | "logout" | "blocked"; reason: string; message: string | null }>(
+      "/auth/session/status",
+    ),
   ask: (question: string, domain?: string, style?: string, chat_id?: number) =>
     req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style, chat_id }) }),
   askFollowups: (question: string, answer: string, domain?: string) =>
@@ -901,4 +900,79 @@ export const api = {
     req<DesktopRelease>(`/admin/desktop-releases/${id}/publish`, { method: "POST" }),
   adminDeleteRelease: (id: number) =>
     req<void>(`/admin/desktop-releases/${id}`, { method: "DELETE" }),
+
+  // ----- Password reset (public) -----
+  passwordResetRequest: (email: string) =>
+    req<{ ok: boolean; message: string }>("/auth/password-reset/request", {
+      method: "POST", body: JSON.stringify({ email }),
+    }),
+  passwordResetConfirm: (token: string, new_password: string) =>
+    req<{ ok: boolean; email: string; username: string }>("/auth/password-reset/confirm", {
+      method: "POST", body: JSON.stringify({ token, new_password }),
+    }),
+
+  // ----- Admin support -----
+  adminSupportListTickets: (status?: "open" | "closed") =>
+    req<AdminSupportTicket[]>("/admin/support/tickets" + (status ? `?status=${status}` : "")),
+  adminSupportGetTicket: (id: number) =>
+    req<AdminSupportTicket & { messages: SupportMessage[] }>(`/admin/support/tickets/${id}`),
+  adminSupportAddMessage: (id: number, body: string) => {
+    // The backend accepts multipart on this endpoint (for optional file
+    // attachments), so we send FormData -- Form(...) fields reject JSON.
+    const fd = new FormData();
+    fd.append("body", body);
+    return req<SupportMessage>(`/admin/support/tickets/${id}/messages`, {
+      method: "POST", body: fd,
+    });
+  },
+  adminSupportPatchTicket: (id: number, status: "open" | "closed") =>
+    req<AdminSupportTicket>(`/admin/support/tickets/${id}`, {
+      method: "PATCH", body: JSON.stringify({ status }),
+    }),
+  adminSupportUnread: () => req<{ unread: number }>("/admin/support/unread-count"),
+
+  // ----- Admin desktop sessions -----
+  adminDesktopSessions: (opts?: { user_id?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (opts?.user_id) q.set("user_id", String(opts.user_id));
+    if (opts?.limit) q.set("limit", String(opts.limit));
+    const s = q.toString();
+    return req<{ sessions: DesktopSessionRow[] }>("/admin/desktop-sessions" + (s ? "?" + s : ""));
+  },
+  adminDesktopSessionsSummary: () =>
+    req<{ users: DesktopUserRollup[] }>("/admin/desktop-sessions/summary"),
 };
+
+export interface SupportMessage {
+  id: number;
+  sender_role: string;
+  sender_user_id: number | null;
+  body: string;
+  created_at: string | null;
+}
+export interface AdminSupportTicket {
+  id: number;
+  officer_user_id: number;
+  subject: string;
+  status: string;
+  client_version: string | null;
+  last_message_at: string | null;
+  created_at: string | null;
+  unread: number;
+  officer?: { id: number; username: string | null; full_name: string | null; email: string | null } | null;
+}
+export interface DesktopSessionRow {
+  id: number; user_id: number | null;
+  username: string | null; full_name: string | null; email: string | null;
+  client_version: string | null; ip_address: string | null;
+  started_at: string | null; ended_at: string | null;
+  duration_seconds: number | null; still_open: boolean;
+  last_action: string | null; last_action_at: string | null;
+  action_count: number;
+}
+export interface DesktopUserRollup {
+  user_id: number; username: string | null; full_name: string | null; email: string | null; role: string | null;
+  sessions: number; seconds: number; actions: number;
+  last_started_at: string | null; last_ended_at: string | null;
+  open_sessions: number; last_action: string | null; last_action_at: string | null;
+}

@@ -34,6 +34,17 @@ export function resetSessionState(): void {
   pushSession({ kind: "ok" });
 }
 
+// Called by the shell poller when the backend says the session must end
+// (license deactivated / account disabled). Wipes the token and drops the UI
+// into the "session expired" locked screen with an admin-supplied message.
+export async function forceLogoutWithReason(
+  reason: "unauthorised" | "quota" | "license",
+  message: string,
+): Promise<void> {
+  await clearSession();
+  pushSession({ kind: "expired", reason, message });
+}
+
 async function loadConfig(): Promise<void> {
   const c = await window.bharat.config.get();
   cachedServerUrl = c.serverUrl;
@@ -164,11 +175,18 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
     throw new ApiError(res.status, detail);
   }
 
+  // 204 / 205 mean "success, no body". FastAPI's DELETE endpoints often
+  // return 204 while still advertising Content-Type: application/json — if
+  // we blindly call res.json() on an empty body we'd throw "Unexpected end
+  // of JSON input" and the caller would see it as a delete failure.
+  if (res.status === 204 || res.status === 205) return undefined as unknown as T;
   const ct = res.headers.get("Content-Type") || "";
-  if (ct.includes("application/json")) return (await res.json()) as T;
-  // Callers that want binary use `requestBlob` instead — this branch is only
-  // hit when a JSON endpoint returns an unexpected shape.
-  return undefined as unknown as T;
+  if (!ct.includes("application/json")) return undefined as unknown as T;
+  // Some proxies strip the body but keep the JSON content-type; guard here
+  // too so a "content-length: 0" JSON response doesn't blow up.
+  const text = await res.text();
+  if (!text) return undefined as unknown as T;
+  return JSON.parse(text) as T;
 }
 
 export async function requestBlob(path: string): Promise<ArrayBuffer> {
@@ -275,15 +293,18 @@ export const api = {
     }),
   licenseStatus: (opts?: { silent?: boolean }) =>
     request<LicenseStatus>("/auth/license/status", { silent: opts?.silent }),
-  activateLicense: (key: string) =>
-    request<LicenseStatus>("/auth/license/activate", {
-      method: "POST",
-      body: JSON.stringify({ key }),
-    }),
   me: (opts?: { silent?: boolean }) =>
     request<{ username: string; role: string; email: string | null }>("/auth/me", {
       silent: opts?.silent,
     }),
+  // Lightweight probe the shell polls to react to admin actions -- license
+  // deactivation kicks the user out immediately; quota / expired-license
+  // return state="blocked" and the user stays signed in.
+  sessionStatus: (opts?: { silent?: boolean }) =>
+    request<{ state: "ok" | "logout" | "blocked"; reason: string; message: string | null }>(
+      "/auth/session/status",
+      { silent: opts?.silent },
+    ),
 
   createCase: (b: {
     title: string;
@@ -385,4 +406,71 @@ export const api = {
       { method: "POST", body: fd },
     );
   },
+
+  // ----- Desktop session tracking -----
+  sessionStart: (clientVersion: string) =>
+    request<{ session_token: string; id: number }>("/desktop/session/start", {
+      method: "POST", body: JSON.stringify({ client_version: clientVersion }),
+    }),
+  sessionHeartbeat: (session_token: string, last_action?: string, action_count_delta = 0) =>
+    request<{ ok: boolean }>("/desktop/session/heartbeat", {
+      method: "POST", body: JSON.stringify({ session_token, last_action, action_count_delta }),
+      silent: true,
+    }),
+  sessionEnd: (session_token: string) =>
+    request<{ ok: boolean }>("/desktop/session/end", {
+      method: "POST", body: JSON.stringify({ session_token }), silent: true,
+    }),
+
+  // ----- Report Issue (support) -----
+  supportListTickets: () =>
+    request<SupportTicket[]>("/support/tickets"),
+  supportGetTicket: (id: number) =>
+    request<SupportTicket & { messages: SupportMessage[] }>(`/support/tickets/${id}`),
+  // The support endpoints are multipart because they accept optional file
+  // attachments alongside the message body. Even when no files are attached
+  // we send FormData -- the backend uses Form(...) fields and rejects JSON.
+  supportCreateTicket: (body: { subject: string; body: string; client_version?: string }) => {
+    const fd = new FormData();
+    fd.append("subject", body.subject);
+    fd.append("body", body.body);
+    if (body.client_version) fd.append("client_version", body.client_version);
+    return request<SupportTicket & { messages: SupportMessage[] }>("/support/tickets", {
+      method: "POST", body: fd,
+    });
+  },
+  supportAddMessage: (ticket_id: number, body: string) => {
+    const fd = new FormData();
+    fd.append("body", body);
+    return request<SupportMessage>(`/support/tickets/${ticket_id}/messages`, {
+      method: "POST", body: fd,
+    });
+  },
+  supportUnreadCount: () =>
+    request<{ unread: number }>("/support/unread-count", { silent: true }),
+
+  // ----- Password reset (public) -----
+  passwordResetRequest: (email: string) =>
+    request<{ ok: boolean; message: string }>("/auth/password-reset/request", {
+      method: "POST", body: JSON.stringify({ email }), silent: true,
+    }),
 };
+
+export interface SupportTicket {
+  id: number;
+  officer_user_id: number;
+  subject: string;
+  status: string;
+  client_version: string | null;
+  last_message_at: string | null;
+  created_at: string | null;
+  unread: number;
+  viewer_role: string;
+}
+export interface SupportMessage {
+  id: number;
+  sender_role: string;
+  sender_user_id: number | null;
+  body: string;
+  created_at: string | null;
+}

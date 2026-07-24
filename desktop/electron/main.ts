@@ -7,6 +7,40 @@ import Store from "electron-store";
 import { DEFAULT_SERVER_URL } from "./build-config";
 import { setupAutoUpdater, checkNow, quitAndInstall } from "./updater";
 
+// -----------------------------------------------------------------------
+// Drafts folder resolver.
+//
+// Officers want the "Appeal Drafts" folder to sit right next to the .exe
+// (i.e. inside the install directory) so they can browse it from Explorer
+// without knowing where %APPDATA% is.  We probe that path first; if the
+// directory is read-only (per-machine installs, portable runs from
+// %TEMP%), we fall back to the user-data folder so nothing silently
+// disappears.  Path is memoised for the lifetime of the process.
+// -----------------------------------------------------------------------
+let _draftsDir: string | null = null;
+function draftsRoot(): string {
+  if (_draftsDir) return _draftsDir;
+  const installNeighbour = path.join(path.dirname(app.getPath("exe")), "Appeal Drafts");
+  try {
+    fs.mkdirSync(installNeighbour, { recursive: true });
+    // Actual writability test — mkdirSync may succeed even when the next
+    // write fails (Windows folder-owner ACLs, portable-mode zip mounts).
+    const probe = path.join(installNeighbour, ".writetest");
+    fs.writeFileSync(probe, "");
+    fs.unlinkSync(probe);
+    _draftsDir = installNeighbour;
+    return _draftsDir;
+  } catch { /* fall through */ }
+  const userDataFallback = path.join(app.getPath("userData"), "Appeal Drafts");
+  fs.mkdirSync(userDataFallback, { recursive: true });
+  _draftsDir = userDataFallback;
+  return _draftsDir;
+}
+
+function safeName(s: string, fallback = "file"): string {
+  return (s || fallback).replace(/[^\w.\-() ]/g, "_").slice(0, 120) || fallback;
+}
+
 // ---------------------------------------------------------------------------
 // Persistent config store. Holds ONLY:
 //   - serverUrl   : where to reach the BharatTax API (owns Gemini + licensing)
@@ -251,16 +285,24 @@ function registerIpc(): void {
   // ------------------------------------------------------------------
   ipcMain.handle(
     "preview:write",
-    async (_e, args: { bytes: ArrayBuffer; slug: string }) => {
-      const dir = path.join(os.tmpdir(), "bharattax-preview");
-      await fs.promises.mkdir(dir, { recursive: true });
-      const safeSlug = (args.slug || "case").replace(/[^\w-]/g, "_");
-      const file = path.join(dir, `${safeSlug}.pdf`);
+    async (_e, args: { bytes: ArrayBuffer; slug: string; caseTitle?: string }) => {
+      // Every preview lands under <installDir>/Appeal Drafts/<caseTitle>/
+      // so officers see PDFs pile up right next to the .exe without knowing
+      // where %APPDATA% is.
+      const base = path.join(draftsRoot(), safeName(args.caseTitle || args.slug, "case"));
+      await fs.promises.mkdir(base, { recursive: true });
+      const file = path.join(base, "preview.pdf");
       await fs.promises.writeFile(file, Buffer.from(args.bytes));
-      // Windows paths need forward slashes for a proper file:// URL.
-      return { url: "file:///" + file.replace(/\\/g, "/") };
+      return { url: "file:///" + file.replace(/\\/g, "/"), path: file };
     },
   );
+
+  // Reveal the drafts folder root (used by a "Show drafts folder" button in
+  // the UI so officers can find their .docx / .pdf on disk).
+  ipcMain.handle("drafts:openFolder", async () => {
+    shell.openPath(draftsRoot());
+  });
+  ipcMain.handle("drafts:root", () => draftsRoot());
 
   // ------------------------------------------------------------------
   // "Open in Word" workflow.  The renderer hands us the docx bytes + a
@@ -271,13 +313,19 @@ function registerIpc(): void {
   // ------------------------------------------------------------------
   ipcMain.handle(
     "manualEdit:start",
-    async (_e, args: { bytes: ArrayBuffer; suggestedName: string; sessionId: string }) => {
+    async (_e, args: { bytes: ArrayBuffer; suggestedName: string; sessionId: string; caseTitle?: string }) => {
       const sessionId = args.sessionId || crypto.randomBytes(6).toString("hex");
-      const dir = path.join(os.tmpdir(), "bharattax-appeal", sessionId);
+      // Each Open-in-Word session gets its own subfolder beside the .exe:
+      //   <installDir>/Appeal Drafts/<caseTitle>/<sessionId>/<CaseTitle>.docx
+      // The per-session folder lets us watch a single file without racing
+      // against previous editing sessions, and cleaning up one drops just
+      // that session's copy.
+      const caseFolder = safeName(args.caseTitle || "case", "case");
+      const dir = path.join(draftsRoot(), caseFolder, sessionId);
       await fs.promises.mkdir(dir, { recursive: true });
       // Sanitise the suggested filename so nothing exotic ends up on disk.
-      const safeName = (args.suggestedName || "draft.docx").replace(/[^\w.\-() ]/g, "_");
-      const file = path.join(dir, safeName.endsWith(".docx") ? safeName : `${safeName}.docx`);
+      const suggested = (args.suggestedName || "draft.docx").replace(/[^\w.\-() ]/g, "_");
+      const file = path.join(dir, suggested.endsWith(".docx") ? suggested : `${suggested}.docx`);
       await fs.promises.writeFile(file, Buffer.from(args.bytes));
       // Open with the OS default handler for .docx (Word / LibreOffice /
       // WordPad, whichever is registered).

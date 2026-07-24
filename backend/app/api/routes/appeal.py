@@ -988,6 +988,22 @@ async def upload_edited_draft(
     )
     db.add(new_row); db.commit(); db.refresh(new_row)
 
+    # Mirror the edited .docx to R2 under a stable per-case prefix so admins
+    # can inspect drafts without loading the app.  Failures here are
+    # non-fatal — the canonical copy is the docx_blob in Postgres.
+    try:
+        put_bytes(
+            f"drafts/{case.slug}/v{new_row.version}.docx",
+            raw,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        put_bytes(  # also keep a "latest.docx" pointer so shell scripts don't need to know the version
+            f"drafts/{case.slug}/latest.docx", raw,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+    except Exception as _exc:  # noqa: BLE001
+        log.warning("R2 draft mirror failed for %s: %s", case.slug, _exc)
+
     audit.log_event(
         db, action="appeal.draft.upload",
         user_id=p.user.id, wing_id=p.user.wing_id,
@@ -1055,6 +1071,17 @@ async def preview_pdf(cid: str, p: Principal = Depends(get_principal),
         raise HTTPException(502, f"Preview service unreachable: {e}")
     if r.status_code != 200:
         raise HTTPException(502, f"Preview render failed: {r.text[:200]}")
+
+    # Mirror to R2 under the same drafts prefix as the .docx so admins have
+    # both formats side by side.  Non-fatal — the user still gets the PDF
+    # even if the mirror upload fails.
+    try:
+        pdf_key = f"drafts/{case.slug}/v{draft.version}.pdf"
+        put_bytes(pdf_key, r.content, content_type="application/pdf")
+        put_bytes(f"drafts/{case.slug}/latest.pdf", r.content, content_type="application/pdf")
+    except Exception as _exc:  # noqa: BLE001
+        log.warning("R2 preview mirror failed for %s: %s", case.slug, _exc)
+
     return Response(
         content=r.content,
         media_type="application/pdf",

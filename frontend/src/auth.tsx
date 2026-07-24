@@ -55,28 +55,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // heartbeat keeps the seat lease alive while the tab is open. If the server
-  // ever rejects the token (401), drop the session locally — api.ts will also
-  // bounce the user to /login.
+  // heartbeat keeps the seat lease alive while the tab is open. Additionally,
+  // we poll the session-status probe so admin actions (license deactivation,
+  // account disable) kick the user out within ~60s even if they're just
+  // reading a page and never trigger an API 401. Quota exhaustion and licence
+  // expiry return state="blocked" -- we leave them signed in for those.
   useEffect(() => {
     if (!session) return;
+    const drop = () => {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(SESS);
+      setSession(null);
+      if (!window.location.pathname.startsWith("/login")) window.location.assign("/login");
+    };
     const id = setInterval(async () => {
       const tok = localStorage.getItem(KEY);
       if (!tok) return;
+      const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/auth/heartbeat`,
-          { method: "POST", headers: { Authorization: `Bearer ${tok}` } },
-        );
-        if (res.status === 401) {
-          localStorage.removeItem(KEY);
-          localStorage.removeItem(SESS);
-          setSession(null);
-          if (!window.location.pathname.startsWith("/login")) window.location.assign("/login");
+        const res = await fetch(`${base}/auth/heartbeat`, {
+          method: "POST", headers: { Authorization: `Bearer ${tok}` },
+        });
+        if (res.status === 401) { drop(); return; }
+      } catch { /* network blip — ignore */ }
+      try {
+        const r = await fetch(`${base}/auth/session/status`, {
+          headers: { Authorization: `Bearer ${tok}` },
+        });
+        if (r.status === 401) { drop(); return; }
+        if (r.ok) {
+          const j = await r.json();
+          if (j?.state === "logout") {
+            try { await api.logout(); } catch { /* best-effort */ }
+            drop();
+          }
         }
-      } catch {
-        /* network blip — ignore */
-      }
+      } catch { /* silent */ }
     }, 60_000);
     return () => clearInterval(id);
   }, [session]);
