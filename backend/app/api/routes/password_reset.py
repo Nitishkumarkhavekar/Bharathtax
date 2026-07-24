@@ -197,7 +197,19 @@ def _send_email(to: str, reset_url: str, recipient_name: str | None = None) -> N
     # they never generate auto-replies / vacation responders.
     msg["Auto-Submitted"] = "auto-generated"
     msg["X-Auto-Response-Suppress"] = "All"
+    msg["Precedence"] = "bulk"
     msg["MIME-Version"] = "1.0"
+    msg["X-Mailer"] = "BharatTax/Notify"
+    # A visible Reply-To on a real, monitored address helps Gmail decide the
+    # sender is legitimate -- and gives users somewhere to write back to.
+    reply_to = os.getenv("SMTP_REPLY_TO", "support@bharattax.wenvia.global")
+    msg["Reply-To"] = reply_to
+    # RFC 8058: Gmail specifically rewards transactional mail that offers a
+    # one-click unsubscribe path, even for password-reset mail. It also makes
+    # bulk-mail filters more forgiving.
+    unsubscribe = f"{_APP_URL.rstrip('/')}/email-unsubscribe?addr={to}"
+    msg["List-Unsubscribe"] = f"<{unsubscribe}>, <mailto:{reply_to}?subject=unsubscribe>"
+    msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
 
     text_body = _reset_email_text(name, reset_url, _TOKEN_TTL_MIN)
     html_body = _reset_email_html(name, reset_url, _TOKEN_TTL_MIN)

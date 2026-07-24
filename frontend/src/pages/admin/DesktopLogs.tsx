@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, Clock, MonitorSmartphone } from "lucide-react";
+import { Users, Clock, MonitorSmartphone, ChevronLeft, ChevronRight } from "lucide-react";
 import { DesktopSessionRow, DesktopUserRollup, api } from "@/api";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
 import { Section } from "@/components/admin/charts";
+
+const SESSIONS_PAGE_SIZE = 25;
+const USERS_PAGE_SIZE = 15;
 
 function fmtDuration(sec: number | null | undefined): string {
   if (!sec || sec <= 0) return "0m";
@@ -20,11 +23,20 @@ export default function DesktopLogsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [activeUser, setActiveUser] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [usersPage, setUsersPage] = useState(1);
 
   useEffect(() => {
     api.adminDesktopSessionsSummary().then((r) => setUsers(r.users)).catch((e) => setErr(e?.message ?? "load failed"));
-    api.adminDesktopSessions({ limit: 200 }).then((r) => setSessions(r.sessions)).catch((e) => setErr(e?.message ?? "load failed"));
+    // Pull the full session history so pagination is meaningful. Server-side
+    // paging can come later once the cap becomes a real problem.
+    api.adminDesktopSessions({ limit: 2000 }).then((r) => setSessions(r.sessions)).catch((e) => setErr(e?.message ?? "load failed"));
   }, []);
+  // Reset to page 1 whenever the visible slice of sessions changes.
+  useEffect(() => { setPage(1); }, [activeUser]);
+  // Reset the officer pager whenever a search narrows the list -- otherwise
+  // you'd land on page 4 of a result that only has one match.
+  useEffect(() => { setUsersPage(1); }, [q]);
 
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -40,6 +52,14 @@ export default function DesktopLogsPage() {
     if (activeUser === null) return sessions;
     return sessions.filter((s) => s.user_id === activeUser);
   }, [sessions, activeUser]);
+
+  // Officer-list paging.
+  const usersTotal = filtered.length;
+  const usersTotalPages = Math.max(1, Math.ceil(usersTotal / USERS_PAGE_SIZE));
+  const usersSafePage = Math.min(Math.max(1, usersPage), usersTotalPages);
+  const usersStart = (usersSafePage - 1) * USERS_PAGE_SIZE;
+  const usersEnd = Math.min(usersTotal, usersStart + USERS_PAGE_SIZE);
+  const usersSlice = filtered.slice(usersStart, usersEnd);
 
   if (err) return <ErrorBanner msg={err} />;
   if (!users || !sessions) return <Loading label="Loading logs…" />;
@@ -69,9 +89,12 @@ export default function DesktopLogsPage() {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…"
               className="w-40 h-8 px-2 rounded border border-slate-200 text-xs focus:outline-none focus:border-primary" />
           }>
-          <div className="overflow-x-auto rounded-md ring-1 ring-slate-200">
+          <div className="rounded-md ring-1 ring-slate-200 overflow-hidden">
+            {/* Sticky header + scrollable body so the officer list stays
+                usable no matter how many wings we support. */}
+            <div className="max-h-[520px] overflow-y-auto overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
+              <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider sticky top-0 z-10">
                 <tr>
                   <th className="text-left px-3 py-2">Officer</th>
                   <th className="text-right px-3 py-2">Sessions</th>
@@ -87,7 +110,7 @@ export default function DesktopLogsPage() {
                     </button>
                   </td>
                 </tr>
-                {filtered.map((u) => {
+                {usersSlice.map((u) => {
                   const on = activeUser === u.user_id;
                   return (
                     <tr key={u.user_id} className={"border-t border-slate-100 cursor-pointer " + (on ? "bg-primary/5" : "hover:bg-slate-50")}
@@ -105,8 +128,40 @@ export default function DesktopLogsPage() {
                     </tr>
                   );
                 })}
+                {usersTotal === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-[12.5px] text-slate-500">
+                      No officers match this search.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
+            </div>
+            <div className="px-3 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2 text-[12px] text-slate-600">
+              <div>
+                Showing <span className="font-semibold text-slate-800 tabular-nums">{usersTotal === 0 ? 0 : usersStart + 1}–{usersEnd}</span> of <span className="font-semibold text-slate-800 tabular-nums">{usersTotal}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setUsersPage(usersSafePage - 1)}
+                  disabled={usersSafePage <= 1}
+                  className="inline-flex items-center gap-1 h-7 px-2 rounded border border-slate-200 bg-white text-[12px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="size-3.5" /> Prev
+                </button>
+                <span className="text-[12px] text-slate-500 px-1 tabular-nums">
+                  Page {usersSafePage} / {usersTotalPages}
+                </span>
+                <button
+                  onClick={() => setUsersPage(usersSafePage + 1)}
+                  disabled={usersSafePage >= usersTotalPages}
+                  className="inline-flex items-center gap-1 h-7 px-2 rounded border border-slate-200 bg-white text-[12px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next <ChevronRight className="size-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </Section>
 
@@ -114,44 +169,93 @@ export default function DesktopLogsPage() {
           {activeSessions.length === 0 ? (
             <Empty label="No sessions logged yet." />
           ) : (
-            <div className="overflow-x-auto rounded-md ring-1 ring-slate-200">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider">
-                  <tr>
-                    <th className="text-left px-3 py-2">Officer</th>
-                    <th className="text-left px-3 py-2">Started</th>
-                    <th className="text-left px-3 py-2">Ended</th>
-                    <th className="text-right px-3 py-2">Duration</th>
-                    <th className="text-right px-3 py-2">Actions</th>
-                    <th className="text-left px-3 py-2">Last action</th>
-                    <th className="text-left px-3 py-2">Version · IP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeSessions.map((s) => (
-                    <tr key={s.id} className="border-t border-slate-100">
-                      <td className="px-3 py-2 text-[12.5px]">
-                        <div className="font-medium text-slate-900">{s.full_name || s.username}</div>
-                        <div className="text-[11px] text-slate-500">@{s.username}</div>
-                      </td>
-                      <td className="px-3 py-2 text-[12.5px] text-slate-600 whitespace-nowrap">{fmtDT(s.started_at)}</td>
-                      <td className="px-3 py-2 text-[12.5px] text-slate-600 whitespace-nowrap">
-                        {s.still_open ? <span className="inline-flex items-center gap-1 text-emerald-700"><span className="size-1.5 rounded-full bg-emerald-500 animate-pulse"/> still on</span> : fmtDT(s.ended_at)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[12.5px]">{fmtDuration(s.duration_seconds)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[12.5px]">{s.action_count}</td>
-                      <td className="px-3 py-2 text-[12.5px] text-slate-500">{s.last_action || "—"}</td>
-                      <td className="px-3 py-2 text-[12.5px] text-slate-500">
-                        {s.client_version ? `v${s.client_version}` : "—"}<br/>
-                        <span className="font-mono">{s.ip_address || "—"}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <SessionsTable
+              rows={activeSessions}
+              page={page}
+              onPageChange={setPage}
+            />
           )}
         </Section>
+      </div>
+    </div>
+  );
+}
+
+// Sticky-header scrollable session table + Prev/Next pagination. Keeps the
+// admin from having to scroll the whole viewport to see the pager.
+function SessionsTable({ rows, page, onPageChange }: {
+  rows: DesktopSessionRow[];
+  page: number;
+  onPageChange: (p: number) => void;
+}) {
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / SESSIONS_PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * SESSIONS_PAGE_SIZE;
+  const end = Math.min(total, start + SESSIONS_PAGE_SIZE);
+  const slice = rows.slice(start, end);
+
+  return (
+    <div className="rounded-md ring-1 ring-slate-200 overflow-hidden">
+      <div className="max-h-[560px] overflow-y-auto overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-slate-700 text-[11px] font-semibold uppercase tracking-wider sticky top-0 z-10">
+            <tr>
+              <th className="text-left px-3 py-2">Officer</th>
+              <th className="text-left px-3 py-2">Started</th>
+              <th className="text-left px-3 py-2">Ended</th>
+              <th className="text-right px-3 py-2">Duration</th>
+              <th className="text-right px-3 py-2">Actions</th>
+              <th className="text-left px-3 py-2">Last action</th>
+              <th className="text-left px-3 py-2">Version · IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slice.map((s) => (
+              <tr key={s.id} className="border-t border-slate-100">
+                <td className="px-3 py-2 text-[12.5px]">
+                  <div className="font-medium text-slate-900">{s.full_name || s.username}</div>
+                  <div className="text-[11px] text-slate-500">@{s.username}</div>
+                </td>
+                <td className="px-3 py-2 text-[12.5px] text-slate-600 whitespace-nowrap">{fmtDT(s.started_at)}</td>
+                <td className="px-3 py-2 text-[12.5px] text-slate-600 whitespace-nowrap">
+                  {s.still_open ? <span className="inline-flex items-center gap-1 text-emerald-700"><span className="size-1.5 rounded-full bg-emerald-500 animate-pulse"/> still on</span> : fmtDT(s.ended_at)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-[12.5px]">{fmtDuration(s.duration_seconds)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-[12.5px]">{s.action_count}</td>
+                <td className="px-3 py-2 text-[12.5px] text-slate-500">{s.last_action || "—"}</td>
+                <td className="px-3 py-2 text-[12.5px] text-slate-500">
+                  {s.client_version ? `v${s.client_version}` : "—"}<br/>
+                  <span className="font-mono">{s.ip_address || "—"}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-3 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2 text-[12px] text-slate-600">
+        <div>
+          Showing <span className="font-semibold text-slate-800 tabular-nums">{total === 0 ? 0 : start + 1}–{end}</span> of <span className="font-semibold text-slate-800 tabular-nums">{total}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onPageChange(safePage - 1)}
+            disabled={safePage <= 1}
+            className="inline-flex items-center gap-1 h-7 px-2 rounded border border-slate-200 bg-white text-[12px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="size-3.5" /> Prev
+          </button>
+          <span className="text-[12px] text-slate-500 px-1 tabular-nums">
+            Page {safePage} / {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(safePage + 1)}
+            disabled={safePage >= totalPages}
+            className="inline-flex items-center gap-1 h-7 px-2 rounded border border-slate-200 bg-white text-[12px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next <ChevronRight className="size-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );

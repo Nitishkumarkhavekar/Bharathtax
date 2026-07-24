@@ -430,21 +430,33 @@ export const api = {
   // The support endpoints are multipart because they accept optional file
   // attachments alongside the message body. Even when no files are attached
   // we send FormData -- the backend uses Form(...) fields and rejects JSON.
-  supportCreateTicket: (body: { subject: string; body: string; client_version?: string }) => {
+  supportCreateTicket: (body: {
+    subject: string; body: string; client_version?: string; files?: File[];
+  }) => {
     const fd = new FormData();
     fd.append("subject", body.subject);
     fd.append("body", body.body);
     if (body.client_version) fd.append("client_version", body.client_version);
+    (body.files || []).forEach((f) => fd.append("files", f, f.name));
     return request<SupportTicket & { messages: SupportMessage[] }>("/support/tickets", {
       method: "POST", body: fd,
     });
   },
-  supportAddMessage: (ticket_id: number, body: string) => {
+  supportAddMessage: (ticket_id: number, body: string, files?: File[]) => {
     const fd = new FormData();
     fd.append("body", body);
+    (files || []).forEach((f) => fd.append("files", f, f.name));
     return request<SupportMessage>(`/support/tickets/${ticket_id}/messages`, {
       method: "POST", body: fd,
     });
+  },
+  // Fetches an attachment as a Blob URL so <img>/<video> tags can render it
+  // through the auth-protected download endpoint (no R2 credentials leave
+  // the server).
+  supportAttachmentBlobUrl: async (attId: number, mime: string): Promise<string> => {
+    const buf = await requestBlob(`/support/attachments/${attId}`);
+    const blob = new Blob([buf], { type: mime || "application/octet-stream" });
+    return URL.createObjectURL(blob);
   },
   supportUnreadCount: () =>
     request<{ unread: number }>("/support/unread-count", { silent: true }),
@@ -467,10 +479,18 @@ export interface SupportTicket {
   unread: number;
   viewer_role: string;
 }
+export interface SupportAttachment {
+  id: number;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  download_url: string;
+}
 export interface SupportMessage {
   id: number;
   sender_role: string;
   sender_user_id: number | null;
   body: string;
   created_at: string | null;
+  attachments?: SupportAttachment[];
 }
