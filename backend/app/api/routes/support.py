@@ -24,12 +24,19 @@ from app.services import storage
 router = APIRouter(prefix="/support", tags=["support"])
 log = logging.getLogger(__name__)
 
-# Only images are supported as attachments (screenshots).  Cap size at 10 MB
-# per file to keep R2 costs sane and to reject accidental video / archive
-# uploads that the ticket UI can't render anyway.
-_ALLOWED_MIME = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/heic", "image/bmp"}
-_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+# Screenshots and short screen recordings are supported. Images cap at 10 MB,
+# videos at 100 MB -- above that officers should file a call rather than a
+# ticket. Everything else (archives, executables, PDFs) is rejected.
+_ALLOWED_IMAGE_MIME = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/heic", "image/bmp"}
+_ALLOWED_VIDEO_MIME = {"video/mp4", "video/webm", "video/quicktime", "video/x-matroska"}
+_ALLOWED_MIME = _ALLOWED_IMAGE_MIME | _ALLOWED_VIDEO_MIME
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024
+_MAX_VIDEO_BYTES = 100 * 1024 * 1024
 _MAX_ATTACHMENTS_PER_MESSAGE = 6
+
+
+def _human_mb(n: int) -> str:
+    return f"{n / (1024*1024):.0f} MB"
 
 
 def _safe_filename(name: str) -> str:
@@ -81,11 +88,21 @@ def _store_attachments(m: SupportMessage, files: list[UploadFile] | None,
         if not f or not f.filename: continue
         mt = (f.content_type or "").lower()
         if mt not in _ALLOWED_MIME:
-            raise HTTPException(400, f"Unsupported file type: {mt or 'unknown'}. Only images are allowed.")
+            raise HTTPException(
+                400,
+                f"Unsupported file type: {mt or 'unknown'}. "
+                "Attach screenshots (PNG/JPEG/GIF/WEBP/HEIC/BMP) or short "
+                "screen recordings (MP4/WEBM/MOV/MKV).",
+            )
         raw = f.file.read()
         if not raw: continue
-        if len(raw) > _MAX_ATTACHMENT_BYTES:
-            raise HTTPException(400, f"'{f.filename}' is larger than 10 MB. Please shrink it and try again.")
+        cap = _MAX_VIDEO_BYTES if mt in _ALLOWED_VIDEO_MIME else _MAX_IMAGE_BYTES
+        if len(raw) > cap:
+            raise HTTPException(
+                400,
+                f"'{f.filename}' is larger than {_human_mb(cap)}. Please "
+                "shrink it (or trim the recording) and try again.",
+            )
         safe = _safe_filename(f.filename)
         r2_key = f"support/{m.ticket_id}/{m.id}/{safe}"
         try:
@@ -240,8 +257,18 @@ def get_attachment(attachment_id: int,
     except Exception as exc:  # noqa: BLE001
         log.warning("R2 fetch failed for %s: %s", a.r2_key, exc)
         raise HTTPException(502, "Could not fetch the attachment")
-    return Response(content=data, media_type=a.mime_type,
-                    headers={"Cache-Control": "private, max-age=3600"})
+    # inline disposition lets the browser <img> / <video> tags render it;
+    # the filename hint helps the Save-As dialog if the user chooses to
+    # download it explicitly.
+    return Response(
+        content=data,
+        media_type=a.mime_type,
+        headers={
+            "Cache-Control": "private, max-age=3600",
+            "Content-Disposition": f'inline; filename="{a.filename}"',
+            "Accept-Ranges": "bytes",
+        },
+    )
 
 
 @router.get("/unread-count")

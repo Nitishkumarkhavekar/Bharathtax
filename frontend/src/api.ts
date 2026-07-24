@@ -916,14 +916,27 @@ export const api = {
     req<AdminSupportTicket[]>("/admin/support/tickets" + (status ? `?status=${status}` : "")),
   adminSupportGetTicket: (id: number) =>
     req<AdminSupportTicket & { messages: SupportMessage[] }>(`/admin/support/tickets/${id}`),
-  adminSupportAddMessage: (id: number, body: string) => {
+  adminSupportAddMessage: (id: number, body: string, files?: File[]) => {
     // The backend accepts multipart on this endpoint (for optional file
     // attachments), so we send FormData -- Form(...) fields reject JSON.
     const fd = new FormData();
     fd.append("body", body);
+    (files || []).forEach((f) => fd.append("files", f, f.name));
     return req<SupportMessage>(`/admin/support/tickets/${id}/messages`, {
       method: "POST", body: fd,
     });
+  },
+  // Stream an attachment through the authenticated download endpoint and
+  // return a Blob URL that an <img>/<video> tag can render.
+  adminSupportAttachmentBlobUrl: async (attId: number, mime: string): Promise<string> => {
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+    const tok = localStorage.getItem("bharathtax_token");
+    const res = await fetch(`${base}/support/attachments/${attId}`, {
+      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    return URL.createObjectURL(new Blob([buf], { type: mime || "application/octet-stream" }));
   },
   adminSupportPatchTicket: (id: number, status: "open" | "closed") =>
     req<AdminSupportTicket>(`/admin/support/tickets/${id}`, {
@@ -943,12 +956,20 @@ export const api = {
     req<{ users: DesktopUserRollup[] }>("/admin/desktop-sessions/summary"),
 };
 
+export interface SupportAttachment {
+  id: number;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  download_url: string;
+}
 export interface SupportMessage {
   id: number;
   sender_role: string;
   sender_user_id: number | null;
   body: string;
   created_at: string | null;
+  attachments?: SupportAttachment[];
 }
 export interface AdminSupportTicket {
   id: number;
