@@ -510,6 +510,15 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         )
         used = used + "+stale-warned"
 
+    # "grounded" must reflect reality: true only for a genuine corpus-backed
+    # answer — NOT a refusal, a pure external web-search replacement, or an
+    # ungrounded general-LLM fallback. (A corpus answer supplemented with web,
+    # or one flagged stale, is still corpus-grounded.)
+    grounded = (
+        not refused
+        and used != "web-search:gemini"
+        and not used.startswith("fallback:")
+    )
     result_meta = {
         "retrieval": used,
         "primary_model": settings.llm_model_name,
@@ -527,14 +536,14 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         if (_qcache.should_cache(meta=result_meta) and not deflected) or stable_web:
             _qcache.put(
                 q,
-                {"text": primary_text, "grounded": True, "meta": result_meta},
+                {"text": primary_text, "grounded": grounded, "meta": result_meta},
                 domain=domain_slug,
             )
     except Exception:  # noqa: BLE001 — never let cache-write break the response
         pass
 
     return Answer(
-        text=primary_text, grounded=True, citations=[],
+        text=primary_text, grounded=grounded, citations=[],
         meta=result_meta,
     )
 

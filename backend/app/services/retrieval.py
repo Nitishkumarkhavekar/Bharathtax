@@ -143,24 +143,39 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
         ranked = sorted(range(len(chunks)), key=lambda i: base[chunks[i].id], reverse=True)
         scores = [(i, base[chunks[i].id]) for i in ranked[: settings.retrieval_rerank_k]]
 
+    # Batch the parent-section and document-metadata lookups instead of two
+    # point queries per passage (was N+1 on the hot path).
+    sel = [(chunks[idx], score) for idx, score in scores]
+    parent_ids = {c.parent_chunk_id for c, _ in sel if c.parent_chunk_id}
+    doc_ids = {c.corpus_document_id for c, _ in sel}
+    parents = {
+        p.id: p for p in db.scalars(select(CorpusChunk).where(CorpusChunk.id.in_(parent_ids)))
+    } if parent_ids else {}
+    docs = {
+        d.id: d for d in db.scalars(select(CorpusDocument).where(CorpusDocument.id.in_(doc_ids)))
+    } if doc_ids else {}
+
     passages: list[Passage] = []
-    for idx, score in scores:
-        c = chunks[idx]
-        url, digest, secs = _doc_meta(db, c)
+    for c, score in sel:
+        parent = parents.get(c.parent_chunk_id) if c.parent_chunk_id else None
+        doc = docs.get(c.corpus_document_id)
+        digest = None
+        if doc and doc.digest and doc.digest not in ("PROCEDURAL", "INSUFFICIENT"):
+            digest = doc.digest
         passages.append(
             Passage(
                 chunk_id=c.id,
                 breadcrumb=c.breadcrumb,
-                text=_parent_text(db, c),
+                text=parent.text if parent else c.text,
                 match_text=c.text,
-                source_url=url,
+                source_url=doc.source_url if doc else None,
                 section_number=c.section_number,
                 rule_number=c.rule_number,
                 domain=c.domain.value if hasattr(c.domain, "value") else str(c.domain),
                 score=round(score, 4),
                 channels=sorted(cand[c.id][1]),
                 digest=digest,
-                sections_cited=secs,
+                sections_cited=doc.sections_cited if doc else None,
             )
         )
 
@@ -204,7 +219,15 @@ def retrieve_documents(db: Session, query: str, *, namespace: str) -> RetrievalR
         return RetrievalResult([], grounded=False, meta={"candidates": 0})
 
     chunks = [c for c, _ in cand.values()]
-    scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+    try:
+        scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+    except Exception:  # reranker down -> degrade to candidate order, don't 500
+        # These chunks are from the user's OWN uploaded document, so treat them
+        # as grounded at the gate (score = min_score) instead of failing the query.
+        scores = [
+            (i, settings.retrieval_min_score)
+            for i in range(min(len(chunks), settings.retrieval_rerank_k))
+        ]
     passages = [
         Passage(
             chunk_id=chunks[idx].id,
