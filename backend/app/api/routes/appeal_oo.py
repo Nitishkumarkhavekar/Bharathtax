@@ -259,7 +259,7 @@ async def flush_and_wait(db: Session, cid: int, *, timeout_s: float = 6.0) -> bo
     """
     if not _OO_SECRET:
         return False
-    key = _SESSION_DOC_KEY.get(case.id)
+    key = _SESSION_DOC_KEY.get(cid)
     if not key:
         return False  # no live editor session — nothing to flush
     # Snapshot the current latest draft id so we can detect the callback
@@ -327,7 +327,7 @@ async def oo_forcesave(cid: str, p: Principal = Depends(get_principal),
     """
     if not _OO_SECRET:
         return OOForceSaveOut(ok=False, detail="OO_JWT_SECRET not set")
-    _get_case_for_user(db, p.user, cid)
+    case = _get_case_for_user(db, p.user, cid)
     draft = _latest_draft(db, case.id)
     if not draft:
         return OOForceSaveOut(ok=False, detail="no draft to save")
@@ -378,6 +378,10 @@ def oo_get_doc(token: str, db: Session = Depends(get_db)) -> Response:
     case = db.get(AppealCase, cid)
     if not case:
         raise HTTPException(404, "case missing")
+    # Defense-in-depth: even with a valid (leaked) token, only serve the draft
+    # if the token's user still owns this case.
+    if claims.get("uid") is not None and case.owner_user_id != claims.get("uid"):
+        raise HTTPException(403, "not authorised for this case")
     draft = _latest_draft(db, case.id)
     data = _build_docx_for_draft(case, draft)
     return Response(
@@ -468,6 +472,11 @@ async def oo_save(token: str, body: _OOCallbackBody, request: Request,
     case = db.get(AppealCase, cid)
     if not case:
         log.warning("oo_save: cid=%s no such case", cid)
+        return {"error": 1}
+    # Defense-in-depth: a leaked token must not let anyone overwrite the draft
+    # of a case its user no longer owns.
+    if claims.get("uid") is not None and case.owner_user_id != claims.get("uid"):
+        log.warning("oo_save: cid=%s uid mismatch", cid)
         return {"error": 1}
     draft = _latest_draft(db, case.id)
     if not draft:

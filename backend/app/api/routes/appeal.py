@@ -286,7 +286,12 @@ async def upload_docs(cid: str, files: list[UploadFile] = File(...),
         # for the dedup lookup below.
         import hashlib as _hashlib
         sha256_hex = _hashlib.sha256(raw).hexdigest()
-        key = f"appeal/case_{case.id}/{filename}"
+        # Content-addressed key: unique per file content, so two uploads that
+        # happen to share a filename never overwrite each other, and a crafted
+        # filename ('../…') can't escape the case prefix. Identical bytes reuse
+        # the same object (storage dedup); delete_doc guards against removing a
+        # blob another document still references.
+        key = f"appeal/case_{case.id}/{sha256_hex}{ext}"
         put_bytes(key, raw, content_type=content_type)
         try:
             text = extract_text(raw, content_type, filename=filename)
@@ -390,13 +395,22 @@ def delete_doc(cid: str, did: int,
     if not doc or doc.case_id != case.id:
         raise HTTPException(404, "Not found")
     # Best-effort MinIO cleanup — the DB delete is the source of truth, so
-    # a bucket blip must not block the row removal.
+    # a bucket blip must not block the row removal. Content-addressed keys are
+    # shared by identical uploads, so only remove the blob when no OTHER
+    # document still references it (otherwise we'd orphan a live reference).
     if doc.minio_key:
-        try:
-            from app.services.storage import remove_object
-            remove_object(doc.minio_key)
-        except Exception as e:
-            log.warning("storage delete failed for %s: %s", doc.minio_key, e)
+        shared = db.scalar(
+            select(func.count()).select_from(AppealDocument).where(
+                AppealDocument.minio_key == doc.minio_key,
+                AppealDocument.id != doc.id,
+            )
+        )
+        if not shared:
+            try:
+                from app.services.storage import remove_object
+                remove_object(doc.minio_key)
+            except Exception as e:
+                log.warning("storage delete failed for %s: %s", doc.minio_key, e)
     filename = doc.filename
     db.delete(doc)
     db.commit()

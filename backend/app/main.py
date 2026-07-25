@@ -75,15 +75,21 @@ def _patch_user_columns() -> None:
         _log.warning("user-column patch failed (continuing): %s", exc)
 
 
+# Fail fast if we're in production with default secrets or a wildcard CORS.
+settings.assert_prod_safe()
+
 _ensure_admin_tables()
 _patch_user_columns()
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 
-# Dev CORS: the Vite frontend. Tighten via config for production deployments.
+# CORS origins come from config (CORS_ALLOWED_ORIGINS); "*" only in dev.
+# allow_credentials must be False when origins is "*" (browsers reject the combo).
+_origins = settings.allowed_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
+    allow_credentials=_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
