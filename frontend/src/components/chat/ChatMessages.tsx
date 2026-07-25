@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Globe, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, normalizeMarkdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -208,17 +208,10 @@ function Message({
                       title={domain}
                       className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 px-2 py-0.5 text-[11px] text-slate-600 transition-colors"
                     >
-                      <img
-                        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(
-                          domain,
-                        )}&sz=32`}
-                        alt=""
-                        loading="lazy"
-                        className="size-3.5 rounded-sm"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
-                      />
+                      {/* Local icon instead of Google's favicon service — a
+                          self-hosted product must not leak visited source
+                          domains to a third party. */}
+                      <Globe className="size-3.5 text-slate-400 shrink-0" />
                       <span className="max-w-[150px] truncate">{domain}</span>
                     </a>
                   );
