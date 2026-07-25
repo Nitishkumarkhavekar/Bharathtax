@@ -65,6 +65,8 @@ async def _gen_one(client: httpx.AsyncClient, sem: asyncio.Semaphore, url: str,
                 r = await client.post(f"{url}/chat/completions", json=payload)
                 if r.status_code == 200:
                     return _clean(r.json()["choices"][0]["message"]["content"])
+                if 400 <= r.status_code < 500:
+                    break  # client error (bad request/auth) — retrying won't help
             except Exception:
                 pass
             await asyncio.sleep(2 * (attempt + 1))

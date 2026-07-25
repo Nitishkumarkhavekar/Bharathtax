@@ -133,28 +133,6 @@ def list_cases(p: Principal = Depends(get_principal), db: Session = Depends(get_
     # flip case.status. This runs on every list load, keyed by the current
     # user's own cases, so the UI never shows a phantom "Running / Stop"
     # button for a case whose latest run is already done or errored.
-    from sqlalchemy import text as _sql_text
-    try:
-        db.execute(_sql_text("""
-            UPDATE appeal_cases c
-               SET status = CASE
-                              WHEN r.status = 'done'  THEN 'ready'
-                              WHEN r.status = 'error' THEN 'error'
-                              ELSE c.status
-                            END
-              FROM (
-                SELECT DISTINCT ON (case_id) case_id, status
-                  FROM appeal_runs
-                  ORDER BY case_id, id DESC
-              ) r
-             WHERE r.case_id = c.id
-               AND c.status = 'running'
-               AND r.status IN ('done', 'error')
-        """))
-        db.commit()
-    except Exception:
-        db.rollback()
-
     q = select(AppealCase).order_by(desc(AppealCase.updated_at))
     if p.user.role == Role.super_admin:
         pass
@@ -162,6 +140,42 @@ def list_cases(p: Principal = Depends(get_principal), db: Session = Depends(get_
         q = q.where(AppealCase.wing_id == p.user.wing_id)
     else:
         q = q.where(AppealCase.owner_user_id == p.user.id)
+
+    # Cheap read-side guard: only run the (writing) self-heal when THIS user's
+    # scope actually has a case stuck on 'running' — avoids a table-scanning
+    # UPDATE on every list load, and scopes the write to the user's own cases.
+    stuck = list(db.scalars(
+        select(AppealCase.id).where(
+            AppealCase.status == "running",
+            *([] if p.user.role == Role.super_admin
+              else [AppealCase.wing_id == p.user.wing_id] if p.user.role == Role.wing_admin
+              else [AppealCase.owner_user_id == p.user.id]),
+        )
+    ))
+    if stuck:
+        from sqlalchemy import text as _sql_text
+        try:
+            db.execute(_sql_text("""
+                UPDATE appeal_cases c
+                   SET status = CASE
+                                  WHEN r.status = 'done'  THEN 'ready'
+                                  WHEN r.status = 'error' THEN 'error'
+                                  ELSE c.status
+                                END
+                  FROM (
+                    SELECT DISTINCT ON (case_id) case_id, status
+                      FROM appeal_runs
+                      WHERE case_id = ANY(:ids)
+                      ORDER BY case_id, id DESC
+                  ) r
+                 WHERE r.case_id = c.id
+                   AND c.status = 'running'
+                   AND r.status IN ('done', 'error')
+            """), {"ids": stuck})
+            db.commit()
+        except Exception:
+            db.rollback()
+
     return [_case_out(c) for c in db.scalars(q)]
 
 
@@ -569,7 +583,10 @@ def edit_output(oid: int, body: OutputEdit, p: Principal = Depends(get_principal
     o = db.get(AppealOutput, oid)
     if not o:
         raise HTTPException(404, "Output not found")
-    _get_case(db, p.user, db.get(AppealRun, o.run_id).case_id)
+    run = db.get(AppealRun, o.run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    _get_case(db, p.user, run.case_id)
     nxt = AppealOutput(run_id=o.run_id, kind=o.kind, seq=o.seq, label=o.label,
                        content=body.content, citations=o.citations, edited=True, version=o.version + 1)
     db.add(nxt); db.commit(); db.refresh(nxt)
