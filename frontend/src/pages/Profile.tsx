@@ -14,11 +14,13 @@ import {
   Copy,
   UserCog,
   Wallet,
+  Sparkles,
 } from "lucide-react";
 import { ApiError, LicenseStatus, Profile as ProfileT, api } from "../api";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth";
 import { PlanUsage } from "@/components/PlanUsage";
+import { PersonalizationTab } from "@/components/Personalization";
 import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
@@ -28,7 +30,9 @@ export default function ProfilePage() {
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [params] = useSearchParams();
   // /billing and /tokens redirect here with ?tab=plan so old links land right.
-  const [tab, setTab] = useState<"account" | "plan">(params.get("tab") === "plan" ? "plan" : "account");
+  const [tab, setTab] = useState<"account" | "personalize" | "plan">(
+    params.get("tab") === "plan" ? "plan" : params.get("tab") === "personalize" ? "personalize" : "account",
+  );
 
   useEffect(() => {
     api
@@ -95,6 +99,16 @@ export default function ProfilePage() {
         </button>
         <button
           type="button"
+          onClick={() => setTab("personalize")}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded font-medium transition-colors",
+            tab === "personalize" ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-600 hover:text-slate-900",
+          )}
+        >
+          <Sparkles className="size-4" /> Personalization
+        </button>
+        <button
+          type="button"
           onClick={() => setTab("plan")}
           className={cn(
             "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded font-medium transition-colors",
@@ -137,6 +151,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+      ) : tab === "personalize" ? (
+        <PersonalizationTab />
       ) : (
         <PlanUsage />
       )}

@@ -609,6 +609,25 @@ export interface DesktopRelease {
   updated_at: string | null;
 }
 
+export interface Personalization {
+  charge: string | null;
+  preferred_language: string;
+  role: string;
+  designation: string | null;
+  custom_instructions: string;
+  about_me: string;
+  style: Record<string, unknown>;
+  memory_enabled: boolean;
+}
+export interface MemoryItem {
+  id: number;
+  content: string;
+  kind: string;
+  source: string;
+  pinned: boolean;
+  created_at: string | null;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     req<TokenResponse>("/auth/login", {
@@ -624,6 +643,17 @@ export const api = {
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
+
+  // --- personalization / memory ---
+  personalization: () => req<Personalization>("/me/personalization"),
+  updatePersonalization: (b: Partial<Personalization>) =>
+    req<Personalization>("/me/personalization", { method: "PUT", body: JSON.stringify(b) }),
+  listMemory: () => req<MemoryItem[]>("/me/memory"),
+  addMemory: (b: { content: string; kind?: string; pinned?: boolean }) =>
+    req<MemoryItem>("/me/memory", { method: "POST", body: JSON.stringify(b) }),
+  updateMemory: (id: number, b: { content?: string; kind?: string; pinned?: boolean }) =>
+    req<MemoryItem>(`/me/memory/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
+  deleteMemory: (id: number) => req<void>(`/me/memory/${id}`, { method: "DELETE" }),
 
   // --- license activation (gates the chat for non-admin users) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),
