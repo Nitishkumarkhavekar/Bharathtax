@@ -116,6 +116,49 @@ def _style_hints(style: dict) -> list[str]:
     return hints
 
 
+# ------------------------------------------------------------- explicit remember
+_REMEMBER_RE = re.compile(
+    r"^\s*(?:hey\s+|please\s+|can you\s+|could you\s+)*"
+    r"(?:remember|note|keep in mind|don'?t forget|make a note)\b"
+    r"\s*(?:that|this|:)?\s+(.+)$",
+    re.I,
+)
+
+
+def parse_remember(text: str) -> str | None:
+    """Return the fact from an explicit 'remember that …' message, else None."""
+    m = _REMEMBER_RE.match(text or "")
+    if not m:
+        return None
+    fact = m.group(1).strip().rstrip(".").strip()
+    return fact if len(fact) >= 3 else None
+
+
+def _is_duplicate(db: Session, user_id: int, content: str) -> bool:
+    c = content.lower().strip()
+    for m in list_memory(db, user_id):
+        e = m.content.lower().strip()
+        if c == e or c in e or e in c:
+            return True
+    return False
+
+
+def remember_if_requested(db: Session, user: User, question: str) -> UserMemory | None:
+    """If the message is an explicit 'remember …' request and memory is on, store
+    the fact (deduped) and return it. Reliable + LLM-free."""
+    if user is None:
+        return None
+    fact = parse_remember(question)
+    if not fact:
+        return None
+    s = db.get(UserSettings, user.id)
+    if s is not None and not s.memory_enabled:
+        return None
+    if _is_duplicate(db, user.id, fact):
+        return None
+    return add_memory(db, user.id, fact, source="chat:explicit")
+
+
 def build_context(db: Session, user: User, query: str, *, max_items: int = 8) -> str:
     """Compact personalization preamble for the self-hosted model. Empty string
     when there's nothing to add or the user turned memory off."""

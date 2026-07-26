@@ -355,6 +355,21 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             meta={"retrieval": "greeting", "domain": domain.value if domain else None},
         )
 
+    # Explicit "remember that …" — store the fact and acknowledge; no model call.
+    if user is not None:
+        try:
+            from app.services import personalization as _pers
+            _mem = _pers.remember_if_requested(db, user, q)
+        except Exception:  # noqa: BLE001
+            _mem = None
+        if _mem is not None:
+            return Answer(
+                text=f"Got it — I'll remember that: “{_mem.content}”.",
+                grounded=True, citations=[],
+                meta={"retrieval": "memory", "domain": domain.value if domain else None,
+                      "memory_added": [{"id": _mem.id, "content": _mem.content}]},
+            )
+
     # Personalization preamble — profile + custom instructions + relevant memory.
     # Fed ONLY to the self-hosted model (never the web-search fallback), and it
     # bypasses the shared question cache so one user's tone/memory can't leak to

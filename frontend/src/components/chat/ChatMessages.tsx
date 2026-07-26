@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Globe, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Globe, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, normalizeMarkdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -218,10 +218,40 @@ function Message({
                 })}
             </div>
           )}
+        {!streaming && Array.isArray(msg.meta?.["memory_added"]) &&
+          (msg.meta["memory_added"] as unknown[]).length > 0 && (
+            <MemoryCue items={msg.meta["memory_added"] as { id: number; content: string }[]} />
+          )}
         {!streaming && msg.grounded !== false && (
           <FeedbackRow question={question} answer={msg.content} />
         )}
       </div>
+    </div>
+  );
+}
+
+function MemoryCue({ items }: { items: { id: number; content: string }[] }) {
+  const [undone, setUndone] = useState<Record<number, boolean>>({});
+  const live = items.filter((i) => !undone[i.id]);
+  if (live.length === 0)
+    return <div className="mt-2 text-[11.5px] text-slate-400">Memory update undone.</div>;
+  async function undo(id: number) {
+    setUndone((u) => ({ ...u, [id]: true }));
+    try {
+      await api.deleteMemory(id);
+    } catch {
+      /* best-effort */
+    }
+  }
+  return (
+    <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/[0.07] text-primary px-3 py-1 text-[11.5px] font-medium">
+      <Brain className="size-3.5" />
+      Memory updated
+      {live.length === 1 && (
+        <button type="button" onClick={() => undo(live[0].id)} className="text-slate-500 hover:text-rose-600 underline underline-offset-2">
+          Undo
+        </button>
+      )}
     </div>
   );
 }
