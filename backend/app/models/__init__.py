@@ -11,6 +11,7 @@ from app.models.enums import (
     ChunkLevel, CorpusDocStatus, Domain, DocumentStatus, QueryScope, Role, SourceType,
 )
 from app.models.org import Department, Office, SeatLease, User, Wing
+from app.models.personalization import UserMemory, UserSettings
 from app.models.token_usage import TokenUsage
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "Document", "DocumentChunk",
     "ChunkLevel", "CorpusDocStatus", "Domain", "DocumentStatus", "QueryScope", "Role", "SourceType",
     "Department", "Office", "SeatLease", "User", "Wing",
+    "UserMemory", "UserSettings",
     "TokenUsage",
     "SubscriptionPlan", "TokenPrice", "UserSubscription",
     "DesktopRelease",

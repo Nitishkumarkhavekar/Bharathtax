@@ -73,6 +73,11 @@ class User(Base):
     # CA, Consultant, …). Purely a label — access is governed by `role`
     # (admin vs user) and `features`. NULL falls back to the role name.
     designation: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Personalization / drafting profile. `charge` is the officer's posting
+    # (e.g. "Ward 28(1), Delhi") — used to personalize answers and pre-fill
+    # order/notice headers. Purely descriptive; no access impact.
+    charge: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_language: Mapped[str] = mapped_column(String(10), default="en")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Self-service registrations land as 'pending' and cannot log in until an
     # admin moves them to 'approved'. 'rejected' is terminal.
