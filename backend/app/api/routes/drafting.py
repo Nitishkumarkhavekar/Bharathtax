@@ -1,7 +1,9 @@
 """Officer-side drafting API: templates + generate/store/edit notices & orders."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ from app.api.deps import Principal, get_principal
 from app.core.db import get_db
 from app.models.drafting import DraftDocument
 from app.services import drafting as svc
+from app.services import drafting_export
 
 router = APIRouter(prefix="/drafts", tags=["drafting"])
 
@@ -99,6 +102,21 @@ def regenerate_draft(did: int, p: Principal = Depends(get_principal),
     db.commit()
     db.refresh(d)
     return _out(d)
+
+
+@router.get("/{did}/export.docx")
+def export_docx(did: int, p: Principal = Depends(get_principal),
+                db: Session = Depends(get_db)) -> Response:
+    d = db.get(DraftDocument, did)
+    if not d or d.user_id != p.user.id:
+        raise HTTPException(404, "Not found")
+    data = drafting_export.to_docx(d.title, d.content)
+    fname = re.sub(r"[^A-Za-z0-9._-]+", "_", (d.title or "draft")).strip("_")[:80] or "draft"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{fname}.docx"'},
+    )
 
 
 @router.delete("/{did}", status_code=204)

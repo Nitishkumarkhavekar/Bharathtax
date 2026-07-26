@@ -11,6 +11,7 @@ import {
   Trash2,
   ArrowLeft,
   ScrollText,
+  Download,
 } from "lucide-react";
 import { api, DraftDoc, DraftListItem, DraftTemplate } from "../api";
 import { Button } from "@/components/ui/button";
@@ -290,6 +291,12 @@ function DraftEditor({
       setTimeout(() => setCopied(false), 1600);
     });
   }
+  async function downloadWord() {
+    // Export reflects saved content — flush any pending edits first.
+    if (dirty) await save();
+    const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
+    await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+  }
   async function del() {
     if (!confirm("Delete this draft?")) return;
     await api.deleteDraft(draft.id);
@@ -309,6 +316,9 @@ function DraftEditor({
           </button>
           <button onClick={regen} disabled={!!busy} className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-60">
             <RefreshCw className={cn("size-3.5", busy === "regen" && "animate-spin")} /> Regenerate
+          </button>
+          <button onClick={downloadWord} disabled={!!busy} className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-60">
+            <Download className="size-3.5" /> Word
           </button>
           <button onClick={del} className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50">
             <Trash2 className="size-3.5" />
