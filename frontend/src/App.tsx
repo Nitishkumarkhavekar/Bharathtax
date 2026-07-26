@@ -13,6 +13,7 @@ import History from "./pages/History";
 import Appeals from "./pages/Appeals";
 import AppealCase from "./pages/AppealCase";
 import Rulings from "./pages/Rulings";
+import Drafting from "./pages/Drafting";
 
 // Admin console
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -76,6 +77,7 @@ export default function App() {
       <Route path="/ask" element={<NonAdminOnly raw><Ask /></NonAdminOnly>} />
       <Route path="/appeals" element={<NonAdminOnly><Appeals /></NonAdminOnly>} />
       <Route path="/appeals/:id" element={<NonAdminOnly><AppealCase /></NonAdminOnly>} />
+      <Route path="/drafts" element={<NonAdminOnly><Drafting /></NonAdminOnly>} />
       <Route path="/rulings" element={<NonAdminOnly><Rulings /></NonAdminOnly>} />
       <Route path="/documents" element={<NonAdminOnly><Documents /></NonAdminOnly>} />
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />

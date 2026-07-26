@@ -8,6 +8,7 @@ import {
   LogOut,
   Scale,
   Gavel,
+  ScrollText,
   BookOpen,
   Menu,
   X,
@@ -31,6 +32,7 @@ const NAV: {
 }[] = [
   { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
   { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },
+  { to: "/drafts", label: "Drafting", icon: ScrollText, tone: "rose", hint: "Notices & orders" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
   { to: "/documents", label: "Documents", icon: FileText, feature: "documents", tone: "sky", hint: "Upload · summarise" },
   { to: "/history", label: "History", icon: Clock, feature: "history", tone: "emerald", hint: "Past queries" },

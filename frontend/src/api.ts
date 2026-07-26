@@ -628,6 +628,38 @@ export interface MemoryItem {
   created_at: string | null;
 }
 
+export interface DraftField {
+  key: string;
+  label: string;
+  textarea: boolean;
+  required: boolean;
+  placeholder: string;
+}
+export interface DraftTemplate {
+  kind: string;
+  label: string;
+  category: string;
+  section: string;
+  fields: DraftField[];
+}
+export interface DraftDoc {
+  id: number;
+  kind: string;
+  title: string;
+  inputs: Record<string, string>;
+  content: string;
+  status: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export interface DraftListItem {
+  id: number;
+  kind: string;
+  title: string;
+  status: string;
+  updated_at: string | null;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     req<TokenResponse>("/auth/login", {
@@ -654,6 +686,17 @@ export const api = {
   updateMemory: (id: number, b: { content?: string; kind?: string; pinned?: boolean }) =>
     req<MemoryItem>(`/me/memory/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
   deleteMemory: (id: number) => req<void>(`/me/memory/${id}`, { method: "DELETE" }),
+
+  // --- drafting suite (notices / orders) ---
+  draftTemplates: () => req<DraftTemplate[]>("/drafts/templates"),
+  listDrafts: () => req<DraftListItem[]>("/drafts"),
+  getDraft: (id: number) => req<DraftDoc>(`/drafts/${id}`),
+  createDraft: (b: { kind: string; inputs: Record<string, string>; title?: string }) =>
+    req<DraftDoc>("/drafts", { method: "POST", body: JSON.stringify(b) }),
+  updateDraft: (id: number, b: { content?: string; title?: string; status?: string }) =>
+    req<DraftDoc>(`/drafts/${id}`, { method: "PUT", body: JSON.stringify(b) }),
+  regenerateDraft: (id: number) => req<DraftDoc>(`/drafts/${id}/regenerate`, { method: "POST" }),
+  deleteDraft: (id: number) => req<void>(`/drafts/${id}`, { method: "DELETE" }),
 
   // --- license activation (gates the chat for non-admin users) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),
