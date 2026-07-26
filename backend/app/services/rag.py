@@ -330,7 +330,7 @@ def _generate(question: str, result: RetrievalResult, client: llm_mod.LLMClient 
 
 
 def answer_question(db: Session, question: str, *, domain: Domain | None = None,
-                    client: llm_mod.LLMClient | None = None) -> Answer:
+                    client: llm_mod.LLMClient | None = None, user=None) -> Answer:
     """Ask the Bharattax-rag model first; on a refusal, fall back to a general
     income-tax LLM so basic questions and clarifications still get an answer.
     Greetings get a friendly canned reply without an LLM call.
@@ -355,6 +355,18 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             meta={"retrieval": "greeting", "domain": domain.value if domain else None},
         )
 
+    # Personalization preamble — profile + custom instructions + relevant memory.
+    # Fed ONLY to the self-hosted model (never the web-search fallback), and it
+    # bypasses the shared question cache so one user's tone/memory can't leak to
+    # another.
+    persona_ctx = ""
+    if user is not None:
+        try:
+            from app.services import personalization as _pers
+            persona_ctx = _pers.build_context(db, user, q)
+        except Exception:  # noqa: BLE001 — personalization must never break an answer
+            persona_ctx = ""
+
     # -----------------------------------------------------------------
     # Question cache lookup — repeat questions ("current 80C limit?",
     # "HRA exemption rules?") come back instantly and cost nothing.
@@ -368,7 +380,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     # Time-sensitive queries ("latest/today") always go live; everything else —
     # including STABLE document lookups (a circular's content never changes) — may be
     # served instantly from cache.
-    cached = None if (_is_time_sensitive(q) or _is_caselaw_query(q)) else _qcache.get(q, domain=domain_slug)
+    cached = None if (_is_time_sensitive(q) or _is_caselaw_query(q) or persona_ctx) else _qcache.get(q, domain=domain_slug)
     if cached:
         meta = dict(cached.get("meta") or {})
         meta["cache_hit"] = True
@@ -383,7 +395,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     llm_calls: list[dict] = []
 
     def _primary_call() -> str:
-        txt = client.complete(SYSTEM_PROMPT_NATIVE, q)
+        txt = client.complete(SYSTEM_PROMPT_NATIVE, q, context=persona_ctx or None)
         if isinstance(client, llm_mod.OpenAICompatLLM):
             llm_calls.append({
                 "model": client.last_model or settings.llm_model_name,
@@ -486,7 +498,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     # time-sensitive query we keep the corpus answer.
     if refused and used == "model-native" and fallback and hasattr(client, "complete"):
         try:
-            primary_text = client.complete(SYSTEM_PROMPT_FALLBACK, q, model=fallback)
+            primary_text = client.complete(SYSTEM_PROMPT_FALLBACK, q, model=fallback, context=persona_ctx or None)
             used = f"fallback:{fallback}"
             if isinstance(client, llm_mod.OpenAICompatLLM):
                 llm_calls.append({
@@ -533,7 +545,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         # a STABLE document lookup (circular/notification content does not change),
         # but never a time-sensitive "latest" answer.
         stable_web = document_query and not time_sensitive and used == "web-search:gemini"
-        if (_qcache.should_cache(meta=result_meta) and not deflected) or stable_web:
+        if not persona_ctx and ((_qcache.should_cache(meta=result_meta) and not deflected) or stable_web):
             _qcache.put(
                 q,
                 {"text": primary_text, "grounded": grounded, "meta": result_meta},
