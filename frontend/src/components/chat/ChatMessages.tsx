@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Globe, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, Copy, Globe, RotateCcw, Scale, Square, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
 import { api } from "@/api";
 import { useAuth } from "@/auth";
+import { useSpeech, ttsSupported } from "@/lib/tts";
+import { cn } from "@/lib/utils";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -16,6 +18,8 @@ interface ChatMessagesProps {
   // Topic follow-up suggestions for the latest answer (rendered under it).
   followups?: string[];
   onPickFollowup?: (q: string) => void;
+  // Re-run the question that produced the assistant message at `idx`.
+  onRegenerate?: (idx: number) => void;
 }
 
 export default function ChatMessages({
@@ -25,8 +29,10 @@ export default function ChatMessages({
   liveStatus,
   followups,
   onPickFollowup,
+  onRegenerate,
 }: ChatMessagesProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
+  const speech = useSpeech();
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
@@ -40,6 +46,9 @@ export default function ChatMessages({
           question={idx > 0 && messages[idx - 1].role === "user" ? messages[idx - 1].content : undefined}
           live={idx === liveIdx}
           liveStatus={liveStatus ?? null}
+          speaking={speech.speakingId === `m${idx}`}
+          onToggleSpeak={() => speech.toggle(`m${idx}`, m.content)}
+          onRegenerate={!busy && onRegenerate ? () => onRegenerate(idx) : undefined}
         />
       ))}
       {/* Fallback "thinking" bubble only when NOT live-streaming (the live path
@@ -111,11 +120,17 @@ function Message({
   question,
   live,
   liveStatus,
+  speaking,
+  onToggleSpeak,
+  onRegenerate,
 }: {
   msg: ChatMessage;
   question?: string;
   live?: boolean;
   liveStatus?: string | null;
+  speaking?: boolean;
+  onToggleSpeak?: () => void;
+  onRegenerate?: () => void;
 }) {
   if (msg.role === "user") {
     return (
@@ -242,10 +257,68 @@ function Message({
           (msg.meta["memory_added"] as unknown[]).length > 0 && (
             <MemoryCue items={msg.meta["memory_added"] as { id: number; content: string }[]} />
           )}
-        {settled && msg.grounded !== false && (
-          <FeedbackRow question={question} answer={msg.content} />
+        {settled && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
+            <MessageActions
+              text={msg.content}
+              speaking={speaking}
+              onToggleSpeak={onToggleSpeak}
+              onRegenerate={onRegenerate}
+            />
+            {msg.grounded !== false && (
+              <>
+                <span className="hidden sm:block w-px h-4 bg-slate-200 mx-0.5" />
+                <FeedbackRow question={question} answer={msg.content} />
+              </>
+            )}
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// One-tap actions under an answer: copy, read aloud, regenerate.
+function MessageActions({
+  text,
+  speaking,
+  onToggleSpeak,
+  onRegenerate,
+}: {
+  text: string;
+  speaking?: boolean;
+  onToggleSpeak?: () => void;
+  onRegenerate?: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+  const btn =
+    "inline-flex items-center justify-center size-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors";
+  return (
+    <div className="flex items-center gap-0.5">
+      <button onClick={copy} className={btn} title="Copy" aria-label="Copy answer">
+        {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+      </button>
+      {ttsSupported() && onToggleSpeak && (
+        <button
+          onClick={onToggleSpeak}
+          className={cn(btn, speaking && "text-primary bg-primary/10 hover:text-primary")}
+          title={speaking ? "Stop" : "Read aloud"}
+          aria-label={speaking ? "Stop reading" : "Read aloud"}
+        >
+          {speaking ? <Square className="size-3.5" /> : <Volume2 className="size-4" />}
+        </button>
+      )}
+      {onRegenerate && (
+        <button onClick={onRegenerate} className={btn} title="Regenerate" aria-label="Regenerate answer">
+          <RotateCcw className="size-4" />
+        </button>
+      )}
     </div>
   );
 }

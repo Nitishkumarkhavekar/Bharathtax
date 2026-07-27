@@ -10,9 +10,18 @@ import {
   Trash2,
   Plus,
   MapPin,
+  Volume2,
+  Play,
 } from "lucide-react";
 import { api, MemoryItem, Personalization } from "../api";
 import { Button } from "@/components/ui/button";
+import {
+  useVoices,
+  ttsSupported,
+  loadVoicePrefs,
+  saveVoicePrefs,
+  VoicePrefs,
+} from "@/lib/tts";
 
 type Style = Record<string, unknown>;
 
@@ -64,6 +73,113 @@ export function PersonalizationTab() {
           setP(up);
         }}
       />
+      <VoiceCard />
+    </div>
+  );
+}
+
+// Read-aloud voice picker. Voices come from the OS/browser (Web Speech API) and
+// differ per machine, so the choice is stored per-device (localStorage), not on
+// the server. Speech runs entirely on this machine — nothing is sent anywhere.
+function VoiceCard() {
+  const voices = useVoices();
+  const supported = ttsSupported();
+  const [prefs, setPrefs] = useState<VoicePrefs>(() => loadVoicePrefs());
+
+  function update(patch: Partial<VoicePrefs>) {
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    saveVoicePrefs(next);
+  }
+  function test() {
+    if (!supported) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(
+      "This is how BharathTax will read answers aloud.",
+    );
+    if (prefs.voiceURI) {
+      const v = voices.find((x) => x.voiceURI === prefs.voiceURI);
+      if (v) u.voice = v;
+    }
+    u.rate = prefs.rate;
+    u.pitch = prefs.pitch;
+    synth.speak(u);
+  }
+
+  const sorted = [...voices].sort((a, b) => {
+    const ae = a.lang.toLowerCase().startsWith("en") ? 0 : 1;
+    const be = b.lang.toLowerCase().startsWith("en") ? 0 : 1;
+    return ae - be || a.name.localeCompare(b.name);
+  });
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <Volume2 className="size-4" />
+        </div>
+        <div className="font-semibold text-slate-900">Read aloud</div>
+      </div>
+      <p className="text-[12.5px] text-slate-500 mb-4">
+        Pick the voice for the “Read aloud” button on answers. Voices come from
+        your device and are set per-machine; reading happens on your computer —
+        no audio leaves it.
+      </p>
+
+      {!supported ? (
+        <div className="text-[13px] text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5">
+          This browser doesn’t support text-to-speech.
+        </div>
+      ) : voices.length === 0 ? (
+        <div className="text-[13px] text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5">
+          No voices detected yet — they may still be loading, or your OS has none
+          installed. Add voices in your system settings.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <label className="text-[12.5px] font-semibold text-slate-800 mb-1 block">Voice</label>
+            <select
+              value={prefs.voiceURI ?? ""}
+              onChange={(e) => update({ voiceURI: e.target.value || null })}
+              className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">System default</option>
+              {sorted.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[12.5px] font-semibold text-slate-800 mb-1 flex justify-between">
+              <span>Speed</span>
+              <span className="text-slate-400 tabular-nums">{prefs.rate.toFixed(1)}×</span>
+            </label>
+            <input
+              type="range" min={0.5} max={2} step={0.1} value={prefs.rate}
+              onChange={(e) => update({ rate: parseFloat(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </div>
+          <div>
+            <label className="text-[12.5px] font-semibold text-slate-800 mb-1 flex justify-between">
+              <span>Pitch</span>
+              <span className="text-slate-400 tabular-nums">{prefs.pitch.toFixed(1)}</span>
+            </label>
+            <input
+              type="range" min={0} max={2} step={0.1} value={prefs.pitch}
+              onChange={(e) => update({ pitch: parseFloat(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={test}>
+            <Play className="size-4" /> Test voice
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
