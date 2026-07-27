@@ -4,30 +4,30 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 214 24% 99%;
+    --foreground: 217 33% 13%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 224 88% 55%;            /* Modern royal-blue CTA */
+    --primary: 222 55% 42%;            /* Ink Blue — evolved from the brand blue, desaturated + deepened */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 209 90% 95%;
-    --accent-foreground: 209 88% 30%;
-    --destructive: 0 72% 45%;
+    --secondary: 214 28% 96%;
+    --secondary-foreground: 217 33% 13%;
+    --muted: 214 28% 96%;
+    --muted-foreground: 216 13% 46%;
+    --accent: 222 50% 95%;             /* soft wash for hovers/active tints */
+    --accent-foreground: 222 50% 32%;
+    --destructive: 3 58% 46%;          /* muted danger, less alarm-red */
     --destructive-foreground: 0 0% 100%;
-    --success: 152 60% 36%;
+    --success: 152 46% 34%;            /* muted success */
     --success-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 209 88% 35%;
+    --border: 216 22% 92%;
+    --input: 216 22% 92%;
+    --ring: 222 55% 45%;
     --sidebar: 222 47% 13%;
     --sidebar-foreground: 210 40% 96%;
-    --radius: 0.6rem;
+    --radius: 0.55rem;
   }
 
   * { @apply border-border; }
