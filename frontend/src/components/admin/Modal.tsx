@@ -53,17 +53,13 @@ export function ModalShell({
           widths[size],
         )}
       >
-        {/* Gradient header band */}
+        {/* Header band */}
         <div
           className={cn(
-            "relative shrink-0 px-6 py-5 text-white overflow-hidden bg-gradient-to-br",
+            "relative shrink-0 px-6 py-5 text-white",
             HEADER_GRADIENT[tone],
           )}
         >
-          <div className="absolute inset-0 pointer-events-none opacity-50" aria-hidden>
-            <div className="absolute -top-16 -right-10 size-44 rounded-full bg-white/15 blur-3xl" />
-            <div className="absolute -bottom-20 -left-10 size-44 rounded-full bg-white/10 blur-3xl" />
-          </div>
           <div className="relative flex items-start gap-3">
             {icon && (
               <div className="size-10 rounded-xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center shrink-0">

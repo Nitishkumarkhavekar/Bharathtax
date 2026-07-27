@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import {
   Scale,
   Plus,
@@ -182,18 +182,22 @@ export default function ChatSidebar({
             ))}
           </div>
         )}
-        {/* Footer: avatar + logout */}
+        {/* Footer: avatar (→ profile) + logout */}
         <div className="relative border-t border-slate-200/80 p-2 flex flex-col items-center gap-2">
-          <div className="size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase" title={session?.username}>
+          <Link
+            to="/profile"
+            title="Open profile"
+            className="size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-1 ring-primary/20 hover:ring-primary/50 transition-all"
+          >
             {firstLetter}
-          </div>
+          </Link>
           <button
             onClick={logout}
-            title="Logout"
-            aria-label="Logout"
-            className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+            title="Sign out"
+            aria-label="Sign out"
+            className="p-2 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
           >
-            <LogOut className="size-4" />
+            <LogOut className="size-[18px]" />
           </button>
         </div>
       </aside>
@@ -392,28 +396,35 @@ export default function ChatSidebar({
         </div>
       )}
 
-      {/* User card */}
+      {/* User card — the name/avatar opens the profile; the button signs out. */}
       <div className="relative border-t border-slate-200/80 p-3">
-        <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-2.5 flex items-center gap-2.5">
-          <div className="shrink-0 size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase">
-            {firstLetter}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold truncate text-slate-900">
-              {session?.username}
+        <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-1.5 flex items-center gap-1">
+          <Link
+            to="/profile"
+            onClick={() => onClose?.()}
+            title="Open profile"
+            className="flex items-center gap-2.5 min-w-0 flex-1 rounded-lg px-1.5 py-1 hover:bg-slate-50 transition-colors"
+          >
+            <div className="shrink-0 size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase">
+              {firstLetter}
             </div>
-            <div className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-slate-500 capitalize">
-              <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
-              {session?.role?.replace("_", " ")}
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold truncate text-slate-900">
+                {session?.username}
+              </div>
+              <div className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-slate-500 capitalize">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                {session?.role?.replace("_", " ")}
+              </div>
             </div>
-          </div>
+          </Link>
           <button
             onClick={logout}
-            title="Logout"
-            aria-label="Logout"
-            className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+            title="Sign out"
+            aria-label="Sign out"
+            className="shrink-0 p-2 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
           >
-            <LogOut className="size-4" />
+            <LogOut className="size-[18px]" />
           </button>
         </div>
       </div>

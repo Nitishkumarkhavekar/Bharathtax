@@ -194,7 +194,7 @@ function Rail({
       >
         <div
           title={collapsed ? `${session?.username} · ${session?.role?.replace("_", " ")}` : undefined}
-          className="size-8 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white flex items-center justify-center text-xs font-semibold uppercase shrink-0"
+          className="size-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold uppercase shrink-0"
         >
           {session?.username?.[0] ?? "?"}
         </div>

@@ -237,7 +237,7 @@ function Gauge({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50/60 to-white p-4 flex items-center gap-4">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 flex items-center gap-4">
       <ProgressRing
         value={pct}
         label={`${pct.toFixed(0)}%`}

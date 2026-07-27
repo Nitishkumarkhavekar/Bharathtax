@@ -49,7 +49,7 @@ export default function ReleasesPage() {
       />
 
       {current ? (
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-500/[0.08] to-white ring-1 ring-emerald-200 p-4 flex items-start gap-3">
+        <div className="rounded-2xl bg-emerald-50/50 ring-1 ring-emerald-200 p-4 flex items-start gap-3">
           <div className="size-9 rounded-lg bg-emerald-600 text-white grid place-items-center shrink-0">
             <CheckCircle2 className="size-5" />
           </div>
@@ -398,7 +398,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-up"
          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-primary/[0.06] to-transparent">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
           <div className="flex items-center gap-2 text-[14px] font-semibold text-slate-900">
             <Package className="size-4 text-primary" /> {title}
           </div>

@@ -473,7 +473,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-up"
          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-primary/[0.06] to-transparent">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
           <div className="flex items-center gap-2 text-[14px] font-semibold text-slate-900">
             <Sparkles className="size-4 text-primary" /> {title}
           </div>

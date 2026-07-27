@@ -67,8 +67,8 @@ export default function ModelManagementPage() {
       <div
         className={`relative overflow-hidden rounded-2xl border p-5 shadow-sm ${
           data.healthy
-            ? "border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white"
-            : "border-rose-200 bg-gradient-to-br from-rose-50/80 to-white"
+            ? "border-emerald-200 bg-emerald-50/60"
+            : "border-rose-200 bg-rose-50/60"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -172,7 +172,7 @@ export default function ModelManagementPage() {
           {data.models.map((m) => (
             <div
               key={m.id}
-              className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50/60 to-white p-4 space-y-3"
+              className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <div className="font-mono text-sm text-slate-900">{m.id}</div>

@@ -269,7 +269,7 @@ export default function TokenUsagePage() {
                             </td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2.5">
-                                <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
+                                <div className="size-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
                                   {(u.full_name ?? u.username)[0]}
                                 </div>
                                 <div className="min-w-0">

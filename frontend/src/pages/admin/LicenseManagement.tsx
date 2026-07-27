@@ -256,7 +256,7 @@ function AssigneeCell({ assignedTo, user }: { assignedTo: string | null; user?: 
   if (user) {
     return (
       <div className="flex items-center gap-2 min-w-0">
-        <div className="size-6 shrink-0 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white flex items-center justify-center text-[10px] font-semibold uppercase">
+        <div className="size-6 shrink-0 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-semibold uppercase">
           {(user.full_name ?? user.username)[0]}
         </div>
         <div className="min-w-0">
@@ -378,7 +378,7 @@ function LicenseForm({
         }
       >
         <div className="space-y-3">
-          <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white p-4">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
             <div className="text-[10.5px] uppercase tracking-wider text-emerald-700 font-semibold mb-1">
               New key
             </div>
@@ -443,7 +443,7 @@ function LicenseForm({
     >
       {/* Existing-key callout */}
       {!isNew && current && (
-        <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-3.5 py-2.5 flex items-center gap-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 flex items-center gap-3">
           <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <KeyRound className="size-4" />
           </div>
@@ -525,7 +525,7 @@ function LicenseForm({
             </IconSelect>
             {selectedUser && (
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.04] p-2.5">
-                <div className="size-9 shrink-0 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
+                <div className="size-9 shrink-0 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
                   {(selectedUser.full_name ?? selectedUser.username)[0]}
                 </div>
                 <div className="min-w-0 flex-1">
