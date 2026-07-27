@@ -321,7 +321,7 @@ export default function Appeals() {
 
 function HeroHeader() {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-sky-600 to-violet-600 p-5 sm:p-6 text-white shadow-lg shadow-primary/20">
+    <div className="relative overflow-hidden rounded-2xl bg-primary p-5 sm:p-6 text-white shadow-lg shadow-primary/20">
       {/* Decorative accents */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.10]"
@@ -371,19 +371,19 @@ function KpiCard({
 }) {
   const toneMap = {
     indigo: {
-      wrap: "from-indigo-500/[0.06] to-white ring-indigo-200",
+      wrap: "bg-primary/[0.06] ring-primary/20",
       icon: "bg-indigo-100 text-indigo-700 ring-indigo-200",
     },
     sky: {
-      wrap: "from-sky-500/[0.06] to-white ring-sky-200",
+      wrap: "bg-primary/[0.06] ring-primary/20",
       icon: "bg-sky-100 text-sky-700 ring-sky-200",
     },
     emerald: {
-      wrap: "from-emerald-500/[0.06] to-white ring-emerald-200",
+      wrap: "bg-emerald-50 ring-emerald-200",
       icon: "bg-emerald-100 text-emerald-700 ring-emerald-200",
     },
     rose: {
-      wrap: "from-rose-500/[0.06] to-white ring-rose-200",
+      wrap: "bg-rose-50 ring-rose-200",
       icon: "bg-rose-100 text-rose-700 ring-rose-200",
     },
   }[tone];
@@ -584,8 +584,8 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
       <div className="flex items-center gap-4 p-4">
         {/* Left initial tile */}
         <div className="relative shrink-0">
-          <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/40 to-violet-500/40 opacity-0 group-hover:opacity-100 blur transition-opacity" />
-          <div className="relative size-11 rounded-xl bg-gradient-to-br from-primary/10 to-violet-500/10 text-primary ring-1 ring-primary/15 flex items-center justify-center text-[15px] font-semibold">
+          <div className="absolute -inset-0.5 rounded-xl bg-primary/30 opacity-0 group-hover:opacity-100 blur transition-opacity" />
+          <div className="relative size-11 rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15 flex items-center justify-center text-[15px] font-semibold">
             {initial}
           </div>
         </div>

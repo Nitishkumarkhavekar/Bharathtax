@@ -1,11 +1,11 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, Notification, ipcMain, dialog, shell } from "electron";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import * as crypto from "crypto";
 import Store from "electron-store";
 import { DEFAULT_SERVER_URL } from "./build-config";
-import { setupAutoUpdater, checkNow, quitAndInstall } from "./updater";
+import { setupAutoUpdater, checkNow, quitAndInstall, applyPrefs as applyUpdaterPrefs } from "./updater";
 
 // -----------------------------------------------------------------------
 // Drafts folder resolver.
@@ -52,6 +52,19 @@ type ConfigShape = {
   serverUrl: string;
   jwt: string | null;
   jwtExpiresAt: string | null;
+  // ---- user preferences (managed from the Settings screen) ----
+  theme: "system" | "light" | "dark";
+  density: "comfortable" | "compact";
+  fontScale: number;                   // 0.9 .. 1.25
+  sidebarDefault: "expanded" | "collapsed" | "last";
+  notifSupport: boolean;               // toast when an admin replies
+  notifUpdate: boolean;                // toast when a new version downloads
+  notifSound: boolean;                 // play the OS default sound
+  updateChannel: "latest" | "beta";
+  autoInstallOnQuit: boolean;
+  autoDownload: boolean;
+  // Remembered sidebar collapsed state (used when sidebarDefault === "last").
+  sidebarCollapsed: boolean;
 };
 
 const store = new Store<ConfigShape>({
@@ -64,6 +77,17 @@ const store = new Store<ConfigShape>({
     serverUrl: process.env.BHARATTAX_SERVER_URL || DEFAULT_SERVER_URL,
     jwt: null,
     jwtExpiresAt: null,
+    theme: "light",
+    density: "comfortable",
+    fontScale: 1.0,
+    sidebarDefault: "last",
+    notifSupport: true,
+    notifUpdate: true,
+    notifSound: true,
+    updateChannel: "latest",
+    autoInstallOnQuit: true,
+    autoDownload: true,
+    sidebarCollapsed: false,
   },
 });
 
@@ -147,8 +171,13 @@ app.whenReady().then(() => {
   registerIpc();
   createWindow();
   // Start polling the update feed. Fires renderer notifications on progress
-  // and completion via the `updater:event` IPC channel.
-  setupAutoUpdater();
+  // and completion via the `updater:event` IPC channel. Preferences read
+  // from the store so a beta officer stays on the beta channel, etc.
+  setupAutoUpdater({
+    autoDownload: store.get("autoDownload"),
+    autoInstallOnQuit: store.get("autoInstallOnQuit"),
+    channel: store.get("updateChannel"),
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -164,12 +193,27 @@ app.on("window-all-closed", () => {
 // in one of these handlers. Kept small on purpose: config get/set, file pick
 // for uploads, save-as for the final DOCX.
 // ---------------------------------------------------------------------------
-function registerIpc(): void {
-  ipcMain.handle("config:get", () => ({
+function snapshotConfig(): ConfigShape {
+  return {
     serverUrl: store.get("serverUrl"),
     jwt: store.get("jwt"),
     jwtExpiresAt: store.get("jwtExpiresAt"),
-  }));
+    theme: store.get("theme"),
+    density: store.get("density"),
+    fontScale: store.get("fontScale"),
+    sidebarDefault: store.get("sidebarDefault"),
+    notifSupport: store.get("notifSupport"),
+    notifUpdate: store.get("notifUpdate"),
+    notifSound: store.get("notifSound"),
+    updateChannel: store.get("updateChannel"),
+    autoInstallOnQuit: store.get("autoInstallOnQuit"),
+    autoDownload: store.get("autoDownload"),
+    sidebarCollapsed: store.get("sidebarCollapsed"),
+  };
+}
+
+function registerIpc(): void {
+  ipcMain.handle("config:get", () => snapshotConfig());
 
   ipcMain.handle(
     "config:set",
@@ -180,11 +224,34 @@ function registerIpc(): void {
       }
       if (patch.jwt !== undefined) store.set("jwt", patch.jwt);
       if (patch.jwtExpiresAt !== undefined) store.set("jwtExpiresAt", patch.jwtExpiresAt);
-      return {
-        serverUrl: store.get("serverUrl"),
-        jwt: store.get("jwt"),
-        jwtExpiresAt: store.get("jwtExpiresAt"),
-      };
+      // Preferences (each guarded so we only overwrite what the renderer
+      // explicitly sent; unknown fields are silently ignored).
+      if (patch.theme === "system" || patch.theme === "light" || patch.theme === "dark")
+        store.set("theme", patch.theme);
+      if (patch.density === "comfortable" || patch.density === "compact")
+        store.set("density", patch.density);
+      if (typeof patch.fontScale === "number" && Number.isFinite(patch.fontScale)) {
+        store.set("fontScale", Math.max(0.8, Math.min(1.4, patch.fontScale)));
+      }
+      if (patch.sidebarDefault === "expanded" || patch.sidebarDefault === "collapsed" || patch.sidebarDefault === "last")
+        store.set("sidebarDefault", patch.sidebarDefault);
+      if (typeof patch.notifSupport === "boolean") store.set("notifSupport", patch.notifSupport);
+      if (typeof patch.notifUpdate === "boolean") store.set("notifUpdate", patch.notifUpdate);
+      if (typeof patch.notifSound === "boolean") store.set("notifSound", patch.notifSound);
+      if (patch.updateChannel === "latest" || patch.updateChannel === "beta") {
+        store.set("updateChannel", patch.updateChannel);
+      }
+      if (typeof patch.autoInstallOnQuit === "boolean") store.set("autoInstallOnQuit", patch.autoInstallOnQuit);
+      if (typeof patch.autoDownload === "boolean") store.set("autoDownload", patch.autoDownload);
+      if (typeof patch.sidebarCollapsed === "boolean") store.set("sidebarCollapsed", patch.sidebarCollapsed);
+      // Live-apply the updater knobs so a channel switch takes effect on the
+      // next poll (~30 minutes) without needing to restart the app.
+      applyUpdaterPrefs({
+        autoDownload: store.get("autoDownload"),
+        autoInstallOnQuit: store.get("autoInstallOnQuit"),
+        channel: store.get("updateChannel"),
+      });
+      return snapshotConfig();
     },
   );
 
@@ -192,6 +259,30 @@ function registerIpc(): void {
     store.set("jwt", null);
     store.set("jwtExpiresAt", null);
   });
+
+  // Native OS notifications. Renderer supplies title + body + a channel key
+  // so main can honour per-channel on/off preferences and the sound flag.
+  ipcMain.handle(
+    "notify:show",
+    (_e, args: { title: string; body: string; channel: "support" | "update" | "generic" }) => {
+      if (!Notification.isSupported()) return { shown: false };
+      // Preference gates.
+      if (args.channel === "support" && !store.get("notifSupport")) return { shown: false };
+      if (args.channel === "update" && !store.get("notifUpdate")) return { shown: false };
+      const n = new Notification({
+        title: args.title,
+        body: args.body,
+        silent: !store.get("notifSound"),
+      });
+      n.on("click", () => {
+        for (const w of BrowserWindow.getAllWindows()) {
+          if (!w.isDestroyed()) { w.show(); w.focus(); }
+        }
+      });
+      n.show();
+      return { shown: true };
+    },
+  );
 
   // File picker for the "Upload documents" button. Returns [{name,path,size}].
   ipcMain.handle("dialog:pickFiles", async () => {
@@ -429,8 +520,11 @@ function stopWatching(sessionId: string): void {
   const poller = (session as any).__poller as NodeJS.Timeout | undefined;
   if (poller) clearInterval(poller);
   watchers.delete(sessionId);
-  // Remove the temp directory (best-effort — Word may still hold the file
-  // handle if the user hasn't closed the document).
-  const dir = path.dirname(session.file);
-  fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
+  // NOTE: we deliberately DO NOT delete session.file / its directory here.
+  // Officers reported that closing an Open-in-Word edit session was wiping
+  // their drafts off disk even though the appeal order was still visible in
+  // the app. The file lives under <installDir>/Appeal Drafts/<case>/<sessionId>/
+  // and should be preserved so it can be reopened from Explorer later.
+  // The Drafts folder is user-owned storage; the OS + officer are the only
+  // things that should ever delete from it.
 }

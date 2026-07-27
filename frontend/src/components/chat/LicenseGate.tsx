@@ -65,9 +65,9 @@ export default function LicenseGate({ children }: LicenseGateProps) {
   return (
     <div className="h-screen w-screen flex items-center justify-center p-4 chat-bg overflow-hidden">
       <div className="relative w-full max-w-md animate-fade-up">
-        <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-amber-200/30 via-orange-200/30 to-rose-200/30 blur-2xl opacity-60 pointer-events-none" />
+        <div className="absolute -inset-4 -z-10 rounded-3xl bg-amber-300/25 blur-2xl opacity-60 pointer-events-none" />
         <div className="rounded-2xl overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200">
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#3a1d0b] via-[#5b2e13] to-[#85451c] text-white px-6 py-6">
+          <div className="relative overflow-hidden bg-amber-800 text-white px-6 py-6">
             <div className="absolute inset-0 opacity-50 pointer-events-none" aria-hidden>
               <div className="absolute -top-16 -right-10 size-44 rounded-full bg-amber-400/30 blur-3xl" />
               <div className="absolute -bottom-20 -left-10 size-44 rounded-full bg-rose-400/20 blur-3xl" />

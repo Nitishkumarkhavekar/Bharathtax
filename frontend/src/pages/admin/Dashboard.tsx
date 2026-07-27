@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6 admin-rise">
       {/* Hero banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-[#0b1d36] via-[#0f2748] to-[#13325b] text-white shadow-md">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-primary text-white shadow-md">
         <div className="absolute inset-0 opacity-30 pointer-events-none" aria-hidden>
           <div className="absolute -top-24 -right-20 size-72 rounded-full bg-sky-400/30 blur-3xl" />
           <div className="absolute -bottom-24 -left-10 size-72 rounded-full bg-violet-400/20 blur-3xl" />

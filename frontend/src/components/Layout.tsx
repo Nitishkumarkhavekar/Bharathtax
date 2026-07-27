@@ -13,12 +13,13 @@ import {
   Menu,
   X,
   UserCircle2,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronDown,
+  PanelLeft,
 } from "lucide-react";
 import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
+import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
 
 type NavTone = "primary" | "amber" | "violet" | "sky" | "emerald" | "rose" | "indigo" | "slate";
 const NAV: {
@@ -40,16 +41,19 @@ const NAV: {
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
 ];
 
-/** Light-theme icon-tile styling — pastel gradient chip + tone ring. */
+/** Icon chip — a single primary tint across every nav item. The colour
+ *  differentiates action items from body text and from the neutral surface;
+ *  we lean on iconography (not hue) to differentiate sections. Admin rows
+ *  keep a neutral slate chip so the console reads as "system" area. */
 const NAV_TONE_TILE: Record<NavTone, string> = {
-  primary: "from-sky-100 to-blue-50 text-primary ring-primary/25",
-  amber: "from-amber-100 to-amber-50 text-amber-700 ring-amber-200",
-  violet: "from-violet-100 to-violet-50 text-violet-700 ring-violet-200",
-  sky: "from-sky-100 to-sky-50 text-sky-700 ring-sky-200",
-  emerald: "from-emerald-100 to-emerald-50 text-emerald-700 ring-emerald-200",
-  rose: "from-rose-100 to-rose-50 text-rose-700 ring-rose-200",
-  indigo: "from-indigo-100 to-indigo-50 text-indigo-700 ring-indigo-200",
-  slate: "from-slate-100 to-slate-50 text-slate-700 ring-slate-200",
+  primary: "bg-primary/10 text-primary",
+  amber: "bg-primary/10 text-primary",
+  violet: "bg-primary/10 text-primary",
+  sky: "bg-primary/10 text-primary",
+  emerald: "bg-primary/10 text-primary",
+  rose: "bg-primary/10 text-primary",
+  indigo: "bg-primary/10 text-primary",
+  slate: "bg-slate-100 text-slate-600",
 };
 
 function SeatWidget() {
@@ -76,7 +80,7 @@ function SeatWidget() {
       </div>
       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500"
+          className="h-full rounded-full bg-primary"
           style={{ width: `${unlimited ? 8 : pct}%` }}
         />
       </div>
@@ -87,9 +91,11 @@ function SeatWidget() {
 function SidebarBody({
   onNavigate,
   collapsed = false,
+  onToggleCollapsed,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const { session, logout } = useAuth();
   const loc = useLocation();
@@ -105,59 +111,139 @@ function SidebarBody({
   // back to the username when full_name isn't set on the user record.
   const displayName = session?.fullName?.trim() || session?.username || "";
   const firstLetter = (displayName || "?").slice(0, 1).toUpperCase();
+  // A page (e.g. Drafting) may have injected a panel to render at the top
+  // of the sidebar. When present, the panel gets the flex-1 scroll space and
+  // Workspace nav sinks to a pinned strip at the bottom.
+  const slot = useSidebarSlotContent();
+
+  // Persist the Workspace collapse state — default is CLOSED so the sidebar
+  // reads as clean chrome and the officer can expand tools on demand.
+  const [workspaceOpen, setWorkspaceOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem("bt_sidebar_workspace_open_v1") === "1"; }
+    catch { return false; }
+  });
+  const toggleWorkspace = () => {
+    setWorkspaceOpen((o) => {
+      const nxt = !o;
+      try { localStorage.setItem("bt_sidebar_workspace_open_v1", nxt ? "1" : "0"); } catch { /* */ }
+      return nxt;
+    });
+  };
+  // Auto-expand once when the current route lives inside the nav — otherwise
+  // arriving at a fresh page in a closed sidebar would hide the active pill.
+  useEffect(() => {
+    if (collapsed) return;
+    const active = nav.some((n) => loc.pathname.startsWith(n.to));
+    if (active && !workspaceOpen) {
+      // Only nudge open the first time we land on a nav route in this
+      // session — otherwise we'd fight the officer's explicit collapse.
+      try {
+        if (localStorage.getItem("bt_sidebar_workspace_open_v1") === null) {
+          setWorkspaceOpen(true);
+        }
+      } catch { /* */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc.pathname]);
+
   return (
     <>
-      {/* Aurora accents in the light sidebar */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute -top-24 -left-16 size-72 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-20 -right-16 size-72 rounded-full bg-violet-300/25 blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgb(15 23 42) 1px, transparent 0)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-      </div>
-
-      {/* Brand */}
+      {/* Brand + sidebar collapse toggle. The toggle sits next to the
+          BharathTax mark (right side when expanded, stacked below when
+          collapsed) so hiding / showing the sidebar always happens on the
+          sidebar itself, not from the main content header. */}
       <div
         className={cn(
-          "relative h-16 flex items-center border-b border-slate-200/80",
-          collapsed ? "px-0 justify-center" : "px-5 gap-2.5",
+          "relative h-16 flex items-center border-b border-slate-200",
+          collapsed ? "px-0 flex-col justify-center gap-1.5 h-[92px]" : "px-4 gap-2.5",
         )}
       >
-        <div className="relative">
-          <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/30 to-violet-500/30 blur-md" />
-          <div className="relative size-9 rounded-xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-1 ring-white/40 shadow-md">
-            <Scale className="size-4.5 text-white" strokeWidth={2.2} />
-          </div>
+        <div className="size-9 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30 shadow-sm">
+          <Scale className="size-4.5 text-white" strokeWidth={2.2} />
         </div>
         {!collapsed && (
-          <div className="leading-tight">
-            <div className="text-[15px] font-semibold tracking-tight text-slate-900">
+          <div className="leading-tight min-w-0">
+            <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
               BharathTax
             </div>
-            <div className="text-[10.5px] text-slate-500 -mt-0.5">
+            <div className="text-[10.5px] text-slate-500 -mt-0.5 truncate">
               Income-tax research
             </div>
           </div>
         )}
+        {onToggleCollapsed && (
+          <button
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
+            title={collapsed ? "Show sidebar" : "Hide sidebar"}
+            className={cn(
+              "hidden md:inline-flex items-center justify-center size-8 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors",
+              collapsed ? "" : "ml-auto",
+            )}
+          >
+            <PanelLeft className="size-4.5" />
+          </button>
+        )}
       </div>
+
+      {/* Slot — feature pages inject a panel here (e.g. "Your drafts").
+          When populated it takes the flex-1 area so the panel scrolls; the
+          Workspace nav becomes a compact strip pinned below it. Hidden when
+          the sidebar is collapsed to the icon rail. */}
+      {slot && !collapsed && (
+        <div className="relative flex-1 min-h-0 overflow-hidden border-b border-slate-200/80">
+          {slot}
+        </div>
+      )}
 
       {/* Nav */}
       <nav
         className={cn(
-          "relative flex-1 space-y-1 overflow-y-auto chat-scrollbar",
-          collapsed ? "px-2 py-3" : "p-3",
+          "relative space-y-1 overflow-y-auto chat-scrollbar",
+          // When a page has injected a slot, cap the Workspace nav so the
+          // drafts / thread panel above keeps most of the vertical space.
+          slot && !collapsed ? "shrink-0 max-h-[42vh] p-2" : "flex-1",
+          collapsed ? "px-2 py-3" : (slot ? "" : "p-3"),
         )}
       >
+        {/* Section header — collapsible dropdown on the expanded sidebar so
+            the workspace list can be tucked away when the officer is deep in
+            a page (e.g. drafts) and wants the chrome minimal. Hidden entirely
+            on the icon rail (collapsed sidebar) where all icons are always
+            reachable regardless. */}
         {!collapsed && (
-          <div className="px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            Workspace
-          </div>
+          <button
+            type="button"
+            onClick={toggleWorkspace}
+            aria-expanded={workspaceOpen}
+            aria-controls="sidebar-workspace-list"
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+          >
+            <span>Workspace</span>
+            <span
+              className={cn(
+                "size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center transition-transform duration-200 text-slate-500",
+                workspaceOpen ? "rotate-180" : "rotate-0",
+              )}
+              title={workspaceOpen ? "Collapse" : "Expand"}
+            >
+              <ChevronDown className="size-3.5" />
+            </span>
+          </button>
         )}
+        <div
+          id="sidebar-workspace-list"
+          className={cn(
+            // The icon rail keeps all nav items reachable at every zoom.
+            // The full-width sidebar shows/hides based on toggle.
+            collapsed
+              ? "space-y-1"
+              : cn(
+                  "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out space-y-1",
+                  workspaceOpen ? "max-h-[600px] opacity-100 mt-1.5" : "max-h-0 opacity-0 mt-0",
+                ),
+          )}
+        >
         {nav.map((n) => {
           const active = loc.pathname.startsWith(n.to);
           return (
@@ -168,22 +254,22 @@ function SidebarBody({
               title={collapsed ? n.label : undefined}
               aria-label={n.label}
               className={cn(
-                "group relative flex items-center rounded-xl text-[13.5px] font-medium transition-all",
+                "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors",
                 collapsed
                   ? "justify-center p-1.5"
                   : "gap-3 px-2.5 py-2",
                 active
-                  ? "bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-slate-900 font-semibold ring-1 ring-primary/35 shadow-sm"
-                  : "text-slate-800 hover:bg-primary/[0.07] hover:text-slate-900 hover:ring-1 hover:ring-primary/15",
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
               )}
             >
               {/* Active-state left accent bar */}
               {active && !collapsed && (
-                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-gradient-to-b from-primary to-violet-500" />
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
               )}
               <span
                 className={cn(
-                  "size-8 rounded-lg bg-gradient-to-br ring-1 flex items-center justify-center shrink-0",
+                  "size-8 rounded-lg flex items-center justify-center shrink-0",
                   NAV_TONE_TILE[n.tone],
                 )}
               >
@@ -195,6 +281,7 @@ function SidebarBody({
             </Link>
           );
         })}
+        </div>
       </nav>
 
       {/* Footer: seat widget + user card */}
@@ -207,11 +294,8 @@ function SidebarBody({
         {!collapsed && <SeatWidget />}
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
-            <div className="relative" title={displayName}>
-              <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
-              <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
-                {firstLetter}
-              </div>
+            <div className="size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase" title={displayName}>
+              {firstLetter}
             </div>
             <button
               onClick={logout}
@@ -224,11 +308,8 @@ function SidebarBody({
           </div>
         ) : (
           <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-2.5 flex items-center gap-2.5">
-            <div className="relative shrink-0">
-              <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
-              <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
-                {firstLetter}
-              </div>
+            <div className="shrink-0 size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase">
+              {firstLetter}
             </div>
             <div className="min-w-0 flex-1">
               <div
@@ -258,6 +339,17 @@ function SidebarBody({
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <SidebarSlotProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </SidebarSlotProvider>
+  );
+}
+
+function LayoutInner({ children }: { children: ReactNode }) {
+  // A page-injected sidebar panel (e.g. Drafting's "Your drafts") gets its
+  // own wider sidebar so titles / status chips have room to breathe.
+  const slot = useSidebarSlotContent();
   const loc = useLocation();
   const current = NAV.find((n) => loc.pathname.startsWith(n.to));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -298,10 +390,12 @@ export default function Layout({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           "hidden md:flex shrink-0 relative overflow-hidden bt-sidebar-bg text-slate-800 border-r border-slate-200 flex-col transition-[width] duration-200 ease-out",
-          collapsed ? "w-16" : "w-60 lg:w-64",
+          collapsed
+            ? "w-16"
+            : (slot ? "w-72 lg:w-[320px]" : "w-60 lg:w-64"),
         )}
       >
-        <SidebarBody collapsed={collapsed} />
+        <SidebarBody collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
       {/* Mobile drawer */}
@@ -336,20 +430,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           >
             <Menu className="size-5" />
           </button>
-          {/* Desktop collapse toggle — hides the sidebar to an icon rail
-              (or expands it back). Persisted in localStorage. */}
-          <button
-            onClick={toggleCollapsed}
-            className="hidden md:inline-flex p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-primary transition-colors"
-            aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
-            title={collapsed ? "Show sidebar" : "Hide sidebar"}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-5" />
-            ) : (
-              <PanelLeftClose className="size-5" />
-            )}
-          </button>
+          {/* Sidebar collapse toggle lives inside the sidebar itself
+              (next to the BharathTax mark) — no duplicate control here. */}
           <h1 className="text-base font-semibold text-foreground truncate">
             {current?.label ?? "BharathTax"}
           </h1>

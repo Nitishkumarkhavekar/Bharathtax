@@ -9,6 +9,7 @@ import AppealCaseScreen from "./screens/AppealCase";
 import LicenseExpired from "./screens/LicenseExpired";
 import Dashboard from "./screens/Dashboard";
 import ReportIssue from "./screens/ReportIssue";
+import Settings from "./screens/Settings";
 import AppShell, { type NavKey } from "./components/AppShell";
 import NewCaseDialog from "./components/NewCaseDialog";
 
@@ -24,11 +25,54 @@ type Stage =
     }
   | { kind: "locked"; reason: string; message: string };
 
+// Apply visual preferences (density / font scale) to the root <html>
+// element. Called on boot and whenever Settings dispatches a "bharat:prefs"
+// event so a change reflects immediately without a reload.
+//
+// Theme is intentionally locked to "light" -- the Income-tax Department UI
+// is a light-mode design; dark isn't offered.
+function applyPreferences(p: Preferences | null | undefined) {
+  if (!p) return;
+  const html = document.documentElement;
+  html.classList.remove("dark");
+  html.dataset.density = p.density;
+  // Chromium honours `zoom` on the root element — scales every px unit
+  // proportionally, which is what officers expect from a font-size slider.
+  html.style.zoom = String(p.fontScale || 1);
+  // Also stash the raw prefs so AppShell can consult sidebarDefault on mount
+  // without a round-trip to main.
+  (window as any).__btPrefs = p;
+  // If a user had "dark" or "system" saved from an earlier build, quietly
+  // migrate them to "light" so the stored preference matches what the UI
+  // actually offers.
+  if (p.theme !== "light") {
+    window.bharat?.config?.set?.({ theme: "light" }).catch(() => {});
+  }
+}
+
 export default function App() {
   const [stage, setStage] = useState<Stage>({ kind: "boot" });
   const [newCaseOpen, setNewCaseOpen] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
+  const supportUnreadRef = useRef<number>(0);
   const sessionTokenRef = useRef<string | null>(null);
+
+  // Load stored preferences early so the very first paint has the right
+  // theme / font-scale / density. Also subscribe to live prefs changes from
+  // the Settings screen.
+  useEffect(() => {
+    (async () => {
+      try {
+        const cfg = await window.bharat.config.get();
+        applyPreferences(cfg);
+      } catch { /* silent */ }
+    })();
+    const onPrefs = (e: Event) => applyPreferences((e as CustomEvent).detail);
+    window.addEventListener("bharat:prefs", onPrefs as EventListener);
+    return () => {
+      window.removeEventListener("bharat:prefs", onPrefs as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     return subscribeSession((s) => {
@@ -80,17 +124,33 @@ export default function App() {
       } catch { /* silent -- next tick will retry */ }
     };
 
+    const bumpUnread = (n: number) => {
+      if (n > supportUnreadRef.current) {
+        const delta = n - supportUnreadRef.current;
+        // Fire an OS toast — main honours the notif-support preference and
+        // silently no-ops when the officer has disabled it.
+        window.bharat?.notify?.show({
+          channel: "support",
+          title: "Support reply",
+          body: delta === 1
+            ? "An administrator replied to your ticket."
+            : `${delta} new replies from support.`,
+        }).catch(() => {});
+      }
+      supportUnreadRef.current = n;
+      setSupportUnread(n);
+    };
     const iv = window.setInterval(async () => {
       const tok = sessionTokenRef.current;
       if (tok) {
         try { await api.sessionHeartbeat(tok, `screen:${stage.nav}`, 0); } catch { /* silent */ }
       }
-      try { const r = await api.supportUnreadCount(); setSupportUnread(r.unread); } catch { /* silent */ }
+      try { const r = await api.supportUnreadCount(); bumpUnread(r.unread); } catch { /* silent */ }
       checkSession();
     }, 20000);
 
     // Immediate checks on nav change so the badge / lockout are fresh.
-    (async () => { try { const r = await api.supportUnreadCount(); setSupportUnread(r.unread); } catch { /* silent */ } })();
+    (async () => { try { const r = await api.supportUnreadCount(); bumpUnread(r.unread); } catch { /* silent */ } })();
     checkSession();
 
     // Also re-check whenever the window regains focus so an officer who was
@@ -151,6 +211,7 @@ export default function App() {
   const goDashboard = () => setStage((s) => s.kind === "ready" ? { ...s, nav: "dashboard", caseSlug: null } : s);
   const goAppeals   = () => setStage((s) => s.kind === "ready" ? { ...s, nav: "appeals",   caseSlug: null } : s);
   const goReport    = () => setStage((s) => s.kind === "ready" ? { ...s, nav: "report",    caseSlug: null } : s);
+  const goSettings  = () => setStage((s) => s.kind === "ready" ? { ...s, nav: "settings",  caseSlug: null } : s);
   const openCase    = (c: AppealCase) => setStage((s) => s.kind === "ready" ? { ...s, nav: "case", caseSlug: c.slug } : s);
 
   const handleSignOut = async () => {
@@ -184,6 +245,7 @@ export default function App() {
       onOpenCase={openCase}
       onNewCase={() => setNewCaseOpen(true)}
       onGoReport={goReport}
+      onGoSettings={goSettings}
       supportUnread={supportUnread}
       onSignOut={handleSignOut}
     >
@@ -206,6 +268,7 @@ export default function App() {
         <AppealCaseScreen slug={stage.caseSlug} onBack={goAppeals} />
       )}
       {stage.nav === "report" && <ReportIssue />}
+      {stage.nav === "settings" && <Settings onSignOut={handleSignOut} />}
 
       {newCaseOpen && (
         <NewCaseDialog

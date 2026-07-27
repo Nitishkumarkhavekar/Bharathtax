@@ -114,8 +114,8 @@ export default function GeminiPage() {
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-primary/40 via-sky-400/30 to-violet-500/30 blur-md" />
-            <div className="relative size-11 rounded-2xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-1 ring-white/50 shadow-md">
+            <div className="absolute -inset-1 rounded-2xl bg-primary/25 blur-md" />
+            <div className="relative size-11 rounded-2xl bg-primary flex items-center justify-center ring-1 ring-white/50 shadow-md">
               <Sparkles className="size-5 text-white" strokeWidth={2.2} />
             </div>
           </div>
@@ -250,7 +250,7 @@ export default function GeminiPage() {
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="size-8 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
+                            <div className="size-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-semibold uppercase ring-2 ring-white shadow-sm">
                               {(u.full_name ?? u.username)[0]}
                             </div>
                             <div className="min-w-0">
@@ -284,7 +284,7 @@ export default function GeminiPage() {
                           <div className="inline-flex items-center gap-2 w-full max-w-[140px] ml-auto">
                             <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-primary to-violet-500"
+                                className="h-full bg-primary"
                                 style={{ width: `${share}%` }}
                               />
                             </div>

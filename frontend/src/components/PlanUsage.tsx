@@ -149,7 +149,7 @@ export function PlanUsage() {
                 <div key={r.action} className="flex items-center gap-3">
                   <div className="w-36 sm:w-44 shrink-0 text-[12.5px] text-slate-700 truncate">{label(r.action)}</div>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-indigo-500" style={{ width: w + "%" }} />
+                    <div className="h-full rounded-full bg-primary" style={{ width: w + "%" }} />
                   </div>
                   <div className="w-20 text-right text-[12px] text-slate-500 tabular-nums">
                     {r.calls} action{r.calls === 1 ? "" : "s"}

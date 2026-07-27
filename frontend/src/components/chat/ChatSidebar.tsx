@@ -10,14 +10,15 @@ import {
   Gavel,
   BookOpen,
   FileText,
+  ScrollText,
   Clock,
   UserCircle2,
   MessageSquareText,
+  SquarePen,
   Sparkles,
   Coins,
   ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
 } from "lucide-react";
 import { ChatThread, groupByRecency } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import { useAuth } from "@/auth";
 // Tools available to officers / auditors alongside the chat.
 const TOOLS = [
   { to: "/appeals", label: "Appeals", icon: Gavel, tone: "amber" as const },
+  { to: "/drafts", label: "Drafting", icon: ScrollText, tone: "teal" as const },
   { to: "/rulings", label: "Rulings", icon: BookOpen, tone: "violet" as const },
   { to: "/documents", label: "Documents", icon: FileText, tone: "sky" as const },
   { to: "/history", label: "History", icon: Clock, tone: "emerald" as const },
@@ -35,13 +37,17 @@ const TOOLS = [
 
 /** Icon-tile styling for the light-theme sidebar — soft gradient chip with a
  *  matching-tone ring and slightly-desaturated icon colour. */
+// Single primary tint across every tool tile — the app uses a strict
+// 3-colour palette (slate + primary + emerald + rose), so we lean on
+// iconography rather than hue to differentiate sections.
 const TONE_TILE: Record<string, string> = {
-  amber: "from-amber-100 to-amber-50 text-amber-700 ring-amber-200",
-  violet: "from-violet-100 to-violet-50 text-violet-700 ring-violet-200",
-  sky: "from-sky-100 to-sky-50 text-sky-700 ring-sky-200",
-  emerald: "from-emerald-100 to-emerald-50 text-emerald-700 ring-emerald-200",
-  rose: "from-rose-100 to-rose-50 text-rose-700 ring-rose-200",
-  indigo: "from-indigo-100 to-indigo-50 text-indigo-700 ring-indigo-200",
+  amber: "bg-primary/10 text-primary",
+  teal: "bg-primary/10 text-primary",
+  violet: "bg-primary/10 text-primary",
+  sky: "bg-primary/10 text-primary",
+  emerald: "bg-primary/10 text-primary",
+  rose: "bg-primary/10 text-primary",
+  indigo: "bg-primary/10 text-primary",
 };
 
 interface ChatSidebarProps {
@@ -113,17 +119,10 @@ export default function ChatSidebar({
   if (collapsed) {
     return (
       <aside className="relative w-16 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
-        <div className="pointer-events-none absolute inset-0" aria-hidden>
-          <div className="absolute -top-16 -left-12 size-56 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute bottom-24 -right-12 size-56 rounded-full bg-violet-300/25 blur-3xl" />
-        </div>
         {/* Brand mark + expand toggle */}
         <div className="relative h-16 flex flex-col items-center justify-center gap-1 border-b border-slate-200/80">
-          <div className="relative">
-            <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/30 to-violet-500/30 blur-md" />
-            <div className="relative size-8 rounded-xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-1 ring-white/40 shadow-md">
-              <Scale className="size-4 text-white" strokeWidth={2.2} />
-            </div>
+          <div className="size-8 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30 shadow-sm">
+            <Scale className="size-4 text-white" strokeWidth={2.2} />
           </div>
         </div>
         <div className="relative flex flex-col items-center gap-2 p-2">
@@ -133,17 +132,13 @@ export default function ChatSidebar({
             aria-label="Show sidebar"
             className="size-9 rounded-lg bg-white ring-1 ring-slate-200 hover:ring-primary/40 hover:text-primary text-slate-600 flex items-center justify-center transition-colors"
           >
-            <PanelLeftOpen className="size-4" />
+            <PanelLeft className="size-4" />
           </button>
           <button
             onClick={onNew}
             title="New chat"
             aria-label="New chat"
-            className="size-9 rounded-lg text-white flex items-center justify-center shadow-lg shadow-primary/25 transition-transform hover:scale-105"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(46,124,200,1) 0%, rgba(37,99,235,1) 55%, rgba(99,102,241,1) 100%)",
-            }}
+            className="size-9 rounded-lg text-white flex items-center justify-center bg-primary shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors"
           >
             <Plus className="size-4" />
           </button>
@@ -159,7 +154,7 @@ export default function ChatSidebar({
                 aria-label={t.label}
                 className={({ isActive }) =>
                   cn(
-                    "size-9 rounded-lg bg-gradient-to-br ring-1 flex items-center justify-center transition-all",
+                    "size-9 rounded-lg flex items-center justify-center transition-all",
                     TONE_TILE[t.tone],
                     isActive && "ring-2 ring-primary/50 shadow-sm",
                   )
@@ -172,11 +167,8 @@ export default function ChatSidebar({
         )}
         {/* Footer: avatar + logout */}
         <div className="relative border-t border-slate-200/80 p-2 flex flex-col items-center gap-2">
-          <div className="relative" title={session?.username}>
-            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
-            <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
-              {firstLetter}
-            </div>
+          <div className="size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase" title={session?.username}>
+            {firstLetter}
           </div>
           <button
             onClick={logout}
@@ -193,28 +185,11 @@ export default function ChatSidebar({
 
   return (
     <aside className="relative w-full sm:w-72 lg:w-80 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
-      {/* Soft aurora accents in the light surface */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute -top-24 -left-24 size-72 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-24 -right-16 size-72 rounded-full bg-violet-300/25 blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgb(15 23 42) 1px, transparent 0)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-      </div>
-
       {/* Brand */}
       <div className="relative h-16 flex items-center justify-between gap-2 px-4 border-b border-slate-200/80">
         <div className="flex items-center gap-2.5">
-          <div className="relative">
-            <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-primary/40 via-sky-400/30 to-violet-500/30 blur-md" />
-            <div className="relative size-9 rounded-xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-1 ring-white/40 shadow-md">
-              <Scale className="size-4.5 text-white" strokeWidth={2.2} />
-            </div>
+          <div className="size-9 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30 shadow-sm">
+            <Scale className="size-4.5 text-white" strokeWidth={2.2} />
           </div>
           <div className="leading-tight">
             <div className="text-[15px] font-semibold tracking-tight text-slate-900">
@@ -233,7 +208,7 @@ export default function ChatSidebar({
               aria-label="Hide sidebar"
               title="Hide sidebar"
             >
-              <PanelLeftClose className="size-4" />
+              <PanelLeft className="size-4" />
             </button>
           )}
           {onClose && (
@@ -248,21 +223,17 @@ export default function ChatSidebar({
         </div>
       </div>
 
-      {/* New chat + search */}
+      {/* Full-width "New chat" row + search. The action spans the sidebar
+          width, dark-slate pill with the SquarePen glyph (ChatGPT style). */}
       <div className="relative p-3 space-y-2 border-b border-slate-200/80">
         <button
           onClick={onNew}
-          className="group relative w-full flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-white transition-all overflow-hidden"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(46,124,200,1) 0%, rgba(37,99,235,1) 55%, rgba(99,102,241,1) 100%)",
-            boxShadow:
-              "0 8px 24px -12px rgba(46,124,200,0.55), inset 0 1px 0 rgba(255,255,255,0.20)",
-          }}
+          title="Start a new chat"
+          aria-label="New chat"
+          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-lg text-[14px] font-semibold text-white bg-slate-900 hover:bg-slate-800 shadow-sm ring-1 ring-black/40 transition-colors"
         >
-          <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/10" />
-          <Plus className="size-4 relative" />
-          <span className="relative">New chat</span>
+          <SquarePen className="size-4" strokeWidth={1.8} />
+          <span>New chat</span>
         </button>
         <div className="relative">
           <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
@@ -356,7 +327,7 @@ export default function ChatSidebar({
                 >
                   <span
                     className={cn(
-                      "size-7 rounded-lg bg-gradient-to-br ring-1 flex items-center justify-center shrink-0",
+                      "size-7 rounded-lg flex items-center justify-center shrink-0",
                       TONE_TILE[t.tone],
                     )}
                   >
@@ -373,11 +344,8 @@ export default function ChatSidebar({
       {/* User card */}
       <div className="relative border-t border-slate-200/80 p-3">
         <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm p-2.5 flex items-center gap-2.5">
-          <div className="relative shrink-0">
-            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-violet-500 opacity-60 blur-sm" />
-            <div className="relative size-9 rounded-full bg-gradient-to-br from-primary to-violet-600 text-white flex items-center justify-center text-[13px] font-semibold uppercase ring-2 ring-white">
-              {firstLetter}
-            </div>
+          <div className="shrink-0 size-9 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold uppercase">
+            {firstLetter}
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold truncate text-slate-900">
@@ -420,12 +388,12 @@ function ThreadItem({
         className={cn(
           "group relative w-full flex items-center gap-2 rounded-lg pl-3 pr-1 py-2 text-left text-[13.5px] transition-all",
           active
-            ? "bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-slate-900 font-semibold ring-1 ring-primary/35 shadow-sm"
+            ? "bg-primary/10 text-primary font-semibold"
             : "text-slate-800 hover:bg-primary/[0.07] hover:text-slate-900",
         )}
       >
         {active && (
-          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-gradient-to-b from-primary to-violet-500" />
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
         )}
         <MessageSquareText
           className={cn(

@@ -10,7 +10,7 @@ import UpdateBanner from "./UpdateBanner";
 //
 // The collapsed / expanded preference is persisted in localStorage so the
 // officer's choice survives an app restart.
-export type NavKey = "dashboard" | "appeals" | "case" | "report";
+export type NavKey = "dashboard" | "appeals" | "case" | "report" | "settings";
 
 export interface ShellProps {
   username: string;
@@ -22,6 +22,7 @@ export interface ShellProps {
   onOpenCase: (c: AppealCase) => void;
   onNewCase: () => void;
   onGoReport: () => void;
+  onGoSettings: () => void;
   supportUnread: number;
   onSignOut: () => void;
   children: React.ReactNode;
@@ -30,11 +31,23 @@ export interface ShellProps {
 const COLLAPSED_KEY = "bt.sidebarCollapsed";
 
 export default function AppShell(props: ShellProps) {
+  // Sidebar collapsed state honours the "Sidebar default" preference:
+  //   remember-last -> read localStorage
+  //   always-expanded / always-collapsed -> force it
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(COLLAPSED_KEY) === "1"; } catch { return false; }
+    try {
+      const w = window as any;
+      const pref = (w?.__btPrefs?.sidebarDefault ?? "last") as string;
+      if (pref === "expanded") return false;
+      if (pref === "collapsed") return true;
+      return localStorage.getItem(COLLAPSED_KEY) === "1";
+    } catch { return false; }
   });
   useEffect(() => {
     try { localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0"); } catch { /* silent */ }
+    // Persist the last-known state through electron-store too so a "Remember
+    // last" preference works across full app restarts.
+    try { window.bharat?.config?.set?.({ sidebarCollapsed: collapsed }); } catch { /* silent */ }
   }, [collapsed]);
 
   return (
@@ -57,7 +70,8 @@ interface SidebarProps extends ShellProps {
 
 function Sidebar({
   username, licenseValidUntil, activeKey, activeCaseSlug,
-  onGoDashboard, onGoAppeals, onOpenCase, onNewCase, onGoReport, supportUnread, onSignOut,
+  onGoDashboard, onGoAppeals, onOpenCase, onNewCase, onGoReport, onGoSettings,
+  supportUnread, onSignOut,
   collapsed, onToggle,
 }: SidebarProps) {
   const [cases, setCases] = useState<AppealCase[]>([]);
@@ -229,6 +243,15 @@ function Sidebar({
           </div>
           {!collapsed && <span>Report Issue</span>}
         </button>
+
+        {/* Settings */}
+        <NavItem
+          collapsed={collapsed}
+          active={activeKey === "settings"}
+          onClick={onGoSettings}
+          icon={<IconGear />}
+          label="Settings"
+        />
       </nav>
 
       {/* Footer — signed-in user + logout, with license microcopy */}
@@ -306,3 +329,4 @@ function IconFolder() { return <svg width="15" height="15" viewBox="0 0 24 24" f
 function IconChevron(){ return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>; }
 function IconLogout() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>; }
 function IconLifebuoy() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg>; }
+function IconGear()     { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>; }

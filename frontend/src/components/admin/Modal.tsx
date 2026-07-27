@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 type Tone = "primary" | "amber" | "rose" | "emerald" | "violet";
 
 const HEADER_GRADIENT: Record<Tone, string> = {
-  primary: "from-[#0b1d36] via-[#13325b] to-[#1c4a85]",
-  amber: "from-amber-700 via-amber-600 to-orange-500",
-  rose: "from-rose-700 via-rose-600 to-pink-500",
-  emerald: "from-emerald-700 via-emerald-600 to-teal-500",
-  violet: "from-violet-700 via-violet-600 to-indigo-500",
+  primary: "bg-primary",
+  amber: "bg-amber-600",
+  rose: "bg-rose-600",
+  emerald: "bg-emerald-600",
+  violet: "bg-primary",
 };
 
 // -------------------------------------------------------- ModalShell

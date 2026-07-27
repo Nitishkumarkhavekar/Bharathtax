@@ -10,7 +10,7 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 209 88% 35%;            /* BharathTax blue */
+    --primary: 224 88% 55%;            /* Modern royal-blue CTA */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
@@ -32,6 +32,11 @@
 
   * { @apply border-border; }
   body { @apply bg-background text-foreground font-sans antialiased; }
+  /* Prevent tiny overflow bugs from producing a body horizontal scrollbar
+     on mobile (any absolute-positioned blob that pokes past 100vw). */
+  html, body { overflow-x: hidden; }
+  /* Nicer tap targets on iOS Safari. */
+  button, [role="button"] { -webkit-tap-highlight-color: transparent; }
 }
 
 /* ---- Admin form helpers ---- */
@@ -46,30 +51,36 @@
    App-wide surfaces so every page inherits a consistent, gradient-tinted feel
    without every page having to re-invent it. */
 @layer components {
-  /* Aurora-tinted app canvas. Used by the officer-side <main>. */
+  /* Application canvas — a clean off-white surface so cards + primary
+     accents carry the visual weight instead of tinted washes. */
   .bt-app-bg {
-    background:
-      radial-gradient(1100px 550px at 92% -12%, rgba(46, 124, 200, 0.10), transparent 55%),
-      radial-gradient(900px 550px at -12% 110%, rgba(46, 124, 200, 0.07), transparent 55%),
-      radial-gradient(700px 480px at 40% 120%, rgba(99, 102, 241, 0.05), transparent 60%),
-      linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+    background: #f7f8fa;
   }
-  /* Glassy sticky header with a hairline bottom + subtle blur. */
+  /* Marketing gradient — the soft periwinkle-to-cream wash used on the
+     landing hero and on the public auth pages. */
+  .bt-marketing-bg {
+    background:
+      radial-gradient(1000px 700px at 12% 6%, rgba(140, 165, 255, 0.28), transparent 55%),
+      radial-gradient(900px 600px at 88% 14%, rgba(255, 214, 176, 0.35), transparent 55%),
+      radial-gradient(700px 500px at 50% 90%, rgba(191, 205, 255, 0.20), transparent 55%),
+      linear-gradient(180deg, #f7f8ff 0%, #fff7ee 100%);
+  }
+  /* Subtle dotted grid overlay for hero backdrops. */
+  .bt-dot-grid {
+    background-image: radial-gradient(rgba(15,23,42,0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  /* Sticky header — plain white with a hairline bottom. No blur / no
+     gradient tint; keeps focus on the current page's H1 and controls. */
   .bt-header-glass {
-    background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.7));
-    backdrop-filter: saturate(1.4) blur(10px);
-    -webkit-backdrop-filter: saturate(1.4) blur(10px);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-    box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.10);
+    background: #ffffff;
+    border-bottom: 1px solid rgb(226, 232, 240);
   }
-  /* Light sidebar — soft white surface with subtle primary/violet aurora
-     tints. Dark text on top; used by both the app Layout rail and the chat
-     sidebar. */
+  /* Sidebar — pure white surface, ships a subtle right border. Kept clean
+     so the tinted content pane on the right feels lighter than the sidebar
+     is white and gives a clear visual separation. */
   .bt-sidebar-bg {
-    background:
-      radial-gradient(500px 220px at 10% -10%, rgba(46, 124, 200, 0.12), transparent 60%),
-      radial-gradient(500px 220px at 95% 115%, rgba(139, 92, 246, 0.10), transparent 60%),
-      linear-gradient(180deg, #ffffff 0%, #f6f8fc 60%, #eef3fb 100%);
+    background: #ffffff;
   }
   /* Rich elevated card with a hair-thin gradient border, primary shadow. */
   .bt-card {

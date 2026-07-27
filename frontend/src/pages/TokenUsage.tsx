@@ -336,7 +336,7 @@ export function TokensBarChart({
           Last {rows.length} day{rows.length === 1 ? "" : "s"}
         </div>
         <div className="text-[11px] text-slate-500">
-          <span className="inline-block size-2 rounded-sm bg-gradient-to-t from-sky-400 to-indigo-500 mr-1.5 align-middle" />
+          <span className="inline-block size-2 rounded-sm bg-primary mr-1.5 align-middle" />
           tokens per day
         </div>
       </div>
@@ -383,7 +383,7 @@ export function TokensBarChart({
                   )}
                   <div
                     className={
-                      "w-full rounded-t-md bg-gradient-to-t from-sky-400 to-indigo-500 transition-all duration-300 " +
+                      "w-full rounded-t-md bg-primary transition-all duration-300 " +
                       (isHover ? "opacity-100 shadow-md shadow-indigo-500/25" : "opacity-90")
                     }
                     style={{
@@ -450,9 +450,9 @@ function MiniStat({
   tone: "amber" | "rose" | "blue" | "green";
 }) {
   const map = {
-    amber: "from-amber-50/80 to-white text-amber-700 ring-amber-100",
-    rose: "from-rose-50/80 to-white text-rose-700 ring-rose-100",
-    blue: "from-sky-50/80 to-white text-sky-700 ring-sky-100",
+    amber: "bg-amber-50 text-amber-700 ring-amber-200",
+    rose: "bg-rose-50 text-rose-700 ring-rose-200",
+    blue: "bg-primary/[0.06] text-primary ring-primary/20",
     green: "from-emerald-50/80 to-white text-emerald-700 ring-emerald-100",
   } as const;
   return (

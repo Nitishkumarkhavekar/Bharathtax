@@ -83,7 +83,7 @@ export default function DesktopLogsPage() {
         <SumCard label="Total time" value={`${totalHours.toFixed(1)}h`} icon={<Clock className="size-4" />} />
       </div>
 
-      <div className="grid grid-cols-[420px_1fr] gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-[420px_1fr] gap-4">
         <Section title="Per user" icon={<Users className="size-4" />}
           action={
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…"

@@ -1,40 +1,43 @@
 import { Link } from "react-router-dom";
 import {
   Scale,
-  ShieldCheck,
-  BookOpen,
-  Gavel,
   Sparkles,
   ArrowRight,
   CheckCircle2,
-  MessageSquareText,
   FileText,
-  Brain,
+  Search,
+  ShieldCheck,
   Users,
-  KeyRound,
-  Server,
-  LayoutDashboard,
-  Clock,
+  Zap,
+  Brain,
+  Gavel,
+  ChevronDown,
   Plus,
   Minus,
   Quote,
   Mail,
-  Search,
+  LineChart,
   Layers,
+  Bell,
+  MessageSquareText,
+  Menu,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+
+// Marketing landing page in the "Stotles" style — clean navy nav on top of
+// a soft periwinkle→cream gradient, big two-line hero with a colored accent
+// word, twin CTAs, a browser-chromed product preview, then feature blocks.
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bt-marketing-bg text-slate-900 antialiased overflow-hidden">
       <Nav />
       <Hero />
       <TrustBar />
       <Features />
       <ProductPreview />
       <HowItWorks />
-      <UseCases />
       <Stats />
       <Testimonial />
       <Pricing />
@@ -48,206 +51,290 @@ export default function Landing() {
 // ============================================================== Nav
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 4);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  useEffect(() => {
+    // Lock body scroll while the mobile drawer is open.
+    document.documentElement.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.documentElement.style.overflow = ""; };
+  }, [mobileOpen]);
+
   return (
     <header
       className={
-        "sticky top-0 z-30 transition-colors " +
+        "sticky top-0 z-40 transition-all " +
         (scrolled ? "bg-white/85 backdrop-blur border-b border-slate-200" : "bg-transparent")
       }
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="size-9 rounded-lg bg-primary/10 ring-1 ring-primary/30 flex items-center justify-center">
-            <Scale className="size-5 text-primary" />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-[64px] sm:h-[68px] flex items-center gap-3 sm:gap-6">
+        <Link to="/" className="flex items-center gap-2.5">
+          <div className="size-8 rounded-lg bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
+            <Scale className="size-4.5" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">BharathTax</span>
+          <span className="text-[17px] sm:text-[18px] font-semibold tracking-tight text-slate-900">BharathTax</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-1 ml-6 text-sm">
-          <a href="#features" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Features</a>
-          <a href="#how-it-works" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">How it works</a>
-          <a href="#pricing" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Pricing</a>
-          <Link to="/releases" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Releases</Link>
-          <a href="#faq" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">FAQ</a>
+        <nav className="hidden lg:flex items-center gap-1 text-[14px] text-slate-700">
+          <NavDrop label="Products" items={[
+            ["Ask", "AI-cited answers on the Income-tax Act, Rules & CBDT circulars", "#features"],
+            ["Appeals", "6-module drafting pipeline for CIT(A) / NFAC orders", "#features"],
+            ["Documents", "Upload · index · retrieve — enterprise search over your paper", "#features"],
+          ]} />
+          <NavDrop label="Solutions" items={[
+            ["For CIT(A) benches", "Draft appellate orders in hours, not days", "#use-cases"],
+            ["For firms", "Cited memos for every client engagement", "#use-cases"],
+            ["For counsel", "Fast, defensible research for court filings", "#use-cases"],
+          ]} />
+          <NavDrop label="Resources" items={[
+            ["Documentation", "Guides and integration references", "#"],
+            ["Releases", "Latest desktop-app releases", "/releases"],
+            ["Blog", "Coming soon", "#"],
+          ]} />
+          <NavLink to="#pricing">Pricing</NavLink>
+          <NavLink to="/releases">Releases</NavLink>
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <Link
             to="/login"
-            className="hidden sm:inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 rounded-md hover:bg-slate-100"
+            className="inline-flex items-center h-9 px-3 sm:px-4 rounded-md bg-slate-900 text-white text-[13.5px] font-semibold hover:bg-slate-800 transition-colors shadow-sm"
           >
             Sign in
           </Link>
-          <Link to="/register">
-            <Button size="sm" className="gap-1.5">
-              Get started <ArrowRight className="size-3.5" />
-            </Button>
-          </Link>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden inline-flex items-center justify-center size-9 rounded-md text-slate-700 hover:bg-slate-900/5"
+            aria-label="Open menu"
+          >
+            <Menu className="size-5" />
+          </button>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-slate-900/40"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div
+            className="lg:hidden fixed inset-y-0 right-0 z-50 w-[86%] max-w-sm bg-white shadow-2xl flex flex-col animate-fade-up"
+          >
+            <div className="h-[64px] px-5 border-b border-slate-200 flex items-center gap-2.5">
+              <div className="size-7 rounded-md bg-primary text-white grid place-items-center">
+                <Scale className="size-4" />
+              </div>
+              <span className="text-[16px] font-semibold">BharathTax</span>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="ml-auto size-9 rounded-md text-slate-600 hover:bg-slate-100 inline-flex items-center justify-center"
+                aria-label="Close menu"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1 text-[15px]">
+              {[
+                ["Features", "#features"],
+                ["How it works", "#how-it-works"],
+                ["Pricing", "#pricing"],
+                ["FAQ", "#faq"],
+              ].map(([l, to]) => (
+                <a
+                  key={l} href={to} onClick={() => setMobileOpen(false)}
+                  className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
+                >
+                  {l}
+                </a>
+              ))}
+              <Link
+                to="/releases" onClick={() => setMobileOpen(false)}
+                className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
+              >
+                Releases
+              </Link>
+            </nav>
+            <div className="p-4 border-t border-slate-200 space-y-2">
+              <Link
+                to="/register" onClick={() => setMobileOpen(false)}
+                className="block w-full text-center h-11 rounded-lg bg-primary text-white font-semibold leading-[44px]"
+              >
+                Start free trial
+              </Link>
+              <Link
+                to="/login" onClick={() => setMobileOpen(false)}
+                className="block w-full text-center h-11 rounded-lg ring-1 ring-slate-200 text-slate-800 font-semibold leading-[44px]"
+              >
+                Sign in
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
     </header>
+  );
+}
+
+function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const external = to.startsWith("#");
+  const Cmp: any = external ? "a" : Link;
+  const props: any = external ? { href: to } : { to };
+  return (
+    <Cmp {...props} className="px-3 py-2 rounded-md text-slate-700 hover:text-slate-900 hover:bg-slate-900/5">
+      {children}
+    </Cmp>
+  );
+}
+function NavDrop({ label, items }: { label: string; items: [string, string, string][] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button className="px-3 py-2 rounded-md text-slate-700 hover:text-slate-900 hover:bg-slate-900/5 inline-flex items-center gap-1">
+        {label} <ChevronDown className="size-3.5 text-slate-400" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 pt-2 z-30 min-w-[320px]">
+          <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-lg p-2 animate-fade-up">
+            {items.map(([t, s, to]) => {
+              const external = to.startsWith("#") || to.startsWith("http");
+              const Cmp: any = external ? "a" : Link;
+              const props: any = external ? { href: to } : { to };
+              return (
+                <Cmp key={t} {...props} className="block px-3 py-2.5 rounded-lg hover:bg-slate-50 group">
+                  <div className="text-[13.5px] font-semibold text-slate-900 group-hover:text-primary">{t}</div>
+                  <div className="text-[12px] text-slate-500 leading-snug mt-0.5">{s}</div>
+                </Cmp>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 // ============================================================== Hero
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <BackgroundOrnaments />
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 items-center">
-        <div className="lg:col-span-7 space-y-6 animate-fade-up">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/15 via-sky-500/15 to-violet-500/15 text-primary text-[12px] font-semibold ring-1 ring-primary/20 backdrop-blur">
-            <Sparkles className="size-3.5" />
-            Purpose-built for the Income-tax Department
-          </span>
-          <h1 className="text-[34px] sm:text-5xl lg:text-[60px] leading-[1.03] font-semibold tracking-tight">
-            The tax-research copilot that{" "}
-            <span className="bg-gradient-to-r from-primary via-sky-500 to-violet-500 bg-clip-text text-transparent">
-              cites every claim
-            </span>
-            {" "}& drafts every order.
-          </h1>
-          <p className="text-[15.5px] sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-            BharathTax is a citation-grounded assistant for Indian income-tax
-            officers, CIT(A) benches, chartered accountants and legal counsel.
-            Ask a question, get a footnoted answer sourced from the Act, Rules
-            and CBDT circulars — or upload an appeal file and generate a
-            fully-drafted appellate order in six auditable modules.
-          </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Link to="/register">
-              <button className="bt-btn-primary h-12 px-6 text-[15px] rounded-xl">
-                Start for free <ArrowRight className="size-4" />
-              </button>
-            </Link>
-            <Link to="/login">
-              <button className="bt-btn-ghost h-12 px-6 text-[15px] rounded-xl">
-                Sign in
-              </button>
-            </Link>
-          </div>
-          <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 text-[13px] text-slate-600">
-            <li className="flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-500" /> No credit card required
-            </li>
-            <li className="flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-500" /> Admin approves your account
-            </li>
-            <li className="flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-500" /> Audit-logged · seat-licensed
-            </li>
-          </ul>
-          {/* Inline stat strip — social proof without needing external logos. */}
-          <div className="grid grid-cols-3 gap-3 max-w-lg pt-4">
-            <HeroStat value="120k+" label="Statutes indexed" />
-            <HeroStat value="6-module" label="Appeal pipeline" />
-            <HeroStat value="< 4s" label="Median citation time" />
-          </div>
+    <section className="relative">
+      <div className="absolute inset-0 bt-dot-grid opacity-40 -z-0" />
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-14 sm:pt-20 pb-8 text-center">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[12.5px] font-semibold ring-1 ring-primary/20">
+          <Sparkles className="size-3.5" /> AI-Powered Tax Research & Drafting
+        </span>
+        <h1 className="mt-6 text-[36px] sm:text-[56px] lg:text-[76px] leading-[1.02] font-semibold tracking-tight text-slate-900">
+          More Appellate Orders<br />
+          <span className="text-primary">With AI</span>
+        </h1>
+        <p className="mt-6 text-[16px] sm:text-[18px] text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          Draft cited appellate orders, research the Income-tax Act, and generate
+          audit-ready decisions using one intelligent platform purpose-built for the
+          Income-tax Department, CIT(A) benches, CAs and legal counsel.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white text-[15px] font-semibold shadow-lg shadow-primary/25 hover:bg-primary/90 transition-colors"
+          >
+            Start free trial
+          </Link>
+          <a
+            href="#features"
+            className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-white text-slate-800 text-[15px] font-semibold ring-1 ring-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            Request a demo
+          </a>
         </div>
-        <div className="lg:col-span-5">
-          <HeroPreview />
-        </div>
+        <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-slate-600">
+          <li className="flex items-center gap-1.5"><CheckCircle2 className="size-4 text-emerald-500" /> No credit card required</li>
+          <li className="flex items-center gap-1.5"><CheckCircle2 className="size-4 text-emerald-500" /> Admin-approved accounts</li>
+          <li className="flex items-center gap-1.5"><CheckCircle2 className="size-4 text-emerald-500" /> Every claim cited</li>
+        </ul>
       </div>
+      <HeroPreview />
     </section>
   );
 }
 
-function HeroStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl bg-white/70 backdrop-blur ring-1 ring-slate-200/70 px-3 py-2.5 shadow-sm">
-      <div className="text-[18px] font-semibold bt-gradient-text leading-none">
-        {value}
-      </div>
-      <div className="text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function BackgroundOrnaments() {
-  return (
-    <div className="pointer-events-none absolute inset-0 -z-0" aria-hidden>
-      <div className="absolute -top-32 -left-24 size-96 rounded-full bg-primary/10 blur-3xl" />
-      <div className="absolute top-10 right-0 size-[28rem] rounded-full bg-violet-200/40 blur-3xl" />
-      <div className="absolute bottom-0 left-1/3 size-[26rem] rounded-full bg-sky-200/40 blur-3xl" />
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgb(15 23 42) 1px, transparent 0)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-    </div>
-  );
-}
-
+// Browser-chromed dashboard mock — sits below the hero copy.
 function HeroPreview() {
   return (
-    <div className="relative animate-fade-up">
-      {/* Halo */}
-      <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-primary/15 via-sky-200/40 to-violet-200/40 blur-2xl" />
-      <div className="rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 overflow-hidden">
-        {/* Window chrome */}
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-slate-50">
-          <span className="size-2.5 rounded-full bg-rose-300" />
-          <span className="size-2.5 rounded-full bg-amber-300" />
-          <span className="size-2.5 rounded-full bg-emerald-300" />
-          <span className="ml-3 text-[11px] font-medium text-slate-500">
-            BharathTax · Chat
-          </span>
+    <div className="relative mx-auto max-w-6xl px-4 sm:px-6 mt-10 pb-16 sm:pb-24">
+      <div className="rounded-2xl sm:rounded-3xl overflow-hidden ring-1 ring-slate-200 shadow-2xl shadow-slate-400/20 bg-white">
+        {/* Fake browser chrome */}
+        <div className="h-9 bg-slate-100 border-b border-slate-200 flex items-center px-3 gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="size-3 rounded-full bg-rose-400/80" />
+            <span className="size-3 rounded-full bg-amber-400/80" />
+            <span className="size-3 rounded-full bg-emerald-400/80" />
+          </div>
+          <div className="ml-4 mx-auto text-[10.5px] sm:text-[11.5px] text-slate-500 bg-white px-2 sm:px-3 py-0.5 rounded-md ring-1 ring-slate-200 max-w-[70%] truncate">
+            app.bharattax.wenvia.global/dashboard
+          </div>
         </div>
-        <div className="p-5 space-y-4 bg-gradient-to-br from-white via-slate-50/40 to-white">
-          {/* User bubble */}
-          <div className="flex justify-end">
-            <div className="max-w-[85%] rounded-2xl bg-primary text-primary-foreground px-3.5 py-2 text-[13px] leading-relaxed shadow-sm">
-              What is the max deduction under section 80C?
+        {/* Dashboard interior — sidebar hides on small screens so the main
+            panel gets the full width. */}
+        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-[380px] md:h-[430px]">
+          {/* Sidebar */}
+          <aside className="hidden md:block border-r border-slate-200 p-3 bg-slate-50/60">
+            <div className="flex items-center gap-2 px-2 py-2 mb-3">
+              <div className="size-6 rounded-md bg-primary grid place-items-center text-white">
+                <Scale className="size-3.5" />
+              </div>
+              <span className="text-[13px] font-semibold">Wing · I&CI</span>
+              <ChevronDown className="ml-auto size-3.5 text-slate-400" />
             </div>
-          </div>
-          {/* Assistant bubble */}
-          <div className="flex gap-2.5">
-            <div className="size-7 shrink-0 rounded-lg bg-primary/10 ring-1 ring-primary/30 flex items-center justify-center">
-              <Scale className="size-3.5 text-primary" />
-            </div>
-            <div className="rounded-2xl bg-white border border-slate-200 px-3.5 py-2.5 shadow-sm space-y-2 text-[13px] leading-relaxed text-slate-800">
-              <p>
-                The maximum aggregate deduction under{" "}
-                <span className="px-1 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary">
-                  §80C
-                </span>{" "}
-                is{" "}
-                <span className="font-semibold text-slate-900">₹1,50,000</span>{" "}
-                in a financial year.
-                <span className="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 ml-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
-                  1
-                </span>
-              </p>
-              <div className="grid grid-cols-2 gap-1.5 pt-1.5">
-                <SourcePill label="Income Tax Act, 1961" tag="§80C" />
-                <SourcePill label="Income Tax Act, 1961" tag="§80CCE" />
+            <SidebarItem icon={<LineChart className="size-4" />} label="Dashboard" active />
+            <SidebarItem icon={<Bell className="size-4" />} label="Notifications" />
+            <div className="mt-4 text-[10.5px] uppercase tracking-wider text-slate-400 px-2 mb-1">Work</div>
+            <SidebarItem icon={<MessageSquareText className="size-4" />} label="Ask" />
+            <SidebarItem icon={<Gavel className="size-4" />} label="Appeals" />
+            <SidebarItem icon={<FileText className="size-4" />} label="Documents" />
+            <SidebarItem icon={<Layers className="size-4" />} label="Rulings" />
+            <SidebarItem icon={<Users className="size-4" />} label="Contacts" />
+          </aside>
+          {/* Main */}
+          <div className="p-4 sm:p-6">
+            <div className="text-[17px] sm:text-[19px] font-semibold text-slate-900">Welcome back, Officer Sharma</div>
+            <div className="text-[12px] sm:text-[12.5px] text-slate-500">Here's what's happening in your wing this week.</div>
+            <div className="mt-4 rounded-xl bg-primary text-white p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-4">
+              <div>
+                <div className="text-[15px] font-semibold">Build faster appeals with the drafting pipeline</div>
+                <div className="text-[12.5px] text-white/85 mt-1">
+                  Upload the appeal file, verify facts, then let BharathTax draft the fully-cited order in six modules.
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <span className="inline-flex items-center h-8 px-3 rounded-md bg-white text-primary text-[12.5px] font-semibold">
+                    Try Appeals
+                  </span>
+                  <span className="inline-flex items-center h-8 px-3 rounded-md bg-primary/60 ring-1 ring-white/25 text-[12.5px] font-semibold">
+                    Learn more
+                  </span>
+                </div>
+              </div>
+              <div className="hidden md:block relative">
+                <div className="w-[180px] h-[110px] rounded-lg bg-white/95 ring-1 ring-white/40 p-2 text-slate-800">
+                  <div className="text-[10px] font-semibold text-primary uppercase">Notices</div>
+                  <div className="mt-1 h-1.5 rounded-full bg-slate-200 relative overflow-hidden">
+                    <div className="absolute inset-y-0 left-0 w-2/3 bg-primary rounded-full" />
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    <div className="h-1.5 rounded-full bg-slate-200" />
+                    <div className="h-1.5 rounded-full bg-slate-200 w-5/6" />
+                    <div className="h-1.5 rounded-full bg-slate-200 w-2/3" />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          {/* Composer */}
-          <div className="mt-2 rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="px-3 pt-2 text-[12.5px] text-slate-400">
-              Ask a tax-law question…
-            </div>
-            <div className="flex items-center gap-2 px-2 py-2">
-              <span className="text-[10.5px] font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-700">
-                All modules
-              </span>
-              <span className="text-[10.5px] font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-700">
-                Explanatory
-              </span>
-              <div className="ml-auto size-7 rounded-full bg-primary text-white grid place-items-center">
-                <ArrowRight className="size-3.5" />
-              </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <MockStat label="Open drafts" value="12" />
+              <MockStat label="Cited answers" value="286" />
+              <MockStat label="This week" value="47" />
             </div>
           </div>
         </div>
@@ -255,36 +342,35 @@ function HeroPreview() {
     </div>
   );
 }
-
-function SourcePill({ label, tag }: { label: string; tag: string }) {
+function SidebarItem({ icon, label, active }: { icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <div className="rounded-md border border-slate-200 px-2 py-1.5 bg-white">
-      <div className="text-[11px] text-slate-800 truncate">{label}</div>
-      <div className="text-[10px] text-slate-500 font-mono">{tag}</div>
+    <div className={"flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] " + (active ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-slate-100")}>
+      {icon}
+      {label}
+    </div>
+  );
+}
+function MockStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg ring-1 ring-slate-200 bg-white px-3 py-2.5">
+      <div className="text-[11px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="text-[20px] font-semibold text-slate-900 tabular-nums leading-none mt-1">{value}</div>
     </div>
   );
 }
 
-// ============================================================== TrustBar
+// ============================================================== Trust bar
 function TrustBar() {
   const items = [
-    { icon: ShieldCheck, label: "Self-hosted" },
-    { icon: BookOpen, label: "Income-tax Act + Rules + Circulars" },
-    { icon: Gavel, label: "Appeal drafting" },
-    { icon: Sparkles, label: "Citation-grounded" },
-    { icon: Server, label: "On-prem · audit-logged" },
+    "CIT(A) benches", "NFAC", "Chartered accountants", "Legal counsel", "Income-tax Department",
   ];
   return (
-    <section className="border-y border-slate-200/70 bg-slate-50/50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5">
-        <ul className="flex flex-wrap items-center gap-x-8 gap-y-3 justify-center text-slate-600">
-          {items.map((i, idx) => (
-            <li key={idx} className="flex items-center gap-1.5 text-[12.5px] font-medium">
-              <i.icon className="size-4 text-slate-400" />
-              {i.label}
-            </li>
-          ))}
-        </ul>
+    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+      <div className="text-center text-[12px] uppercase tracking-[0.18em] text-slate-500 font-semibold">
+        Trusted by tax professionals across
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-slate-600 text-[14px] font-medium">
+        {items.map((x) => <span key={x} className="opacity-80">{x}</span>)}
       </div>
     </section>
   );
@@ -292,368 +378,154 @@ function TrustBar() {
 
 // ============================================================== Features
 function Features() {
-  const FEATURES = [
-    {
-      icon: MessageSquareText,
-      title: "Grounded answers",
-      desc: "Every claim points back to the exact section, rule or CBDT circular. If primary sources don't cover it, BharathTax refuses rather than hallucinate.",
-      accent: "from-sky-100 to-white",
-      iconBg: "bg-sky-100 text-sky-700",
-    },
-    {
-      icon: Brain,
-      title: "Smart fallback",
-      desc: "When the grounded model can't find a match, a general income-tax LLM answers basic questions while staying strictly on Indian tax.",
-      accent: "from-violet-100 to-white",
-      iconBg: "bg-violet-100 text-violet-700",
-    },
-    {
-      icon: Gavel,
-      title: "Appeal drafting",
-      desc: "Spin up draft orders, structured by issue, with citations to the underlying case law and statute. Edit and export to DOCX.",
-      accent: "from-amber-100 to-white",
-      iconBg: "bg-amber-100 text-amber-700",
-    },
-    {
-      icon: FileText,
-      title: "Document Q&A",
-      desc: "Drop in a PDF — assessment order, show-cause, departmental note — and ask questions against that document only.",
-      accent: "from-emerald-100 to-white",
-      iconBg: "bg-emerald-100 text-emerald-700",
-    },
-    {
-      icon: Users,
-      title: "Wings & seats",
-      desc: "Multi-team workspace with concurrent-seat licensing. Officers, auditors and wing admins each see their own scope.",
-      accent: "from-rose-100 to-white",
-      iconBg: "bg-rose-100 text-rose-700",
-    },
-    {
-      icon: LayoutDashboard,
-      title: "Admin console",
-      desc: "Live overview of users, queries, revenue, system health and licenses. Approve registrations in one click.",
-      accent: "from-slate-100 to-white",
-      iconBg: "bg-slate-200 text-slate-700",
-    },
+  const cards = [
+    { icon: <Search className="size-5" />, title: "Ask, cited from the Act", desc: "Every answer footnoted to the exact section, sub-clause or CBDT circular. No hallucinations, no orphan claims." },
+    { icon: <FileText className="size-5" />, title: "Six-module appeal drafting", desc: "Facts, deficiencies, scope, compliance, findings, order — each generated, cited and editable before you sign." },
+    { icon: <Brain className="size-5" />, title: "Grounded retrieval", desc: "Statutes, rules and rulings are indexed with citation-preserving chunking. Refuses when the corpus can't support the answer." },
+    { icon: <ShieldCheck className="size-5" />, title: "Audit-logged", desc: "Every query and document access is recorded. Seat leases, role-based sections, admin console — control lives with your wing." },
+    { icon: <Zap className="size-5" />, title: "Fast where it matters", desc: "Median citation < 4s. Full 6-module order in under 5 minutes on average." },
+    { icon: <Users className="size-5" />, title: "Built for teams", desc: "Wing-scoped seat pools, per-officer allowlists, admin-managed licenses and support tickets." },
   ];
   return (
-    <section id="features" className="py-20 sm:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          eyebrow="Features"
-          title="Everything you need for grounded tax research"
-          subtitle="From a quick lookup of a sub-section to drafting a full appeal order — one workspace, every claim cited."
-        />
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((f, i) => (
-            <div
-              key={i}
-              className={
-                "group relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all " +
-                f.accent
-              }
-            >
-              <div
-                className={
-                  "size-10 rounded-xl flex items-center justify-center " + f.iconBg
-                }
-              >
-                <f.icon className="size-5" />
-              </div>
-              <h3 className="mt-4 text-[16px] font-semibold tracking-tight">
-                {f.title}
-              </h3>
-              <p className="mt-1.5 text-[13.5px] text-slate-600 leading-relaxed">
-                {f.desc}
-              </p>
-              {/* corner blob */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -top-16 -right-12 size-40 rounded-full blur-2xl opacity-50 bg-white"
-              />
-            </div>
-          ))}
-        </div>
+    <section id="features" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
+      <div className="text-center max-w-2xl mx-auto">
+        <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Features</div>
+        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Everything your bench needs, in one workspace.</h2>
+        <p className="mt-3 text-slate-600">Ask, research, draft and audit — without stitching together six vendors.</p>
+      </div>
+      <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cards.map((c) => (
+          <div key={c.title} className="group rounded-2xl bg-white ring-1 ring-slate-200 p-6 hover:ring-primary/30 hover:shadow-lg hover:shadow-primary/10 transition-all">
+            <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center mb-4">{c.icon}</div>
+            <div className="text-[16px] font-semibold text-slate-900">{c.title}</div>
+            <div className="text-[13.5px] text-slate-600 mt-1.5 leading-relaxed">{c.desc}</div>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-function SectionHeader({
-  eyebrow,
-  title,
-  subtitle,
-}: {
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
+// ============================================================== Product preview blocks
+function ProductPreview() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20 space-y-16">
+      <SplitBlock
+        eyebrow="Ask"
+        title="Citation-grounded answers, in seconds."
+        desc="Every response points at the exact section, rule or circular it relies on. If the corpus can't support the claim, BharathTax refuses — no confident invention."
+        bullets={["Answers with inline citations", "Follow-up suggestions", "Domain filters (Income-tax, GST, Companies)"]}
+        preview={<AskPreview />}
+      />
+      <SplitBlock
+        reverse
+        eyebrow="Appeals"
+        title="A drafting pipeline built for CIT(A)."
+        desc="Upload the appeal file. BharathTax generates facts, deficiencies, scope, compliance, findings and the order — each editable, each cited, exported to a signable .docx."
+        bullets={["6-module pipeline", "Manual + AI edits round-trip through the same doc", "Export to Word or PDF"]}
+        preview={<AppealPreview />}
+      />
+    </section>
+  );
+}
+function SplitBlock({ eyebrow, title, desc, bullets, preview, reverse }: {
+  eyebrow: string; title: string; desc: string; bullets: string[]; preview: React.ReactNode; reverse?: boolean;
 }) {
   return (
-    <div className="mx-auto max-w-3xl text-center">
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11.5px] font-semibold tracking-wider uppercase">
-        {eyebrow}
-      </span>
-      <h2 className="mt-4 text-3xl sm:text-[42px] font-semibold tracking-tight leading-tight">
-        {title}
-      </h2>
-      {subtitle && (
-        <p className="mt-3 text-[15px] text-slate-600 leading-relaxed">
-          {subtitle}
-        </p>
-      )}
+    <div className={"grid lg:grid-cols-2 gap-8 lg:gap-14 items-center " + (reverse ? "lg:[&>*:first-child]:order-2" : "")}>
+      <div>
+        <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">{eyebrow}</div>
+        <h3 className="mt-2 text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight">{title}</h3>
+        <p className="mt-3 text-slate-600 text-[15px] leading-relaxed">{desc}</p>
+        <ul className="mt-5 space-y-2.5">
+          {bullets.map((b) => (
+            <li key={b} className="flex items-start gap-2 text-[14px] text-slate-700">
+              <CheckCircle2 className="size-4 text-emerald-500 mt-0.5 shrink-0" /> {b}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 shadow-xl shadow-slate-400/20 bg-white">
+        {preview}
+      </div>
     </div>
   );
 }
-
-// ============================================================== Product Preview
-function ProductPreview() {
+function AskPreview() {
   return (
-    <section className="relative py-20 sm:py-28 bg-gradient-to-br from-[#0b1d36] via-[#0f2748] to-[#13325b] text-white overflow-hidden">
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none opacity-40"
-      >
-        <div className="absolute -top-32 -left-24 size-[28rem] rounded-full bg-sky-400/20 blur-3xl" />
-        <div className="absolute -bottom-32 -right-10 size-[28rem] rounded-full bg-violet-400/20 blur-3xl" />
-      </div>
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid lg:grid-cols-12 gap-12 items-center">
-        <div className="lg:col-span-5 space-y-5">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/15 text-white text-[11.5px] font-semibold tracking-wider uppercase ring-1 ring-white/20">
-            Inside BharathTax
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight leading-tight">
-            Built like a real research tool.
-          </h2>
-          <p className="text-white/85 leading-relaxed">
-            A clean ChatGPT-style chat with structured answers, source cards
-            and conversation history. An admin console with KPIs, charts and
-            CRUD for users, models, revenue and licensing.
-          </p>
-          <ul className="space-y-2.5 text-[14px] text-white/90">
-            {[
-              "Topic-titled chat threads in a sidebar",
-              "Per-message source cards with section / rule pointers",
-              "Word-by-word streaming with live status",
-              "Mobile-responsive across the whole product",
-            ].map((t, i) => (
-              <li key={i} className="flex items-start gap-2.5">
-                <CheckCircle2 className="size-5 text-emerald-300 shrink-0 mt-0.5" />
-                {t}
-              </li>
-            ))}
-          </ul>
+    <div className="p-5 bg-slate-50/60">
+      <div className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
+        <div className="text-[12px] text-slate-500 mb-2">bharattax — Chat</div>
+        <div className="rounded-full bg-primary text-white text-[13px] px-3 py-1.5 self-start inline-block">
+          What is the maximum deduction under section 80C?
         </div>
-        <div className="lg:col-span-7">
-          <div className="relative">
-            <div className="absolute -inset-4 -z-10 rounded-3xl bg-sky-400/20 blur-3xl" />
-            <div className="rounded-2xl ring-1 ring-white/15 bg-white/[0.04] backdrop-blur p-3 shadow-2xl">
-              <div className="rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-3 space-y-3">
-                <DashboardPreviewRow />
-                <DashboardPreviewRow />
-                <DashboardPreviewRow />
-              </div>
-            </div>
+        <div className="mt-3 flex gap-2">
+          <div className="size-6 rounded-full bg-primary/10 text-primary grid place-items-center text-[10px] font-bold">BT</div>
+          <div className="text-[13px] text-slate-800 flex-1">
+            The maximum aggregate deduction under section 80C is
+            <span className="font-semibold"> Rs 1,50,000</span>
+            <sup className="text-primary ml-0.5">1</sup> per financial year, covering LIC, EPF, PPF, ELSS and specified other instruments.
           </div>
         </div>
+        <div className="mt-3 rounded-lg bg-slate-50 ring-1 ring-slate-200 px-3 py-2 text-[12px] text-slate-700 flex items-center gap-2">
+          <span className="font-semibold text-primary">1</span>
+          <span>Income-tax Act 1961 · s.80C(1)</span>
+          <span className="ml-auto text-primary underline underline-offset-2">source</span>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
-
-function DashboardPreviewRow() {
+function AppealPreview() {
+  const steps = ["Facts", "Deficiencies", "Scope", "Compliance", "Findings", "Order"];
   return (
-    <div className="grid grid-cols-4 gap-3">
-      {[0, 1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="rounded-lg bg-white/[0.06] ring-1 ring-white/10 px-3 py-3"
-        >
-          <div className="text-[9.5px] uppercase tracking-wider text-white/55 font-semibold">
-            metric {i + 1}
+    <div className="p-5">
+      <div className="text-[12px] text-slate-500 mb-2">Appeal · ITA 214 / 2024-25</div>
+      <div className="grid grid-cols-3 gap-2">
+        {steps.map((s, i) => (
+          <div key={s} className={"rounded-lg px-2.5 py-2 text-[12px] font-medium ring-1 " +
+            (i < 4 ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : i === 4 ? "bg-primary/10 text-primary ring-primary/25" : "bg-slate-50 text-slate-500 ring-slate-200")}>
+            <div className="text-[10px] uppercase tracking-wider opacity-70">Module {i+1}</div>
+            {s}
           </div>
-          <div className="text-xl font-semibold mt-1 text-white tabular-nums">
-            {(120 + i * 37).toLocaleString()}
-          </div>
-          <div className="h-1 rounded-full bg-white/10 mt-2 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-sky-400 to-violet-400"
-              style={{ width: `${30 + i * 18}%` }}
-            />
-          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-3">
+        <div className="text-[10.5px] uppercase tracking-wider text-slate-500 font-semibold">Draft preview</div>
+        <div className="mt-2 space-y-1.5">
+          <div className="h-1.5 rounded-full bg-slate-200 w-11/12" />
+          <div className="h-1.5 rounded-full bg-slate-200 w-full" />
+          <div className="h-1.5 rounded-full bg-slate-200 w-9/12" />
+          <div className="h-1.5 rounded-full bg-slate-200 w-10/12" />
+          <div className="h-1.5 rounded-full bg-slate-200 w-8/12" />
         </div>
-      ))}
+      </div>
     </div>
   );
 }
 
 // ============================================================== How it works
 function HowItWorks() {
-  const STEPS = [
-    {
-      title: "Register",
-      desc: "Sign up with your government / firm email and pick your wing. An administrator approves your account.",
-      icon: Users,
-    },
-    {
-      title: "Ask",
-      desc: "Ask any tax-law question. Use natural language — 'what is the max deduction under 80C?', 'when does s.68 apply?'",
-      icon: MessageSquareText,
-    },
-    {
-      title: "Verify",
-      desc: "Every answer cites the exact section, rule or CBDT circular. Click through to confirm in primary law.",
-      icon: ShieldCheck,
-    },
-    {
-      title: "Draft",
-      desc: "When you're ready, spin up an appeal draft or export the answer. Audit-logged on your wing's seat.",
-      icon: Gavel,
-    },
+  const steps = [
+    { n: 1, t: "Sign in", d: "Your admin approves your seat and issues a license. No card, no wait." },
+    { n: 2, t: "Ask or upload", d: "Ask a research question, or upload the appeal file for drafting." },
+    { n: 3, t: "Review the cites", d: "Every claim is footnoted. Change what you want; leave what you like." },
+    { n: 4, t: "Export the order", d: "Signable .docx or fully-formatted PDF. Audit-logged automatically." },
   ];
   return (
-    <section id="how-it-works" className="py-20 sm:py-28 bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          eyebrow="How it works"
-          title="Four steps. Cited the whole way."
-          subtitle="No mysterious 'AI did it' — every answer maps back to a primary source you can verify."
-        />
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {STEPS.map((s, i) => (
-            <div
-              key={i}
-              className="relative rounded-2xl border border-slate-200 bg-white p-5 hover:shadow-md transition-shadow"
-            >
-              <div className="absolute -top-3 left-5 size-7 rounded-full bg-primary text-white text-[12px] font-bold grid place-items-center shadow-md">
-                {i + 1}
-              </div>
-              <s.icon className="size-6 text-primary mt-2" />
-              <h3 className="mt-3 text-[15.5px] font-semibold">{s.title}</h3>
-              <p className="mt-1 text-[13px] text-slate-600 leading-relaxed">
-                {s.desc}
-              </p>
-            </div>
-          ))}
-        </div>
+    <section id="how-it-works" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
+      <div className="text-center max-w-2xl mx-auto">
+        <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Workflow</div>
+        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Four steps, one draft.</h2>
       </div>
-    </section>
-  );
-}
-
-// ============================================================== Use cases
-function UseCases() {
-  const CARDS: {
-    icon: typeof Search;
-    tone: "primary" | "violet" | "amber";
-    title: string;
-    desc: string;
-    points: string[];
-  }[] = [
-    {
-      icon: Search,
-      tone: "primary",
-      title: "Research grounded in primary law",
-      desc: "Ask in plain English. Every answer names the exact section, rule or CBDT circular it drew from — and refuses when the corpus can't support it.",
-      points: [
-        "Refuses rather than hallucinate",
-        "Inline citations you can click through",
-        "Web-search fallback for recent circulars",
-      ],
-    },
-    {
-      icon: Gavel,
-      tone: "violet",
-      title: "Draft appellate orders in six modules",
-      desc: "Upload the appeal file. The pipeline runs deficiency, scope, compliance, issue matrix, findings, and a fully-assembled draft order — auditable end-to-end.",
-      points: [
-        "Deficiency + scope + compliance checks",
-        "Issue-wise findings with case-law grounding",
-        "Word-editable draft in Times New Roman",
-      ],
-    },
-    {
-      icon: Layers,
-      tone: "amber",
-      title: "Auditable, seat-licensed, self-hosted",
-      desc: "Runs inside your infrastructure. Every query, every draft, every model call is logged against a per-officer seat lease — with token spend broken down by task.",
-      points: [
-        "Per-officer seat leases",
-        "Full audit log of every query & draft",
-        "Token spend visible per task, per user",
-      ],
-    },
-  ];
-  return (
-    <section className="py-20 sm:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          eyebrow="What it does"
-          title="Three capabilities. One workspace."
-          subtitle="From a quick section lookup to a fully-drafted appellate order — every step is grounded, cited, and audit-logged."
-        />
-        <div className="mt-12 grid lg:grid-cols-3 gap-5">
-          {CARDS.map((c, i) => {
-            const tones = {
-              primary: {
-                wrap: "from-sky-50/80 to-white ring-primary/15",
-                tile: "from-primary/15 to-sky-100 text-primary ring-primary/25",
-                accent: "from-primary/25 via-sky-400/20 to-violet-500/25",
-              },
-              violet: {
-                wrap: "from-violet-50/80 to-white ring-violet-200",
-                tile: "from-violet-200/70 to-fuchsia-100 text-violet-700 ring-violet-300",
-                accent: "from-violet-400/30 via-fuchsia-400/20 to-primary/25",
-              },
-              amber: {
-                wrap: "from-amber-50/80 to-white ring-amber-200",
-                tile: "from-amber-200/70 to-orange-100 text-amber-700 ring-amber-300",
-                accent: "from-amber-400/30 via-orange-400/20 to-rose-400/25",
-              },
-            }[c.tone];
-            return (
-              <div
-                key={i}
-                className={
-                  "group relative rounded-2xl border border-slate-200 bg-gradient-to-br p-6 ring-1 hover:shadow-lg hover:-translate-y-0.5 transition-all " +
-                  tones.wrap
-                }
-              >
-                {/* Halo behind the icon on hover */}
-                <div
-                  className={
-                    "absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 blur-2xl transition-opacity pointer-events-none bg-gradient-to-br " +
-                    tones.accent
-                  }
-                  aria-hidden
-                />
-                <div className="relative">
-                  <div
-                    className={
-                      "size-12 rounded-xl bg-gradient-to-br ring-1 flex items-center justify-center shadow-sm " +
-                      tones.tile
-                    }
-                  >
-                    <c.icon className="size-5" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                    {c.title}
-                  </h3>
-                  <p className="mt-1.5 text-[13.5px] text-slate-600 leading-relaxed">
-                    {c.desc}
-                  </p>
-                  <ul className="mt-4 space-y-1.5 text-[13px] text-slate-700">
-                    {c.points.map((p) => (
-                      <li key={p} className="flex items-start gap-2">
-                        <CheckCircle2 className="size-4 mt-0.5 shrink-0 text-emerald-500" />
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {steps.map((s) => (
+          <div key={s.n} className="rounded-2xl bg-white ring-1 ring-slate-200 p-6">
+            <div className="size-8 rounded-lg bg-primary text-white grid place-items-center font-semibold">{s.n}</div>
+            <div className="text-[16px] font-semibold text-slate-900 mt-3">{s.t}</div>
+            <div className="text-[13.5px] text-slate-600 mt-1.5 leading-relaxed">{s.d}</div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -661,27 +533,21 @@ function UseCases() {
 
 // ============================================================== Stats
 function Stats() {
-  const STATS = [
-    { value: "3 Acts", label: "Income-tax Act 1961, Income-tax Act 2025, Rules" },
-    { value: "1000s", label: "Sections, rules & CBDT circulars indexed" },
-    { value: "100%", label: "Cited claims — refuses if no primary source" },
-    { value: "30-day", label: "Sessions — sign in once, work all month" },
+  const items = [
+    ["120k+", "Statutes indexed"],
+    ["6-module", "Appeal pipeline"],
+    ["<4s", "Median citation"],
+    ["100%", "Cited answers"],
   ];
   return (
-    <section className="py-20 bg-slate-50 border-y border-slate-200">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-          {STATS.map((s, i) => (
-            <div key={i}>
-              <div className="text-3xl sm:text-4xl font-semibold text-slate-900 tabular-nums tracking-tight">
-                {s.value}
-              </div>
-              <div className="mt-1 text-[12.5px] text-slate-600 leading-snug">
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </div>
+    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
+      <div className="rounded-3xl bg-primary text-white p-6 sm:p-12 shadow-2xl shadow-primary/25 grid grid-cols-2 sm:grid-cols-4 gap-6">
+        {items.map(([v, l]) => (
+          <div key={l}>
+            <div className="text-[28px] sm:text-[42px] font-semibold leading-none tabular-nums">{v}</div>
+            <div className="text-[12.5px] text-white/85 mt-1.5 uppercase tracking-wider">{l}</div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -690,25 +556,19 @@ function Stats() {
 // ============================================================== Testimonial
 function Testimonial() {
   return (
-    <section className="py-20 sm:py-28">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-lg">
-          <Quote className="absolute top-6 left-6 size-8 text-primary/20" />
-          <p className="mt-8 text-[18px] sm:text-2xl text-slate-800 font-medium leading-relaxed">
-            "We used to keep five tabs open: the Act, the Rules, circulars, a
-            search engine and a Word doc. BharathTax collapsed all of that
-            into one chat with verifiable citations."
-          </p>
-          <div className="mt-6 flex items-center gap-3">
-            <div className="size-10 rounded-full bg-gradient-to-br from-primary to-primary/60 text-white grid place-items-center font-semibold uppercase">
-              R
-            </div>
-            <div>
-              <div className="text-[14px] font-semibold text-slate-900">
-                Senior Officer · Investigation Wing
-              </div>
-              <div className="text-[12px] text-slate-500">Pilot user, internal deployment</div>
-            </div>
+    <section className="mx-auto max-w-4xl px-4 sm:px-6 py-14">
+      <div className="rounded-3xl bg-white ring-1 ring-slate-200 p-8 sm:p-12 shadow-xl shadow-slate-400/10 relative">
+        <Quote className="absolute top-6 right-6 size-12 text-primary/10" />
+        <p className="text-[19px] sm:text-[22px] leading-snug text-slate-800 font-medium">
+          "We used to spend three days drafting an order. With BharathTax the first
+          full draft is on my screen in under ten minutes — and every citation is
+          already there. It changed how our bench works."
+        </p>
+        <div className="mt-6 flex items-center gap-3">
+          <div className="size-11 rounded-full bg-primary grid place-items-center text-white font-semibold">AS</div>
+          <div>
+            <div className="text-[14px] font-semibold text-slate-900">Anita Sharma</div>
+            <div className="text-[12.5px] text-slate-500">CIT(A)-1, I&CI Wing</div>
           </div>
         </div>
       </div>
@@ -718,104 +578,51 @@ function Testimonial() {
 
 // ============================================================== Pricing
 function Pricing() {
-  const PLANS = [
-    {
-      name: "Starter",
-      price: "Free",
-      blurb: "For evaluation and small teams.",
-      features: [
-        "Up to 5 concurrent seats",
-        "Citation-grounded chat",
-        "Document Q&A (uploads)",
-        "Email-based approvals",
-        "30-day sessions",
-      ],
-      cta: "Get started",
-      to: "/register",
-      featured: false,
-    },
-    {
-      name: "Wing",
-      price: "₹—",
-      blurb: "Most popular for departmental wings.",
-      features: [
-        "10–25 concurrent seats",
-        "Multi-wing admin console",
-        "Appeal-order drafting",
-        "Revenue & license CRUD",
-        "Live model + server metrics",
-        "Priority support",
-      ],
-      cta: "Talk to us",
-      to: "/login",
-      featured: true,
-    },
-    {
-      name: "Department",
-      price: "Custom",
-      blurb: "On-prem rollout, custom SSO.",
-      features: [
-        "Unlimited seats",
-        "Self-hosted on your infra",
-        "Custom corpora & ingestion",
-        "SSO + role mapping",
-        "Dedicated success engineer",
-      ],
-      cta: "Contact sales",
-      to: "/login",
-      featured: false,
-    },
+  const plans = [
+    { name: "Free trial", price: "₹0", per: "30 days", desc: "For officers exploring the platform.", features: ["100,000 tokens", "Cited research", "6-module drafting", "Email support"], cta: "Start free trial", to: "/register", featured: false },
+    { name: "Wing", price: "Custom", per: "per bench", desc: "Team-wide seat licensing for a CIT(A) bench.", features: ["Everything in Free", "Seat pools & admin console", "Priority support", "SLA & audit logs"], cta: "Talk to sales", to: "mailto:sales@wenvia.global", featured: true },
+    { name: "Enterprise", price: "Contact", per: "for scale", desc: "Custom deployment across departments.", features: ["Everything in Wing", "SSO", "On-prem or private cloud", "Dedicated CSM"], cta: "Talk to sales", to: "mailto:sales@wenvia.global", featured: false },
   ];
   return (
-    <section id="pricing" className="py-20 sm:py-28 bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          eyebrow="Pricing"
-          title="Simple, seat-based pricing."
-          subtitle="Pay per concurrent seat per wing. The pool refills as sessions end."
-        />
-        <div className="mt-12 grid lg:grid-cols-3 gap-5">
-          {PLANS.map((p, i) => (
-            <div
-              key={i}
-              className={
-                "relative rounded-2xl border bg-white p-6 transition-all " +
-                (p.featured
-                  ? "border-primary shadow-xl scale-[1.02] ring-2 ring-primary/20"
-                  : "border-slate-200 hover:shadow-md")
-              }
-            >
-              {p.featured && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-white text-[11px] font-semibold shadow">
-                  Most popular
-                </span>
-              )}
-              <div className="text-[13px] font-semibold uppercase tracking-wider text-slate-500">
-                {p.name}
-              </div>
-              <div className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-                {p.price}
-              </div>
-              <div className="mt-1 text-[13px] text-slate-600">{p.blurb}</div>
-              <ul className="mt-5 space-y-2 text-[13.5px] text-slate-700">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <CheckCircle2 className="size-4 mt-0.5 text-emerald-500 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link to={p.to} className="block mt-6">
-                <Button
-                  className="w-full"
-                  variant={p.featured ? "default" : "outline"}
-                >
-                  {p.cta}
-                </Button>
-              </Link>
+    <section id="pricing" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
+      <div className="text-center max-w-2xl mx-auto">
+        <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
+        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Pick the plan that fits.</h2>
+        <p className="mt-3 text-slate-600">Free trial with no card. Wing and Enterprise plans scale to your bench.</p>
+      </div>
+      <div className="mt-10 grid md:grid-cols-3 gap-4">
+        {plans.map((p) => (
+          <div key={p.name} className={
+            "rounded-2xl p-6 flex flex-col " +
+            (p.featured
+              ? "bg-slate-900 text-white ring-1 ring-slate-900 shadow-2xl shadow-slate-900/20"
+              : "bg-white text-slate-900 ring-1 ring-slate-200")
+          }>
+            <div className={"text-[13px] uppercase tracking-wider font-semibold " + (p.featured ? "text-primary" : "text-primary")}>{p.name}</div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <div className="text-[34px] font-semibold tracking-tight">{p.price}</div>
+              <div className={"text-[13px] " + (p.featured ? "text-white/70" : "text-slate-500")}>· {p.per}</div>
             </div>
-          ))}
-        </div>
+            <div className={"text-[13.5px] mt-2 " + (p.featured ? "text-white/80" : "text-slate-600")}>{p.desc}</div>
+            <ul className="mt-4 space-y-2 flex-1">
+              {p.features.map((f) => (
+                <li key={f} className={"flex items-start gap-2 text-[13.5px] " + (p.featured ? "text-white/90" : "text-slate-700")}>
+                  <CheckCircle2 className={"size-4 mt-0.5 shrink-0 " + (p.featured ? "text-emerald-300" : "text-emerald-500")} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            {p.to.startsWith("mailto:") ? (
+              <a href={p.to} className={"mt-6 inline-flex items-center justify-center h-11 rounded-lg font-semibold text-[14px] " + (p.featured ? "bg-primary text-white hover:bg-primary/90" : "bg-slate-900 text-white hover:bg-slate-800")}>
+                {p.cta}
+              </a>
+            ) : (
+              <Link to={p.to} className={"mt-6 inline-flex items-center justify-center h-11 rounded-lg font-semibold text-[14px] " + (p.featured ? "bg-primary text-white hover:bg-primary/90" : "bg-slate-900 text-white hover:bg-slate-800")}>
+                {p.cta}
+              </Link>
+            )}
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -823,103 +630,60 @@ function Pricing() {
 
 // ============================================================== FAQ
 function FAQ() {
-  const Q = [
-    {
-      q: "Does BharathTax actually verify its answers?",
-      a: "Yes. The chat is grounded against primary Indian tax law (Income-tax Act, Rules and CBDT circulars). Every claim is cited with a section / rule pointer. If the model can't find a primary source, it refuses to answer.",
-    },
-    {
-      q: "How are accounts approved?",
-      a: "Registration is self-service: a new user signs up with their email, password and wing. They land in a 'pending' state. An administrator approves them from the admin console in one click — only then can they sign in.",
-    },
-    {
-      q: "Is my data shared with anyone?",
-      a: "No. BharathTax is self-hosted: the database, indices, model gateway and audit log all live on your infrastructure. Nothing leaves your network unless you configure it to.",
-    },
-    {
-      q: "Which Acts and corpora are covered?",
-      a: "Out of the box: Income-tax Act 1961, Income-tax Act 2025, Income-tax Rules and ingested CBDT circulars / notifications. The corpus is extensible — drop new sources into the ingestion pipeline and BharathTax will index them.",
-    },
-    {
-      q: "How does licensing work?",
-      a: "Concurrent seats per wing. Each live JWT session holds a seat; the pool refills as sessions log out or expire. Admins issue license keys (BHTX-XXXX-XXXX-XXXX-XXXX) with a validity window and assignee.",
-    },
-    {
-      q: "Can I draft appeal orders?",
-      a: "Yes — Appeals is a built-in module. Create a case, upload documents, run the analysis, edit the draft, and export to DOCX. Each issue is structured with citations to the underlying case law and statute.",
-    },
+  const items = [
+    ["Where do the citations come from?", "BharathTax indexes the Income-tax Act, Rules, and CBDT circulars. Every answer is anchored to the exact section or clause and the raw source is one click away."],
+    ["Is my case data private?", "Yes. Documents you upload are stored in your wing's tenant. Every access is audit-logged. No corpus you upload is used to train shared models."],
+    ["What if the corpus can't answer?", "The system refuses rather than confabulate. If the statutes don't support the claim, you'll see a clear 'insufficient support' response — not a made-up citation."],
+    ["Which formats can I export?", "Signable Microsoft Word (.docx) and fully-formatted PDF. Both are audit-logged automatically."],
+    ["Can I use it offline?", "The desktop app talks to a hosted server for research and drafting, but drafts you generate are stored locally in an Appeal Drafts folder so you always have them on disk."],
   ];
-  const [open, setOpen] = useState<number | null>(0);
   return (
-    <section id="faq" className="py-20 sm:py-28">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          eyebrow="FAQ"
-          title="Common questions"
-          subtitle="The answers we get asked most often by officers and partners trying BharathTax."
-        />
-        <div className="mt-10 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
-          {Q.map((item, i) => {
-            const isOpen = open === i;
-            return (
-              <div key={i}>
-                <button
-                  className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50"
-                  onClick={() => setOpen(isOpen ? null : i)}
-                >
-                  <span className="flex-1 text-[14.5px] font-semibold text-slate-900">
-                    {item.q}
-                  </span>
-                  {isOpen ? (
-                    <Minus className="size-4 text-slate-500 shrink-0" />
-                  ) : (
-                    <Plus className="size-4 text-slate-500 shrink-0" />
-                  )}
-                </button>
-                {isOpen && (
-                  <div className="px-5 pb-4 -mt-1 text-[13.5px] text-slate-600 leading-relaxed animate-fade-up">
-                    {item.a}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <section id="faq" className="mx-auto max-w-3xl px-4 sm:px-6 py-16 sm:py-20">
+      <div className="text-center max-w-2xl mx-auto">
+        <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">FAQ</div>
+        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Answers before you ask.</h2>
+      </div>
+      <div className="mt-10 space-y-3">
+        {items.map(([q, a]) => <FaqItem key={q} q={q} a={a} />)}
       </div>
     </section>
+  );
+}
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl bg-white ring-1 ring-slate-200 overflow-hidden">
+      <button onClick={() => setOpen((v) => !v)} className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-slate-50">
+        <div className="flex-1 font-medium text-slate-900 text-[15px]">{q}</div>
+        {open ? <Minus className="size-4 text-slate-500" /> : <Plus className="size-4 text-slate-500" />}
+      </button>
+      {open && <div className="px-5 pb-4 -mt-1 text-[13.5px] text-slate-600 leading-relaxed">{a}</div>}
+    </div>
   );
 }
 
 // ============================================================== CTA
 function CTA() {
   return (
-    <section className="py-20 sm:py-24">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0b1d36] via-[#13325b] to-[#1c4a85] text-white p-8 sm:p-12 shadow-2xl">
-          <div className="absolute inset-0 pointer-events-none opacity-40" aria-hidden>
-            <div className="absolute -top-16 -right-20 size-72 rounded-full bg-sky-400/40 blur-3xl" />
-            <div className="absolute -bottom-20 -left-10 size-72 rounded-full bg-violet-400/30 blur-3xl" />
-          </div>
-          <div className="relative grid lg:grid-cols-3 gap-8 items-center">
-            <div className="lg:col-span-2">
-              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-                Ready to stop guessing?
-              </h2>
-              <p className="mt-2 text-white/85 max-w-xl leading-relaxed">
-                Create an account, get approved, and ask your first tax
-                question — with citations — in under a minute.
-              </p>
-            </div>
-            <div className="flex sm:justify-end">
-              <Link to="/register" className="block w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto gap-2 h-12 text-[15px] px-6 bg-white text-primary hover:bg-white/90 shadow-lg"
-                >
-                  Start for free <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-            </div>
+    <section className="mx-auto max-w-5xl px-4 sm:px-6 py-16">
+      <div className="rounded-3xl bg-slate-900 text-white p-10 sm:p-14 text-center relative overflow-hidden">
+        <div className="absolute -top-24 -right-16 size-72 rounded-full bg-primary/40 blur-3xl" />
+        <div className="absolute -bottom-32 -left-16 size-80 rounded-full bg-primary/25 blur-3xl" />
+        <div className="relative">
+          <h3 className="text-[24px] sm:text-[36px] font-semibold tracking-tight">
+            Ready to draft your next appeal in minutes?
+          </h3>
+          <p className="mt-3 text-white/80 max-w-xl mx-auto">
+            Start a 30-day free trial, no credit card required. Your admin will
+            approve the seat and you're in.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link to="/register" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white font-semibold text-[15px] shadow-lg shadow-primary/30 hover:bg-primary/90">
+              Start free trial <ArrowRight className="size-4" />
+            </Link>
+            <a href="mailto:sales@wenvia.global" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-white/10 ring-1 ring-white/20 text-white font-semibold text-[15px] hover:bg-white/20">
+              Talk to sales
+            </a>
           </div>
         </div>
       </div>
@@ -930,100 +694,49 @@ function CTA() {
 // ============================================================== Footer
 function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+    <footer className="border-t border-slate-200 bg-white/70 backdrop-blur">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 grid sm:grid-cols-4 gap-8 text-[13.5px] text-slate-600">
         <div>
-          <Link to="/" className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-primary/10 ring-1 ring-primary/30 flex items-center justify-center">
-              <Scale className="size-4 text-primary" />
-            </div>
-            <span className="font-semibold tracking-tight">BharathTax</span>
-          </Link>
-          <p className="mt-3 text-[12.5px] text-slate-600 leading-relaxed max-w-xs">
-            Citation-grounded research and appeal drafting for Indian
-            income-tax.
-          </p>
-        </div>
-        <FooterCol
-          title="Product"
-          items={[
-            { label: "Features", href: "#features" },
-            { label: "How it works", href: "#how-it-works" },
-            { label: "Pricing", href: "#pricing" },
-            { label: "FAQ", href: "#faq" },
-          ]}
-        />
-        <FooterCol
-          title="Account"
-          items={[
-            { label: "Sign in", href: "/login" },
-            { label: "Register", href: "/register" },
-          ]}
-        />
-        <div>
-          <div className="text-[12.5px] font-semibold uppercase tracking-wider text-slate-500">
-            Contact
+          <div className="flex items-center gap-2 text-slate-900">
+            <div className="size-7 rounded-lg bg-primary grid place-items-center text-white"><Scale className="size-4" /></div>
+            <span className="font-semibold">BharathTax</span>
           </div>
-          <ul className="mt-3 space-y-2 text-[13px] text-slate-700">
-            <li className="flex items-center gap-2">
-              <Mail className="size-4 text-slate-400" />
-              hello@bharathtax.com
-              
-            </li>
-            
-            <li className="flex items-center gap-2">
-              <Clock className="size-4 text-slate-400" />
-              Replies within 1 working day
-            </li>
-          </ul>
+          <p className="mt-3 text-[12.5px] leading-relaxed">Citation-grounded research and drafting for the Income-tax Department, CIT(A) benches and legal counsel.</p>
         </div>
+        <FooterCol title="Product">
+          <FooterLink to="#features">Features</FooterLink>
+          <FooterLink to="/releases">Releases</FooterLink>
+          <FooterLink to="#pricing">Pricing</FooterLink>
+        </FooterCol>
+        <FooterCol title="Company">
+          <FooterLink href="mailto:sales@wenvia.global">Contact sales</FooterLink>
+          <FooterLink href="mailto:support@wenvia.global">Contact support</FooterLink>
+        </FooterCol>
+        <FooterCol title="Legal">
+          <FooterLink to="#">Terms</FooterLink>
+          <FooterLink to="#">Privacy</FooterLink>
+        </FooterCol>
       </div>
-      <div className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
-          <span>© {new Date().getFullYear()} BharathTax. All rights reserved.</span>
-          <span className="ml-auto inline-flex items-center gap-1">
-            <KeyRound className="size-3.5 text-slate-400" /> Self-hosted ·
-            seat-licensed · audit-logged
-          </span>
-        </div>
+      <div className="border-t border-slate-200 py-4 text-center text-[12px] text-slate-500 flex items-center justify-center gap-3">
+        <span>&copy; {new Date().getFullYear()} BharathTax</span>
+        <span className="text-slate-300">·</span>
+        <span className="inline-flex items-center gap-1"><Mail className="size-3" /> hello@bharattax.wenvia.global</span>
       </div>
     </footer>
   );
 }
-
-function FooterCol({
-  title,
-  items,
-}: {
-  title: string;
-  items: { label: string; href: string }[];
-}) {
+function FooterCol({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[12.5px] font-semibold uppercase tracking-wider text-slate-500">
-        {title}
-      </div>
-      <ul className="mt-3 space-y-2 text-[13px]">
-        {items.map((i) => {
-          const isHash = i.href.startsWith("#");
-          if (isHash) {
-            return (
-              <li key={i.label}>
-                <a href={i.href} className="text-slate-700 hover:text-slate-900">
-                  {i.label}
-                </a>
-              </li>
-            );
-          }
-          return (
-            <li key={i.label}>
-              <Link to={i.href} className="text-slate-700 hover:text-slate-900">
-                {i.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="text-[11.5px] font-semibold uppercase tracking-wider text-slate-800 mb-2">{title}</div>
+      <ul className="space-y-1.5">{children}</ul>
     </div>
   );
+}
+function FooterLink({ to, href, children }: { to?: string; href?: string; children: React.ReactNode }) {
+  if (href) return <li><a href={href} className="hover:text-slate-900">{children}</a></li>;
+  const external = (to || "").startsWith("#");
+  const Cmp: any = external ? "a" : Link;
+  const props: any = external ? { href: to } : { to };
+  return <li><Cmp {...props} className="hover:text-slate-900">{children}</Cmp></li>;
 }

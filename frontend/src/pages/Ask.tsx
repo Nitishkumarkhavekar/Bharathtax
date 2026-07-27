@@ -74,6 +74,22 @@ const SUGGESTIONS: Suggestion[] = [
   },
 ];
 
+const STARTER_TONES: Suggestion["tone"][] = ["blue", "violet", "emerald", "amber", "rose", "sky"];
+
+function toSuggestion(item: { category: string; text: string }, i: number): Suggestion {
+  const k = (item.category || "").toLowerCase();
+  let icon = ScrollText;
+  if (/deduc|80c|80d|80g|chapter vi/.test(k)) icon = Calculator;
+  else if (/salary|hra|allowance|perquisit/.test(k)) icon = BookOpen;
+  else if (/assess|scrutin|reassess|search|survey|68/.test(k)) icon = Gavel;
+  else if (/regime|slab|standard/.test(k)) icon = ScrollText;
+  else if (/appeal|revision|itat|tribunal/.test(k)) icon = Landmark;
+  else if (/tds|tcs|penal|prosecut|194|201/.test(k)) icon = ShieldCheck;
+  else if (/capital|gain|property|54/.test(k)) icon = Calculator;
+  else if (/international|dtaa|foreign|nri|transfer pric|fatca/.test(k)) icon = BookOpen;
+  return { text: item.text, category: item.category, icon, tone: STARTER_TONES[i % STARTER_TONES.length] };
+}
+
 export default function Chat() {
   const { session } = useAuth();
   const username = session?.username ?? "guest";
@@ -446,6 +462,19 @@ function EmptyHero(props: {
   displayName?: string;
   error: string | null;
 }) {
+  const [cards, setCards] = useState<Suggestion[]>(SUGGESTIONS);
+  useEffect(() => {
+    let alive = true;
+    api
+      .askStarters()
+      .then((items) => {
+        if (alive && Array.isArray(items) && items.length) setCards(items.map(toSuggestion));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto chat-scrollbar">
       {/* Aurora canvas — layered radial gradients + subtle grid dots. */}
@@ -469,8 +498,8 @@ function EmptyHero(props: {
           {/* Logo mark with glow */}
           <div className="flex justify-center">
             <div className="relative">
-              <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-primary/30 via-sky-400/30 to-violet-500/30 blur-2xl animate-pulse [animation-duration:5s]" />
-              <div className="relative size-14 rounded-2xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center shadow-lg shadow-primary/30 ring-4 ring-white">
+              <div className="absolute -inset-6 rounded-full bg-primary/25 blur-2xl animate-pulse [animation-duration:5s]" />
+              <div className="relative size-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 ring-4 ring-white">
                 <Scale className="size-7 text-white" strokeWidth={2.2} />
               </div>
             </div>
@@ -488,7 +517,7 @@ function EmptyHero(props: {
                   : "Ready when you are."}
               </span>
               <br />
-              <span className="bg-gradient-to-r from-primary via-sky-500 to-violet-500 bg-clip-text text-transparent">
+              <span className="bg-primary bg-clip-text text-transparent">
                 What would you like to research today?
               </span>
             </h1>
@@ -500,7 +529,7 @@ function EmptyHero(props: {
 
           {/* Composer with animated gradient border */}
           <div className="relative">
-            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-primary/50 via-sky-400/50 to-violet-500/50 opacity-70 blur-md" />
+            <div className="absolute -inset-0.5 rounded-2xl bg-primary/40 opacity-70 blur-md" />
             <div className="relative rounded-2xl bg-white ring-1 ring-slate-200 shadow-xl shadow-primary/5">
               <ChatComposer
                 value={props.input}
@@ -530,7 +559,7 @@ function EmptyHero(props: {
               <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
-              {SUGGESTIONS.map((s) => (
+              {cards.map((s) => (
                 <SuggestionCard
                   key={s.text}
                   s={s}
@@ -556,12 +585,12 @@ function SuggestionCard({
   onPick: () => void;
 }) {
   const toneMap: Record<Suggestion["tone"], string> = {
-    blue: "from-sky-500/15 to-blue-500/5 text-sky-700 ring-sky-500/20",
-    violet: "from-violet-500/15 to-fuchsia-500/5 text-violet-700 ring-violet-500/20",
-    emerald: "from-emerald-500/15 to-teal-500/5 text-emerald-700 ring-emerald-500/20",
-    amber: "from-amber-500/20 to-orange-500/5 text-amber-700 ring-amber-500/20",
-    rose: "from-rose-500/15 to-red-500/5 text-rose-700 ring-rose-500/20",
-    sky: "from-cyan-500/15 to-sky-500/5 text-cyan-700 ring-cyan-500/20",
+    blue: "bg-primary/[0.08] text-primary ring-primary/20",
+    violet: "bg-primary/[0.08] text-primary ring-primary/20",
+    emerald: "bg-primary/[0.08] text-primary ring-primary/20",
+    amber: "bg-primary/[0.08] text-primary ring-primary/20",
+    rose: "bg-primary/[0.08] text-primary ring-primary/20",
+    sky: "bg-primary/[0.08] text-primary ring-primary/20",
   };
   const Icon = s.icon;
   return (

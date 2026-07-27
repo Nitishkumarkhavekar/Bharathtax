@@ -16,7 +16,7 @@ from app.core.db import get_db
 from app.core.security import hash_password, verify_password
 from app.models.admin import LicenseKey
 from app.models.enums import Role
-from app.models.org import User, Wing
+from app.models.org import SeatLease, User, Wing
 from app.models.token_usage import TokenUsage
 from sqlalchemy import func as _func
 from app.schemas import (
@@ -283,6 +283,8 @@ def update_profile(body: ProfileUpdate,
         user.full_name = body.full_name.strip() or None
     if body.organisation is not None:
         user.organisation = body.organisation.strip() or None
+    if body.designation is not None:
+        user.designation = body.designation.strip() or None
     if body.new_password:
         if len(body.new_password) < 6:
             raise HTTPException(
@@ -307,6 +309,31 @@ def logout(p: Principal = Depends(get_principal), db: Session = Depends(get_db))
     auth_svc.logout(db, p.session_id)
     audit.log_event(db, action="logout", user_id=p.user.id, wing_id=p.user.wing_id)
     return {"ok": True}
+
+
+@router.post("/logout-others")
+def logout_others(p: Principal = Depends(get_principal),
+                  db: Session = Depends(get_db)) -> dict:
+    """Revoke every live session for this user *except* the caller's own.
+
+    Used by the Settings screen's 'Sign out of other devices' button. We
+    release every SeatLease row belonging to the user whose session_id is
+    not the current one; those clients get 401 on their next request and
+    drop to the login screen via the session-status probe.
+    """
+    now = datetime.now(timezone.utc)
+    leases = db.scalars(
+        select(SeatLease).where(
+            SeatLease.user_id == p.user.id,
+            SeatLease.released_at.is_(None),
+            SeatLease.session_id != p.session_id,
+        )
+    ).all()
+    for l in leases:
+        l.released_at = now
+    db.commit()
+    audit.log_event(db, action="logout_others", user_id=p.user.id, wing_id=p.user.wing_id)
+    return {"ok": True, "revoked": len(leases)}
 
 
 @router.post("/heartbeat")

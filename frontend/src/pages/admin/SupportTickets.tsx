@@ -95,7 +95,7 @@ export default function SupportTicketsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-[380px_1fr] gap-4 min-h-[560px]">
+      <div className="grid grid-cols-1 md:grid-cols-[380px_1fr] gap-4 md:min-h-[560px]">
         <Section title="Tickets" icon={<LifeBuoy className="size-4" />}>
           {tickets.length === 0 ? (
             <Empty label="No tickets in this state." />

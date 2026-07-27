@@ -764,6 +764,8 @@ export const api = {
       }
     }
   },
+  askStarters: () =>
+    req<{ starters: { category: string; text: string }[] }>("/ask/starters").then((r) => r.starters),
   askFollowups: (question: string, answer: string, domain?: string) =>
     req<{ suggestions: string[] }>("/ask/followups", { method: "POST", body: JSON.stringify({ question, answer, domain }) }),
   // Server-owned chat conversations (per-user isolated).

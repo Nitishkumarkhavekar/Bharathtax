@@ -30,7 +30,11 @@ function broadcast(ev: UpdaterEvent): void {
 
 let started = false;
 
-export function setupAutoUpdater(): void {
+export function setupAutoUpdater(opts?: {
+  autoDownload?: boolean;
+  autoInstallOnQuit?: boolean;
+  channel?: string;
+}): void {
   // Never fight the OS packager if the app was launched from a dev build —
   // electron-updater refuses to run outside packaged apps anyway, but this
   // keeps the logs quiet.
@@ -38,8 +42,9 @@ export function setupAutoUpdater(): void {
   if (started) return;
   started = true;
 
-  autoUpdater.autoDownload = true;      // grab the new .exe as soon as we see it
-  autoUpdater.autoInstallOnAppQuit = true; // install on next quit unless user restarts sooner
+  autoUpdater.autoDownload = opts?.autoDownload ?? true;
+  autoUpdater.autoInstallOnAppQuit = opts?.autoInstallOnQuit ?? true;
+  if (opts?.channel) autoUpdater.channel = opts.channel;
 
   autoUpdater.on("checking-for-update", () => broadcast({ kind: "checking" }));
   autoUpdater.on("update-available", (info: UpdateInfo) => {
@@ -86,6 +91,18 @@ export function checkNow(): void {
   void autoUpdater.checkForUpdates().catch((err) => {
     broadcast({ kind: "error", message: `${err?.message || err}` });
   });
+}
+
+/** Live-apply a change to updater preferences without restarting the app. */
+export function applyPrefs(opts: {
+  autoDownload?: boolean;
+  autoInstallOnQuit?: boolean;
+  channel?: string;
+}): void {
+  if (!app.isPackaged) return;
+  if (typeof opts.autoDownload === "boolean") autoUpdater.autoDownload = opts.autoDownload;
+  if (typeof opts.autoInstallOnQuit === "boolean") autoUpdater.autoInstallOnAppQuit = opts.autoInstallOnQuit;
+  if (opts.channel) autoUpdater.channel = opts.channel;
 }
 
 export function quitAndInstall(): void {

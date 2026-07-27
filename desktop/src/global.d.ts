@@ -4,21 +4,13 @@ declare global {
   interface Window {
     bharat: {
       config: {
-        get: () => Promise<{
-          serverUrl: string;
-          jwt: string | null;
-          jwtExpiresAt: string | null;
-        }>;
-        set: (patch: {
-          serverUrl?: string;
-          jwt?: string | null;
-          jwtExpiresAt?: string | null;
-        }) => Promise<{
-          serverUrl: string;
-          jwt: string | null;
-          jwtExpiresAt: string | null;
-        }>;
+        get: () => Promise<BharatConfig>;
+        set: (patch: Partial<BharatConfig>) => Promise<BharatConfig>;
         clearSession: () => Promise<void>;
+      };
+      notify: {
+        show: (args: { title: string; body: string; channel: "support" | "update" | "generic" }) =>
+          Promise<{ shown: boolean }>;
       };
       files: {
         pick: () => Promise<Array<{ name: string; path: string; size: number }>>;
@@ -83,4 +75,27 @@ declare global {
     | { kind: "download-progress"; percent: number; bytesPerSecond: number; transferred: number; total: number }
     | { kind: "downloaded"; version: string }
     | { kind: "error"; message: string };
+
+  // User-facing preferences the Settings screen edits. The main process
+  // persists these in electron-store and echoes them back on every
+  // config:get / config:set. The full config value combines these with the
+  // session bits (serverUrl / jwt / jwtExpiresAt).
+  interface Preferences {
+    theme: "system" | "light" | "dark";
+    density: "comfortable" | "compact";
+    fontScale: number;
+    sidebarDefault: "expanded" | "collapsed" | "last";
+    notifSupport: boolean;
+    notifUpdate: boolean;
+    notifSound: boolean;
+    updateChannel: "latest" | "beta";
+    autoInstallOnQuit: boolean;
+    autoDownload: boolean;
+    sidebarCollapsed: boolean;
+  }
+  interface BharatConfig extends Preferences {
+    serverUrl: string;
+    jwt: string | null;
+    jwtExpiresAt: string | null;
+  }
 }

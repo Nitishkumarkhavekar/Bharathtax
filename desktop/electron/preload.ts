@@ -1,20 +1,33 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+// User-facing preferences the renderer can read + patch.
+export type Preferences = {
+  theme: "system" | "light" | "dark";
+  density: "comfortable" | "compact";
+  fontScale: number;
+  sidebarDefault: "expanded" | "collapsed" | "last";
+  notifSupport: boolean;
+  notifUpdate: boolean;
+  notifSound: boolean;
+  updateChannel: "latest" | "beta";
+  autoInstallOnQuit: boolean;
+  autoDownload: boolean;
+  sidebarCollapsed: boolean;
+};
+
+export type BharatConfig = Preferences & {
+  serverUrl: string;
+  jwt: string | null;
+  jwtExpiresAt: string | null;
+};
+
 // Narrow, typed surface exposed to the renderer. The renderer NEVER touches
 // Node APIs directly — everything routes through these named channels.
 contextBridge.exposeInMainWorld("bharat", {
   config: {
-    get: () =>
-      ipcRenderer.invoke("config:get") as Promise<{
-        serverUrl: string;
-        jwt: string | null;
-        jwtExpiresAt: string | null;
-      }>,
-    set: (patch: {
-      serverUrl?: string;
-      jwt?: string | null;
-      jwtExpiresAt?: string | null;
-    }) => ipcRenderer.invoke("config:set", patch),
+    get: () => ipcRenderer.invoke("config:get") as Promise<BharatConfig>,
+    set: (patch: Partial<BharatConfig>) =>
+      ipcRenderer.invoke("config:set", patch) as Promise<BharatConfig>,
     clearSession: () => ipcRenderer.invoke("config:clearSession"),
   },
   files: {
@@ -46,6 +59,10 @@ contextBridge.exposeInMainWorld("bharat", {
   drafts: {
     openFolder: () => ipcRenderer.invoke("drafts:openFolder") as Promise<void>,
     root: () => ipcRenderer.invoke("drafts:root") as Promise<string>,
+  },
+  notify: {
+    show: (args: { title: string; body: string; channel: "support" | "update" | "generic" }) =>
+      ipcRenderer.invoke("notify:show", args) as Promise<{ shown: boolean }>,
   },
   updater: {
     // Subscribe to update lifecycle events. Returns an unsubscribe fn.

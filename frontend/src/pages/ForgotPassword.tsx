@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { ApiError, api } from "../api";
-import { Button } from "@/components/ui/button";
+import AuthShell from "@/components/auth/AuthShell";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -22,30 +23,33 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center p-6 bg-gradient-to-br from-slate-100 via-slate-50 to-primary/10">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 p-8">
-        <h1 className="text-xl font-semibold text-slate-900">Forgot your password?</h1>
-        <p className="text-sm text-slate-500 mt-1.5">
-          Enter the email on your BharatTax account. If it's registered, we'll send a
-          single-use reset link that expires in 60 minutes.
-        </p>
-        <form onSubmit={submit} className="mt-5 space-y-3">
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="officer@example.gov.in" required autoFocus
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+    <AuthShell
+      title="Forgot your password?"
+      subtitle="Enter the email on your account and we'll send a single-use reset link that expires in 60 minutes."
+      footer={<Link to="/login" className="font-semibold text-primary hover:underline">Back to sign in</Link>}
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="block text-[12.5px] font-semibold text-slate-800 mb-1.5">Email address</label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+            <input
+              type="email" required autoFocus
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@department.gov.in"
+              className="w-full h-11 rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-[14px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
+            />
           </div>
-          {err && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded px-3 py-2">{err}</div>}
-          {msg && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">{msg}</div>}
-          <Button type="submit" disabled={busy || !email.trim()} className="w-full">
-            {busy ? "Sending…" : "Send reset link"}
-          </Button>
-        </form>
-        <div className="mt-5 text-center text-sm">
-          <Link to="/login" className="text-primary hover:text-primary/80 font-medium">Back to sign in</Link>
         </div>
-      </div>
-    </div>
+        {err && <div className="text-[13px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{err}</div>}
+        {msg && <div className="text-[13px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">{msg}</div>}
+        <button
+          type="submit" disabled={busy || !email.trim()}
+          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg shadow-primary/25 disabled:opacity-60"
+        >
+          {busy ? <><Loader2 className="size-4 animate-spin" /> Sending…</> : <>Send reset link <ArrowRight className="size-4" /></>}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

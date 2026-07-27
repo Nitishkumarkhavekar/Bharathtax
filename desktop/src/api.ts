@@ -294,9 +294,32 @@ export const api = {
   licenseStatus: (opts?: { silent?: boolean }) =>
     request<LicenseStatus>("/auth/license/status", { silent: opts?.silent }),
   me: (opts?: { silent?: boolean }) =>
-    request<{ username: string; role: string; email: string | null }>("/auth/me", {
-      silent: opts?.silent,
-    }),
+    request<{
+      id: number;
+      username: string;
+      role: string;
+      email: string | null;
+      full_name: string | null;
+      organisation: string | null;
+      designation: string | null;
+      wing_id: number;
+    }>("/auth/me", { silent: opts?.silent }),
+  // Settings screen: update the officer's profile / change password.
+  updateProfile: (b: {
+    full_name?: string;
+    organisation?: string;
+    designation?: string;
+    current_password?: string;
+    new_password?: string;
+  }) =>
+    request<{ id: number; username: string; full_name: string | null; organisation: string | null }>(
+      "/auth/profile",
+      { method: "PUT", body: JSON.stringify(b) },
+    ),
+  // Revoke every other session so the officer can kick a stolen desktop
+  // install without changing their password.
+  logoutOthers: () =>
+    request<{ ok: boolean; revoked: number }>("/auth/logout-others", { method: "POST" }),
   // Lightweight probe the shell polls to react to admin actions -- license
   // deactivation kicks the user out immediately; quota / expired-license
   // return state="blocked" and the user stays signed in.

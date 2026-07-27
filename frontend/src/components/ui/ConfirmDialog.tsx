@@ -99,27 +99,27 @@ const TONE: Record<
     icon: AlertTriangle,
     iconRing: "ring-rose-200",
     iconWash: "bg-gradient-to-br from-rose-100 to-red-50 text-rose-600",
-    haloGradient: "from-rose-400/40 via-pink-400/30 to-red-500/40",
+    haloGradient: "bg-rose-500/25",
     button:
-      "text-white bg-gradient-to-br from-rose-500 via-rose-600 to-red-600 hover:brightness-110 shadow-lg shadow-rose-500/30",
+      "text-white bg-rose-600 hover:brightness-110 shadow-lg shadow-rose-500/30",
     verb: "Delete",
   },
   warning: {
     icon: ShieldAlert,
     iconRing: "ring-amber-200",
     iconWash: "bg-gradient-to-br from-amber-100 to-orange-50 text-amber-700",
-    haloGradient: "from-amber-400/40 via-orange-400/30 to-amber-500/40",
+    haloGradient: "bg-amber-500/25",
     button:
-      "text-white bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 hover:brightness-110 shadow-lg shadow-amber-500/30",
+      "text-white bg-amber-600 hover:brightness-110 shadow-lg shadow-amber-500/30",
     verb: "Continue",
   },
   primary: {
     icon: ShieldAlert,
     iconRing: "ring-primary/25",
     iconWash: "bg-gradient-to-br from-sky-100 to-blue-50 text-primary",
-    haloGradient: "from-primary/40 via-sky-400/30 to-violet-500/40",
+    haloGradient: "bg-primary/25",
     button:
-      "text-white bg-gradient-to-br from-primary via-sky-600 to-violet-600 hover:brightness-110 shadow-lg shadow-primary/25",
+      "text-white bg-primary hover:brightness-110 shadow-lg shadow-primary/25",
     verb: "Confirm",
   },
 };

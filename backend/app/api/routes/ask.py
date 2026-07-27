@@ -300,6 +300,18 @@ class _FollowupsRequest(BaseModel):
     domain: str | None = None
 
 
+@router.get("/starters")
+def ask_starters(p: Principal = Depends(get_principal)) -> dict:
+    """Rotating 'suggested starter' questions for the empty chat screen — a
+    shuffled mix of today's trending topics and evergreen questions, so the same
+    six do not appear on every visit. Fail-open: [] on any error."""
+    try:
+        from app.services import starters as _st
+        return {"starters": _st.get_starters(6)}
+    except Exception:  # noqa: BLE001
+        return {"starters": []}
+
+
 @router.post("/followups")
 def ask_followups(body: _FollowupsRequest,
                   p: Principal = Depends(get_principal),

@@ -137,7 +137,7 @@ function CurrentPlanCard({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-sky-600 to-violet-600 text-white p-5 sm:p-6 shadow-lg shadow-primary/20">
+    <div className="relative overflow-hidden rounded-2xl bg-primary text-white p-5 sm:p-6 shadow-lg shadow-primary/20">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.10]"
         style={{
@@ -266,7 +266,7 @@ function SpendBreakdownCard({ rows }: { rows: MyBilling["spend_breakdown"] }) {
                   </div>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500"
+                  <div className="h-full rounded-full bg-primary"
                        style={{ width: `${pct}%` }} />
                 </div>
               </div>

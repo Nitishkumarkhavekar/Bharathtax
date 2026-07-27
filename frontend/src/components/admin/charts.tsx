@@ -13,7 +13,7 @@ const ACCENT: Record<
   { card: string; iconBg: string; iconFg: string; bar: string; ring: string; text: string }
 > = {
   blue: {
-    card: "from-sky-50/80 via-white to-white",
+    card: "bg-white",
     iconBg: "bg-sky-100",
     iconFg: "text-sky-600",
     bar: "from-sky-400 to-sky-600",
@@ -21,7 +21,7 @@ const ACCENT: Record<
     text: "text-sky-700",
   },
   green: {
-    card: "from-emerald-50/80 via-white to-white",
+    card: "bg-white",
     iconBg: "bg-emerald-100",
     iconFg: "text-emerald-600",
     bar: "from-emerald-400 to-emerald-600",
@@ -29,7 +29,7 @@ const ACCENT: Record<
     text: "text-emerald-700",
   },
   amber: {
-    card: "from-amber-50/80 via-white to-white",
+    card: "bg-white",
     iconBg: "bg-amber-100",
     iconFg: "text-amber-600",
     bar: "from-amber-400 to-amber-600",
@@ -37,7 +37,7 @@ const ACCENT: Record<
     text: "text-amber-700",
   },
   rose: {
-    card: "from-rose-50/80 via-white to-white",
+    card: "bg-white",
     iconBg: "bg-rose-100",
     iconFg: "text-rose-600",
     bar: "from-rose-400 to-rose-600",
@@ -45,7 +45,7 @@ const ACCENT: Record<
     text: "text-rose-700",
   },
   slate: {
-    card: "from-slate-50/80 via-white to-white",
+    card: "bg-white",
     iconBg: "bg-slate-100",
     iconFg: "text-slate-600",
     bar: "from-slate-400 to-slate-600",
@@ -53,10 +53,10 @@ const ACCENT: Record<
     text: "text-slate-700",
   },
   violet: {
-    card: "from-violet-50/80 via-white to-white",
+    card: "bg-white",
     iconBg: "bg-violet-100",
     iconFg: "text-violet-600",
-    bar: "from-violet-400 to-violet-600",
+    bar: "bg-primary",
     ring: "ring-violet-100",
     text: "text-violet-700",
   },

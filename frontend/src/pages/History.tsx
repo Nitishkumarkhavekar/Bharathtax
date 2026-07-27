@@ -349,10 +349,10 @@ function HistoryRow({
   const meta = kindMeta[it.kind] ?? kindMeta.query;
   const Icon = meta.icon;
   const toneClass: Record<string, string> = {
-    sky: "from-sky-100 to-sky-50 text-sky-700 ring-sky-200",
-    amber: "from-amber-100 to-amber-50 text-amber-700 ring-amber-200",
-    violet: "from-violet-100 to-violet-50 text-violet-700 ring-violet-200",
-    emerald: "from-emerald-100 to-emerald-50 text-emerald-700 ring-emerald-200",
+    sky: "bg-primary/10 text-primary ring-primary/20",
+    amber: "bg-primary/10 text-primary ring-primary/20",
+    violet: "bg-primary/10 text-primary ring-primary/20",
+    emerald: "bg-primary/10 text-primary ring-primary/20",
   };
   return (
     <Card className="group">

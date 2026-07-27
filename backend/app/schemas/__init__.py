@@ -57,6 +57,7 @@ class ProfileOut(BaseModel):
 class ProfileUpdate(BaseModel):
     full_name: str | None = None
     organisation: str | None = None
+    designation: str | None = None
     # Optional password change (only applied when both are sent and match).
     current_password: str | None = None
     new_password: str | None = None
@@ -75,7 +76,9 @@ class MeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     username: str
+    email: str | None = None
     full_name: str | None
+    organisation: str | None = None
     role: Role
     designation: str | None = None
     wing_id: int

@@ -1,7 +1,7 @@
 {
   "name": "bharattax-appeal-desktop",
   "productName": "BharatTax Appeal Order",
-  "version": "1.0.30",
+  "version": "1.0.33",
   "description": "Desktop app that drafts CIT(A) / NFAC appeal orders via the BharatTax server.",
   "main": "dist-electron/main.js",
   "author": "BharatTax",

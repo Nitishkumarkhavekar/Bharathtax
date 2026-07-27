@@ -1503,8 +1503,8 @@ function PreviewLoadingSkeleton({ mode }: { mode: "rendering" | "loading" }) {
       {/* Foreground: gradient-glow document icon + rotating status. */}
       <div className="relative flex flex-col items-center gap-4 px-6 text-center">
         <div className="relative">
-          <div className="absolute -inset-4 rounded-2xl bg-gradient-to-br from-primary/30 via-sky-400/30 to-violet-500/30 blur-2xl animate-pulse [animation-duration:2.5s]" />
-          <div className="relative size-14 rounded-2xl bg-gradient-to-br from-primary via-sky-500 to-violet-600 flex items-center justify-center ring-4 ring-white shadow-lg shadow-primary/25">
+          <div className="absolute -inset-4 rounded-2xl bg-primary/25 blur-2xl animate-pulse [animation-duration:2.5s]" />
+          <div className="relative size-14 rounded-2xl bg-primary flex items-center justify-center ring-4 ring-white shadow-lg shadow-primary/25">
             <FileSignature className="size-6 text-white" strokeWidth={2.2} />
           </div>
         </div>
@@ -1520,7 +1520,7 @@ function PreviewLoadingSkeleton({ mode }: { mode: "rendering" | "loading" }) {
           </div>
         </div>
         <div className="relative w-40 h-1 rounded-full bg-slate-100 overflow-hidden">
-          <div className="absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-primary via-sky-500 to-violet-500 animate-[bt-slide_1.4s_ease-in-out_infinite]" />
+          <div className="absolute inset-y-0 w-1/3 rounded-full bg-primary animate-[bt-slide_1.4s_ease-in-out_infinite]" />
         </div>
       </div>
     </div>

@@ -59,7 +59,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-4">
       {/* Header banner — full width */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#0b1d36] via-[#13325b] to-[#1c4a85] text-white shadow-md">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-primary text-white shadow-md">
         <div className="absolute inset-0 opacity-40 pointer-events-none" aria-hidden>
           <div className="absolute -top-16 -right-12 size-56 rounded-full bg-sky-400/30 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 size-56 rounded-full bg-violet-400/20 blur-3xl" />
