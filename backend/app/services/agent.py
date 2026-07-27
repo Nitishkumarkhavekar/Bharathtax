@@ -251,3 +251,99 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
     return ("I couldn't complete that — please rephrase.",
             {"used": "agent", "tools_used": tools_used, "web_sources": [],
              "law_refs": [], "llm_calls": usage_calls})
+
+
+# Human-readable status shown in the UI while each tool runs, so the wait feels
+# like active research rather than a blank spinner.
+_TOOL_STATUS = {
+    "search_tax_law": "Searching the Income-tax Act & Rules…",
+    "search_case_law": "Searching case law (SC / HC / ITAT)…",
+    "web_search": "Checking current circulars & official sources…",
+    "recall_chat_memory": "Recalling this conversation…",
+    "search_my_documents": "Searching your documents…",
+}
+
+
+def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=None, domain=None):
+    """Streaming twin of answer_agentic. A generator yielding event dicts:
+
+        {"status": "..."}  — a tool is running (show it, don't append to answer)
+        {"delta":  "..."}  — a chunk of the final answer text
+        {"reset":  True}   — discard any deltas so far (that turn became a tool call)
+        {"done":   {meta}} — final: full text + tools_used + web_sources + law_refs
+
+    Same tools, temperature 0, and citations as the non-streaming path — only the
+    delivery differs. The final synthesis is streamed token-by-token from Gemini.
+    """
+    contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
+    tools_used, all_sources, usage_calls, law_refs = [], [], [], []
+    cfg = {"temperature": 0.0, "maxOutputTokens": 1400, "thinkingConfig": {"thinkingBudget": 0}}
+    base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
+    final_text = ""
+    for _ in range(_MAX_ITERS):
+        t0 = time.time()
+        fcalls: list[dict] = []
+        turn_text = ""
+        with httpx.Client(timeout=httpx.Timeout(90.0)) as c:
+            with c.stream("POST", f"{_BASE}/{_MODEL}:streamGenerateContent?alt=sse",
+                          headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                          json={**base, "contents": contents}) as r:
+                if r.status_code != 200:
+                    raise RuntimeError(f"agent stream HTTP {r.status_code}")
+                for line in r.iter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload = line[5:].strip()
+                    if not payload or payload == "[DONE]":
+                        continue
+                    try:
+                        d = json.loads(payload)
+                    except Exception:  # noqa: BLE001
+                        continue
+                    cand = (d.get("candidates") or [{}])[0]
+                    for p in (cand.get("content") or {}).get("parts") or []:
+                        if "functionCall" in p:
+                            fcalls.append(p["functionCall"])
+                        elif p.get("text"):
+                            turn_text += p["text"]
+                            yield {"delta": p["text"]}
+                    um = d.get("usageMetadata") or {}
+                    if um:
+                        usage_calls.append({"model": _MODEL,
+                                            "usage": {"prompt_tokens": um.get("promptTokenCount"),
+                                                      "completion_tokens": um.get("candidatesTokenCount"),
+                                                      "total_tokens": um.get("totalTokenCount")},
+                                            "latency_ms": int((time.time() - t0) * 1000)})
+        if fcalls:
+            # This turn was tool use, not the answer — tell the client to drop any
+            # preamble text it may have shown, then run the tools.
+            if turn_text:
+                yield {"reset": True}
+            contents.append({"role": "model", "parts": [{"functionCall": fc} for fc in fcalls]})
+            resp_parts = []
+            for fc in fcalls:
+                name = fc.get("name")
+                yield {"status": _TOOL_STATUS.get(name, "Working…")}
+                res = _exec_tool(name, fc.get("args") or {}, db=db, user_id=user_id, chat_id=chat_id)
+                tools_used.append(name)
+                if name in ("web_search", "search_case_law") and res.get("sources"):
+                    all_sources += res["sources"]
+                if name == "search_tax_law" and res.get("passages"):
+                    law_refs += [{k: p.get(k) for k in ("n", "act", "section", "breadcrumb")}
+                                 for p in res["passages"]]
+                resp_parts.append({"functionResponse": {"name": name, "response": res}})
+            contents.append({"role": "user", "parts": resp_parts})
+            continue
+        # No tool calls — the streamed turn_text is the final answer.
+        final_text = turn_text.strip()
+        break
+    seen, srcs = set(), []
+    for s in all_sources:
+        u = s.get("url")
+        if u and u not in seen:
+            seen.add(u)
+            srcs.append(s)
+    if not final_text:
+        final_text = "I couldn't complete that — please rephrase."
+    yield {"done": {"text": final_text, "used": "agent", "tools_used": tools_used,
+                    "web_sources": srcs, "law_refs": law_refs, "llm_calls": usage_calls}}

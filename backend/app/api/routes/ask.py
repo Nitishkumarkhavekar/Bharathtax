@@ -173,78 +173,34 @@ def ask_stream(body: AskRequest, request: Request,
                _licensed: User = Depends(require_license),
                _quota: Principal = Depends(require_quota),
                db: Session = Depends(get_db)) -> StreamingResponse:
-    """Server-Sent-Events streaming answer: grounds on the primary-law corpus,
-    then streams the composed answer token-by-token from Gemini so the user sees
-    the first words in <1s. Persists the turn (Query + chat messages) at the end.
-    Falls back to a single 'delta' if streaming fails. Scoped to the caller."""
+    """Server-Sent-Events streaming answer. Runs the SAME tool-calling agent as
+    POST /ask (corpus + case law + web + citations), but streams it: a 'status'
+    event while each tool runs, 'delta' events as the final answer generates, and
+    a 'done' event carrying citations + meta. Persists the turn at the end.
+    Scoped to the caller; falls back to the non-streaming pipeline if needed."""
     import json as _json
-    import os as _os
-    from app.core.config import settings
 
     question = body.question
     chat_id = body.chat_id
     uid, wing = p.user.id, p.user.wing_id
+    domain = _domain(body.domain)
+    user = p.user
 
-    def _gen():
-        # 1) grounding context from the corpus (best-effort)
-        ctx, grounded = "", False
-        try:
-            r = httpx.post(settings.llm_base_url.rstrip("/") + "/law",
-                           headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                           json={"query": question, "k": 6}, timeout=15.0)
-            if r.status_code == 200:
-                ps = r.json().get("passages", []) or []
-                if ps:
-                    grounded = True
-                    ctx = "\n\n".join(
-                        f"[{i+1}] {x.get('breadcrumb','')}\n{(x.get('text') or '')[:700]}"
-                        for i, x in enumerate(ps[:6]))
-        except Exception:
-            pass
+    def _sse(obj: dict) -> str:
+        return "data: " + _json.dumps(obj) + "\n\n"
 
-        key = (_os.getenv("GEMINI_API_KEY") or "").strip()
-        model = _os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
-        sys_p = ("You are BharathTax, an expert Indian income-tax assistant for tax officers. "
-                 "Answer from the PASSAGES when relevant and cite them inline as [n]; be precise on "
-                 "sections, amounts, dates and the assessment year; never invent a provision. If the "
-                 "passages don't cover it, answer from general Indian income-tax knowledge and say so.")
-        user_p = (f"PASSAGES:\n{ctx}\n\nQUESTION: {question}" if ctx else question)
-        req_body = {"systemInstruction": {"parts": [{"text": sys_p}]},
-                    "contents": [{"role": "user", "parts": [{"text": user_p}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1200,
-                                         "thinkingConfig": {"thinkingBudget": 0}}}
-        chunks = []
-        try:
-            with httpx.stream(
-                "POST",
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse",
-                headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-                json=req_body, timeout=httpx.Timeout(60.0),
-            ) as resp:
-                for line in resp.iter_lines():
-                    if not line or not line.startswith("data:"):
-                        continue
-                    payload = line[5:].strip()
-                    if not payload or payload == "[DONE]":
-                        continue
-                    try:
-                        d = _json.loads(payload)
-                        parts = ((d.get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []) or []
-                        txt = "".join(pt.get("text", "") for pt in parts)
-                    except Exception:
-                        txt = ""
-                    if txt:
-                        chunks.append(txt)
-                        yield "data: " + _json.dumps({"delta": txt}) + "\n\n"
-        except Exception as e:  # noqa: BLE001
-            yield "data: " + _json.dumps({"error": str(e)[:120]}) + "\n\n"
+    def _cit_out(cits) -> list[CitationOut]:
+        return [CitationOut(n=c.n, chunk_id=c.chunk_id, breadcrumb=c.breadcrumb,
+                            source_url=c.source_url, section_number=c.section_number,
+                            digest=c.digest, sections_cited=c.sections_cited) for c in cits]
 
-        answer = "".join(chunks).strip()
-        # 2) persist (Query + optional chat), scoped to this user
+    def _persist(answer: str, grounded: bool, meta: dict, cit_out: list[CitationOut]) -> None:
+        cits = [c.model_dump() for c in cit_out]
         try:
             db.add(Query(user_id=uid, wing_id=wing, scope=QueryScope.corpus,
-                         domain=body.domain, question=question, answer=answer, citations=[],
-                         retrieval_meta={"streamed": True, "grounded": grounded}, latency_ms=None))
+                         domain=body.domain, question=question, answer=answer, citations=cits,
+                         retrieval_meta={**(meta or {}), "grounded": grounded, "streamed": True},
+                         latency_ms=None))
             db.commit()
             if chat_id is not None:
                 from app.models.chat import Chat, ChatMessage
@@ -252,7 +208,8 @@ def ask_stream(body: AskRequest, request: Request,
                 if chat is not None and chat.user_id == uid:
                     db.add(ChatMessage(chat_id=chat.id, user_id=uid, role="user", content=question))
                     db.add(ChatMessage(chat_id=chat.id, user_id=uid, role="assistant", content=answer,
-                                       meta={"grounded": grounded, "streamed": True}))
+                                       citations=cits, meta={"grounded": grounded, "streamed": True,
+                                                             **(meta or {})}))
                     if chat.title == "New chat":
                         chat.title = (question.strip()[:60]) or chat.title
                     db.commit()
@@ -262,11 +219,76 @@ def ask_stream(body: AskRequest, request: Request,
                                       role="user", content=question)
                         _mem.remember(db, chat_id=chat.id, user_id=uid, message_id=None,
                                       role="assistant", content=answer)
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         pass
-        except Exception:
+        except Exception:  # noqa: BLE001
             db.rollback()
-        yield "data: " + _json.dumps({"done": True, "grounded": grounded}) + "\n\n"
+        for call in (meta or {}).get("llm_calls") or []:
+            try:
+                tokens.record(db, user_id=uid, action="ask", model=call.get("model"),
+                              usage=call.get("usage"), latency_ms=call.get("latency_ms"))
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _gen():
+        use_agent = False
+        try:
+            from app.services import agent as _agent
+            use_agent = _agent.enabled()
+        except Exception:  # noqa: BLE001
+            use_agent = False
+
+        if use_agent:
+            from app.services import agent as _agent
+            full, meta = "", {}
+            try:
+                for ev in _agent.answer_agentic_stream(db, question, user_id=uid,
+                                                       chat_id=chat_id, domain=domain):
+                    if "delta" in ev:
+                        full += ev["delta"]
+                        yield _sse({"delta": ev["delta"]})
+                    elif "status" in ev:
+                        yield _sse({"status": ev["status"]})
+                    elif ev.get("reset"):
+                        full = ""
+                        yield _sse({"reset": True})
+                    elif "done" in ev:
+                        meta = ev["done"] or {}
+                        full = (meta.get("text") or full).strip()
+                try:
+                    cites = rag.citations_from_law_refs(db, meta.get("law_refs") or [])
+                    if not cites:
+                        cites = rag.parse_source_citations(db, full)
+                except Exception:  # noqa: BLE001
+                    log.exception("stream citation parse failed")
+                    cites = []
+                cit_out = _cit_out(cites)
+                meta_out = {k: v for k, v in (meta or {}).items() if k != "text"}
+                _persist(full, True, meta_out, cit_out)
+                yield _sse({"done": True, "grounded": True,
+                            "citations": [c.model_dump() for c in cit_out], "meta": meta_out})
+                return
+            except Exception as e:  # noqa: BLE001
+                log.warning("agent stream failed: %s", e)
+                if full:  # already streaming — close it out rather than restart
+                    _persist(full, True, meta, [])
+                    yield _sse({"done": True, "grounded": True, "citations": [], "meta": {}})
+                    return
+                # else fall through to the non-streaming pipeline
+
+        # Fallback (agent disabled, or it failed before emitting anything): run the
+        # real RAG pipeline and deliver it as a single delta so the UI still works.
+        try:
+            res = rag.answer_question(db, question, domain=domain, user=user)
+        except _UPSTREAM_EXC:
+            yield _sse({"error": "The AI service is temporarily unavailable."})
+            yield _sse({"done": True, "grounded": False, "citations": [], "meta": {}})
+            return
+        cit_out = _cit_out(res.citations)
+        _persist(res.text, res.grounded, res.meta, cit_out)
+        yield _sse({"delta": res.text})
+        yield _sse({"done": True, "grounded": res.grounded,
+                    "citations": [c.model_dump() for c in cit_out], "meta": res.meta})
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

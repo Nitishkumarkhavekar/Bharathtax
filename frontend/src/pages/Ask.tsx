@@ -113,6 +113,10 @@ export default function Chat() {
   // Index of the most recently arrived assistant message that should animate
   // in word-by-word. Cleared when the typewriter reaches the end.
   const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
+  // Live token-streaming: index of the assistant message being filled in real
+  // time, and the current tool status shown before the first token arrives.
+  const [liveIdx, setLiveIdx] = useState<number | null>(null);
+  const [liveStatus, setLiveStatus] = useState<string | null>(null);
 
   // Persist a local cache on every change (fallback only).
   useEffect(() => {
@@ -215,16 +219,6 @@ export default function Chat() {
     });
   }
 
-  function appendMessage(threadId: string, msg: ChatMessage) {
-    setThreads((prev) =>
-      prev.map((t) =>
-        t.id === threadId
-          ? { ...t, messages: [...t.messages, msg], updatedAt: Date.now() }
-          : t,
-      ),
-    );
-  }
-
   async function send(override?: string) {
     const text = (typeof override === "string" ? override : input).trim();
     if (!text || busy) return;
@@ -247,11 +241,36 @@ export default function Chat() {
       );
     }
 
-    // 2. Optimistically add the user message.
+    // 2. Optimistically add the user message + an empty assistant message that
+    // the stream will fill in place. Its index is stable for the rest of send().
+    const asstIdx = thread.messages.length + 1;
+    const tid = thread.id;
     const userMsg: ChatMessage = { role: "user", content: text, ts: Date.now() };
-    appendMessage(thread.id, userMsg);
+    const asstMsg: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === tid
+          ? { ...t, messages: [...t.messages, userMsg, asstMsg], updatedAt: Date.now() }
+          : t,
+      ),
+    );
     setInput("");
     setBusy(true);
+    setLiveIdx(asstIdx);
+    setLiveStatus("Thinking");
+
+    const patchAsst = (patch: Partial<ChatMessage>) =>
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === tid
+            ? {
+                ...t,
+                messages: t.messages.map((m, i) => (i === asstIdx ? { ...m, ...patch } : m)),
+                updatedAt: Date.now(),
+              }
+            : t,
+        ),
+      );
 
     // 2b. Ensure a server-owned chat exists so this turn is persisted
     // server-side, isolated to this user. Best-effort — chat still works locally.
@@ -260,46 +279,61 @@ export default function Chat() {
       try {
         const sc = await api.chatCreate(deriveTitle(text));
         serverId = sc.id;
-        const tid = thread.id;
         setThreads((prev) => prev.map((t) => (t.id === tid ? { ...t, serverId: sc.id } : t)));
       } catch {
         /* server persistence is best-effort */
       }
     }
 
-    // 3. Call backend (chat_id -> server persists this turn).
+    // 3. Stream the answer (same agent + citations as /ask, just live).
+    const acc = { text: "" };
     try {
-      const res = await api.ask(text, module || undefined, style, serverId ?? undefined);
-      const asstMsg: ChatMessage = {
-        role: "assistant",
-        content: res.answer,
-        citations: res.citations,
-        grounded: res.grounded,
-        meta: res.meta,
-        ts: Date.now(),
-      };
-      appendMessage(thread.id, asstMsg);
-      // Mark the just-appended assistant message (it's now at the end of the
-      // thread) for the typewriter animation. Refuses skip animation since
-      // the message is short and shown in a different style.
-      if (res.grounded !== false) {
-        // index of the new assistant message = (count after user push) + 1 for itself - 1
-        const newCount = thread.messages.length + 2; // user + assistant just added
-        setStreamingIdx(newCount - 1);
-      }
-      // Topic-relevant follow-up suggestions (best-effort, non-blocking).
+      await api.askStream(
+        text,
+        { domain: module || undefined, style, chatId: serverId ?? undefined },
+        {
+          onStatus: (s) => setLiveStatus(s),
+          onDelta: (d) => {
+            acc.text += d;
+            setLiveStatus(null);
+            patchAsst({ content: acc.text });
+          },
+          onReset: () => {
+            acc.text = "";
+            patchAsst({ content: "" });
+          },
+          onError: (msg) => setError(msg),
+          onDone: ({ grounded, citations, meta }) =>
+            patchAsst({ content: acc.text, grounded, citations, meta }),
+        },
+      );
       api
-        .askFollowups(text, res.answer, module || undefined)
+        .askFollowups(text, acc.text, module || undefined)
         .then((f) => setFollowups(f.suggestions || []))
         .catch(() => {});
     } catch (err) {
-      const detail = err instanceof ApiError ? err.message : "Request failed";
-      // Don't append a fake assistant turn for transport errors — keep the
-      // user message in place and show an inline error banner so the user can
-      // simply retry on the same input.
-      setError(detail);
+      // Streaming failed before completing — fall back to the plain endpoint so
+      // the user still gets an answer.
+      try {
+        const res = await api.ask(text, module || undefined, style, serverId ?? undefined);
+        patchAsst({
+          content: res.answer,
+          grounded: res.grounded,
+          citations: res.citations,
+          meta: res.meta,
+        });
+        api
+          .askFollowups(text, res.answer, module || undefined)
+          .then((f) => setFollowups(f.suggestions || []))
+          .catch(() => {});
+      } catch (e) {
+        const detail = e instanceof ApiError ? e.message : "Request failed";
+        setError(detail);
+      }
     } finally {
       setBusy(false);
+      setLiveIdx(null);
+      setLiveStatus(null);
     }
   }
 
@@ -387,6 +421,8 @@ export default function Chat() {
             error={error}
             streamingIdx={streamingIdx}
             onStreamingDone={() => setStreamingIdx(null)}
+            liveIdx={liveIdx}
+            liveStatus={liveStatus}
             followups={followups}
             onPickFollowup={(q) => { setFollowups([]); send(q); }}
           />
@@ -611,6 +647,8 @@ function ActiveChat(props: {
   error: string | null;
   streamingIdx: number | null;
   onStreamingDone: () => void;
+  liveIdx: number | null;
+  liveStatus: string | null;
   followups: string[];
   onPickFollowup: (q: string) => void;
 }) {
@@ -622,6 +660,8 @@ function ActiveChat(props: {
           busy={props.busy}
           streamingIdx={props.streamingIdx}
           onStreamingDone={props.onStreamingDone}
+          liveIdx={props.liveIdx}
+          liveStatus={props.liveStatus}
           followups={props.followups}
           onPickFollowup={props.onPickFollowup}
         />

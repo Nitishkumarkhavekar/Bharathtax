@@ -706,6 +706,64 @@ export const api = {
     ),
   ask: (question: string, domain?: string, style?: string, chat_id?: number) =>
     req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style, chat_id }) }),
+  // Streamed answer over Server-Sent Events. Same agent/citations as `ask`, but
+  // emits live tool status + token deltas. Uses fetch (not EventSource) so we can
+  // send the bearer token. Handlers fire as events arrive; resolves when done.
+  async askStream(
+    question: string,
+    opts: { domain?: string; style?: string; chatId?: number },
+    handlers: {
+      onStatus?: (s: string) => void;
+      onDelta: (d: string) => void;
+      onReset?: () => void;
+      onDone: (d: { grounded: boolean; citations: Citation[]; meta: Record<string, unknown> }) => void;
+      onError?: (msg: string) => void;
+    },
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const res = await fetch(`${BASE}/ask/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ question, domain: opts.domain, style: opts.style, chat_id: opts.chatId }),
+      signal,
+    });
+    if (!res.ok || !res.body) throw new ApiError(res.status, "Stream failed");
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl: number;
+      // SSE frames are separated by a blank line.
+      while ((nl = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, nl);
+        buf = buf.slice(nl + 2);
+        const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+        if (!dataLine) continue;
+        const payload = dataLine.slice(5).trim();
+        if (!payload) continue;
+        let ev: Record<string, unknown>;
+        try {
+          ev = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+        if (typeof ev.delta === "string") handlers.onDelta(ev.delta);
+        else if (typeof ev.status === "string") handlers.onStatus?.(ev.status);
+        else if (ev.reset) handlers.onReset?.();
+        else if (ev.error) handlers.onError?.(String(ev.error));
+        else if (ev.done) {
+          handlers.onDone({
+            grounded: ev.grounded !== false,
+            citations: (ev.citations as Citation[]) || [],
+            meta: (ev.meta as Record<string, unknown>) || {},
+          });
+        }
+      }
+    }
+  },
   askFollowups: (question: string, answer: string, domain?: string) =>
     req<{ suggestions: string[] }>("/ask/followups", { method: "POST", body: JSON.stringify({ question, answer, domain }) }),
   // Server-owned chat conversations (per-user isolated).

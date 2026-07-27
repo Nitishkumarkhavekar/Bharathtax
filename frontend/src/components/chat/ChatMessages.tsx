@@ -13,6 +13,10 @@ interface ChatMessagesProps {
   // Set when a brand-new reply arrives; clear after the animation completes.
   streamingIdx: number | null;
   onStreamingDone?: () => void;
+  // Index of the assistant message being filled by a LIVE token stream, and the
+  // current tool status shown before its first token arrives.
+  liveIdx?: number | null;
+  liveStatus?: string | null;
   // Topic follow-up suggestions for the latest answer (rendered under it).
   followups?: string[];
   onPickFollowup?: (q: string) => void;
@@ -23,6 +27,8 @@ export default function ChatMessages({
   busy,
   streamingIdx,
   onStreamingDone,
+  liveIdx,
+  liveStatus,
   followups,
   onPickFollowup,
 }: ChatMessagesProps) {
@@ -40,9 +46,13 @@ export default function ChatMessages({
           question={idx > 0 && messages[idx - 1].role === "user" ? messages[idx - 1].content : undefined}
           streaming={idx === streamingIdx}
           onStreamingDone={onStreamingDone}
+          live={idx === liveIdx}
+          liveStatus={liveStatus ?? null}
         />
       ))}
-      {busy && <ThinkingBubble />}
+      {/* Fallback "thinking" bubble only when NOT live-streaming (the live path
+          shows its own status inside the streaming assistant bubble). */}
+      {busy && (liveIdx === null || liveIdx === undefined) && <ThinkingBubble />}
       {!busy && onPickFollowup && followups && followups.length > 0 && (
         <div className="flex flex-wrap gap-1.5 sm:pl-11">
           {followups.map((q, i) => (
@@ -109,11 +119,15 @@ function Message({
   question,
   streaming,
   onStreamingDone,
+  live,
+  liveStatus,
 }: {
   msg: ChatMessage;
   question?: string;
   streaming: boolean;
   onStreamingDone?: () => void;
+  live?: boolean;
+  liveStatus?: string | null;
 }) {
   if (msg.role === "user") {
     return (
@@ -125,15 +139,37 @@ function Message({
     );
   }
 
+  // Extras (citations, source chips, feedback) only once the turn has settled.
+  const settled = !streaming && !live;
+
   return (
     <div className="flex gap-3 animate-fade-up">
-      <AssistantAvatar pulse={streaming} />
+      <AssistantAvatar pulse={streaming || !!live} />
       <div className="min-w-0 flex-1 space-y-3">
         {msg.grounded === false ? (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 flex gap-3 text-amber-900">
             <AlertTriangle className="size-5 shrink-0 mt-0.5" />
             <p className="text-sm leading-relaxed">{msg.content}</p>
           </div>
+        ) : live ? (
+          msg.content ? (
+            // Tokens are arriving — render what we have so far, growing live.
+            <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+              <Markdown text={msg.content} />
+            </div>
+          ) : (
+            // Tool phase, before the first token: show the real status.
+            <div className="rounded-2xl bg-white border border-slate-200 px-4 py-3 shadow-sm min-w-[260px]">
+              <div className="flex items-center gap-1.5">
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="ml-2 text-[12.5px] font-medium text-slate-600">
+                  {(liveStatus || "Thinking").replace(/…$/, "")}…
+                </span>
+              </div>
+            </div>
+          )
         ) : streaming ? (
           <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
             <StreamingMarkdown text={msg.content} onDone={onStreamingDone} />
@@ -144,7 +180,7 @@ function Message({
           </div>
         )}
 
-        {msg.citations && msg.citations.length > 0 && !streaming && (
+        {msg.citations && msg.citations.length > 0 && settled && (
           <div>
             <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-slate-600">
               <BookOpen className="size-3.5 text-primary" />
@@ -186,7 +222,7 @@ function Message({
             </div>
           </div>
         )}
-        {!streaming &&
+        {settled &&
           Array.isArray(msg.meta?.["web_sources"]) &&
           (msg.meta["web_sources"] as unknown[]).length > 0 && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -218,11 +254,11 @@ function Message({
                 })}
             </div>
           )}
-        {!streaming && Array.isArray(msg.meta?.["memory_added"]) &&
+        {settled && Array.isArray(msg.meta?.["memory_added"]) &&
           (msg.meta["memory_added"] as unknown[]).length > 0 && (
             <MemoryCue items={msg.meta["memory_added"] as { id: number; content: string }[]} />
           )}
-        {!streaming && msg.grounded !== false && (
+        {settled && msg.grounded !== false && (
           <FeedbackRow question={question} answer={msg.content} />
         )}
       </div>
