@@ -36,11 +36,13 @@ _MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_SEARCH_MAX_OUTPUT", "1200"))
 # Commissioner reads as unserious even when the prose is fine. The model still
 # writes its answer; we just don't attach a low-credibility chip to it.
 # Override the allowlist via WEB_SOURCE_ALLOWLIST (comma-separated substrings).
+# Root tokens (not full subdomains) so we match whatever domain form the search
+# returns — "economictimes.com" and "economictimes.indiatimes.com" both hit
+# "economictimes". Government (.gov.in/.nic.in) covers every dept & court portal.
 _DEFAULT_ALLOW = (
-    ".gov.in,.nic.in,indiankanoon.org,itatonline.org,taxmann.com,taxsutra.com,"
-    "taxscan.in,barandbench.com,livelaw.in,scconline.com,economictimes.indiatimes.com,"
-    "livemint.com,business-standard.com,financialexpress.com,thehindu.com,"
-    "thehindubusinessline.com,moneycontrol.com,prsindia.org"
+    ".gov.in,.nic.in,indiankanoon,itatonline,taxmann,taxsutra,taxscan,"
+    "barandbench,livelaw,scconline,economictimes,livemint,business-standard,"
+    "financialexpress,thehindu,moneycontrol,prsindia"
 )
 _ALLOW = tuple(s.strip().lower() for s in
                os.getenv("WEB_SOURCE_ALLOWLIST", _DEFAULT_ALLOW).split(",") if s.strip())
