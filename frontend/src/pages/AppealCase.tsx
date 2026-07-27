@@ -1487,7 +1487,7 @@ function PreviewLoadingSkeleton({ mode }: { mode: "rendering" | "loading" }) {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-[min(560px,80%)] rounded-lg bg-gradient-to-br from-slate-50 to-white ring-1 ring-slate-200 shadow-sm p-6 animate-pulse"
+            className="w-[min(560px,80%)] rounded-lg bg-slate-50 ring-1 ring-slate-200 shadow-sm p-6 animate-pulse"
             style={{ animationDelay: `${i * 200}ms` }}
           >
             <div className="h-3 rounded bg-slate-200 w-2/5 mb-4" />
@@ -1500,11 +1500,9 @@ function PreviewLoadingSkeleton({ mode }: { mode: "rendering" | "loading" }) {
           </div>
         ))}
       </div>
-      {/* Foreground: gradient-glow document icon + rotating status. */}
       <div className="relative flex flex-col items-center gap-4 px-6 text-center">
         <div className="relative">
-          <div className="absolute -inset-4 rounded-2xl bg-primary/25 blur-2xl animate-pulse [animation-duration:2.5s]" />
-          <div className="relative size-14 rounded-2xl bg-primary flex items-center justify-center ring-4 ring-white shadow-lg shadow-primary/25">
+          <div className="relative size-14 rounded-2xl bg-primary flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
             <FileSignature className="size-6 text-white" strokeWidth={2.2} />
           </div>
         </div>
@@ -1659,13 +1657,6 @@ function PipelineStepper({ steps, running }: { steps: StepDef[]; running?: boole
         running && "ring-1 ring-emerald-400/40 shadow-lg shadow-emerald-500/10",
       )}
     >
-      {/* Aurora backdrop while running — a slow-drifting green wash so the
-          card visibly "breathes" even when every step is already ticked. */}
-      {running && (
-        <div className="pointer-events-none absolute inset-0 opacity-70">
-          <div className="absolute -inset-8 bg-[radial-gradient(closest-side,rgba(16,185,129,0.16),transparent_70%)] animate-[bt-aurora_6s_ease-in-out_infinite]" />
-        </div>
-      )}
       <CardContent className="relative pt-5 pb-5">
         <div className="flex items-baseline justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -1684,22 +1675,11 @@ function PipelineStepper({ steps, running }: { steps: StepDef[]; running?: boole
             {doneCount}/{steps.length} · {pct}%
           </div>
         </div>
-        {/* Progress bar. The base fill grows with `pct`; when we're still
-            running, a diagonal shimmer sweeps across it so the eye can
-            catch that work is happening even at 100%. */}
         <div className="relative h-1.5 rounded-full bg-slate-100 overflow-hidden mb-4">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-[width] duration-500"
+            className="h-full rounded-full bg-emerald-500 transition-[width] duration-500"
             style={{ width: `${pct}%` }}
           />
-          {running && (
-            <div
-              className="pointer-events-none absolute inset-y-0 left-0 rounded-full overflow-hidden"
-              style={{ width: `${pct}%` }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_40%,rgba(255,255,255,0.55)_50%,transparent_60%)] bg-[length:200%_100%] animate-[bt-shimmer_1.6s_linear_infinite]" />
-            </div>
-          )}
         </div>
         <ol className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {steps.map((s, i) => {

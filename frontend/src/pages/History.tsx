@@ -360,7 +360,7 @@ function HistoryRow({
         <div className="flex items-start gap-3">
           <div
             className={
-              "size-9 rounded-lg bg-gradient-to-br ring-1 flex items-center justify-center shrink-0 " +
+              "size-9 rounded-lg ring-1 flex items-center justify-center shrink-0 " +
               (toneClass[meta.tone] || toneClass.sky)
             }
           >

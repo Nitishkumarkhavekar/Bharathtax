@@ -580,47 +580,28 @@ function EmptyHero(props: {
   }, []);
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto chat-scrollbar">
-      {/* Aurora canvas — layered radial gradients + subtle grid dots. */}
-      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-        <div className="absolute inset-0 bg-[radial-gradient(1100px_500px_at_92%_-10%,rgba(46,124,200,0.18),transparent_60%),radial-gradient(900px_500px_at_-10%_110%,rgba(99,102,241,0.14),transparent_60%),radial-gradient(600px_400px_at_50%_120%,rgba(37,99,235,0.10),transparent_60%),linear-gradient(180deg,#f4f8fd_0%,#eef3fb_100%)]" />
-        <div
-          className="absolute inset-0 opacity-[0.05]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgb(15 23 42) 1px, transparent 0)",
-            backgroundSize: "26px 26px",
-          }}
-        />
-        {/* Soft floating blobs */}
-        <div className="absolute -top-20 -left-16 size-96 rounded-full bg-primary/10 blur-3xl animate-pulse [animation-duration:8s]" />
-        <div className="absolute -bottom-20 right-0 size-[26rem] rounded-full bg-violet-300/25 blur-3xl animate-pulse [animation-duration:10s]" />
-      </div>
-
       <div className="min-h-full flex items-center justify-center px-4 py-10 sm:py-16">
         <div className="w-full max-w-3xl space-y-8 animate-fade-up">
-          {/* Logo mark with glow */}
+          {/* Logo mark */}
           <div className="flex justify-center">
-            <div className="relative">
-              <div className="absolute -inset-6 rounded-full bg-primary/25 blur-2xl animate-pulse [animation-duration:5s]" />
-              <div className="relative size-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 ring-4 ring-white">
-                <Scale className="size-7 text-white" strokeWidth={2.2} />
-              </div>
+            <div className="size-14 rounded-2xl bg-primary flex items-center justify-center shadow-sm ring-1 ring-primary/20">
+              <Scale className="size-7 text-white" strokeWidth={2.2} />
             </div>
           </div>
 
           <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 backdrop-blur ring-1 ring-primary/20 text-primary text-[11px] font-semibold tracking-wide shadow-sm">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent ring-1 ring-primary/15 text-accent-foreground text-[11px] font-semibold tracking-wide">
               <Sparkles className="size-3" />
               Citation-grounded · primary Indian tax law
             </div>
-            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05]">
+            <h1 className="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.08]">
               <span className="text-slate-900">
                 {props.displayName
                   ? `Hello, ${capitalize(props.displayName)}.`
                   : "Ready when you are."}
               </span>
               <br />
-              <span className="bg-primary bg-clip-text text-transparent">
+              <span className="text-primary">
                 What would you like to research today?
               </span>
             </h1>
@@ -630,10 +611,9 @@ function EmptyHero(props: {
             </p>
           </div>
 
-          {/* Composer with animated gradient border */}
+          {/* Composer */}
           <div className="relative">
-            <div className="absolute -inset-0.5 rounded-2xl bg-primary/40 opacity-70 blur-md" />
-            <div className="relative rounded-2xl bg-white ring-1 ring-slate-200 shadow-xl shadow-primary/5">
+            <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-md">
               <ChatComposer
                 value={props.input}
                 onChange={props.onInputChange}
@@ -659,7 +639,7 @@ function EmptyHero(props: {
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Suggested starters
               </div>
-              <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+              <div className="flex-1 h-px bg-slate-200" />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {cards.map((s) => (
@@ -699,14 +679,12 @@ function SuggestionCard({
   return (
     <button
       onClick={onPick}
-      className="group relative overflow-hidden text-left rounded-2xl bg-white ring-1 ring-slate-200 hover:ring-primary/30 shadow-sm hover:shadow-lg hover:shadow-primary/10 transition-all duration-200 hover:-translate-y-0.5"
+      className="group relative text-left rounded-2xl bg-white ring-1 ring-slate-200 hover:ring-primary/30 shadow-sm hover:shadow-md transition-all duration-200"
     >
-      {/* soft gradient wash on hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-primary/[0.03] to-transparent" />
       <div className="relative p-3.5 flex items-start gap-3">
         <div
           className={
-            "shrink-0 size-9 rounded-xl bg-gradient-to-br ring-1 flex items-center justify-center " +
+            "shrink-0 size-9 rounded-xl ring-1 flex items-center justify-center " +
             toneMap[s.tone]
           }
         >

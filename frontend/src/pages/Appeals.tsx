@@ -172,7 +172,7 @@ export default function Appeals() {
         <button
           type="button"
           onClick={() => setFormOpen((o) => !o)}
-          className="w-full flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200/80 bg-gradient-to-r from-primary/[0.04] to-transparent hover:from-primary/[0.06] transition-colors"
+          className="w-full flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200/80 hover:from-primary/[0.06] transition-colors"
         >
           <div className="flex items-center gap-2.5">
             <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/15">
@@ -390,7 +390,7 @@ function KpiCard({
   return (
     <div
       className={
-        "relative overflow-hidden rounded-xl bg-gradient-to-br border border-slate-200/80 shadow-sm p-3.5 ring-1 " +
+        "relative overflow-hidden rounded-xl bg-white border border-slate-200/80 shadow-sm p-3.5 ring-1 " +
         toneMap.wrap
       }
     >
@@ -731,7 +731,7 @@ function EditCaseModal({
         className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden"
         onClick={swallow}
       >
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-primary/[0.06] to-transparent">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/15">
               <Pencil className="size-4" />

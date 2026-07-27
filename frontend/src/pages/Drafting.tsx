@@ -283,7 +283,7 @@ function TemplatePicker({ templates, onPick }: {
                 {catIcon(cat)}
               </div>
               <div className="text-[12px] uppercase tracking-[0.16em] text-slate-500 font-semibold">{cat}s</div>
-              <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+              <div className="flex-1 h-px" />
               <span className="text-[11px] text-slate-400 tabular-nums">{ts.length}</span>
             </div>
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -303,7 +303,7 @@ function TemplateCard({ t, onPick }: { t: DraftTemplate; onPick: () => void }) {
       onClick={onPick}
       className="group relative overflow-hidden text-left rounded-2xl bg-white ring-1 ring-slate-200 p-4 shadow-sm hover:ring-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all hover:-translate-y-0.5"
     >
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity  pointer-events-none" />
       <div className="relative flex items-start gap-3">
         <div className={cn("shrink-0 size-11 rounded-xl ring-1 grid place-items-center transition-colors", style.chip)}>
           {catIcon(t.category, "size-5")}

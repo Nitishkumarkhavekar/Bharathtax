@@ -98,7 +98,7 @@ const TONE: Record<
   danger: {
     icon: AlertTriangle,
     iconRing: "ring-rose-200",
-    iconWash: "bg-gradient-to-br from-rose-100 to-red-50 text-rose-600",
+    iconWash: "bg-rose-100 text-rose-600",
     haloGradient: "bg-rose-500/25",
     button:
       "text-white bg-rose-600 hover:brightness-110 shadow-lg shadow-rose-500/30",
@@ -107,7 +107,7 @@ const TONE: Record<
   warning: {
     icon: ShieldAlert,
     iconRing: "ring-amber-200",
-    iconWash: "bg-gradient-to-br from-amber-100 to-orange-50 text-amber-700",
+    iconWash: "bg-amber-100 text-amber-700",
     haloGradient: "bg-amber-500/25",
     button:
       "text-white bg-amber-600 hover:brightness-110 shadow-lg shadow-amber-500/30",
@@ -116,7 +116,7 @@ const TONE: Record<
   primary: {
     icon: ShieldAlert,
     iconRing: "ring-primary/25",
-    iconWash: "bg-gradient-to-br from-sky-100 to-blue-50 text-primary",
+    iconWash: "bg-accent text-primary",
     haloGradient: "bg-primary/25",
     button:
       "text-white bg-primary hover:brightness-110 shadow-lg shadow-primary/25",
@@ -186,15 +186,7 @@ function ConfirmDialog({
       }}
     >
       <div className="relative w-full max-w-md">
-        {/* Gradient halo behind the card, tinted by tone. */}
-        <div
-          className={
-            "absolute -inset-1 rounded-3xl opacity-70 blur-2xl bg-gradient-to-br " +
-            meta.haloGradient
-          }
-          aria-hidden
-        />
-        <div className="relative rounded-2xl bg-white ring-1 ring-slate-200 shadow-2xl overflow-hidden">
+        <div className="relative rounded-2xl bg-white ring-1 ring-slate-200 shadow-xl overflow-hidden">
           <button
             onClick={onCancel}
             className="absolute right-3 top-3 p-1.5 rounded-md text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"

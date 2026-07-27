@@ -340,7 +340,7 @@ export function TokensBarChart({
           tokens per day
         </div>
       </div>
-      <div className="relative rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50/60 to-white p-4 pt-3">
+      <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 p-4 pt-3">
         {/* Grid + Y-axis labels */}
         <div className="relative h-40">
           {gridLines.map((v, i) => (
@@ -458,7 +458,7 @@ function MiniStat({
   return (
     <div
       className={
-        "rounded-xl border border-slate-200/80 bg-gradient-to-br p-3 ring-1 " +
+        "rounded-xl border border-slate-200/80 p-3 ring-1 " +
         map[tone]
       }
     >
