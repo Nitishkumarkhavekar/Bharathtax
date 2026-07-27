@@ -122,7 +122,10 @@ export default function Register() {
         </button>
 
         <p className="text-[11.5px] text-slate-500 text-center">
-          By creating an account you agree to our terms and privacy policy.
+          By creating an account you agree to our{" "}
+          <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
         </p>
       </form>
     </AuthShell>
