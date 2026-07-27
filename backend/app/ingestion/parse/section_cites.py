@@ -27,7 +27,7 @@ def _norm(tok: str) -> str | None:
     if not m:
         return None
     num = int(m.group(1))
-    if num < 1 or num > 300:          # income-tax sections run ~1..298 (+ new Act) — reject noise
+    if num < 1 or num > 600:          # IT Act 1961 ends ~298; the new Income-tax Act 2025 runs to ~536 — allow headroom, reject year-like noise
         return None
     return f"{num}{m.group(2).upper()}"    # 80-IB -> 80IB, 14a -> 14A, 271 -> 271
 

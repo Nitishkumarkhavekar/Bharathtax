@@ -8,12 +8,14 @@ from app.models.desktop import DesktopRelease
 from app.models.support import SupportAttachment, SupportMessage, SupportTicket
 from app.models.desktop_session import DesktopSession
 from app.models.password_reset import PasswordResetToken
+from app.models.drafting import DraftDocument
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
 from app.models.documents import Document, DocumentChunk
 from app.models.enums import (
     ChunkLevel, CorpusDocStatus, Domain, DocumentStatus, QueryScope, Role, SourceType,
 )
 from app.models.org import Department, Office, SeatLease, User, Wing
+from app.models.personalization import UserMemory, UserSettings
 from app.models.token_usage import TokenUsage
 
 __all__ = [
@@ -24,10 +26,12 @@ __all__ = [
     "Document", "DocumentChunk",
     "ChunkLevel", "CorpusDocStatus", "Domain", "DocumentStatus", "QueryScope", "Role", "SourceType",
     "Department", "Office", "SeatLease", "User", "Wing",
+    "UserMemory", "UserSettings",
     "TokenUsage",
     "SubscriptionPlan", "TokenPrice", "UserSubscription",
     "DesktopRelease",
     "SupportAttachment", "SupportMessage", "SupportTicket",
     "DesktopSession",
     "PasswordResetToken",
+    "DraftDocument",
 ]

@@ -1,6 +1,8 @@
 # env / secrets
 .env
 *.env.local
+.secrets/
+**/.secrets/
 
 # python
 __pycache__/
@@ -21,6 +23,13 @@ data/manual/**
 !data/manual/**/.gitkeep
 data/cache/**
 !data/cache/.gitkeep
+# built vector store + large media (belongs in LFS/external, not git)
+data/corpus_dataset/
+*.npy
+*.m4a
+
+# electron-builder tool cache (downloadable build binaries — never commit)
+desktop/.ebcache/
 
 # misc
 .DS_Store

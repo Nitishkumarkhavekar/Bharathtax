@@ -20,14 +20,14 @@ log = get_logger(__name__)
 
 
 class LLMClient(Protocol):
-    def complete(self, system: str, user: str) -> str: ...
+    def complete(self, system: str, user: str, *, context: str | None = None) -> str: ...
 
 
 class MockLLM:
     """No model required. Returns a transparently grounded answer built ONLY from
     the passages handed to it, so the anti-hallucination contract holds in dev."""
 
-    def complete(self, system: str, user: str) -> str:
+    def complete(self, system: str, user: str, *, context: str | None = None) -> str:
         marker = "PASSAGES:"
         excerpt = ""
         if marker in user:
@@ -64,6 +64,7 @@ class OpenAICompatLLM:
         *,
         model: str | None = None,
         max_tokens: int | None = None,
+        context: str | None = None,
     ) -> str:
         import time
         used_model = model or self.model
@@ -71,16 +72,20 @@ class OpenAICompatLLM:
         self.last_model = used_model
         self.last_latency_ms = None
         t0 = time.time()
+        messages = [{"role": "system", "content": system}]
+        # Personalization goes in as a prior turn (NOT the final user message), so
+        # the gateway retrieves on the clean question but still sees who's asking.
+        if context:
+            messages.append({"role": "user", "content": context})
+            messages.append({"role": "assistant", "content": "Understood — I'll keep that in mind."})
+        messages.append({"role": "user", "content": user})
         with httpx.Client(timeout=httpx.Timeout(180.0)) as client:
             r = client.post(
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 json={
                     "model": used_model,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
+                    "messages": messages,
                     "temperature": settings.llm_temperature,
                     "max_tokens": max_tokens or settings.llm_max_tokens,
                 },

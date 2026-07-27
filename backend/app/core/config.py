@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     app_name: str = "BharathTax"
     log_level: str = "INFO"
+    # CORS: comma-separated allowed origins. "*" is fine for dev; set explicit
+    # origins in prod (e.g. "https://app.bharathtax.com,https://bharattax.wenvia.global").
+    cors_allowed_origins: str = "*"
 
     # postgres
     postgres_host: str = "postgres"
@@ -93,6 +96,35 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        v = (self.cors_allowed_origins or "*").strip()
+        if v == "*":
+            return ["*"]
+        return [o.strip() for o in v.split(",") if o.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in ("prod", "production")
+
+    def assert_prod_safe(self) -> None:
+        """Fail-fast: refuse to run in production with guessable default secrets."""
+        if not self.is_production:
+            return
+        insecure = [
+            name for name, val, default in (
+                ("JWT_SECRET", self.jwt_secret, "change-me"),
+                ("POSTGRES_PASSWORD", self.postgres_password, "change-me"),
+            ) if val == default
+        ]
+        if self.allowed_origins == ["*"]:
+            insecure.append("CORS_ALLOWED_ORIGINS (wildcard '*')")
+        if insecure:
+            raise RuntimeError(
+                "Refusing to start in production with insecure defaults: "
+                + ", ".join(insecure) + ". Set these in the environment."
+            )
 
 
 @lru_cache

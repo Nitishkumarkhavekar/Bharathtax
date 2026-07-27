@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from app.api.deps import Principal, client_meta, get_current_user, get_principal
+from app.core import ratelimit
 from app.core.db import get_db
 from app.core.security import hash_password, verify_password
 from app.models.admin import LicenseKey
@@ -162,6 +163,8 @@ def license_activate(body: LicenseActivateRequest, request: Request,
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+    # Blunt credential brute-force: 10 login attempts / minute / IP.
+    ratelimit.enforce(request, "login", max_hits=10, window_s=60)
     email = (body.email or "").strip()
     if not email or "@" not in email:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Enter a valid email address.")
@@ -199,6 +202,8 @@ def list_wings_public(db: Session = Depends(get_db)) -> list[Wing]:
 @router.post("/register", response_model=RegisterResponse)
 def register(body: RegisterRequest, request: Request,
              db: Session = Depends(get_db)) -> RegisterResponse:
+    # Throttle signup abuse: 5 registrations / 10 min / IP.
+    ratelimit.enforce(request, "register", max_hits=5, window_s=600)
     email = (body.email or "").strip().lower()
     if "@" not in email or "." not in email.split("@", 1)[-1]:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Enter a valid email address.")

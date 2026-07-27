@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Globe, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, normalizeMarkdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -208,27 +208,50 @@ function Message({
                       title={domain}
                       className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 px-2 py-0.5 text-[11px] text-slate-600 transition-colors"
                     >
-                      <img
-                        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(
-                          domain,
-                        )}&sz=32`}
-                        alt=""
-                        loading="lazy"
-                        className="size-3.5 rounded-sm"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
-                      />
+                      {/* Local icon instead of Google's favicon service — a
+                          self-hosted product must not leak visited source
+                          domains to a third party. */}
+                      <Globe className="size-3.5 text-slate-400 shrink-0" />
                       <span className="max-w-[150px] truncate">{domain}</span>
                     </a>
                   );
                 })}
             </div>
           )}
+        {!streaming && Array.isArray(msg.meta?.["memory_added"]) &&
+          (msg.meta["memory_added"] as unknown[]).length > 0 && (
+            <MemoryCue items={msg.meta["memory_added"] as { id: number; content: string }[]} />
+          )}
         {!streaming && msg.grounded !== false && (
           <FeedbackRow question={question} answer={msg.content} />
         )}
       </div>
+    </div>
+  );
+}
+
+function MemoryCue({ items }: { items: { id: number; content: string }[] }) {
+  const [undone, setUndone] = useState<Record<number, boolean>>({});
+  const live = items.filter((i) => !undone[i.id]);
+  if (live.length === 0)
+    return <div className="mt-2 text-[11.5px] text-slate-400">Memory update undone.</div>;
+  async function undo(id: number) {
+    setUndone((u) => ({ ...u, [id]: true }));
+    try {
+      await api.deleteMemory(id);
+    } catch {
+      /* best-effort */
+    }
+  }
+  return (
+    <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/[0.07] text-primary px-3 py-1 text-[11.5px] font-medium">
+      <Brain className="size-3.5" />
+      Memory updated
+      {live.length === 1 && (
+        <button type="button" onClick={() => undo(live[0].id)} className="text-slate-500 hover:text-rose-600 underline underline-offset-2">
+          Undo
+        </button>
+      )}
     </div>
   );
 }

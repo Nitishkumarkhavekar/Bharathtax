@@ -70,9 +70,9 @@ def ask(body: AskRequest, request: Request,
                 result.text, result.grounded, result.citations, result.meta = _t, True, [], _am
             except Exception as _ae:  # noqa: BLE001
                 log.warning("agent failed, falling back to RAG: %s", _ae)
-                result = rag.answer_question(db, body.question, domain=domain)
+                result = rag.answer_question(db, body.question, domain=domain, user=p.user)
         else:
-            result = rag.answer_question(db, body.question, domain=domain)
+            result = rag.answer_question(db, body.question, domain=domain, user=p.user)
     except _UPSTREAM_EXC as e:
         log.warning("Ask Bot upstream error: %s", e)
         raise HTTPException(

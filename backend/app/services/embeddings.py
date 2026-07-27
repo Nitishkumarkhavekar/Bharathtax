@@ -34,6 +34,9 @@ def rerank(query: str, passages: list[str], top_k: int | None = None) -> list[tu
     """Return [(original_index, score)] sorted best-first."""
     if not passages:
         return []
+    # Cross-encoder only attends to the head anyway; cap like embed() so a few
+    # huge parent chunks can't bloat the payload / CPU on the hot path.
+    passages = [p[:_MAX_EMBED_CHARS] for p in passages]
     with httpx.Client(timeout=_TIMEOUT) as client:
         r = client.post(
             f"{settings.ml_server_url}/rerank",

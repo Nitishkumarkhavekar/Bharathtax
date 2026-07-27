@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
-from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin
+from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin, personalization, drafting
 from app.api.routes import support as support_routes
 from app.api.routes import desktop_session as ds_routes
 from app.api.routes import password_reset as pw_reset_routes
@@ -78,15 +78,21 @@ def _patch_user_columns() -> None:
         _log.warning("user-column patch failed (continuing): %s", exc)
 
 
+# Fail fast if we're in production with default secrets or a wildcard CORS.
+settings.assert_prod_safe()
+
 _ensure_admin_tables()
 _patch_user_columns()
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 
-# Dev CORS: the Vite frontend. Tighten via config for production deployments.
+# CORS origins come from config (CORS_ALLOWED_ORIGINS); "*" only in dev.
+# allow_credentials must be False when origins is "*" (browsers reject the combo).
+_origins = settings.allowed_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
+    allow_credentials=_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -106,6 +112,10 @@ app.include_router(crossref.router, dependencies=[Depends(require_feature("rulin
 app.include_router(assist.router)
 app.include_router(ratings.router)
 app.include_router(billing.router)
+app.include_router(personalization.router)
+# Officer drafting suite (notices/orders). Authenticated; a dedicated "drafting"
+# entitlement can be added to require_feature later.
+app.include_router(drafting.router)
 # Auto-update feed for the packaged desktop app. Unauthenticated on purpose —
 # electron-updater cannot carry a JWT and the artefacts already live behind
 # a signed URL layer with a whitelist by suffix.
