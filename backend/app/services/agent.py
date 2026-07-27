@@ -118,7 +118,10 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
                            headers={"Authorization": f"Bearer {settings.llm_api_key}"},
                            json={"query": q, "k": 6}, timeout=20.0)
             ps = r.json().get("passages", []) if r.status_code == 200 else []
+            # Keep act/section: the model cites more precisely with them, and the
+            # API layer turns them into resolvable citations[] for the UI.
             return {"passages": [{"n": p.get("n"), "breadcrumb": p.get("breadcrumb"),
+                                  "act": p.get("act"), "section": p.get("section"),
                                   "text": (p.get("text") or "")[:800]} for p in ps[:6]]}
         except Exception as e:  # noqa: BLE001
             return {"passages": [], "error": str(e)[:100]}
@@ -166,6 +169,7 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
     """Run the tool-calling loop. Returns (text, meta)."""
     contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
     tools_used, all_sources, usage_calls = [], [], []
+    law_refs: list[dict] = []   # statutory passages search_tax_law actually returned
     cfg = {"temperature": 0.2, "maxOutputTokens": 1400, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
     for _ in range(_MAX_ITERS):
@@ -195,6 +199,11 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                 tools_used.append(name)
                 if name == "web_search" and res.get("sources"):
                     all_sources += res["sources"]
+                if name == "search_tax_law" and res.get("passages"):
+                    # Identity only — the passage text would bloat meta and the
+                    # persisted retrieval_meta for no downstream benefit.
+                    law_refs += [{k: p.get(k) for k in ("n", "act", "section", "breadcrumb")}
+                                 for p in res["passages"]]
                 resp_parts.append({"functionResponse": {"name": name, "response": res}})
             contents.append({"role": "user", "parts": resp_parts})
             continue
@@ -205,6 +214,8 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
             if u and u not in seen:
                 seen.add(u)
                 srcs.append(s)
-        return text, {"used": "agent", "tools_used": tools_used, "web_sources": srcs, "llm_calls": usage_calls}
+        return text, {"used": "agent", "tools_used": tools_used, "web_sources": srcs,
+                      "law_refs": law_refs, "llm_calls": usage_calls}
     return ("I couldn't complete that — please rephrase.",
-            {"used": "agent", "tools_used": tools_used, "web_sources": [], "llm_calls": usage_calls})
+            {"used": "agent", "tools_used": tools_used, "web_sources": [],
+             "law_refs": [], "llm_calls": usage_calls})

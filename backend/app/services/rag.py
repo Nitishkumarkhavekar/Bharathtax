@@ -7,6 +7,7 @@ we do call it, the system prompt forbids using anything outside the passages.
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 
@@ -17,6 +18,8 @@ from app.core.enums import Domain
 from app.services import llm as llm_mod
 from app.services import query_cache as _qcache
 from app.services.retrieval import Passage, RetrievalResult, retrieve, retrieve_documents
+
+log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are BharathTax, a research assistant for Indian tax officers. Answer the "
@@ -299,6 +302,226 @@ class Answer:
     meta: dict
 
 
+# ---------------------------------------------------------------------------
+# Citation extraction from the answer TEXT.
+#
+# The remote `bharattax-rag` model runs its OWN retrieval on the LLM VPS, so the
+# backend never sees the passages it used. The only trace is what the model
+# writes into the answer: inline [n] markers plus a trailing "Sources:" footer —
+#
+#     ... the aggregate is Rs 1,50,000 [1], [2].
+#
+#     Sources:
+#     - Income Tax Act, 1961 80C
+#     - Income Tax Rules, 1962 20
+#
+# The Gemini agent path emits the same footer in markdown-bold form
+# ("**Sources:**" with `*` bullets), sometimes inline ("Sources: a.in, b.in"),
+# and mixes statutory lines with bare web domains / markdown links.
+#
+# We parse that footer and resolve each STATUTORY line against the local corpus
+# (act_name + section_number / rule_number) so the UI gets a real chunk_id and a
+# source_url to link to.
+#
+# Deliberately NOT turned into citations: bare web domains and markdown links.
+# The UI already renders those separately from meta["web_sources"], so promoting
+# them here would show every web source twice.
+#
+# NOTE on numbering: the inline [n] markers index the REMOTE model's private
+# passage list, which is longer and differently ordered than the deduplicated
+# footer (e.g. an answer citing [1],[2] with a single footer line). There is no
+# reliable mapping, so we do NOT try to align them — `n` is simply the footer
+# ordinal. The UI renders citations as a "Sources (k)" card list rather than as
+# inline anchors, so the two numberings never have to agree.
+# ---------------------------------------------------------------------------
+
+_MAX_CITATIONS = 20
+
+# A "Sources:" header line, with optional markdown bold/heading decoration.
+# Captures anything trailing on the same line (the inline "Sources: a, b" form).
+_SOURCES_HEADER_RE = re.compile(
+    r"^[#\s]*\**\s*sources?\s*\**\s*:\s*\**\s*(?P<rest>.*?)\s*$",
+    re.IGNORECASE,
+)
+
+# A markdown/plain list item: "- foo", "* foo", "1. foo".
+_BULLET_RE = re.compile(r"^\s*(?:[-*•·–—]|\d+[.)])\s+(?P<item>.+?)\s*$")
+
+# "[label](https://...)" — a web source, not a statutory reference.
+_MD_LINK_RE = re.compile(r"^\[(?P<label>[^\]]+)\]\(\s*(?P<url>https?://[^)\s]+)\s*\)$")
+
+# "taxguru.in", "www.incometaxindia.gov.in/foo" — a bare web source.
+_BARE_DOMAIN_RE = re.compile(
+    r"^(?:https?://)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:/\S*)?$", re.IGNORECASE
+)
+
+# "Income Tax Act, 1961 80C" / "Income-tax Rules, 2026 > Rule 164" /
+# "Income-tax Act, 2025 501" -> (act, number). The act part must end in
+# Act/Rules/Code so prose lines don't get mistaken for statutory references.
+_STATUTORY_RE = re.compile(
+    r"^(?P<act>.*?(?:act|rules|code)\b[^0-9]*(?:,?\s*(?:19|20)\d{2})?)"
+    r"[\s>]+(?:section\s+|rule\s+|s\.\s*|§\s*)?"
+    r"(?P<num>\d+[A-Za-z]{0,4}(?:\([^)]{1,10}\))?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _norm_act(name: str | None) -> str:
+    """Fold 'Income-tax Rules, 1962' and 'Income Tax Rules, 1962' together."""
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+
+
+def _extract_source_lines(text: str) -> list[str]:
+    """Pull the raw item strings out of the trailing 'Sources:' footer."""
+    lines = (text or "").splitlines()
+    header_idx, inline_rest = None, ""
+    # Take the LAST "Sources:" header — the footer, not a mid-answer mention.
+    for i, line in enumerate(lines):
+        m = _SOURCES_HEADER_RE.match(line)
+        if m:
+            header_idx, inline_rest = i, m.group("rest")
+    if header_idx is None:
+        return []
+
+    # Inline form: "Sources: lemonn.co.in, blinkx.in"
+    if inline_rest:
+        return [p.strip() for p in inline_rest.split(",") if p.strip()]
+
+    # Block form: bullets (or bare lines) until a blank-separated non-list block.
+    items: list[str] = []
+    for line in lines[header_idx + 1:]:
+        if not line.strip():
+            # Tolerate the blank line markdown puts after "**Sources:**", but
+            # stop once we've started collecting and hit a gap.
+            if items:
+                break
+            continue
+        m = _BULLET_RE.match(line)
+        if m:
+            items.append(m.group("item").strip())
+        elif items:
+            break
+        else:
+            # Unbulleted footer line directly under the header.
+            items.append(line.strip())
+    return items
+
+
+def _resolve_statutory(db: Session, act: str, num: str) -> tuple[int, str, str | None] | None:
+    """Look a statutory reference up in the local corpus.
+
+    Returns (chunk_id, breadcrumb, source_url), or None when the corpus has no
+    chunk for that ACT. We require the act name to match, not just the number:
+    resolving 'Income-tax Act, 2025 s.501' onto a 1961-Act chunk numbered 501
+    would attach a confidently wrong link to a legal citation.
+    """
+    from app.models.corpus import CorpusChunk, CorpusDocument
+    from sqlalchemy import select as _select
+
+    is_rule = "rule" in (act or "").lower()
+    col = CorpusChunk.rule_number if is_rule else CorpusChunk.section_number
+    try:
+        rows = db.execute(
+            _select(CorpusChunk.id, CorpusChunk.act_name, CorpusChunk.breadcrumb,
+                    CorpusDocument.source_url)
+            .join(CorpusDocument, CorpusChunk.corpus_document_id == CorpusDocument.id)
+            .where(col == num, CorpusChunk.is_current.is_(True))
+            .order_by(CorpusChunk.id)
+            .limit(50)
+        ).all()
+    except Exception as e:  # noqa: BLE001 — a citation lookup must never 500 the answer
+        log.warning("citation resolve failed for %s %s: %s", act, num, e)
+        return None
+
+    target = _norm_act(act)
+    for r in rows:
+        if _norm_act(r.act_name) == target:
+            return int(r.id), (r.breadcrumb or f"{act} {num}"), r.source_url
+    return None
+
+
+def citations_from_law_refs(db: Session, refs: list[dict]) -> list[Citation]:
+    """Build citations from STRUCTURED references — the passages the agent's
+    `search_tax_law` tool actually retrieved (each carrying act/section/breadcrumb).
+
+    Preferred over `parse_source_citations` whenever the refs are available: it
+    cites what retrieval genuinely returned instead of re-deriving it from the
+    prose the model wrote about it.
+    """
+    citations: list[Citation] = []
+    seen: set[tuple[str, str]] = set()
+    for ref in refs or []:
+        act = (ref.get("act") or "").strip()
+        num = (ref.get("section") or ref.get("rule") or "").strip()
+        if not act or not num:
+            continue
+        key = (_norm_act(act), num.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+
+        resolved = _resolve_statutory(db, act, num)
+        if resolved:
+            chunk_id, breadcrumb, url = resolved
+        else:
+            chunk_id = 0
+            breadcrumb = (ref.get("breadcrumb") or f"{act} {num}").strip()
+            url = None
+        citations.append(Citation(
+            n=len(citations) + 1,
+            chunk_id=chunk_id,
+            breadcrumb=breadcrumb,
+            source_url=url,
+            section_number=num,
+        ))
+        if len(citations) >= _MAX_CITATIONS:
+            break
+    return citations
+
+
+def parse_source_citations(db: Session, text: str) -> list[Citation]:
+    """Build citations[] from the 'Sources:' footer the RAG model emits.
+
+    Statutory lines are resolved against the local corpus so the UI gets a real
+    chunk_id + source_url. Unresolvable statutory lines are still returned (with
+    chunk_id 0 and no URL) so the officer at least sees what the model relied on.
+    Web domains/links are skipped — see the module note above.
+    """
+    citations: list[Citation] = []
+    seen: set[tuple[str, str]] = set()
+    for item in _extract_source_lines(text):
+        # Strip markdown emphasis around the whole item.
+        clean = item.strip().strip("*_` ").strip()
+        if not clean:
+            continue
+        if _MD_LINK_RE.match(clean) or _BARE_DOMAIN_RE.match(clean):
+            continue  # a web source — rendered from meta["web_sources"]
+        m = _STATUTORY_RE.match(clean)
+        if not m:
+            continue
+        act, num = m.group("act").strip(" ,>"), m.group("num").strip()
+        key = (_norm_act(act), num.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+
+        resolved = _resolve_statutory(db, act, num)
+        if resolved:
+            chunk_id, breadcrumb, url = resolved
+        else:
+            chunk_id, breadcrumb, url = 0, clean, None
+        citations.append(Citation(
+            n=len(citations) + 1,
+            chunk_id=chunk_id,
+            breadcrumb=breadcrumb,
+            source_url=url,
+            section_number=num,
+        ))
+        if len(citations) >= _MAX_CITATIONS:
+            break
+    return citations
+
+
 def _build_user_prompt(question: str, passages: list[Passage]) -> str:
     blocks = []
     for i, p in enumerate(passages, start=1):
@@ -399,10 +622,18 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     if cached:
         meta = dict(cached.get("meta") or {})
         meta["cache_hit"] = True
+        cached_text = cached.get("text") or ""
+        # Re-parse rather than caching the citations: resolution depends on the
+        # corpus, which is re-ingested independently of the answer cache.
+        try:
+            cached_citations = parse_source_citations(db, cached_text)
+        except Exception:  # noqa: BLE001
+            log.exception("citation parsing failed (cache hit)")
+            cached_citations = []
         return Answer(
-            text=cached.get("text") or "",
+            text=cached_text,
             grounded=bool(cached.get("grounded", True)),
-            citations=[],
+            citations=cached_citations,
             meta=meta,
         )
 
@@ -569,8 +800,17 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     except Exception:  # noqa: BLE001 — never let cache-write break the response
         pass
 
+    # The remote RAG model cites in prose ("Sources:" footer) rather than
+    # handing back passages — parse that into structured citations so the UI can
+    # render clickable source cards. Never let this break the answer.
+    try:
+        parsed_citations = parse_source_citations(db, primary_text)
+    except Exception:  # noqa: BLE001
+        log.exception("citation parsing failed")
+        parsed_citations = []
+
     return Answer(
-        text=primary_text, grounded=grounded, citations=[],
+        text=primary_text, grounded=grounded, citations=parsed_citations,
         meta=result_meta,
     )
 

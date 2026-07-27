@@ -67,7 +67,17 @@ def ask(body: AskRequest, request: Request,
                 _t, _am = _agent.answer_agentic(db, body.question, user_id=p.user.id,
                                                 chat_id=body.chat_id, domain=domain)
                 result = type("AgentResult", (), {})()
-                result.text, result.grounded, result.citations, result.meta = _t, True, [], _am
+                # Cite what the agent's search_tax_law tool actually retrieved
+                # (act/section per passage). Fall back to parsing the answer's
+                # "Sources:" footer when the agent answered without that tool.
+                try:
+                    _cites = rag.citations_from_law_refs(db, _am.get("law_refs") or [])
+                    if not _cites:
+                        _cites = rag.parse_source_citations(db, _t)
+                except Exception:  # noqa: BLE001
+                    log.exception("citation parsing failed (agent path)")
+                    _cites = []
+                result.text, result.grounded, result.citations, result.meta = _t, True, _cites, _am
             except Exception as _ae:  # noqa: BLE001
                 log.warning("agent failed, falling back to RAG: %s", _ae)
                 result = rag.answer_question(db, body.question, domain=domain, user=p.user)
