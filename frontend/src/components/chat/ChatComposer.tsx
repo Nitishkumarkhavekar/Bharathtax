@@ -47,6 +47,13 @@ export default function ChatComposer({
     el.style.height = Math.min(el.scrollHeight, compact ? 200 : 260) + "px";
   }, [value, compact]);
 
+  // Keep the cursor ready in the box: focus on mount and every time we return
+  // to idle after an answer (the textarea is disabled while busy, which drops
+  // focus). So the officer can just start typing the next question — no click.
+  useEffect(() => {
+    if (!busy) taRef.current?.focus();
+  }, [busy]);
+
   function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
     if (!value.trim() || busy) return;

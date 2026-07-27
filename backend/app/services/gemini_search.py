@@ -29,6 +29,28 @@ _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 # time. Bring it up via env if answers are getting cut off.
 _MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_SEARCH_MAX_OUTPUT", "1200"))
 
+# Officer-facing SOURCE POLICY. We only surface citations from authoritative or
+# established outlets — government, courts/tribunals, primary case-law databases,
+# and major legal/business press. Consumer tax-filing and advisory blogs
+# (eqvista, tax2win, cleartax, treelife, …) are dropped: citing them to a
+# Commissioner reads as unserious even when the prose is fine. The model still
+# writes its answer; we just don't attach a low-credibility chip to it.
+# Override the allowlist via WEB_SOURCE_ALLOWLIST (comma-separated substrings).
+_DEFAULT_ALLOW = (
+    ".gov.in,.nic.in,indiankanoon.org,itatonline.org,taxmann.com,taxsutra.com,"
+    "taxscan.in,barandbench.com,livelaw.in,scconline.com,economictimes.indiatimes.com,"
+    "livemint.com,business-standard.com,financialexpress.com,thehindu.com,"
+    "thehindubusinessline.com,moneycontrol.com,prsindia.org"
+)
+_ALLOW = tuple(s.strip().lower() for s in
+               os.getenv("WEB_SOURCE_ALLOWLIST", _DEFAULT_ALLOW).split(",") if s.strip())
+
+
+def _reputable(domain_or_title: str) -> bool:
+    """True if the source domain is on the officer-grade allowlist."""
+    d = (domain_or_title or "").lower()
+    return any(a in d for a in _ALLOW)
+
 # Telemetry from the most recent web_answer() call, mirroring OpenAICompatLLM's
 # last_* attributes so the chat route can bill the Gemini token spend.
 last_usage: dict | None = None
@@ -87,7 +109,7 @@ def _insert_inline_cites(text: str, supports: list, chunks: list) -> str:
                 web = chunks[ci].get("web") or {}
                 dm = _domain_of(web.get("title") or "")
                 uri = (web.get("uri") or "").strip()
-                if dm and (dm, uri) not in pairs:
+                if dm and _reputable(dm) and (dm, uri) not in pairs:
                     pairs.append((dm, uri))
         if pairs:
             slot = by_end.setdefault(int(end), [])
@@ -148,7 +170,8 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
                 web = ch.get("web") or {}
                 uri = web.get("uri")
                 title = web.get("title") or uri or ""
-                if uri and uri not in seen:
+                # Officer-facing: only surface authoritative/established sources.
+                if uri and uri not in seen and _reputable(title):
                     seen.add(uri)
                     sources.append({"title": title, "url": uri})
             # Insert inline {{cite:domain}} chips at each grounded segment BEFORE
