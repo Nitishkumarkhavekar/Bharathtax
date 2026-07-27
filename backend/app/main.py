@@ -43,6 +43,12 @@ def _patch_user_columns() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_by_user_id INTEGER",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS organisation VARCHAR(200)",
+        # Personalization: officer's charge/posting + preferred UI language.
+        # The Alembic chain that adds these (f7b2c4d9e310) can't run on prod —
+        # its recorded revision has drifted off the versioned chain — so we add
+        # them here, idempotently, the same way as the columns above.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS charge VARCHAR(200)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) NOT NULL DEFAULT 'en'",
         # Persist the OnlyOffice-edited .docx so re-opening the editor doesn't
         # lose the user's formatting (re-rendering from markdown would strip
         # in-editor tables, font changes, etc.).

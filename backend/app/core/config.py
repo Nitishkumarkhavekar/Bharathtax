@@ -109,7 +109,18 @@ class Settings(BaseSettings):
         return self.app_env.lower() in ("prod", "production")
 
     def assert_prod_safe(self) -> None:
-        """Fail-fast: refuse to run in production with guessable default secrets."""
+        """Fail-fast on guessable default SECRETS in production.
+
+        Secrets (JWT/DB password) are a real, exploitable exposure, so a default
+        value hard-stops the boot. A wildcard CORS is only *warned* about, not
+        fatal: auth here is a Bearer token in localStorage (never an ambient
+        cookie), so a permissive origin can't be used to ride a user's session,
+        and the packaged desktop app serves its UI from `file://` (Origin:
+        null) — it legitimately needs a non-restrictive policy until the
+        allowlist explicitly carries that origin. Crashing the whole API over
+        CORS would take prod (and the desktop clients) down for a hardening
+        nicety, so we log instead.
+        """
         if not self.is_production:
             return
         insecure = [
@@ -118,12 +129,17 @@ class Settings(BaseSettings):
                 ("POSTGRES_PASSWORD", self.postgres_password, "change-me"),
             ) if val == default
         ]
-        if self.allowed_origins == ["*"]:
-            insecure.append("CORS_ALLOWED_ORIGINS (wildcard '*')")
         if insecure:
             raise RuntimeError(
                 "Refusing to start in production with insecure defaults: "
                 + ", ".join(insecure) + ". Set these in the environment."
+            )
+        if self.allowed_origins == ["*"]:
+            import logging
+            logging.getLogger(__name__).warning(
+                "CORS_ALLOWED_ORIGINS is a wildcard '*' in production. Set an "
+                "explicit allowlist (web origin + the desktop 'null' origin) "
+                "once the desktop CORS contract is confirmed."
             )
 
 
