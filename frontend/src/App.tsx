@@ -15,6 +15,10 @@ import AppealCase from "./pages/AppealCase";
 import Rulings from "./pages/Rulings";
 import Drafting from "./pages/Drafting";
 import SharedChat from "./pages/SharedChat";
+import Contact from "./pages/Contact";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Docs from "./pages/Docs";
 
 // Admin console
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -74,6 +78,11 @@ export default function App() {
           signed-in users skip straight to their role's home. */}
       <Route path="/" element={session ? <Navigate to={landing} replace /> : <Landing />} />
       <Route path="/releases" element={<ReleasesLanding />} />
+      {/* Public marketing / info pages — accessible signed-in or out. */}
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/docs" element={<Docs />} />
       <Route path="/login" element={session ? <Navigate to={landing} replace /> : <Login />} />
       <Route path="/register" element={session ? <Navigate to={landing} replace /> : <Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

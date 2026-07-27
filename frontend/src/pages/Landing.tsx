@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Scale,
   Sparkles,
@@ -30,6 +30,15 @@ import { useEffect, useState } from "react";
 // blocks. Flat surfaces + hairline borders; the type and spacing carry it.
 
 export default function Landing() {
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.querySelector(hash);
+    if (el) {
+      const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      return () => clearTimeout(t);
+    }
+  }, [hash]);
   return (
     <div className="min-h-screen bt-marketing-bg text-slate-900 antialiased overflow-hidden">
       <Nav />
@@ -37,6 +46,7 @@ export default function Landing() {
       <TrustBar />
       <Features />
       <ProductPreview />
+      <UseCases />
       <HowItWorks />
       <Stats />
       <Testimonial />
@@ -90,9 +100,9 @@ function Nav() {
             ["For counsel", "Fast, defensible research for court filings", "#use-cases"],
           ]} />
           <NavDrop label="Resources" items={[
-            ["Documentation", "Guides and integration references", "#"],
+            ["Documentation", "Getting started & tool guides", "/docs"],
             ["Releases", "Latest desktop-app releases", "/releases"],
-            ["Blog", "Coming soon", "#"],
+            ["Contact", "Talk to sales or support", "/contact"],
           ]} />
           <NavLink to="#pricing">Pricing</NavLink>
           <NavLink to="/releases">Releases</NavLink>
@@ -243,12 +253,12 @@ function Hero() {
           >
             Start free trial
           </Link>
-          <a
-            href="#features"
+          <Link
+            to="/contact"
             className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-white text-slate-800 text-[15px] font-semibold ring-1 ring-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
           >
             Request a demo
-          </a>
+          </Link>
         </div>
         <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-slate-600">
           <li className="flex items-center gap-1.5"><CheckCircle2 className="size-4 text-emerald-500" /> No credit card required</li>
@@ -504,6 +514,39 @@ function AppealPreview() {
   );
 }
 
+// ============================================================== Use cases
+function UseCases() {
+  const cases = [
+    { who: "For CIT(A) & NFAC benches", d: "Turn a filed appeal into a fully-cited draft order in minutes, not days. Each of the six modules is grounded in statute and case law, editable per issue, and exported to a signable order.", points: ["6-module drafting pipeline", "Grounded on statutes + case law", "Signable .docx export"] },
+    { who: "For chartered accountants & firms", d: "Cited research memos for every client engagement, and fast answers on the Act, Rules and circulars — defensible, traceable, and ready to attach to your file.", points: ["Cited answers on primary law", "Document Q&A over client files", "Fast, footnoted memos"] },
+    { who: "For legal counsel", d: "Fast, defensible research for filings and hearings — pull the exact section or the judgment behind a point, including live ITAT case law, with the source one click away.", points: ["SC / HC / ITAT case-law search", "Exact-section citations", "Refuses when unsupported"] },
+  ];
+  return (
+    <section id="use-cases" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
+      <div className="text-center max-w-2xl mx-auto">
+        <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Use cases</div>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Built for everyone on the file.</h2>
+        <p className="mt-3 text-slate-600">One platform, tuned to how each role actually works.</p>
+      </div>
+      <div className="mt-10 grid lg:grid-cols-3 gap-4">
+        {cases.map((c) => (
+          <div key={c.who} className="rounded-2xl bg-white ring-1 ring-slate-200 p-6 flex flex-col">
+            <div className="text-[16px] font-semibold text-slate-900">{c.who}</div>
+            <p className="text-[13.5px] text-slate-600 mt-2 leading-relaxed">{c.d}</p>
+            <ul className="mt-4 space-y-2 flex-1">
+              {c.points.map((p) => (
+                <li key={p} className="flex items-start gap-2 text-[13.5px] text-slate-700">
+                  <CheckCircle2 className="size-4 text-emerald-500 mt-0.5 shrink-0" /> {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ============================================================== How it works
 function HowItWorks() {
   const steps = [
@@ -679,9 +722,9 @@ function CTA() {
             <Link to="/register" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white font-semibold text-[15px] shadow-sm hover:bg-primary/90">
               Start free trial <ArrowRight className="size-4" />
             </Link>
-            <a href="mailto:sales@wenvia.global" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-white/10 ring-1 ring-white/20 text-white font-semibold text-[15px] hover:bg-white/20">
+            <Link to="/contact" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-white/10 ring-1 ring-white/20 text-white font-semibold text-[15px] hover:bg-white/20">
               Talk to sales
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -703,16 +746,17 @@ function Footer() {
         </div>
         <FooterCol title="Product">
           <FooterLink to="#features">Features</FooterLink>
-          <FooterLink to="/releases">Releases</FooterLink>
           <FooterLink to="#pricing">Pricing</FooterLink>
+          <FooterLink to="/releases">Releases</FooterLink>
+          <FooterLink to="/docs">Documentation</FooterLink>
         </FooterCol>
         <FooterCol title="Company">
-          <FooterLink href="mailto:sales@wenvia.global">Contact sales</FooterLink>
-          <FooterLink href="mailto:support@wenvia.global">Contact support</FooterLink>
+          <FooterLink to="/contact">Contact us</FooterLink>
+          <FooterLink to="#use-cases">Use cases</FooterLink>
         </FooterCol>
         <FooterCol title="Legal">
-          <FooterLink to="#">Terms</FooterLink>
-          <FooterLink to="#">Privacy</FooterLink>
+          <FooterLink to="/terms">Terms of Service</FooterLink>
+          <FooterLink to="/privacy">Privacy Policy</FooterLink>
         </FooterCol>
       </div>
       <div className="border-t border-slate-200 py-4 text-center text-[12px] text-slate-500 flex items-center justify-center gap-3">

@@ -772,6 +772,8 @@ export const api = {
     req<{ suggestions: string[] }>("/ask/followups", { method: "POST", body: JSON.stringify({ question, answer, domain }) }),
   translate: (text: string, lang: string) =>
     req<{ translated: string }>("/ask/translate", { method: "POST", body: JSON.stringify({ text, lang }) }).then((r) => r.translated),
+  contact: (b: { name: string; email: string; organisation?: string; topic?: string; message: string }) =>
+    req<{ ok: boolean; message: string }>("/contact", { method: "POST", body: JSON.stringify(b) }),
   // Server-owned chat conversations (per-user isolated).
   chatList: (archived = false) =>
     req<ServerChat[]>(`/chats${archived ? "?archived=true" : ""}`),

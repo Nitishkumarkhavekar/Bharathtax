@@ -9,6 +9,7 @@ from app.models.support import SupportAttachment, SupportMessage, SupportTicket
 from app.models.desktop_session import DesktopSession
 from app.models.password_reset import PasswordResetToken
 from app.models.drafting import DraftDocument
+from app.models.contact import ContactMessage
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
 from app.models.documents import Document, DocumentChunk
 from app.models.enums import (
@@ -34,4 +35,5 @@ __all__ = [
     "DesktopSession",
     "PasswordResetToken",
     "DraftDocument",
+    "ContactMessage",
 ]
