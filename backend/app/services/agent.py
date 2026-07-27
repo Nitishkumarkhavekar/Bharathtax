@@ -77,13 +77,16 @@ _SYSTEM = (
     "TOOL POLICY (follow exactly, for consistent answers): "
     "(a) greetings and identity/capability questions — use NO tools; "
     "(b) every other question — ALWAYS call search_tax_law FIRST; "
-    "(c) if it involves case law, a named case/company/order, a circular or "
-    "notification, 'latest/recent/current', or anything not in the static Act/Rules "
-    "— ALSO call web_search; "
-    "(d) never answer a substantive tax question, and never decline one, without "
+    "(c) if it involves case law, a named case, a specific taxpayer's or company's "
+    "litigation, a tribunal/court ruling, or a legal position needing precedent — "
+    "ALSO call search_case_law (real SC/HC/ITAT judgments from Indian Kanoon); "
+    "(d) for current circulars, notifications, press, or 'latest/recent/current' "
+    "items not in the static Act/Rules — ALSO call web_search; "
+    "(e) never answer a substantive tax question, and never decline one, without "
     "first searching. Answer ONLY from tool results; never rely on unverified "
-    "recollection. Tools: search_tax_law (the Income-tax Act & Rules), web_search "
-    "(current circulars/notifications/case law and anything not in the static Act), "
+    "recollection. Tools: search_tax_law (the Income-tax Act & Rules), "
+    "search_case_law (actual SC/HC/ITAT judgments), web_search (current "
+    "circulars/notifications/press and anything not in the static Act), "
     "recall_chat_memory (what THIS conversation already established), "
     "search_my_documents (the user's uploaded files). If, after searching, the tools "
     "return nothing on point, say plainly what you could and could not find and what "
@@ -96,8 +99,11 @@ _TOOLS = [{"functionDeclarations": [
     {"name": "search_tax_law",
      "description": "Search the Income-tax Act (1961/2025) and Rules. Use for statutory provisions, definitions, procedures, section text.",
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    {"name": "search_case_law",
+     "description": "Search Indian Kanoon for ACTUAL judgments — Supreme Court, High Courts and ITAT (income-tax tribunal). Use for any named case, a specific taxpayer's or company's litigation, a tribunal/court ruling, or a legal position that needs precedent. Returns judgments with court, date, a text excerpt and a citable indiankanoon.org link.",
+     "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "web_search",
-     "description": "Search the live web (official gov/CBDT sources preferred) for current circulars, notifications, press releases, case law, or anything not in the static Act/Rules.",
+     "description": "Search the live web (official gov/CBDT sources preferred) for current circulars, notifications, press releases, or anything not in the static Act/Rules. For case law prefer search_case_law.",
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "recall_chat_memory",
      "description": "Recall relevant earlier points from THIS conversation (facts/figures the user already stated).",
@@ -141,6 +147,13 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
                                   "text": (p.get("text") or "")[:800]} for p in ps[:6]]}
         except Exception as e:  # noqa: BLE001
             return {"passages": [], "error": str(e)[:100]}
+    if name == "search_case_law":
+        from app.services import indiankanoon as _ik
+        cases = _ik.search(q, max_results=5)
+        return {"cases": [{"title": c["title"], "court": c["court"], "date": c["date"],
+                           "url": c["url"], "excerpt": c["excerpt"]} for c in cases],
+                "sources": [{"title": (c["court"] or "Indian Kanoon"), "url": c["url"]}
+                            for c in cases]}
     if name == "web_search":
         txt, srcs = _gs.web_answer(q)
         return {"answer": (txt or "")[:3000],
@@ -216,7 +229,7 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                 name = fc.get("name")
                 res = _exec_tool(name, fc.get("args") or {}, db=db, user_id=user_id, chat_id=chat_id)
                 tools_used.append(name)
-                if name == "web_search" and res.get("sources"):
+                if name in ("web_search", "search_case_law") and res.get("sources"):
                     all_sources += res["sources"]
                 if name == "search_tax_law" and res.get("passages"):
                     # Identity only — the passage text would bloat meta and the
