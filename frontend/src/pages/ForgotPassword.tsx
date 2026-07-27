@@ -45,7 +45,7 @@ export default function ForgotPassword() {
         {msg && <div className="text-[13px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">{msg}</div>}
         <button
           type="submit" disabled={busy || !email.trim()}
-          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg shadow-primary/25 disabled:opacity-60"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg disabled:opacity-60"
         >
           {busy ? <><Loader2 className="size-4 animate-spin" /> Sending…</> : <>Send reset link <ArrowRight className="size-4" /></>}
         </button>

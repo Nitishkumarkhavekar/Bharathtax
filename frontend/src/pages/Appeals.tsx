@@ -321,7 +321,7 @@ export default function Appeals() {
 
 function HeroHeader() {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-primary p-5 sm:p-6 text-white shadow-lg shadow-primary/20">
+    <div className="relative overflow-hidden rounded-2xl bg-primary p-5 sm:p-6 text-white shadow-lg">
       {/* Decorative accents */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.10]"
@@ -342,7 +342,7 @@ function HeroHeader() {
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-2 py-0.5 text-[11px] font-semibold tracking-wide backdrop-blur">
               <Sparkles className="size-3" /> CIT(A) · NFAC appeal drafting
             </div>
-            <h2 className="mt-1.5 text-2xl sm:text-[26px] font-semibold tracking-tight leading-tight">
+            <h2 className="mt-1.5 font-serif text-2xl sm:text-[26px] font-semibold tracking-tight leading-tight">
               Appeal cases
             </h2>
             <p className="text-white/85 text-[13.5px] mt-0.5 max-w-xl">

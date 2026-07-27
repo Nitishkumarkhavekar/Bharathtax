@@ -137,7 +137,7 @@ function CurrentPlanCard({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-primary text-white p-5 sm:p-6 shadow-lg shadow-primary/20">
+    <div className="relative overflow-hidden rounded-2xl bg-primary text-white p-5 sm:p-6 shadow-lg">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.10]"
         style={{

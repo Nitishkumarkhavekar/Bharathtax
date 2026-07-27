@@ -180,7 +180,7 @@ export default function Rulings() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
+        <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
           <BookOpen className="size-5 text-primary" /> Case Law
         </h2>
         <p className="text-sm text-muted-foreground">

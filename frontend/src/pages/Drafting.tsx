@@ -129,7 +129,7 @@ function DraftsSidebar({
         </div>
         <button
           onClick={onNew}
-          className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-primary text-white font-semibold text-[13.5px] shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-primary text-white font-semibold text-[13.5px] shadow-md hover:bg-primary/90 transition-colors"
         >
           <Plus className="size-4" /> New draft
         </button>
@@ -232,14 +232,14 @@ function TemplatePicker({ templates, onPick }: {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 sm:p-8 shadow-xl shadow-primary/25">
+      <div className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 sm:p-8 shadow-xl">
         <div className="absolute -top-16 -right-8 size-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-20 -left-8 size-56 rounded-full bg-indigo-300/20 blur-3xl pointer-events-none" />
         <div className="relative">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 backdrop-blur text-[11px] font-semibold uppercase tracking-wider">
             <Sparkles className="size-3" /> Grounded in primary law
           </span>
-          <h1 className="mt-3 text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight">
+          <h1 className="mt-3 font-serif text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight">
             Draft a notice or order in minutes
           </h1>
           <p className="mt-2 max-w-xl text-white/85 text-[14px] leading-relaxed">
@@ -410,7 +410,7 @@ function DraftForm({
         </div>
         <button
           onClick={onGenerate} disabled={busy || missing}
-          className="inline-flex items-center gap-1.5 h-11 px-5 rounded-lg bg-primary text-white font-semibold text-[14px] hover:bg-primary/90 shadow-lg shadow-primary/25 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 h-11 px-5 rounded-lg bg-primary text-white font-semibold text-[14px] hover:bg-primary/90 shadow-lg disabled:opacity-60"
         >
           {busy ? (<><Loader2 className="size-4 animate-spin" /> Drafting…</>) : (<><Sparkles className="size-4" /> Generate draft</>)}
         </button>

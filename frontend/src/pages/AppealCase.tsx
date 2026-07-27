@@ -1654,7 +1654,7 @@ function PipelineStepper({ steps, running }: { steps: StepDef[]; running?: boole
     <Card
       className={cn(
         "relative overflow-hidden transition-shadow",
-        running && "ring-1 ring-emerald-400/40 shadow-lg shadow-emerald-500/10",
+        running && "ring-1 ring-emerald-400/40 shadow-lg",
       )}
     >
       <CardContent className="relative pt-5 pb-5">
@@ -1691,9 +1691,9 @@ function PipelineStepper({ steps, running }: { steps: StepDef[]; running?: boole
                   className={cn(
                     "relative size-9 rounded-full ring-1 flex items-center justify-center text-[12px] font-bold shrink-0 transition-all duration-300",
                     isDone
-                      ? "bg-emerald-500 text-white ring-emerald-500 shadow-md shadow-emerald-500/30"
+                      ? "bg-emerald-500 text-white ring-emerald-500 shadow-md"
                       : isCurrent
-                        ? "bg-primary text-white ring-primary shadow-md shadow-primary/30 scale-110"
+                        ? "bg-primary text-white ring-primary shadow-md scale-110"
                         : "bg-white text-slate-400 ring-slate-200",
                   )}
                 >

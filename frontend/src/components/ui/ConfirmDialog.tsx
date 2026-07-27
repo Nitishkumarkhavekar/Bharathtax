@@ -101,7 +101,7 @@ const TONE: Record<
     iconWash: "bg-rose-100 text-rose-600",
     haloGradient: "bg-rose-500/25",
     button:
-      "text-white bg-rose-600 hover:brightness-110 shadow-lg shadow-rose-500/30",
+      "text-white bg-rose-600 hover:brightness-110 shadow-lg",
     verb: "Delete",
   },
   warning: {
@@ -110,7 +110,7 @@ const TONE: Record<
     iconWash: "bg-amber-100 text-amber-700",
     haloGradient: "bg-amber-500/25",
     button:
-      "text-white bg-amber-600 hover:brightness-110 shadow-lg shadow-amber-500/30",
+      "text-white bg-amber-600 hover:brightness-110 shadow-lg",
     verb: "Continue",
   },
   primary: {
@@ -119,7 +119,7 @@ const TONE: Record<
     iconWash: "bg-accent text-primary",
     haloGradient: "bg-primary/25",
     button:
-      "text-white bg-primary hover:brightness-110 shadow-lg shadow-primary/25",
+      "text-white bg-primary hover:brightness-110 shadow-lg",
     verb: "Confirm",
   },
 };

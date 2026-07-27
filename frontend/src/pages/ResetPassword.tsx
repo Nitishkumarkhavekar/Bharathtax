@@ -41,7 +41,7 @@ export default function ResetPassword() {
             Signed in as <span className="font-mono text-slate-900 truncate">{done.email}</span>
           </div>
           <Link to="/login"
-            className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14px] hover:bg-primary/90 shadow-lg shadow-primary/25"
+            className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14px] hover:bg-primary/90 shadow-lg"
           >
             Continue to web sign-in <ArrowRight className="size-4" />
           </Link>
@@ -89,7 +89,7 @@ export default function ResetPassword() {
         </Field>
         {err && <div className="text-[13px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{err}</div>}
         <button type="submit" disabled={busy || !canSubmit}
-          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg shadow-primary/25 disabled:opacity-60"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg disabled:opacity-60"
         >
           {busy ? <><Loader2 className="size-4 animate-spin" /> Resetting…</> : <>Set new password <ArrowRight className="size-4" /></>}
         </button>

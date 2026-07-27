@@ -116,7 +116,7 @@ export default function ReleasesLanding() {
 
 function LatestReleaseCard({ release }: { release: PublicRelease }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 sm:p-8 shadow-xl shadow-primary/20">
+    <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 sm:p-8 shadow-xl">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.10]"
         style={{

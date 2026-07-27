@@ -116,7 +116,7 @@ export default function Register() {
         )}
 
         <button type="submit" disabled={busy}
-          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg shadow-primary/25 transition-colors disabled:opacity-60"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14.5px] hover:bg-primary/90 shadow-lg transition-colors disabled:opacity-60"
         >
           {busy ? <><Loader2 className="size-4 animate-spin" /> Creating account…</> : <>Create account <ArrowRight className="size-4" /></>}
         </button>
@@ -177,7 +177,7 @@ function RegistrationSuccess({ email, message }: { email: string; message: strin
         </p>
         <button
           onClick={() => nav("/login", { replace: true })}
-          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14px] hover:bg-primary/90 shadow-lg shadow-primary/25"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-lg bg-primary text-white font-semibold text-[14px] hover:bg-primary/90 shadow-lg"
         >
           Sign in now <ArrowRight className="size-4" />
         </button>

@@ -112,7 +112,7 @@ export default function History() {
       {dialog}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
             <Clock className="size-5 text-primary" />
             Activity History
           </h2>

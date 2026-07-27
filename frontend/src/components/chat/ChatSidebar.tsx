@@ -155,7 +155,7 @@ export default function ChatSidebar({
             onClick={onNew}
             title="New chat"
             aria-label="New chat"
-            className="size-9 rounded-lg text-white flex items-center justify-center bg-primary shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors"
+            className="size-9 rounded-lg text-white flex items-center justify-center bg-primary shadow-sm hover:bg-primary/90 transition-colors"
           >
             <Plus className="size-4" />
           </button>
