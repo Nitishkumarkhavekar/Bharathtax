@@ -352,3 +352,53 @@ def ask_followups(body: _FollowupsRequest,
         return {"suggestions": sugg}
     except Exception:  # noqa: BLE001
         return {"suggestions": []}
+
+
+class _TranslateRequest(BaseModel):
+    text: str
+    lang: str  # target language name, e.g. "Hindi", "Tamil". "English" = no-op.
+
+
+@router.post("/translate")
+def ask_translate(body: _TranslateRequest,
+                  p: Principal = Depends(get_principal)) -> dict:
+    """On-demand translation of an answer into an Indian language. Section
+    numbers, amounts, dates, case names and citations are preserved verbatim so
+    the legal content stays exact. Fail-open: returns the original on any error."""
+    import os as _os
+
+    text = (body.text or "").strip()
+    lang = (body.lang or "").strip()
+    if not text or not lang or lang.lower() in ("english", "en"):
+        return {"translated": text}
+    key = (_os.getenv("GEMINI_API_KEY") or "").strip()
+    if not key:
+        return {"translated": text}
+    model = _os.getenv("GEMINI_TRANSLATE_MODEL", "gemini-2.5-flash")
+    sys_p = (
+        f"You are a precise legal translator. Translate the user's Indian income-tax "
+        f"answer into {lang}. Rules: keep the meaning exact and natural; DO NOT "
+        f"translate or alter section numbers, rule numbers, amounts, dates, "
+        f"assessment years, PAN, case names, party names or citations — leave those "
+        f"verbatim; preserve the markdown formatting and any [n] citation markers. "
+        f"Output ONLY the translation, no preamble."
+    )
+    try:
+        r = httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            json={"systemInstruction": {"parts": [{"text": sys_p}]},
+                  "contents": [{"role": "user", "parts": [{"text": text}]}],
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2000,
+                                       "thinkingConfig": {"thinkingBudget": 0}}},
+            timeout=40.0,
+        )
+        if r.status_code != 200:
+            log.warning("translate HTTP %s", r.status_code)
+            return {"translated": text}
+        out = "".join(pt.get("text", "") for pt in
+                      ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+        return {"translated": out.strip() or text}
+    except Exception:  # noqa: BLE001
+        log.exception("translate failed")
+        return {"translated": text}

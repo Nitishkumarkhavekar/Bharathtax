@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, Copy, Globe, RotateCcw, Scale, Square, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, Copy, Globe, Languages, Loader2, RotateCcw, Scale, Square, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -47,7 +47,7 @@ export default function ChatMessages({
           live={idx === liveIdx}
           liveStatus={liveStatus ?? null}
           speaking={speech.speakingId === `m${idx}`}
-          onToggleSpeak={() => speech.toggle(`m${idx}`, m.content)}
+          onToggleSpeak={(text: string) => speech.toggle(`m${idx}`, text)}
           onRegenerate={!busy && onRegenerate ? () => onRegenerate(idx) : undefined}
         />
       ))}
@@ -129,9 +129,13 @@ function Message({
   live?: boolean;
   liveStatus?: string | null;
   speaking?: boolean;
-  onToggleSpeak?: () => void;
+  onToggleSpeak?: (text: string) => void;
   onRegenerate?: () => void;
 }) {
+  // On-demand translation of THIS answer (null = original English).
+  const [xlate, setXlate] = useState<{ lang: string; text: string } | null>(null);
+  const [xbusy, setXbusy] = useState(false);
+
   if (msg.role === "user") {
     return (
       <div className="flex justify-end animate-fade-up">
@@ -144,6 +148,23 @@ function Message({
 
   // Extras (citations, source chips, feedback) only once the turn has settled.
   const settled = !live;
+  const shownText = xlate?.text ?? msg.content;
+
+  async function translateTo(lang: string) {
+    if (!lang || lang === "English") {
+      setXlate(null);
+      return;
+    }
+    setXbusy(true);
+    try {
+      const text = await api.translate(msg.content, lang);
+      setXlate({ lang, text });
+    } catch {
+      /* keep original */
+    } finally {
+      setXbusy(false);
+    }
+  }
 
   return (
     <div className="flex gap-3 animate-fade-up">
@@ -175,7 +196,13 @@ function Message({
           )
         ) : (
           <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-            <Markdown text={msg.content} />
+            <Markdown text={shownText} />
+            {xlate && (
+              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 text-[11.5px] text-slate-400">
+                <Languages className="size-3.5" /> Translated to {xlate.lang}
+                <button onClick={() => setXlate(null)} className="text-primary hover:underline">Show original</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -260,11 +287,12 @@ function Message({
         {settled && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
             <MessageActions
-              text={msg.content}
+              text={shownText}
               speaking={speaking}
-              onToggleSpeak={onToggleSpeak}
+              onToggleSpeak={onToggleSpeak ? () => onToggleSpeak(shownText) : undefined}
               onRegenerate={onRegenerate}
             />
+            <LanguageMenu current={xlate?.lang ?? "English"} busy={xbusy} onPick={translateTo} />
             {msg.grounded !== false && (
               <>
                 <span className="hidden sm:block w-px h-4 bg-slate-200 mx-0.5" />
@@ -318,6 +346,66 @@ function MessageActions({
         <button onClick={onRegenerate} className={btn} title="Regenerate" aria-label="Regenerate answer">
           <RotateCcw className="size-4" />
         </button>
+      )}
+    </div>
+  );
+}
+
+// The 22 scheduled languages of India + English. On-demand translation of the
+// displayed answer (Gemini); read-aloud then reads whatever is shown.
+const LANGUAGES = [
+  "English", "Hindi", "Bengali", "Marathi", "Telugu", "Tamil", "Gujarati",
+  "Urdu", "Kannada", "Odia", "Malayalam", "Punjabi", "Assamese", "Maithili",
+  "Santali", "Kashmiri", "Nepali", "Konkani", "Sindhi", "Dogri", "Manipuri",
+  "Bodo", "Sanskrit",
+];
+
+function LanguageMenu({ current, busy, onPick }: {
+  current: string;
+  busy?: boolean;
+  onPick: (lang: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  const translated = current !== "English";
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={busy}
+        title="Translate this answer"
+        className={cn(
+          "inline-flex items-center gap-1 h-8 px-2 rounded-lg text-[12px] transition-colors disabled:opacity-60",
+          translated ? "text-primary bg-primary/10" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100",
+        )}
+      >
+        {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Languages className="size-3.5" />}
+        <span className="hidden sm:inline">{translated ? current : "Translate"}</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 bottom-9 z-20 w-40 max-h-64 overflow-y-auto chat-scrollbar rounded-lg bg-white ring-1 ring-slate-200 shadow-lg py-1 animate-fade-up">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l}
+              onClick={() => { setOpen(false); onPick(l); }}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-left hover:bg-slate-100",
+                l === current ? "text-primary font-medium" : "text-slate-700",
+              )}
+            >
+              {l}
+              {l === current && <Check className="size-3.5" />}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
