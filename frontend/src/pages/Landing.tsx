@@ -25,9 +25,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-// Marketing landing page in the "Stotles" style — clean navy nav on top of
-// a soft periwinkle→cream gradient, big two-line hero with a colored accent
-// word, twin CTAs, a browser-chromed product preview, then feature blocks.
+// Marketing landing page — calm, near-white ground, a serif display hero with
+// one accent word, twin CTAs, a browser-chromed product preview, then feature
+// blocks. Flat surfaces + hairline borders; the type and spacing carry it.
 
 export default function Landing() {
   return (
@@ -227,9 +227,9 @@ function Hero() {
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[12.5px] font-semibold ring-1 ring-primary/20">
           <Sparkles className="size-3.5" /> AI-Powered Tax Research & Drafting
         </span>
-        <h1 className="mt-6 text-[36px] sm:text-[56px] lg:text-[76px] leading-[1.02] font-semibold tracking-tight text-slate-900">
-          More Appellate Orders<br />
-          <span className="text-primary">With AI</span>
+        <h1 className="mt-6 font-serif text-[38px] sm:text-[58px] lg:text-[72px] leading-[1.05] font-semibold tracking-[-0.02em] text-slate-900">
+          More appellate orders,<br />
+          <span className="text-primary">with AI.</span>
         </h1>
         <p className="mt-6 text-[16px] sm:text-[18px] text-slate-600 max-w-2xl mx-auto leading-relaxed">
           Draft cited appellate orders, research the Income-tax Act, and generate
@@ -239,7 +239,7 @@ function Hero() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             to="/register"
-            className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white text-[15px] font-semibold shadow-lg shadow-primary/25 hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white text-[15px] font-semibold shadow-sm hover:bg-primary/90 transition-colors"
           >
             Start free trial
           </Link>
@@ -265,7 +265,7 @@ function Hero() {
 function HeroPreview() {
   return (
     <div className="relative mx-auto max-w-6xl px-4 sm:px-6 mt-10 pb-16 sm:pb-24">
-      <div className="rounded-2xl sm:rounded-3xl overflow-hidden ring-1 ring-slate-200 shadow-2xl shadow-slate-400/20 bg-white">
+      <div className="rounded-2xl sm:rounded-3xl overflow-hidden ring-1 ring-slate-200 shadow-lg bg-white">
         {/* Fake browser chrome */}
         <div className="h-9 bg-slate-100 border-b border-slate-200 flex items-center px-3 gap-2">
           <div className="flex items-center gap-1.5">
@@ -390,7 +390,7 @@ function Features() {
     <section id="features" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Features</div>
-        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Everything your bench needs, in one workspace.</h2>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Everything your bench needs, in one workspace.</h2>
         <p className="mt-3 text-slate-600">Ask, research, draft and audit — without stitching together six vendors.</p>
       </div>
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -445,7 +445,7 @@ function SplitBlock({ eyebrow, title, desc, bullets, preview, reverse }: {
           ))}
         </ul>
       </div>
-      <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 shadow-xl shadow-slate-400/20 bg-white">
+      <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 shadow-md bg-white">
         {preview}
       </div>
     </div>
@@ -516,7 +516,7 @@ function HowItWorks() {
     <section id="how-it-works" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Workflow</div>
-        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Four steps, one draft.</h2>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Four steps, one draft.</h2>
       </div>
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {steps.map((s) => (
@@ -541,7 +541,7 @@ function Stats() {
   ];
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
-      <div className="rounded-3xl bg-primary text-white p-6 sm:p-12 shadow-2xl shadow-primary/25 grid grid-cols-2 sm:grid-cols-4 gap-6">
+      <div className="rounded-3xl bg-primary text-white p-6 sm:p-12 shadow-lg grid grid-cols-2 sm:grid-cols-4 gap-6">
         {items.map(([v, l]) => (
           <div key={l}>
             <div className="text-[28px] sm:text-[42px] font-semibold leading-none tabular-nums">{v}</div>
@@ -557,7 +557,7 @@ function Stats() {
 function Testimonial() {
   return (
     <section className="mx-auto max-w-4xl px-4 sm:px-6 py-14">
-      <div className="rounded-3xl bg-white ring-1 ring-slate-200 p-8 sm:p-12 shadow-xl shadow-slate-400/10 relative">
+      <div className="rounded-3xl bg-white ring-1 ring-slate-200 p-8 sm:p-12 shadow-md relative">
         <Quote className="absolute top-6 right-6 size-12 text-primary/10" />
         <p className="text-[19px] sm:text-[22px] leading-snug text-slate-800 font-medium">
           "We used to spend three days drafting an order. With BharathTax the first
@@ -587,7 +587,7 @@ function Pricing() {
     <section id="pricing" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
-        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Pick the plan that fits.</h2>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Pick the plan that fits.</h2>
         <p className="mt-3 text-slate-600">Free trial with no card. Wing and Enterprise plans scale to your bench.</p>
       </div>
       <div className="mt-10 grid md:grid-cols-3 gap-4">
@@ -595,7 +595,7 @@ function Pricing() {
           <div key={p.name} className={
             "rounded-2xl p-6 flex flex-col " +
             (p.featured
-              ? "bg-slate-900 text-white ring-1 ring-slate-900 shadow-2xl shadow-slate-900/20"
+              ? "bg-slate-900 text-white ring-1 ring-slate-900 shadow-lg"
               : "bg-white text-slate-900 ring-1 ring-slate-200")
           }>
             <div className={"text-[13px] uppercase tracking-wider font-semibold " + (p.featured ? "text-primary" : "text-primary")}>{p.name}</div>
@@ -641,7 +641,7 @@ function FAQ() {
     <section id="faq" className="mx-auto max-w-3xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">FAQ</div>
-        <h2 className="mt-2 text-[26px] sm:text-[40px] font-semibold tracking-tight">Answers before you ask.</h2>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Answers before you ask.</h2>
       </div>
       <div className="mt-10 space-y-3">
         {items.map(([q, a]) => <FaqItem key={q} q={q} a={a} />)}
@@ -666,9 +666,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 function CTA() {
   return (
     <section className="mx-auto max-w-5xl px-4 sm:px-6 py-16">
-      <div className="rounded-3xl bg-slate-900 text-white p-10 sm:p-14 text-center relative overflow-hidden">
-        <div className="absolute -top-24 -right-16 size-72 rounded-full bg-primary/40 blur-3xl" />
-        <div className="absolute -bottom-32 -left-16 size-80 rounded-full bg-primary/25 blur-3xl" />
+      <div className="rounded-3xl bg-slate-900 text-white p-10 sm:p-14 text-center relative overflow-hidden ring-1 ring-slate-800">
         <div className="relative">
           <h3 className="text-[24px] sm:text-[36px] font-semibold tracking-tight">
             Ready to draft your next appeal in minutes?
@@ -678,7 +676,7 @@ function CTA() {
             approve the seat and you're in.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link to="/register" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white font-semibold text-[15px] shadow-lg shadow-primary/30 hover:bg-primary/90">
+            <Link to="/register" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white font-semibold text-[15px] shadow-sm hover:bg-primary/90">
               Start free trial <ArrowRight className="size-4" />
             </Link>
             <a href="mailto:sales@wenvia.global" className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-white/10 ring-1 ring-white/20 text-white font-semibold text-[15px] hover:bg-white/20">

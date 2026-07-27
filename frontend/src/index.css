@@ -59,11 +59,8 @@
   /* Marketing gradient — the soft periwinkle-to-cream wash used on the
      landing hero and on the public auth pages. */
   .bt-marketing-bg {
-    background:
-      radial-gradient(1000px 700px at 12% 6%, rgba(140, 165, 255, 0.28), transparent 55%),
-      radial-gradient(900px 600px at 88% 14%, rgba(255, 214, 176, 0.35), transparent 55%),
-      radial-gradient(700px 500px at 50% 90%, rgba(191, 205, 255, 0.20), transparent 55%),
-      linear-gradient(180deg, #f7f8ff 0%, #fff7ee 100%);
+    /* Flat, near-white — sections and type carry the page, not a colour wash. */
+    background: #FBFCFD;
   }
   /* Subtle dotted grid overlay for hero backdrops. */
   .bt-dot-grid {
