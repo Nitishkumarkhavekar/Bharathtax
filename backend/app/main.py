@@ -49,6 +49,8 @@ def _patch_user_columns() -> None:
         # them here, idempotently, the same way as the columns above.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS charge VARCHAR(200)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) NOT NULL DEFAULT 'en'",
+        # Pin a chat to the top of the sidebar. Same idempotent boot-patch route.
+        "ALTER TABLE chats ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT FALSE",
         # Persist the OnlyOffice-edited .docx so re-opening the editor doesn't
         # lose the user's formatting (re-rendering from markdown would strip
         # in-editor tables, font changes, etc.).

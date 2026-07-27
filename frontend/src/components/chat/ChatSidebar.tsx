@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Scale,
@@ -19,6 +19,11 @@ import {
   Coins,
   ChevronDown,
   PanelLeft,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+  Pencil,
+  Archive,
 } from "lucide-react";
 import { ChatThread, groupByRecency } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
@@ -56,6 +61,9 @@ interface ChatSidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onRename?: (id: string, title: string) => void;
+  onTogglePin?: (id: string) => void;
+  onArchive?: (id: string) => void;
   onClose?: () => void; // mobile
   /** Desktop collapse — when true, renders as a thin icon rail. */
   collapsed?: boolean;
@@ -69,6 +77,9 @@ export default function ChatSidebar({
   onSelect,
   onNew,
   onDelete,
+  onRename,
+  onTogglePin,
+  onArchive,
   onClose,
   collapsed = false,
   onToggleCollapsed,
@@ -108,7 +119,11 @@ export default function ChatSidebar({
     );
   }, [threads, query]);
 
-  const groups = useMemo(() => groupByRecency(filtered), [filtered]);
+  const pinned = useMemo(() => filtered.filter((t) => t.pinned), [filtered]);
+  const groups = useMemo(
+    () => groupByRecency(filtered.filter((t) => !t.pinned)),
+    [filtered],
+  );
   const isAdmin =
     !!session && ["super_admin", "wing_admin"].includes(session.role);
   const firstLetter = (session?.username || "?").slice(0, 1).toUpperCase();
@@ -248,7 +263,7 @@ export default function ChatSidebar({
 
       {/* Threads */}
       <div className="relative flex-1 overflow-y-auto chat-scrollbar px-2 py-3">
-        {groups.length === 0 ? (
+        {pinned.length === 0 && groups.length === 0 ? (
           <div className="px-3 py-8 text-center">
             <div className="mx-auto size-10 rounded-full bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center mb-2">
               <MessageSquareText className="size-4 text-slate-400" />
@@ -260,24 +275,50 @@ export default function ChatSidebar({
             </div>
           </div>
         ) : (
-          groups.map((g) => (
-            <div key={g.label} className="mb-3">
-              <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                {g.label}
+          <>
+            {pinned.length > 0 && (
+              <div className="mb-3">
+                <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400 flex items-center gap-1">
+                  <Pin className="size-3" /> Pinned
+                </div>
+                <ul className="space-y-1">
+                  {pinned.map((t) => (
+                    <ThreadItem
+                      key={t.id}
+                      thread={t}
+                      active={t.id === activeThreadId}
+                      onSelect={() => onSelect(t.id)}
+                      onDelete={() => onDelete(t.id)}
+                      onRename={onRename}
+                      onTogglePin={onTogglePin}
+                      onArchive={onArchive}
+                    />
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-1">
-                {g.threads.map((t) => (
-                  <ThreadItem
-                    key={t.id}
-                    thread={t}
-                    active={t.id === activeThreadId}
-                    onSelect={() => onSelect(t.id)}
-                    onDelete={() => onDelete(t.id)}
-                  />
-                ))}
-              </ul>
-            </div>
-          ))
+            )}
+            {groups.map((g) => (
+              <div key={g.label} className="mb-3">
+                <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  {g.label}
+                </div>
+                <ul className="space-y-1">
+                  {g.threads.map((t) => (
+                    <ThreadItem
+                      key={t.id}
+                      thread={t}
+                      active={t.id === activeThreadId}
+                      onSelect={() => onSelect(t.id)}
+                      onDelete={() => onDelete(t.id)}
+                      onRename={onRename}
+                      onTogglePin={onTogglePin}
+                      onArchive={onArchive}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </>
         )}
       </div>
 
@@ -375,14 +416,64 @@ function ThreadItem({
   active,
   onSelect,
   onDelete,
+  onRename,
+  onTogglePin,
+  onArchive,
 }: {
   thread: ChatThread;
   active: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onRename?: (id: string, title: string) => void;
+  onTogglePin?: (id: string) => void;
+  onArchive?: (id: string) => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(thread.title);
+  const rootRef = useRef<HTMLLIElement | null>(null);
+
+  // Close the menu on any outside click / Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
+
+  function commitRename() {
+    const t = draft.trim();
+    setRenaming(false);
+    if (t && t !== thread.title) onRename?.(thread.id, t);
+    else setDraft(thread.title);
+  }
+
+  if (renaming) {
+    return (
+      <li ref={rootRef}>
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitRename();
+            if (e.key === "Escape") {
+              setDraft(thread.title);
+              setRenaming(false);
+            }
+          }}
+          className="w-full rounded-lg px-3 py-2 text-[13.5px] bg-white border border-primary ring-2 ring-primary/20 focus:outline-none"
+        />
+      </li>
+    );
+  }
+
+  const menuItem = "w-full flex items-center gap-2 px-3 py-1.5 text-[13px] text-slate-700 hover:bg-slate-100 text-left";
   return (
-    <li>
+    <li ref={rootRef} className="relative">
       <button
         onClick={onSelect}
         className={cn(
@@ -395,33 +486,85 @@ function ThreadItem({
         {active && (
           <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
         )}
-        <MessageSquareText
-          className={cn(
-            "size-3.5 shrink-0 transition-colors",
-            active ? "text-primary" : "text-slate-400",
-          )}
-        />
+        {thread.pinned ? (
+          <Pin className={cn("size-3.5 shrink-0", active ? "text-primary" : "text-slate-400")} />
+        ) : (
+          <MessageSquareText
+            className={cn("size-3.5 shrink-0 transition-colors", active ? "text-primary" : "text-slate-400")}
+          />
+        )}
         <span className="flex-1 truncate">{thread.title}</span>
         <span
           role="button"
           tabIndex={0}
-          aria-label="Delete chat"
+          aria-label="Chat options"
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm(`Delete "${thread.title}"?`)) onDelete();
+            setMenuOpen((o) => !o);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              if (confirm(`Delete "${thread.title}"?`)) onDelete();
+              setMenuOpen((o) => !o);
             }
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-rose-600"
+          className={cn(
+            "shrink-0 p-1.5 rounded hover:bg-slate-200 text-slate-500 transition-opacity",
+            menuOpen ? "opacity-100 bg-slate-200" : "opacity-0 group-hover:opacity-100",
+          )}
         >
-          <Trash2 className="size-3.5" />
+          <MoreHorizontal className="size-3.5" />
         </span>
       </button>
+
+      {menuOpen && (
+        <div className="absolute right-1 top-9 z-20 w-40 rounded-lg bg-white ring-1 ring-slate-200 shadow-lg py-1 animate-fade-up">
+          <button
+            className={menuItem}
+            onClick={() => {
+              setMenuOpen(false);
+              setDraft(thread.title);
+              setRenaming(true);
+            }}
+          >
+            <Pencil className="size-3.5 text-slate-400" /> Rename
+          </button>
+          {onTogglePin && (
+            <button
+              className={menuItem}
+              onClick={() => {
+                setMenuOpen(false);
+                onTogglePin(thread.id);
+              }}
+            >
+              {thread.pinned ? <PinOff className="size-3.5 text-slate-400" /> : <Pin className="size-3.5 text-slate-400" />}
+              {thread.pinned ? "Unpin" : "Pin"}
+            </button>
+          )}
+          {onArchive && (
+            <button
+              className={menuItem}
+              onClick={() => {
+                setMenuOpen(false);
+                onArchive(thread.id);
+              }}
+            >
+              <Archive className="size-3.5 text-slate-400" /> Archive
+            </button>
+          )}
+          <div className="my-1 h-px bg-slate-100" />
+          <button
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] text-rose-600 hover:bg-rose-50 text-left"
+            onClick={() => {
+              setMenuOpen(false);
+              if (confirm(`Delete "${thread.title}"?`)) onDelete();
+            }}
+          >
+            <Trash2 className="size-3.5" /> Delete
+          </button>
+        </div>
+      )}
     </li>
   );
 }

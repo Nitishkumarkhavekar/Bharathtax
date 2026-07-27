@@ -25,6 +25,7 @@ class Chat(Base):
     wing_id: Mapped[int | None] = mapped_column(ForeignKey("wings.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(200), default="New chat")
     archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

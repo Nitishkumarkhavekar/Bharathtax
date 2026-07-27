@@ -21,6 +21,8 @@ export interface ChatThread {
   id: string;
   serverId?: number; // id of the owning server-side chat row (if persisted)
   title: string;
+  pinned?: boolean;
+  archived?: boolean;
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];

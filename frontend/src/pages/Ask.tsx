@@ -149,6 +149,8 @@ export default function Chat() {
             id: `s_${c.id}`,
             serverId: c.id,
             title: c.title,
+            pinned: c.pinned,
+            archived: c.archived,
             createdAt: Date.parse(c.created_at ?? "") || Date.now(),
             updatedAt: Date.parse(c.updated_at ?? "") || Date.now(),
             messages: [],
@@ -228,6 +230,30 @@ export default function Chat() {
     setThreads((prev) => {
       const next = prev.filter((t) => t.id !== id);
       if (activeId === id) setActiveId(next[0]?.id ?? null);
+      return next;
+    });
+  }
+
+  function renameThread(id: string, title: string) {
+    setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
+    const t = threads.find((x) => x.id === id);
+    if (t?.serverId != null) api.chatPatch(t.serverId, { title }).catch(() => {});
+  }
+
+  function togglePin(id: string) {
+    const t = threads.find((x) => x.id === id);
+    const next = !t?.pinned;
+    setThreads((prev) => prev.map((x) => (x.id === id ? { ...x, pinned: next } : x)));
+    if (t?.serverId != null) api.chatPatch(t.serverId, { pinned: next }).catch(() => {});
+  }
+
+  function archiveThread(id: string) {
+    const t = threads.find((x) => x.id === id);
+    if (t?.serverId != null) api.chatPatch(t.serverId, { archived: true }).catch(() => {});
+    // Archived chats drop out of the active list.
+    setThreads((prev) => {
+      const next = prev.filter((x) => x.id !== id);
+      if (activeId === id) setActiveId(null);
       return next;
     });
   }
@@ -363,6 +389,9 @@ export default function Chat() {
           onSelect={selectThread}
           onNew={startNew}
           onDelete={deleteThread}
+          onRename={renameThread}
+          onTogglePin={togglePin}
+          onArchive={archiveThread}
           collapsed={chatSidebarCollapsed}
           onToggleCollapsed={toggleChatSidebar}
         />
@@ -382,6 +411,9 @@ export default function Chat() {
               onSelect={selectThread}
               onNew={startNew}
               onDelete={deleteThread}
+              onRename={renameThread}
+              onTogglePin={togglePin}
+              onArchive={archiveThread}
               onClose={() => setMobileSidebar(false)}
             />
           </div>

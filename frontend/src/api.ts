@@ -39,6 +39,7 @@ export interface ServerChat {
   id: number;
   title: string;
   archived: boolean;
+  pinned: boolean;
   created_at: string | null;
   updated_at: string | null;
   message_count: number | null;
@@ -769,11 +770,12 @@ export const api = {
   askFollowups: (question: string, answer: string, domain?: string) =>
     req<{ suggestions: string[] }>("/ask/followups", { method: "POST", body: JSON.stringify({ question, answer, domain }) }),
   // Server-owned chat conversations (per-user isolated).
-  chatList: () => req<ServerChat[]>("/chats"),
+  chatList: (archived = false) =>
+    req<ServerChat[]>(`/chats${archived ? "?archived=true" : ""}`),
   chatCreate: (title?: string) =>
     req<ServerChat>("/chats", { method: "POST", body: JSON.stringify({ title }) }),
   chatGet: (id: number) => req<ServerChatFull>(`/chats/${id}`),
-  chatPatch: (id: number, b: { title?: string; archived?: boolean }) =>
+  chatPatch: (id: number, b: { title?: string; archived?: boolean; pinned?: boolean }) =>
     req<ServerChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
   chatDelete: (id: number) => req<void>(`/chats/${id}`, { method: "DELETE" }),
   feedback: (b: { question?: string; answer?: string; rating?: string; correction?: string }) =>

@@ -26,6 +26,7 @@ class ChatCreate(BaseModel):
 class ChatPatch(BaseModel):
     title: str | None = None
     archived: bool | None = None
+    pinned: bool | None = None
 
 
 class MessageIn(BaseModel):
@@ -48,6 +49,7 @@ def _chat_out(c: Chat, *, message_count: int | None = None) -> dict:
         "id": c.id,
         "title": c.title,
         "archived": c.archived,
+        "pinned": bool(getattr(c, "pinned", False)),
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
         "message_count": message_count,
@@ -66,11 +68,14 @@ def _msg_out(m: ChatMessage) -> dict:
 
 
 @router.get("")
-def list_chats(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
+def list_chats(archived: bool = False, p: Principal = Depends(get_principal),
+               db: Session = Depends(get_db)) -> list[dict]:
+    """List the caller's chats. `?archived=true` returns the archive instead of
+    the active list. Active list is pinned-first, then most-recent."""
     rows = db.scalars(
         select(Chat)
-        .where(Chat.user_id == p.user.id, Chat.archived.is_(False))
-        .order_by(Chat.updated_at.desc())
+        .where(Chat.user_id == p.user.id, Chat.archived.is_(bool(archived)))
+        .order_by(Chat.pinned.desc(), Chat.updated_at.desc())
     ).all()
     counts = dict(
         db.execute(
@@ -115,6 +120,8 @@ def patch_chat(cid: int, body: ChatPatch, p: Principal = Depends(get_principal),
         c.title = (body.title.strip()[:200]) or c.title
     if body.archived is not None:
         c.archived = bool(body.archived)
+    if body.pinned is not None:
+        c.pinned = bool(body.pinned)
     db.commit()
     db.refresh(c)
     return _chat_out(c)
