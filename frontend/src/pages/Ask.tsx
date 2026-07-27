@@ -126,9 +126,6 @@ export default function Chat() {
       return nxt;
     });
   };
-  // Index of the most recently arrived assistant message that should animate
-  // in word-by-word. Cleared when the typewriter reaches the end.
-  const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
   // Live token-streaming: index of the assistant message being filled in real
   // time, and the current tool status shown before the first token arrives.
   const [liveIdx, setLiveIdx] = useState<number | null>(null);
@@ -435,8 +432,6 @@ export default function Chat() {
             style={style}
             onStyleChange={setStyle}
             error={error}
-            streamingIdx={streamingIdx}
-            onStreamingDone={() => setStreamingIdx(null)}
             liveIdx={liveIdx}
             liveStatus={liveStatus}
             followups={followups}
@@ -674,8 +669,6 @@ function ActiveChat(props: {
   style: string;
   onStyleChange: (v: string) => void;
   error: string | null;
-  streamingIdx: number | null;
-  onStreamingDone: () => void;
   liveIdx: number | null;
   liveStatus: string | null;
   followups: string[];
@@ -687,8 +680,6 @@ function ActiveChat(props: {
         <ChatMessages
           messages={props.messages}
           busy={props.busy}
-          streamingIdx={props.streamingIdx}
-          onStreamingDone={props.onStreamingDone}
           liveIdx={props.liveIdx}
           liveStatus={props.liveStatus}
           followups={props.followups}

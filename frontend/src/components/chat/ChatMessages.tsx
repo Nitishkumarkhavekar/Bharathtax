@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Globe, Scale, ThumbsDown, ThumbsUp, User2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
-import { Markdown, normalizeMarkdown } from "@/lib/markdown";
+import { Markdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
 import { api } from "@/api";
 import { useAuth } from "@/auth";
@@ -9,10 +9,6 @@ import { useAuth } from "@/auth";
 interface ChatMessagesProps {
   messages: ChatMessage[];
   busy: boolean;
-  // Index of the latest assistant message that should animate in word-by-word.
-  // Set when a brand-new reply arrives; clear after the animation completes.
-  streamingIdx: number | null;
-  onStreamingDone?: () => void;
   // Index of the assistant message being filled by a LIVE token stream, and the
   // current tool status shown before its first token arrives.
   liveIdx?: number | null;
@@ -25,8 +21,6 @@ interface ChatMessagesProps {
 export default function ChatMessages({
   messages,
   busy,
-  streamingIdx,
-  onStreamingDone,
   liveIdx,
   liveStatus,
   followups,
@@ -44,8 +38,6 @@ export default function ChatMessages({
           key={idx}
           msg={m}
           question={idx > 0 && messages[idx - 1].role === "user" ? messages[idx - 1].content : undefined}
-          streaming={idx === streamingIdx}
-          onStreamingDone={onStreamingDone}
           live={idx === liveIdx}
           liveStatus={liveStatus ?? null}
         />
@@ -117,15 +109,11 @@ function ThinkingBubble() {
 function Message({
   msg,
   question,
-  streaming,
-  onStreamingDone,
   live,
   liveStatus,
 }: {
   msg: ChatMessage;
   question?: string;
-  streaming: boolean;
-  onStreamingDone?: () => void;
   live?: boolean;
   liveStatus?: string | null;
 }) {
@@ -140,11 +128,11 @@ function Message({
   }
 
   // Extras (citations, source chips, feedback) only once the turn has settled.
-  const settled = !streaming && !live;
+  const settled = !live;
 
   return (
     <div className="flex gap-3 animate-fade-up">
-      <AssistantAvatar pulse={streaming || !!live} />
+      <AssistantAvatar pulse={!!live} />
       <div className="min-w-0 flex-1 space-y-3">
         {msg.grounded === false ? (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 flex gap-3 text-amber-900">
@@ -170,10 +158,6 @@ function Message({
               </div>
             </div>
           )
-        ) : streaming ? (
-          <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-            <StreamingMarkdown text={msg.content} onDone={onStreamingDone} />
-          </div>
         ) : (
           <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
             <Markdown text={msg.content} />
@@ -337,54 +321,6 @@ function FeedbackRow({ question, answer }: { question?: string; answer: string }
         <StarRating value={stars} onRate={rate} size={15} disabled={stars > 0} />
         {stars > 0 ? <span className="text-[11px] text-amber-500">{stars}/5</span> : null}
       </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------- StreamingMarkdown
-// Reveals the assistant's answer word-by-word with a blinking caret. Once the
-// full text is shown, calls onDone so the parent can clear `streamingIdx`.
-function StreamingMarkdown({
-  text,
-  onDone,
-  speedMs = 28,
-  chunkSize = 1,
-}: {
-  text: string;
-  onDone?: () => void;
-  speedMs?: number;
-  chunkSize?: number;
-}) {
-  // Normalize ONCE upfront, then stream the structured text. This way the
-  // bullets / labelled lines appear in the correct layout as words arrive,
-  // instead of reshuffling on every tick.
-  const normalized = useMemo(() => normalizeMarkdown(text), [text]);
-  const tokens = useMemo(() => normalized.split(/(\s+)/), [normalized]);
-  const [count, setCount] = useState(0);
-  const totalTokens = tokens.length;
-
-  useEffect(() => {
-    setCount(0);
-  }, [normalized]);
-
-  useEffect(() => {
-    if (count >= totalTokens) {
-      onDone?.();
-      return;
-    }
-    const t = setTimeout(
-      () => setCount((c) => Math.min(totalTokens, c + chunkSize)),
-      speedMs,
-    );
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count, totalTokens]);
-
-  const shown = tokens.slice(0, count).join("");
-
-  return (
-    <div className="relative">
-      <Markdown text={shown} preNormalized />
     </div>
   );
 }
