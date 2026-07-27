@@ -11,6 +11,9 @@ import {
   Landmark,
   ArrowUpRight,
   ScrollText,
+  Share2,
+  Copy,
+  Download,
 } from "lucide-react";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth";
@@ -130,6 +133,8 @@ export default function Chat() {
   // time, and the current tool status shown before the first token arrives.
   const [liveIdx, setLiveIdx] = useState<number | null>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  // Aborts the in-flight stream when the user hits Stop.
+  const abortRef = useRef<AbortController | null>(null);
 
   // Persist a local cache on every change (fallback only).
   useEffect(() => {
@@ -258,6 +263,114 @@ export default function Chat() {
     });
   }
 
+  // Stream an answer into the assistant message at `asstIdx` of thread `tid`.
+  // Shared by send() (a new turn) and regenerate() (re-run in place). When
+  // `persist` is false (regenerate) the turn is not written server-side, so a
+  // reload shows the original — avoids duplicate answers in the server log.
+  async function streamInto(
+    tid: string,
+    asstIdx: number,
+    question: string,
+    serverId: number | null,
+    persist: boolean,
+  ) {
+    const patchAsst = (patch: Partial<ChatMessage>) =>
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === tid
+            ? {
+                ...t,
+                messages: t.messages.map((m, i) => (i === asstIdx ? { ...m, ...patch } : m)),
+                updatedAt: Date.now(),
+              }
+            : t,
+        ),
+      );
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setBusy(true);
+    setLiveIdx(asstIdx);
+    setLiveStatus("Thinking");
+    const acc = { text: "" };
+    try {
+      await api.askStream(
+        question,
+        { domain: module || undefined, style, chatId: persist ? serverId ?? undefined : undefined },
+        {
+          onStatus: (s) => setLiveStatus(s),
+          onDelta: (d) => {
+            acc.text += d;
+            setLiveStatus(null);
+            patchAsst({ content: acc.text });
+          },
+          onReset: () => {
+            acc.text = "";
+            patchAsst({ content: "" });
+          },
+          onError: (msg) => setError(msg),
+          onDone: ({ grounded, citations, meta }) =>
+            patchAsst({ content: acc.text, grounded, citations, meta }),
+        },
+        controller.signal,
+      );
+      api
+        .askFollowups(question, acc.text, module || undefined)
+        .then((f) => setFollowups(f.suggestions || []))
+        .catch(() => {});
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
+        // User hit Stop — keep the partial answer as-is.
+        if (!acc.text) patchAsst({ content: "_(stopped)_" });
+      } else {
+        // Streaming failed before completing — fall back to the plain endpoint.
+        try {
+          const res = await api.ask(question, module || undefined, style, persist ? serverId ?? undefined : undefined);
+          patchAsst({ content: res.answer, grounded: res.grounded, citations: res.citations, meta: res.meta });
+          api
+            .askFollowups(question, res.answer, module || undefined)
+            .then((f) => setFollowups(f.suggestions || []))
+            .catch(() => {});
+        } catch (e) {
+          setError(e instanceof ApiError ? e.message : "Request failed");
+        }
+      }
+    } finally {
+      abortRef.current = null;
+      setBusy(false);
+      setLiveIdx(null);
+      setLiveStatus(null);
+    }
+  }
+
+  function stopGenerating() {
+    abortRef.current?.abort();
+  }
+
+  // Re-run the question that produced the assistant message at `idx`, streaming
+  // the fresh answer into that same bubble.
+  function regenerate(idx: number) {
+    if (busy || !active) return;
+    const userMsg = active.messages[idx - 1];
+    if (!userMsg || userMsg.role !== "user") return;
+    const tid = active.id;
+    setError(null);
+    setFollowups([]);
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === tid
+          ? {
+              ...t,
+              messages: t.messages.map((m, i) =>
+                i === idx ? { ...m, content: "", citations: undefined, meta: undefined, grounded: undefined } : m,
+              ),
+            }
+          : t,
+      ),
+    );
+    void streamInto(tid, idx, userMsg.content, active.serverId ?? null, false);
+  }
+
   async function send(override?: string) {
     const text = (typeof override === "string" ? override : input).trim();
     if (!text || busy) return;
@@ -273,11 +386,8 @@ export default function Chat() {
       setThreads((prev) => [thread!, ...prev]);
       setActiveId(thread.id);
     } else if (thread.messages.length === 0) {
-      // Refine title from the very first message.
       const title = deriveTitle(text);
-      setThreads((prev) =>
-        prev.map((t) => (t.id === thread!.id ? { ...t, title } : t)),
-      );
+      setThreads((prev) => prev.map((t) => (t.id === thread!.id ? { ...t, title } : t)));
     }
 
     // 2. Optimistically add the user message + an empty assistant message that
@@ -294,25 +404,8 @@ export default function Chat() {
       ),
     );
     setInput("");
-    setBusy(true);
-    setLiveIdx(asstIdx);
-    setLiveStatus("Thinking");
 
-    const patchAsst = (patch: Partial<ChatMessage>) =>
-      setThreads((prev) =>
-        prev.map((t) =>
-          t.id === tid
-            ? {
-                ...t,
-                messages: t.messages.map((m, i) => (i === asstIdx ? { ...m, ...patch } : m)),
-                updatedAt: Date.now(),
-              }
-            : t,
-        ),
-      );
-
-    // 2b. Ensure a server-owned chat exists so this turn is persisted
-    // server-side, isolated to this user. Best-effort — chat still works locally.
+    // 3. Ensure a server-owned chat exists so this turn is persisted, then stream.
     let serverId = thread.serverId ?? null;
     if (serverId == null) {
       try {
@@ -323,57 +416,7 @@ export default function Chat() {
         /* server persistence is best-effort */
       }
     }
-
-    // 3. Stream the answer (same agent + citations as /ask, just live).
-    const acc = { text: "" };
-    try {
-      await api.askStream(
-        text,
-        { domain: module || undefined, style, chatId: serverId ?? undefined },
-        {
-          onStatus: (s) => setLiveStatus(s),
-          onDelta: (d) => {
-            acc.text += d;
-            setLiveStatus(null);
-            patchAsst({ content: acc.text });
-          },
-          onReset: () => {
-            acc.text = "";
-            patchAsst({ content: "" });
-          },
-          onError: (msg) => setError(msg),
-          onDone: ({ grounded, citations, meta }) =>
-            patchAsst({ content: acc.text, grounded, citations, meta }),
-        },
-      );
-      api
-        .askFollowups(text, acc.text, module || undefined)
-        .then((f) => setFollowups(f.suggestions || []))
-        .catch(() => {});
-    } catch (err) {
-      // Streaming failed before completing — fall back to the plain endpoint so
-      // the user still gets an answer.
-      try {
-        const res = await api.ask(text, module || undefined, style, serverId ?? undefined);
-        patchAsst({
-          content: res.answer,
-          grounded: res.grounded,
-          citations: res.citations,
-          meta: res.meta,
-        });
-        api
-          .askFollowups(text, res.answer, module || undefined)
-          .then((f) => setFollowups(f.suggestions || []))
-          .catch(() => {});
-      } catch (e) {
-        const detail = e instanceof ApiError ? e.message : "Request failed";
-        setError(detail);
-      }
-    } finally {
-      setBusy(false);
-      setLiveIdx(null);
-      setLiveStatus(null);
-    }
+    await streamInto(tid, asstIdx, text, serverId, true);
   }
 
   const empty = !active || active.messages.length === 0;
@@ -455,6 +498,7 @@ export default function Chat() {
         ) : (
           <ActiveChat
             messages={active!.messages}
+            title={active!.title}
             input={input}
             onInputChange={setInput}
             onSubmit={send}
@@ -468,6 +512,8 @@ export default function Chat() {
             liveStatus={liveStatus}
             followups={followups}
             onPickFollowup={(q) => { setFollowups([]); send(q); }}
+            onStop={stopGenerating}
+            onRegenerate={regenerate}
           />
         )}
       </div>
@@ -690,8 +736,74 @@ function FeatureStrip() {
   );
 }
 
+// Build a clean Markdown transcript of a conversation for copy / download.
+function conversationMarkdown(title: string, messages: ChatMessage[]): string {
+  const out: string[] = [`# ${title || "BharathTax conversation"}`, ""];
+  for (const m of messages) {
+    if (!m.content?.trim()) continue;
+    out.push(m.role === "user" ? "**You:**" : "**BharathTax:**", "", m.content.trim(), "");
+  }
+  return out.join("\n");
+}
+
+// Share = export (safe for officer data): copy the transcript or download it as
+// a Markdown file the officer can send through their own channels. No links.
+function ShareMenu({ title, messages }: { title: string; messages: ChatMessage[] }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  function copyAll() {
+    navigator.clipboard?.writeText(conversationMarkdown(title, messages)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+    setOpen(false);
+  }
+  function download() {
+    const blob = new Blob([conversationMarkdown(title, messages)], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(title || "conversation").replace(/[^\w.-]+/g, "_").slice(0, 60)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setOpen(false);
+  }
+  const item = "w-full flex items-center gap-2 px-3 py-1.5 text-[13px] text-slate-700 hover:bg-slate-100 text-left";
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+      >
+        <Share2 className="size-3.5" /> {copied ? "Copied" : "Share"}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 w-52 rounded-lg bg-white ring-1 ring-slate-200 shadow-lg py-1 animate-fade-up">
+          <button className={item} onClick={copyAll}>
+            <Copy className="size-3.5 text-slate-400" /> Copy conversation
+          </button>
+          <button className={item} onClick={download}>
+            <Download className="size-3.5 text-slate-400" /> Download (.md)
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ActiveChat(props: {
   messages: ChatMessage[];
+  title: string;
   input: string;
   onInputChange: (v: string) => void;
   onSubmit: () => void;
@@ -705,9 +817,15 @@ function ActiveChat(props: {
   liveStatus: string | null;
   followups: string[];
   onPickFollowup: (q: string) => void;
+  onStop: () => void;
+  onRegenerate: (idx: number) => void;
 }) {
   return (
     <>
+      <div className="hidden sm:flex shrink-0 items-center justify-between h-12 px-5 border-b border-slate-200/70 bg-white/50 backdrop-blur">
+        <div className="text-[13.5px] font-semibold text-slate-800 truncate">{props.title}</div>
+        <ShareMenu title={props.title} messages={props.messages} />
+      </div>
       <div className="flex-1 min-h-0 overflow-y-auto chat-scrollbar">
         <ChatMessages
           messages={props.messages}
@@ -716,6 +834,7 @@ function ActiveChat(props: {
           liveStatus={props.liveStatus}
           followups={props.followups}
           onPickFollowup={props.onPickFollowup}
+          onRegenerate={props.onRegenerate}
         />
       </div>
       <div className={cn("shrink-0 border-t border-slate-200 bg-white/60 backdrop-blur")}>
@@ -734,6 +853,7 @@ function ActiveChat(props: {
             onModuleChange={props.onModuleChange}
             style={props.style}
             onStyleChange={props.onStyleChange}
+            onStop={props.onStop}
             compact
           />
           <div className="text-center text-[10.5px] text-slate-400">

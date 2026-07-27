@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef } from "react";
-import { ArrowUp, Loader2, Sparkles } from "lucide-react";
+import { ArrowUp, Loader2, Sparkles, Square } from "lucide-react";
 import { ImprovePrompt } from "@/components/ImprovePrompt";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ interface ChatComposerProps {
   onModuleChange: (v: string) => void;
   style: string;
   onStyleChange: (v: string) => void;
+  onStop?: () => void; // abort the in-flight generation
   compact?: boolean; // bottom-docked mode
 }
 
@@ -35,6 +36,7 @@ export default function ChatComposer({
   onModuleChange,
   style,
   onStyleChange,
+  onStop,
   compact,
 }: ChatComposerProps) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -120,20 +122,32 @@ export default function ChatComposer({
               <Sparkles className="size-3" /> citation-grounded
             </span>
           )}
-          <button
-            type="submit"
-            disabled={busy || !value.trim()}
-            className={cn(
-              "inline-flex items-center justify-center rounded-full transition-all",
-              "size-9 bg-primary text-white shadow-sm",
-              "hover:bg-primary/90 active:scale-95",
-              "disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed",
-            )}
-            aria-label="Send"
-            title="Send (Enter)"
-          >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
-          </button>
+          {busy && onStop ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className="inline-flex items-center justify-center rounded-full size-9 bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:scale-95 transition-all"
+              aria-label="Stop generating"
+              title="Stop"
+            >
+              <Square className="size-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={busy || !value.trim()}
+              className={cn(
+                "inline-flex items-center justify-center rounded-full transition-all",
+                "size-9 bg-primary text-white shadow-sm",
+                "hover:bg-primary/90 active:scale-95",
+                "disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed",
+              )}
+              aria-label="Send"
+              title="Send (Enter)"
+            >
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+            </button>
+          )}
         </div>
       </div>
     </form>
