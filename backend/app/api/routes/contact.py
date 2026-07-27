@@ -50,13 +50,49 @@ def submit_contact(body: ContactIn, request: Request, db: Session = Depends(get_
     return {"ok": True, "message": "Thanks — we'll be in touch shortly."}
 
 
-@router.get("")
-def list_contact(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
+def _require_admin(p: Principal) -> None:
     if p.user.role not in ("super_admin", "wing_admin"):
         raise HTTPException(404, "Not found")
+
+
+def _out(m: ContactMessage) -> dict:
+    return {"id": m.id, "name": m.name, "email": m.email, "organisation": m.organisation,
+            "topic": m.topic, "message": m.message, "handled": m.handled,
+            "created_at": m.created_at.isoformat() if m.created_at else None}
+
+
+@router.get("")
+def list_contact(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
+    _require_admin(p)
     rows = db.scalars(
-        select(ContactMessage).order_by(desc(ContactMessage.created_at)).limit(200)
+        select(ContactMessage).order_by(ContactMessage.handled.asc(), desc(ContactMessage.created_at)).limit(300)
     )
-    return [{"id": m.id, "name": m.name, "email": m.email, "organisation": m.organisation,
-             "topic": m.topic, "message": m.message, "handled": m.handled,
-             "created_at": m.created_at.isoformat() if m.created_at else None} for m in rows]
+    return [_out(m) for m in rows]
+
+
+class ContactPatch(BaseModel):
+    handled: bool | None = None
+
+
+@router.patch("/{cid}")
+def patch_contact(cid: int, body: ContactPatch, p: Principal = Depends(get_principal),
+                  db: Session = Depends(get_db)) -> dict:
+    _require_admin(p)
+    m = db.get(ContactMessage, cid)
+    if not m:
+        raise HTTPException(404, "Not found")
+    if body.handled is not None:
+        m.handled = bool(body.handled)
+    db.commit()
+    db.refresh(m)
+    return _out(m)
+
+
+@router.delete("/{cid}", status_code=204)
+def delete_contact(cid: int, p: Principal = Depends(get_principal),
+                   db: Session = Depends(get_db)) -> None:
+    _require_admin(p)
+    m = db.get(ContactMessage, cid)
+    if m:
+        db.delete(m)
+        db.commit()

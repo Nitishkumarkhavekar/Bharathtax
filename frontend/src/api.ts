@@ -45,6 +45,16 @@ export interface ServerChat {
   updated_at: string | null;
   message_count: number | null;
 }
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  organisation: string | null;
+  topic: string | null;
+  message: string;
+  handled: boolean;
+  created_at: string | null;
+}
 export interface ServerChatMessage {
   id: number;
   role: string;
@@ -774,6 +784,11 @@ export const api = {
     req<{ translated: string }>("/ask/translate", { method: "POST", body: JSON.stringify({ text, lang }) }).then((r) => r.translated),
   contact: (b: { name: string; email: string; organisation?: string; topic?: string; message: string }) =>
     req<{ ok: boolean; message: string }>("/contact", { method: "POST", body: JSON.stringify(b) }),
+  // admin: contact-form enquiries
+  adminContactList: () => req<ContactMessage[]>("/contact"),
+  adminContactSetHandled: (id: number, handled: boolean) =>
+    req<ContactMessage>(`/contact/${id}`, { method: "PATCH", body: JSON.stringify({ handled }) }),
+  adminContactDelete: (id: number) => req<void>(`/contact/${id}`, { method: "DELETE" }),
   // Server-owned chat conversations (per-user isolated).
   chatList: (archived = false) =>
     req<ServerChat[]>(`/chats${archived ? "?archived=true" : ""}`),

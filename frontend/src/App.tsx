@@ -33,6 +33,7 @@ import AdminPricingPage from "./pages/admin/Pricing";
 import AdminBillingPage from "./pages/admin/Billing";
 import AdminReleasesPage from "./pages/admin/Releases";
 import AdminSupportTicketsPage from "./pages/admin/SupportTickets";
+import AdminContactMessagesPage from "./pages/admin/ContactMessages";
 import AdminDesktopLogsPage from "./pages/admin/DesktopLogs";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -128,6 +129,7 @@ export default function App() {
         <Route path="billing" element={<AdminBillingPage />} />
         <Route path="releases" element={<AdminReleasesPage />} />
         <Route path="support" element={<AdminSupportTicketsPage />} />
+        <Route path="contact" element={<AdminContactMessagesPage />} />
         <Route path="desktop-logs" element={<AdminDesktopLogsPage />} />
         <Route
           path="revenue"
