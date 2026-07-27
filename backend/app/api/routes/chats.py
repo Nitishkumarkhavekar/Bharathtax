@@ -7,6 +7,8 @@ RAG memory will build on.
 """
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete as sql_delete, func, select
@@ -50,6 +52,7 @@ def _chat_out(c: Chat, *, message_count: int | None = None) -> dict:
         "title": c.title,
         "archived": c.archived,
         "pinned": bool(getattr(c, "pinned", False)),
+        "share_id": getattr(c, "share_id", None),
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
         "message_count": message_count,
@@ -134,6 +137,46 @@ def delete_chat(cid: int, p: Principal = Depends(get_principal),
     db.execute(sql_delete(ChatMessage).where(ChatMessage.chat_id == cid))
     db.delete(c)
     db.commit()
+
+
+@router.post("/{cid}/share")
+def share_chat(cid: int, p: Principal = Depends(get_principal),
+               db: Session = Depends(get_db)) -> dict:
+    """Owner: create (or return the existing) internal share token for a chat.
+    Any signed-in BharathTax user who has the link can then view it read-only."""
+    c = _owned_chat(db, p.user.id, cid)
+    if not c.share_id:
+        c.share_id = uuid.uuid4().hex
+        db.commit()
+    return {"share_id": c.share_id}
+
+
+@router.delete("/{cid}/share", status_code=204)
+def unshare_chat(cid: int, p: Principal = Depends(get_principal),
+                 db: Session = Depends(get_db)) -> None:
+    """Owner: revoke the share link — the link stops working immediately."""
+    c = _owned_chat(db, p.user.id, cid)
+    c.share_id = None
+    db.commit()
+
+
+@router.get("/shared/{share_id}")
+def get_shared_chat(share_id: str, p: Principal = Depends(get_principal),
+                    db: Session = Depends(get_db)) -> dict:
+    """View a shared chat read-only. Requires a signed-in account (any user),
+    plus knowledge of the opaque share token."""
+    c = db.scalar(select(Chat).where(Chat.share_id == share_id))
+    if not c:
+        raise HTTPException(404, "Shared chat not found")
+    msgs = db.scalars(
+        select(ChatMessage)
+        .where(ChatMessage.chat_id == c.id)
+        .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+    ).all()
+    out = _chat_out(c, message_count=len(msgs))
+    out["messages"] = [_msg_out(m) for m in msgs]
+    out["shared"] = True
+    return out
 
 
 @router.post("/{cid}/messages", status_code=201)

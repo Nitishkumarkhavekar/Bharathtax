@@ -40,6 +40,7 @@ export interface ServerChat {
   title: string;
   archived: boolean;
   pinned: boolean;
+  share_id?: string | null;
   created_at: string | null;
   updated_at: string | null;
   message_count: number | null;
@@ -778,6 +779,10 @@ export const api = {
   chatPatch: (id: number, b: { title?: string; archived?: boolean; pinned?: boolean }) =>
     req<ServerChat>(`/chats/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
   chatDelete: (id: number) => req<void>(`/chats/${id}`, { method: "DELETE" }),
+  chatShare: (id: number) =>
+    req<{ share_id: string }>(`/chats/${id}/share`, { method: "POST" }),
+  chatUnshare: (id: number) => req<void>(`/chats/${id}/share`, { method: "DELETE" }),
+  getSharedChat: (shareId: string) => req<ServerChatFull>(`/chats/shared/${shareId}`),
   feedback: (b: { question?: string; answer?: string; rating?: string; correction?: string }) =>
     req<{ ok: boolean }>("/assist/feedback", { method: "POST", body: JSON.stringify(b) }),
   rate: (b: { target_type: "appeal" | "chat"; target_id?: string | number; stars: number; question?: string; answer?: string; comment?: string }) =>

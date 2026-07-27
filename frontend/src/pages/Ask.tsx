@@ -12,8 +12,7 @@ import {
   ArrowUpRight,
   ScrollText,
   Share2,
-  Copy,
-  Download,
+  Check,
 } from "lucide-react";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth";
@@ -29,6 +28,8 @@ import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatMessages from "@/components/chat/ChatMessages";
 import ChatComposer from "@/components/chat/ChatComposer";
 import LicenseGate from "@/components/chat/LicenseGate";
+import ArchivedDialog from "@/components/chat/ArchivedDialog";
+import { ServerChat } from "../api";
 import { cn } from "@/lib/utils";
 
 type Suggestion = {
@@ -135,6 +136,27 @@ export default function Chat() {
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   // Aborts the in-flight stream when the user hits Stop.
   const abortRef = useRef<AbortController | null>(null);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+
+  // A chat restored from the Archived dialog re-enters the active list.
+  function onUnarchived(c: ServerChat) {
+    setThreads((prev) => {
+      if (prev.some((t) => t.serverId === c.id)) return prev;
+      return [
+        {
+          id: `s_${c.id}`,
+          serverId: c.id,
+          title: c.title,
+          pinned: c.pinned,
+          archived: false,
+          createdAt: Date.parse(c.created_at ?? "") || Date.now(),
+          updatedAt: Date.parse(c.updated_at ?? "") || Date.now(),
+          messages: [],
+        },
+        ...prev,
+      ];
+    });
+  }
 
   // Persist a local cache on every change (fallback only).
   useEffect(() => {
@@ -435,6 +457,7 @@ export default function Chat() {
           onRename={renameThread}
           onTogglePin={togglePin}
           onArchive={archiveThread}
+          onOpenArchived={() => setArchivedOpen(true)}
           collapsed={chatSidebarCollapsed}
           onToggleCollapsed={toggleChatSidebar}
         />
@@ -457,6 +480,7 @@ export default function Chat() {
               onRename={renameThread}
               onTogglePin={togglePin}
               onArchive={archiveThread}
+              onOpenArchived={() => setArchivedOpen(true)}
               onClose={() => setMobileSidebar(false)}
             />
           </div>
@@ -499,6 +523,7 @@ export default function Chat() {
           <ActiveChat
             messages={active!.messages}
             title={active!.title}
+            serverId={active!.serverId ?? null}
             input={input}
             onInputChange={setInput}
             onSubmit={send}
@@ -517,6 +542,11 @@ export default function Chat() {
           />
         )}
       </div>
+      <ArchivedDialog
+        open={archivedOpen}
+        onClose={() => setArchivedOpen(false)}
+        onUnarchived={onUnarchived}
+      />
     </div>
     </LicenseGate>
   );
@@ -736,74 +766,51 @@ function FeatureStrip() {
   );
 }
 
-// Build a clean Markdown transcript of a conversation for copy / download.
-function conversationMarkdown(title: string, messages: ChatMessage[]): string {
-  const out: string[] = [`# ${title || "BharathTax conversation"}`, ""];
-  for (const m of messages) {
-    if (!m.content?.trim()) continue;
-    out.push(m.role === "user" ? "**You:**" : "**BharathTax:**", "", m.content.trim(), "");
+// Share = an internal read-only link. Only signed-in BharathTax users who have
+// the link can open it. One click generates the link and copies it — the
+// per-answer Copy button already covers copying text, so there's no copy here.
+function ShareMenu({ serverId }: { serverId: number | null }) {
+  const [state, setState] = useState<"idle" | "busy" | "copied" | "error">("idle");
+  async function share() {
+    if (serverId == null) {
+      setState("error");
+      setTimeout(() => setState("idle"), 2000);
+      return;
+    }
+    setState("busy");
+    try {
+      const { share_id } = await api.chatShare(serverId);
+      const url = `${window.location.origin}/shared/${share_id}`;
+      await navigator.clipboard?.writeText(url);
+      setState("copied");
+      setTimeout(() => setState("idle"), 2200);
+    } catch {
+      setState("error");
+      setTimeout(() => setState("idle"), 2000);
+    }
   }
-  return out.join("\n");
-}
-
-// Share = export (safe for officer data): copy the transcript or download it as
-// a Markdown file the officer can send through their own channels. No links.
-function ShareMenu({ title, messages }: { title: string; messages: ChatMessage[] }) {
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  function copyAll() {
-    navigator.clipboard?.writeText(conversationMarkdown(title, messages)).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-    setOpen(false);
-  }
-  function download() {
-    const blob = new Blob([conversationMarkdown(title, messages)], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(title || "conversation").replace(/[^\w.-]+/g, "_").slice(0, 60)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setOpen(false);
-  }
-  const item = "w-full flex items-center gap-2 px-3 py-1.5 text-[13px] text-slate-700 hover:bg-slate-100 text-left";
+  const label =
+    state === "busy" ? "Creating…"
+    : state === "copied" ? "Link copied"
+    : state === "error" ? "Start a chat first"
+    : "Share";
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-      >
-        <Share2 className="size-3.5" /> {copied ? "Copied" : "Share"}
-      </button>
-      {open && (
-        <div className="absolute right-0 top-9 z-20 w-52 rounded-lg bg-white ring-1 ring-slate-200 shadow-lg py-1 animate-fade-up">
-          <button className={item} onClick={copyAll}>
-            <Copy className="size-3.5 text-slate-400" /> Copy conversation
-          </button>
-          <button className={item} onClick={download}>
-            <Download className="size-3.5 text-slate-400" /> Download (.md)
-          </button>
-        </div>
-      )}
-    </div>
+    <button
+      onClick={share}
+      disabled={state === "busy"}
+      title="Copy a read-only link (only signed-in users can open it)"
+      className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-60"
+    >
+      {state === "copied" ? <Check className="size-3.5 text-emerald-600" /> : <Share2 className="size-3.5" />}
+      {label}
+    </button>
   );
 }
 
 function ActiveChat(props: {
   messages: ChatMessage[];
   title: string;
+  serverId: number | null;
   input: string;
   onInputChange: (v: string) => void;
   onSubmit: () => void;
@@ -824,7 +831,7 @@ function ActiveChat(props: {
     <>
       <div className="hidden sm:flex shrink-0 items-center justify-between h-12 px-5 border-b border-slate-200/70 bg-white/50 backdrop-blur">
         <div className="text-[13.5px] font-semibold text-slate-800 truncate">{props.title}</div>
-        <ShareMenu title={props.title} messages={props.messages} />
+        <ShareMenu serverId={props.serverId} />
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto chat-scrollbar">
         <ChatMessages

@@ -64,6 +64,7 @@ interface ChatSidebarProps {
   onRename?: (id: string, title: string) => void;
   onTogglePin?: (id: string) => void;
   onArchive?: (id: string) => void;
+  onOpenArchived?: () => void;
   onClose?: () => void; // mobile
   /** Desktop collapse — when true, renders as a thin icon rail. */
   collapsed?: boolean;
@@ -80,6 +81,7 @@ export default function ChatSidebar({
   onRename,
   onTogglePin,
   onArchive,
+  onOpenArchived,
   onClose,
   collapsed = false,
   onToggleCollapsed,
@@ -319,6 +321,14 @@ export default function ChatSidebar({
               </div>
             ))}
           </>
+        )}
+        {onOpenArchived && (
+          <button
+            onClick={onOpenArchived}
+            className="mt-2 w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          >
+            <Archive className="size-3.5" /> Archived
+          </button>
         )}
       </div>
 

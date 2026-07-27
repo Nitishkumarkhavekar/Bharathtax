@@ -26,6 +26,9 @@ class Chat(Base):
     title: Mapped[str] = mapped_column(String(200), default="New chat")
     archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # Opaque token for an internal read-only share link. NULL = not shared.
+    # Any signed-in BharathTax user who has the link can view (read-only).
+    share_id: Mapped[str | None] = mapped_column(String(36), nullable=True, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
