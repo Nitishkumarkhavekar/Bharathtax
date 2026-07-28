@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, Copy, Globe, Languages, Loader2, RotateCcw, Scale, Square, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, Copy, Globe, Languages, Loader2, Pencil, RotateCcw, Scale, Square, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
 import { api } from "@/api";
 import { useAuth } from "@/auth";
+import { toast } from "@/lib/toast";
 import { useSpeech, ttsSupported } from "@/lib/tts";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,10 @@ interface ChatMessagesProps {
   onPickFollowup?: (q: string) => void;
   // Re-run the question that produced the assistant message at `idx`.
   onRegenerate?: (idx: number) => void;
+  // Edit the user prompt at `idx` and re-run from there.
+  onEditPrompt?: (idx: number, content: string) => void;
+  // Answer an AI clarifying question (options / free text) — sent as the next turn.
+  onClarify?: (text: string) => void;
 }
 
 export default function ChatMessages({
@@ -30,6 +35,8 @@ export default function ChatMessages({
   followups,
   onPickFollowup,
   onRegenerate,
+  onEditPrompt,
+  onClarify,
 }: ChatMessagesProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
   const speech = useSpeech();
@@ -48,7 +55,10 @@ export default function ChatMessages({
           liveStatus={liveStatus ?? null}
           speaking={speech.speakingId === `m${idx}`}
           onToggleSpeak={(text: string) => speech.toggle(`m${idx}`, text)}
+          onEdit={onEditPrompt && !busy ? (v: string) => onEditPrompt(idx, v) : undefined}
           onRegenerate={!busy && onRegenerate ? () => onRegenerate(idx) : undefined}
+          onClarify={onClarify}
+          isLast={idx === messages.length - 1}
         />
       ))}
       {/* Fallback "thinking" bubble only when NOT live-streaming (the live path
@@ -115,6 +125,189 @@ function ThinkingBubble() {
 }
 
 // ----------------------------------------------------------------- Message
+// A user's own prompt bubble with copy + inline-edit affordances (ChatGPT-style).
+// Copy puts the prompt on the clipboard; Edit re-opens it in place, and saving
+// re-runs the conversation from that prompt with the new text.
+// When the AI is unsure or the request has multiple valid readings, it asks a
+// clarifying question with options. Picking one sends it as the next turn; the
+// "Other" pill opens a free-text box so the user can answer in their own words.
+function ClarifyPanel({ options, onPick }: { options: string[]; onPick: (v: string) => void }) {
+  const [other, setOther] = useState(false);
+  const [text, setText] = useState("");
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (other && ref.current) ref.current.focus();
+  }, [other]);
+  const submit = () => {
+    const v = text.trim();
+    if (v) onPick(v);
+  };
+  return (
+    <div className="mt-1 space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {options.map((o, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onPick(o)}
+            className="text-left text-[13.5px] px-3.5 py-2 rounded-xl bg-white ring-1 ring-slate-200 hover:ring-primary/50 hover:bg-primary/[0.04] hover:text-primary shadow-sm transition-all"
+          >
+            {o}
+          </button>
+        ))}
+        {!other && (
+          <button
+            type="button"
+            onClick={() => setOther(true)}
+            className="inline-flex items-center gap-1 text-[13.5px] px-3.5 py-2 rounded-xl bg-slate-50 ring-1 ring-dashed ring-slate-300 text-slate-500 hover:ring-primary/50 hover:text-primary transition-all"
+          >
+            <Pencil className="size-3.5" /> Other…
+          </button>
+        )}
+      </div>
+      {other && (
+        <div className="rounded-xl ring-1 ring-primary/30 bg-white p-2 shadow-sm animate-fade-up">
+          <textarea
+            ref={ref}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+              if (e.key === "Escape") { setOther(false); setText(""); }
+            }}
+            rows={1}
+            placeholder="Type your answer…"
+            className="w-full resize-none bg-transparent outline-none text-[14px] px-2 py-1.5"
+          />
+          <div className="flex justify-end gap-2 mt-1">
+            <button
+              type="button"
+              onClick={() => { setOther(false); setText(""); }}
+              className="text-[12.5px] px-3 py-1 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              className="text-[12.5px] px-3 py-1 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMessage({ content, onEdit }: { content: string; onEdit?: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+  const [copied, setCopied] = useState(false);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (editing && taRef.current) {
+      const el = taRef.current;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [editing]);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      toast.success("Prompt copied");
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Couldn't copy");
+    }
+  }
+
+  function save() {
+    const v = draft.trim();
+    setEditing(false);
+    if (v && v !== content) onEdit?.(v);
+    else setDraft(content);
+  }
+
+  if (editing) {
+    return (
+      <div className="flex justify-end animate-fade-up">
+        <div className="w-full max-w-[85%] rounded-2xl bg-primary text-primary-foreground px-3.5 py-3 shadow-sm">
+          <textarea
+            ref={taRef}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
+              if (e.key === "Escape") { setDraft(content); setEditing(false); }
+            }}
+            rows={1}
+            className="w-full resize-none bg-transparent outline-none text-[15px] leading-relaxed placeholder:text-white/60"
+          />
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => { setDraft(content); setEditing(false); }}
+              className="text-[12.5px] px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              className="text-[12.5px] px-3 py-1 rounded-full bg-white text-primary font-medium hover:bg-white/90 transition-colors"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group flex flex-col items-end animate-fade-up">
+      <div className="max-w-[80%] rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 shadow-sm whitespace-pre-wrap text-[15px] leading-relaxed">
+        {content}
+      </div>
+      <div className="mt-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <button
+          type="button"
+          onClick={copy}
+          title="Copy prompt"
+          className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        >
+          {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => { setDraft(content); setEditing(true); }}
+            title="Edit prompt"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Message({
   msg,
   question,
@@ -123,6 +316,9 @@ function Message({
   speaking,
   onToggleSpeak,
   onRegenerate,
+  onEdit,
+  onClarify,
+  isLast,
 }: {
   msg: ChatMessage;
   question?: string;
@@ -131,24 +327,22 @@ function Message({
   speaking?: boolean;
   onToggleSpeak?: (text: string) => void;
   onRegenerate?: () => void;
+  onEdit?: (content: string) => void;
+  onClarify?: (text: string) => void;
+  isLast?: boolean;
 }) {
   // On-demand translation of THIS answer (null = original English).
   const [xlate, setXlate] = useState<{ lang: string; text: string } | null>(null);
   const [xbusy, setXbusy] = useState(false);
 
   if (msg.role === "user") {
-    return (
-      <div className="flex justify-end animate-fade-up">
-        <div className="max-w-[80%] rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 shadow-sm whitespace-pre-wrap text-[15px] leading-relaxed">
-          {msg.content}
-        </div>
-      </div>
-    );
+    return <UserMessage content={msg.content} onEdit={onEdit} />;
   }
 
   // Extras (citations, source chips, feedback) only once the turn has settled.
   const settled = !live;
   const shownText = xlate?.text ?? msg.content;
+  const clarify = (msg.meta as { clarify?: { question?: string; options?: string[] } } | undefined)?.clarify;
 
   async function translateTo(lang: string) {
     if (!lang || lang === "English") {
@@ -205,6 +399,10 @@ function Message({
             )}
           </div>
         )}
+
+        {settled && isLast && onClarify && clarify?.options?.length ? (
+          <ClarifyPanel options={clarify.options} onPick={onClarify} />
+        ) : null}
 
         {msg.citations && msg.citations.length > 0 && settled && (
           <div>
@@ -284,7 +482,7 @@ function Message({
           (msg.meta["memory_added"] as unknown[]).length > 0 && (
             <MemoryCue items={msg.meta["memory_added"] as { id: number; content: string }[]} />
           )}
-        {settled && (
+        {settled && !clarify && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
             <MessageActions
               text={shownText}
