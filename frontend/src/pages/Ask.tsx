@@ -861,6 +861,7 @@ function ActiveChat(props: {
           onPickFollowup={props.onPickFollowup}
           onRegenerate={props.onRegenerate}
           onEditPrompt={props.onEditPrompt}
+          onClarify={props.onClarify}
         />
       </div>
       <div className={cn("shrink-0 border-t border-slate-200 bg-white/60 backdrop-blur")}>
@@ -870,23 +871,8 @@ function ActiveChat(props: {
               {props.error}
             </div>
           )}
-          {props.clarify && props.clarify.options.length > 0 && !props.busy && (
-            <div className="flex flex-col gap-1.5">
-              {props.clarify.options.map((o, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => props.onClarify(o)}
-                  className="group w-full flex items-center gap-2.5 text-left text-[13.5px] px-3.5 py-2.5 rounded-xl bg-white ring-1 ring-slate-200 hover:ring-primary/50 hover:bg-primary/[0.04] hover:text-primary shadow-sm transition-all"
-                >
-                  <span className="shrink-0 inline-flex items-center justify-center size-5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold group-hover:bg-primary/20">
-                    {i + 1}
-                  </span>
-                  <span className="flex-1">{o}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Clarification options render inside the assistant message via
+              ChatMessages' ClarifyPanel — no duplicate strip needed here. */}
           <ChatComposer
             value={props.input}
             onChange={props.onInputChange}
