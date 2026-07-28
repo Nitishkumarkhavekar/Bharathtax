@@ -104,6 +104,7 @@ export default function Chat() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [followups, setFollowups] = useState<string[]>([]);
+  const [clarify, setClarify] = useState<{ question: string; options: string[] } | null>(null);
   const [input, setInput] = useState("");
   const [module, setModule] = useState("");
   const [style, setStyle] = useState("explanatory");
@@ -315,6 +316,7 @@ export default function Chat() {
     setLiveIdx(asstIdx);
     setLiveStatus("Thinking");
     const acc = { text: "" };
+    const clarifyRef = { clarified: false };
     try {
       await api.askStream(
         question,
@@ -331,15 +333,22 @@ export default function Chat() {
             patchAsst({ content: "" });
           },
           onError: (msg) => setError(msg),
-          onDone: ({ grounded, citations, meta }) =>
-            patchAsst({ content: acc.text, grounded, citations, meta }),
+          onDone: ({ grounded, citations, meta }) => {
+            const c = (meta as Record<string, unknown> | undefined)?.["clarify"] as
+              | { question: string; options: string[] }
+              | undefined;
+            clarifyRef.clarified = !!c;
+            setClarify(c ?? null);
+            patchAsst({ content: acc.text, grounded, citations, meta });
+          },
         },
         controller.signal,
       );
-      api
-        .askFollowups(question, acc.text, module || undefined)
-        .then((f) => setFollowups(f.suggestions || []))
-        .catch(() => {});
+      if (!clarifyRef.clarified)
+        api
+          .askFollowups(question, acc.text, module || undefined)
+          .then((f) => setFollowups(f.suggestions || []))
+          .catch(() => {});
     } catch (err) {
       if ((err as Error)?.name === "AbortError") {
         // User hit Stop — keep the partial answer as-is.
@@ -378,6 +387,7 @@ export default function Chat() {
     const tid = active.id;
     setError(null);
     setFollowups([]);
+    setClarify(null);
     setThreads((prev) =>
       prev.map((t) =>
         t.id === tid
@@ -393,11 +403,35 @@ export default function Chat() {
     void streamInto(tid, idx, userMsg.content, active.serverId ?? null, false);
   }
 
+  // Edit the user prompt at `uidx` and regenerate the conversation from there.
+  function editPrompt(uidx: number, content: string) {
+    if (busy || !active) return;
+    const um = active.messages[uidx];
+    if (!um || um.role !== "user") return;
+    const v = content.trim();
+    if (!v) return;
+    const tid = active.id;
+    setError(null);
+    setFollowups([]);
+    setClarify(null);
+    setThreads((prev) =>
+      prev.map((x) => {
+        if (x.id !== tid) return x;
+        const msgs = x.messages.slice(0, uidx);
+        msgs.push({ ...um, content: v });
+        msgs.push({ role: "assistant", content: "", ts: Date.now() });
+        return { ...x, messages: msgs };
+      }),
+    );
+    void streamInto(tid, uidx + 1, v, active.serverId ?? null, false);
+  }
+
   async function send(override?: string) {
     const text = (typeof override === "string" ? override : input).trim();
     if (!text || busy) return;
     setError(null);
     setFollowups([]);
+    setClarify(null);
 
     // 1. Ensure we have an active thread; create if not.
     let thread = active;
@@ -539,6 +573,9 @@ export default function Chat() {
             onPickFollowup={(q) => { setFollowups([]); send(q); }}
             onStop={stopGenerating}
             onRegenerate={regenerate}
+            onEditPrompt={editPrompt}
+            onClarify={(txt) => send(txt)}
+            clarify={clarify}
           />
         )}
       </div>
@@ -804,6 +841,9 @@ function ActiveChat(props: {
   onPickFollowup: (q: string) => void;
   onStop: () => void;
   onRegenerate: (idx: number) => void;
+  onEditPrompt: (idx: number, content: string) => void;
+  onClarify: (text: string) => void;
+  clarify: { question: string; options: string[] } | null;
 }) {
   return (
     <>
@@ -820,6 +860,7 @@ function ActiveChat(props: {
           followups={props.followups}
           onPickFollowup={props.onPickFollowup}
           onRegenerate={props.onRegenerate}
+          onEditPrompt={props.onEditPrompt}
         />
       </div>
       <div className={cn("shrink-0 border-t border-slate-200 bg-white/60 backdrop-blur")}>
@@ -827,6 +868,23 @@ function ActiveChat(props: {
           {props.error && (
             <div className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-2">
               {props.error}
+            </div>
+          )}
+          {props.clarify && props.clarify.options.length > 0 && !props.busy && (
+            <div className="flex flex-col gap-1.5">
+              {props.clarify.options.map((o, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => props.onClarify(o)}
+                  className="group w-full flex items-center gap-2.5 text-left text-[13.5px] px-3.5 py-2.5 rounded-xl bg-white ring-1 ring-slate-200 hover:ring-primary/50 hover:bg-primary/[0.04] hover:text-primary shadow-sm transition-all"
+                >
+                  <span className="shrink-0 inline-flex items-center justify-center size-5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold group-hover:bg-primary/20">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1">{o}</span>
+                </button>
+              ))}
             </div>
           )}
           <ChatComposer

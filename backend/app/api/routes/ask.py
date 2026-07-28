@@ -252,6 +252,15 @@ def ask_stream(body: AskRequest, request: Request,
                     elif ev.get("reset"):
                         full = ""
                         yield _sse({"reset": True})
+                    elif "clarify" in ev:
+                        clr = ev["clarify"]
+                        cq = (clr.get("question") or "").strip()
+                        yield _sse({"reset": True})
+                        yield _sse({"delta": cq})
+                        _persist(cq, True, {"clarify": clr}, [])
+                        yield _sse({"done": True, "grounded": True, "citations": [],
+                                    "meta": {"clarify": clr}})
+                        return
                     elif "done" in ev:
                         meta = ev["done"] or {}
                         full = (meta.get("text") or full).strip()

@@ -27,7 +27,7 @@ log = logging.getLogger("agent")
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
 _MODEL = os.getenv("CHAT_AGENT_MODEL", os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash"))
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_MAX_ITERS = int(os.getenv("CHAT_AGENT_MAX_ITERS", "4"))
+_MAX_ITERS = int(os.getenv("CHAT_AGENT_MAX_ITERS", "6"))
 
 
 def enabled() -> bool:
@@ -74,6 +74,47 @@ _SYSTEM = (
     "is ALWAYS in scope: you must SEARCH before you respond, and you must NOT decline "
     "it as 'unrelated'. Only decline requests with no plausible tax angle at all "
     "(e.g. weather, coding, general trivia), and do so briefly. "
+    "DRAFTING IS A CORE FUNCTION — when the user asks you to draft, prepare or "
+    "write a reply, response, objection, submission, letter, notice, application "
+    "or appeal for an income-tax matter (e.g. a reply to a notice under Section "
+    "148A(b), 142(1), 143(2), 139(9) or 271; a submission before the AO / CIT(A) / "
+    "ITAT), you MUST produce the actual, complete draft. NEVER refuse with 'I "
+    "cannot draft', 'that is beyond my scope', or 'I only provide information, not "
+    "documents' — that is FALSE and not allowed. First ground the legal content "
+    "with the tools (search_tax_law, and search_case_law for supporting judgments), "
+    "then write the full draft in proper format. For facts the user did not give, "
+    "use clear placeholders like [Name], [PAN], [AY], [date of notice] and briefly "
+    "note the assumption — never refuse for lack of facts. "
+    "CLARIFY WHEN AMBIGUOUS (use the ask_user TOOL — never ask in prose) — if the "
+    "request is ambiguous or underspecified so the correct answer depends on "
+    "information you do not have (which assessment year, old vs new regime, "
+    "individual vs company vs firm, which of two sections/entities/cases, a "
+    "missing amount or fact), you MUST call the ask_user tool BEFORE searching or "
+    "answering. CRITICAL: whenever you are about to write 'I need more "
+    "information', 'please tell me', 'please specify', 'could you clarify', 'it "
+    "depends on', or to list what the user should provide — DO NOT write that as "
+    "text; instead call ask_user with a SHORT question and 2-4 concrete, "
+    "mutually-exclusive options. Do NOT add an 'Other' option (the app adds one "
+    "automatically). Use ask_user only for real ambiguity, at most once per turn, "
+    "and never for a question you can already answer. "
+    "This applies to OPEN-ENDED clarifications too: for a broad request like "
+    "'help me with a Section 68 case' or whenever you would ask 'what aspect', "
+    "'what specifically', 'what would you like', 'how can I help', or 'what are "
+    "you interested in' — you MUST call ask_user and supply your best 2-4 concrete "
+    "options (e.g. Draft a reply/submission; Explain when an addition is "
+    "sustainable; Find relevant case law; Assess the evidence needed) — the user "
+    "picks 'Other' if none fit. NEVER ask a clarifying question as plain text "
+    "under any circumstances — if your reply would be a question back to the user, "
+    "it MUST be an ask_user call. "
+    "CRITICAL EXCEPTION — do NOT use ask_user, and do NOT interrogate the user, "
+    "when they have asked you to PRODUCE or LIST content, EVEN IF that content is "
+    "itself made of questions. If the user asks 'what questions should I ask my "
+    "client / the witness / the party', 'what should I ask', 'give me a checklist', "
+    "'what points/grounds should I raise', or to draft/list/outline anything — that "
+    "list IS your deliverable: answer directly with the numbered list of questions "
+    "or points for the USER to use. NEVER pose those questions back to the user one "
+    "by one. Use ask_user ONLY when you genuinely cannot tell what the user wants "
+    "YOU to do; when they have clearly asked for a specific output, produce it. "
     "TOOL POLICY (follow exactly, for consistent answers): "
     "(a) greetings and identity/capability questions — use NO tools; "
     "(b) every other question — ALWAYS call search_tax_law FIRST; "
@@ -88,11 +129,39 @@ _SYSTEM = (
     "search_case_law (actual SC/HC/ITAT judgments), web_search (current "
     "circulars/notifications/press and anything not in the static Act), "
     "recall_chat_memory (what THIS conversation already established), "
-    "search_my_documents (the user's uploaded files). If, after searching, the tools "
-    "return nothing on point, say plainly what you could and could not find and what "
+    "search_my_documents (the user's uploaded files). "
+    "PERSIST — never ask the user to go and search Google or elsewhere, and never "
+    "reply 'provide more details / clarify' for a case, company, ruling or topic you "
+    "can look up yourself. If search_case_law or web_search comes back thin or empty "
+    "for a real case or topic, reformulate with more context (add 'India income tax', "
+    "the party/company name, the section/Act, 'ITAT'/'High Court'/'judgment') and "
+    "search AGAIN — up to 2 more attempts, trying web_search when case_law is empty — "
+    "before concluding. If, after genuinely retrying, the tools return nothing on "
+    "point, say plainly what you could and could not find and what "
     "detail would help — do not invent, and do not fall back to a bare 'I only do "
     "income-tax'. Cite sources. Be precise on sections, amounts, dates and the "
-    "assessment year. Finish with a short conclusion when useful."
+    "assessment year. "
+    "FORMAT — structure every substantive answer in clean Markdown so it scans "
+    "easily: open with a one or two sentence summary, then organise the body under "
+    "'## '/'### ' section headings with short paragraphs and '- ' bullet lists, and "
+    "put key terms in **bold**. Do NOT write a line that is only '**Heading**' — use "
+    "a real '## Heading' or '### Heading'. Keep bold balanced (**like this**); never "
+    "emit a stray '*' or '****'. When you DRAFT a letter, submission, reply, notice or "
+    "application, lay it out like a formal document: put 'To,', the addressee's "
+    "designation, and the address each on their OWN line (end each of those lines with "
+    "two spaces so the line break is kept); then a **bold 'Subject:'** line, the "
+    "salutation, the body in paragraphs, and a closing ('Yours faithfully,', name, "
+    "designation) each on its own line. For a case / judgment question use this structure: a "
+    "one-line summary of what the case decided, then sections — **Case** (full name, "
+    "court, citation and date), **Facts**, **Issue**, **Holding / Ratio**, and "
+    "**Relevance** (how it applies). Answer about the EXACT case the user named; if "
+    "your search surfaces a DIFFERENT case, do not substitute its holding — search "
+    "again for the named case, and if you still cannot find it, say so plainly rather "
+    "than describing another case as if it were the one asked about. "
+    "Always deliver a COMPLETE, self-contained answer — never stop "
+    "mid-sentence or leave a list, case, or point unfinished; if space is tight, "
+    "cover fewer points fully rather than many points half-way. Finish with a short "
+    "conclusion when useful."
 )
 
 _TOOLS = [{"functionDeclarations": [
@@ -111,6 +180,12 @@ _TOOLS = [{"functionDeclarations": [
     {"name": "search_my_documents",
      "description": "Search the user's own uploaded documents for relevant passages.",
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    {"name": "ask_user",
+     "description": "Pause and ask the user ONE short clarifying question when the request is genuinely ambiguous or could mean two or more distinctly different things, and the correct answer materially depends on which they mean. Provide 2-4 concrete, mutually-exclusive options. Do NOT add an 'Other' option (the app adds one). Use ONLY for real ambiguity — never for a question you can already answer, and at most once per turn.",
+     "parameters": {"type": "object", "properties": {
+         "question": {"type": "string"},
+         "options": {"type": "array", "items": {"type": "string"}}},
+      "required": ["question", "options"]}},
 ]}]
 
 
@@ -150,12 +225,26 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
     if name == "search_case_law":
         from app.services import indiankanoon as _ik
         cases = _ik.search(q, max_results=5)
+        if not cases:
+            # Indian Kanoon missed — fall back to a live web search so a named case
+            # still yields a concrete answer instead of "I couldn't find it".
+            txt, srcs = _gs.web_answer(q + " India income tax case judgment ruling")
+            return {"cases": [], "web_answer": (txt or "")[:3000],
+                    "sources": [{"title": s.get("title"), "url": s.get("url")}
+                                for s in (srcs or [])[:6]]}
         return {"cases": [{"title": c["title"], "court": c["court"], "date": c["date"],
                            "url": c["url"], "excerpt": c["excerpt"]} for c in cases],
                 "sources": [{"title": (c["court"] or "Indian Kanoon"), "url": c["url"]}
                             for c in cases]}
     if name == "web_search":
         txt, srcs = _gs.web_answer(q)
+        if not txt or len(txt.strip()) < 80:
+            # Thin / transient-empty — reformulate with India tax + case context
+            # and try once more, so we never give up on a real topic.
+            txt2, srcs2 = _gs.web_answer(
+                (q or "") + " India income tax Act ITAT High Court judgment case law")
+            if txt2 and len(txt2.strip()) > len((txt or "").strip()):
+                txt, srcs = txt2, srcs2
         return {"answer": (txt or "")[:3000],
                 "sources": [{"title": s.get("title"), "url": s.get("url")} for s in (srcs or [])[:6]]}
     if name == "recall_chat_memory":
@@ -164,6 +253,8 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
         return {"memories": _mem.recall(db, user_id=user_id, chat_id=chat_id, query=q, k=5)}
     if name == "search_my_documents":
         return {"chunks": _search_docs(db, user_id=user_id, query=q, k=5)}
+    if name == "ask_user":
+        return {"ok": True}  # intercepted by the caller before we get here
     return {"error": "unknown tool"}
 
 
@@ -202,7 +293,7 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
     # Temperature 0: the same question must route through the same tools and yield
     # the same answer every time — an officer re-asking a case should not get a
     # different verdict. Non-determinism here was the demo's "50-50" behaviour.
-    cfg = {"temperature": 0.0, "maxOutputTokens": 1400, "thinkingConfig": {"thinkingBudget": 0}}
+    cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
     for _ in range(_MAX_ITERS):
         t0 = time.time()
@@ -223,6 +314,16 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                             "latency_ms": int((time.time() - t0) * 1000)})
         fcalls = [p["functionCall"] for p in parts if "functionCall" in p]
         if fcalls:
+            for _fc in fcalls:
+                if _fc.get("name") == "ask_user":
+                    _a = _fc.get("args") or {}
+                    _q = (_a.get("question") or "").strip()
+                    _opts = [str(o).strip() for o in (_a.get("options") or []) if str(o).strip()][:4]
+                    if _q and _opts:
+                        return _q, {"used": "agent", "tools_used": tools_used,
+                                    "web_sources": [], "law_refs": law_refs,
+                                    "llm_calls": usage_calls,
+                                    "clarify": {"question": _q, "options": _opts}}
             contents.append({"role": "model", "parts": [{"functionCall": fc} for fc in fcalls]})
             resp_parts = []
             for fc in fcalls:
@@ -239,7 +340,44 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                 resp_parts.append({"functionResponse": {"name": name, "response": res}})
             contents.append({"role": "user", "parts": resp_parts})
             continue
-        text = "".join(p.get("text", "") for p in parts).strip()
+        full = "".join(p.get("text", "") for p in parts).strip()
+        # If the reply was cut at the token cap, continue it so the user always
+        # gets a complete, explanatory answer — never a mid-sentence stop.
+        finish = cand.get("finishReason")
+        last = full
+        guard = 0
+        while finish == "MAX_TOKENS" and last and guard < 4:
+            guard += 1
+            contents.append({"role": "model", "parts": [{"text": last}]})
+            contents.append({"role": "user", "parts": [{"text":
+                "Continue the previous answer from exactly where it stopped. Do not "
+                "repeat anything already written; just carry on and finish it."}]})
+            t1 = time.time()
+            try:
+                with httpx.Client(timeout=httpx.Timeout(60.0)) as c2:
+                    rc = c2.post(f"{_BASE}/{_MODEL}:generateContent",
+                                 headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                                 json={**base, "contents": contents})
+                if rc.status_code != 200:
+                    break
+                dc = rc.json()
+            except Exception:  # noqa: BLE001
+                break
+            cc = (dc.get("candidates") or [{}])[0]
+            piece = "".join(pp.get("text", "") for pp in
+                            (cc.get("content") or {}).get("parts") or []).strip()
+            umc = dc.get("usageMetadata") or {}
+            usage_calls.append({"model": _MODEL,
+                                "usage": {"prompt_tokens": umc.get("promptTokenCount"),
+                                          "completion_tokens": umc.get("candidatesTokenCount"),
+                                          "total_tokens": umc.get("totalTokenCount")},
+                                "latency_ms": int((time.time() - t1) * 1000)})
+            if not piece:
+                break
+            full += ("" if full.endswith("\n") else " ") + piece
+            last = piece
+            finish = cc.get("finishReason")
+        text = full
         seen, srcs = set(), []
         for s in all_sources:
             u = s.get("url")
@@ -277,7 +415,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     """
     contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
     tools_used, all_sources, usage_calls, law_refs = [], [], [], []
-    cfg = {"temperature": 0.0, "maxOutputTokens": 1400, "thinkingConfig": {"thinkingBudget": 0}}
+    cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
     final_text = ""
     for _ in range(_MAX_ITERS):
@@ -315,6 +453,17 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                                                       "total_tokens": um.get("totalTokenCount")},
                                             "latency_ms": int((time.time() - t0) * 1000)})
         if fcalls:
+            # A clarification request takes priority — pause and ask the user.
+            for _fc in fcalls:
+                if _fc.get("name") == "ask_user":
+                    _a = _fc.get("args") or {}
+                    _q = (_a.get("question") or "").strip()
+                    _opts = [str(o).strip() for o in (_a.get("options") or []) if str(o).strip()][:4]
+                    if _q and _opts:
+                        if turn_text:
+                            yield {"reset": True}
+                        yield {"clarify": {"question": _q, "options": _opts}}
+                        return
             # This turn was tool use, not the answer — tell the client to drop any
             # preamble text it may have shown, then run the tools.
             if turn_text:

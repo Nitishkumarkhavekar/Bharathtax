@@ -144,6 +144,8 @@ interface Block {
   // For p / h / quote: lines is a single line. For ul/ol: list of items.
   lines: string[];
   level?: number; // for h
+  firstNum?: number; // for ol: the number the model wrote on the first item
+  start?: number; // for ol: resolved starting number (continuous across sub-lists)
 }
 
 // Rewrites the model's raw text into something the block parser handles well.
@@ -205,7 +207,9 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
   let buf: string[] = [];
   const flushPara = () => {
     if (buf.length) {
-      blocks.push({ type: "p", lines: [buf.join(" ").trim()] });
+      // Preserve intra-paragraph line breaks (letter address blocks, "To,"
+      // headers, signatures) instead of collapsing them into one line.
+      blocks.push({ type: "p", lines: buf.map((l) => l.trim()) });
       buf = [];
     }
   };
@@ -250,11 +254,13 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
     if (/^\s*\d+[.)]\s+/.test(ln)) {
       flushPara();
       const items: string[] = [];
+      const m0 = /^\s*(\d+)[.)]\s+/.exec(lines[i]);
+      const firstNum = m0 ? parseInt(m0[1], 10) : undefined;
       while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
         items.push(lines[i].replace(/^\s*\d+[.)]\s+/, ""));
         i++;
       }
-      blocks.push({ type: "ol", lines: items });
+      blocks.push({ type: "ol", lines: items, firstNum });
       continue;
     }
     buf.push(ln);
@@ -266,6 +272,24 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
 
 export function Markdown({ text, preNormalized }: { text: string; preNormalized?: boolean }) {
   const blocks = parseBlocks(text, preNormalized);
+  // Number ordered lists continuously even when bullet sub-points split them
+  // into separate <ol> blocks (e.g. "Grounds of Appeal": 1., sub-bullets, 2.,
+  // sub-bullets, 3.). A heading starts a fresh sequence; bullets/paragraphs
+  // in between do not reset it. A list that deliberately starts higher (its
+  // first item is e.g. "5.") is honoured when a new sequence begins.
+  let olRun = 0;
+  for (const b of blocks) {
+    if (b.type === "ol") {
+      b.start = olRun === 0 && b.firstNum && b.firstNum > 0 ? b.firstNum : olRun + 1;
+      olRun = b.start + b.lines.length - 1;
+    } else if (b.type !== "ul") {
+      // A heading, paragraph or quote ends the current numbered sequence; only
+      // bullet sub-points (ul) between items keep it going. This makes a fresh
+      // section like "GROUNDS OF APPEAL" restart at 1 rather than continuing a
+      // count carried over from an earlier list (e.g. the Statement of Facts).
+      olRun = 0;
+    }
+  }
   return (
     <div className="md-body">
       {blocks.map((b, idx) => {
@@ -291,7 +315,7 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
         }
         if (b.type === "ol") {
           return (
-            <ol key={idx}>
+            <ol key={idx} start={b.start ?? 1}>
               {b.lines.map((li, k) => (
                 <li key={k}>{renderInline(li)}</li>
               ))}
@@ -301,7 +325,15 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
         if (b.type === "quote") {
           return <blockquote key={idx}>{renderInline(b.lines[0])}</blockquote>;
         }
-        return <p key={idx}>{renderInline(b.lines[0])}</p>;
+        return (
+          <p key={idx}>
+            {b.lines.flatMap((ln, k) =>
+              k === 0
+                ? renderInline(ln)
+                : [<br key={`br${k}`} />, ...renderInline(ln)],
+            )}
+          </p>
+        );
       })}
     </div>
   );
