@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, Copy, Globe, Languages, Loader2, Pencil, RotateCcw, Scale, Square, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Globe, Languages, Loader2, Pencil, RotateCcw, Scale, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -131,74 +131,172 @@ function ThinkingBubble() {
 // When the AI is unsure or the request has multiple valid readings, it asks a
 // clarifying question with options. Picking one sends it as the next turn; the
 // "Other" pill opens a free-text box so the user can answer in their own words.
-function ClarifyPanel({ options, onPick }: { options: string[]; onPick: (v: string) => void }) {
+// A single clarification "card" — bold question at the top followed by
+// number-badged option pills stacked one per row. Rendered by ClarifyPanel
+// for each entry in the questions array.
+function ClarifyCard({
+  index, total, question, options, onPick,
+}: {
+  index: number; total: number; question: string; options: string[];
+  onPick: (v: string) => void;
+}) {
   const [other, setOther] = useState(false);
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (other && ref.current) ref.current.focus();
-  }, [other]);
-  const submit = () => {
-    const v = text.trim();
-    if (v) onPick(v);
-  };
+  useEffect(() => { if (other && ref.current) ref.current.focus(); }, [other]);
+  const submit = () => { const v = text.trim(); if (v) onPick(v); };
   return (
-    <div className="mt-1 space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 space-y-3">
+      {/* Bold question header — always rendered so the option list reads
+          as a real "pick one to answer" panel, never a bare choice grid. */}
+      <div className="pb-3 border-b border-slate-100 flex items-start gap-2.5">
+        <div className="size-7 shrink-0 rounded-lg bg-primary/10 text-primary grid place-items-center mt-0.5">
+          <Sparkles className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-primary mb-1">
+            {total > 1 ? `Question ${index + 1} of ${total}` : "Clarification needed"}
+          </div>
+          <p className="text-[15px] font-semibold text-slate-900 leading-snug">
+            {question}
+          </p>
+        </div>
+      </div>
+      <div className="space-y-1.5">
         {options.map((o, i) => (
           <button
             key={i}
             type="button"
             onClick={() => onPick(o)}
-            className="text-left text-[13.5px] px-3.5 py-2 rounded-xl bg-white ring-1 ring-slate-200 hover:ring-primary/50 hover:bg-primary/[0.04] hover:text-primary shadow-sm transition-all"
+            className="group w-full text-left flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-white ring-1 ring-slate-200 hover:ring-primary/50 hover:bg-primary/[0.04] transition-all"
           >
-            {o}
+            <span className="shrink-0 size-6 rounded-full bg-slate-100 text-slate-500 group-hover:bg-primary group-hover:text-white grid place-items-center text-[11px] font-semibold tabular-nums transition-colors">
+              {i + 1}
+            </span>
+            <span className="text-[13.5px] text-slate-800 group-hover:text-slate-900 leading-snug">
+              {o}
+            </span>
           </button>
         ))}
-        {!other && (
+        {!other ? (
           <button
             type="button"
             onClick={() => setOther(true)}
-            className="inline-flex items-center gap-1 text-[13.5px] px-3.5 py-2 rounded-xl bg-slate-50 ring-1 ring-dashed ring-slate-300 text-slate-500 hover:ring-primary/50 hover:text-primary transition-all"
+            className="w-full inline-flex items-center justify-center gap-1 text-[12.5px] px-3.5 py-2 rounded-xl bg-slate-50 ring-1 ring-dashed ring-slate-300 text-slate-500 hover:ring-primary/50 hover:text-primary transition-all"
           >
-            <Pencil className="size-3.5" /> Other…
+            <Pencil className="size-3.5" /> Answer in my own words
           </button>
+        ) : (
+          <div className="rounded-xl ring-1 ring-primary/30 bg-white p-2 shadow-sm animate-fade-up">
+            <textarea
+              ref={ref}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+                if (e.key === "Escape") { setOther(false); setText(""); }
+              }}
+              rows={1}
+              placeholder="Type your answer…"
+              className="w-full resize-none bg-transparent outline-none text-[14px] px-2 py-1.5"
+            />
+            <div className="flex justify-end gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => { setOther(false); setText(""); }}
+                className="text-[12.5px] px-3 py-1 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submit}
+                className="text-[12.5px] px-3 py-1 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+              >
+                Send
+              </button>
+            </div>
+          </div>
         )}
       </div>
-      {other && (
-        <div className="rounded-xl ring-1 ring-primary/30 bg-white p-2 shadow-sm animate-fade-up">
-          <textarea
-            ref={ref}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-              if (e.key === "Escape") { setOther(false); setText(""); }
-            }}
-            rows={1}
-            placeholder="Type your answer…"
-            className="w-full resize-none bg-transparent outline-none text-[14px] px-2 py-1.5"
-          />
-          <div className="flex justify-end gap-2 mt-1">
-            <button
-              type="button"
-              onClick={() => { setOther(false); setText(""); }}
-              className="text-[12.5px] px-3 py-1 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={submit}
-              className="text-[12.5px] px-3 py-1 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-            >
-              Send
-            </button>
+    </div>
+  );
+}
+
+// ClarifyPanel — a sliding-window carousel when the AI asks more than one
+// clarifying question in a single turn. One card at a time; prev / next
+// arrows + dot indicators. Falls back to a single card when there's only
+// one question.
+function ClarifyPanel({
+  questions, onPick,
+}: {
+  questions: { question: string; options: string[] }[];
+  onPick: (v: string) => void;
+}) {
+  const [idx, setIdx] = useState(0);
+  const safeIdx = Math.min(Math.max(0, idx), Math.max(0, questions.length - 1));
+  const active = questions[safeIdx];
+  if (!active) return null;
+  const total = questions.length;
+  const prev = () => setIdx((i) => Math.max(0, i - 1));
+  const next = () => setIdx((i) => Math.min(total - 1, i + 1));
+  return (
+    <div className="mt-1 space-y-2">
+      {/* Sliding window with animated transition between question cards. */}
+      <div className="relative overflow-hidden">
+        <div
+          className="flex transition-transform duration-300 ease-out"
+          style={{ width: `${total * 100}%`, transform: `translateX(-${(safeIdx * 100) / total}%)` }}
+        >
+          {questions.map((q, i) => (
+            <div key={i} className="pr-1" style={{ width: `${100 / total}%` }}>
+              <ClarifyCard
+                index={i}
+                total={total}
+                question={q.question}
+                options={q.options}
+                onPick={onPick}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      {total > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <button
+            type="button"
+            onClick={prev}
+            disabled={safeIdx === 0}
+            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md ring-1 ring-slate-200 bg-white text-[12px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="size-3.5" /> Prev
+          </button>
+          <div className="flex items-center gap-1.5">
+            {questions.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setIdx(i)}
+                aria-label={`Go to question ${i + 1}`}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  i === safeIdx ? "w-5 bg-primary" : "w-1.5 bg-slate-300 hover:bg-slate-400",
+                )}
+              />
+            ))}
           </div>
+          <button
+            type="button"
+            onClick={next}
+            disabled={safeIdx === total - 1}
+            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md ring-1 ring-slate-200 bg-white text-[12px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next <ChevronRight className="size-3.5" />
+          </button>
         </div>
       )}
     </div>
@@ -342,7 +440,42 @@ function Message({
   // Extras (citations, source chips, feedback) only once the turn has settled.
   const settled = !live;
   const shownText = xlate?.text ?? msg.content;
-  const clarify = (msg.meta as { clarify?: { question?: string; options?: string[] } } | undefined)?.clarify;
+  // Clarify can arrive in three shapes:
+  //   1. `{ question, options }`                                     — single
+  //   2. `{ questions: [{ question, options }, ...] }`               — multi
+  //   3. `{ question, options }` with `options` embedded per question
+  // We normalise into a plain array of `{question, options}` so the panel
+  // can render a carousel uniformly.
+  type ClarifyShape = {
+    question?: string;
+    options?: string[];
+    questions?: { question: string; options: string[] }[];
+  };
+  const rawClarify = (msg.meta as { clarify?: ClarifyShape } | undefined)?.clarify;
+  // The question can live in one of three places (in order of preference):
+  //   1. `meta.clarify.questions[i].question`
+  //   2. `meta.clarify.question`
+  //   3. `msg.content` — some tools only fill `options` and put the prompt
+  //      in the message body. When we suppress the message bubble we still
+  //      need to show that text as the bold question above the choices.
+  //   4. Ultimate fallback — a generic prompt so we never render an
+  //      unlabelled option list.
+  const fallbackQuestion =
+    (shownText || "").trim() ||
+    "Which of these would you like me to help with?";
+  const clarifyQuestions: { question: string; options: string[] }[] =
+    rawClarify?.questions?.length
+      ? rawClarify.questions.map((q) => ({
+          question: (q.question || "").trim() || fallbackQuestion,
+          options: q.options ?? [],
+        }))
+      : (rawClarify?.options?.length
+          ? [{
+              question: (rawClarify.question || "").trim() || fallbackQuestion,
+              options: rawClarify.options,
+            }]
+          : []);
+  const hasClarify = clarifyQuestions.length > 0;
 
   async function translateTo(lang: string) {
     if (!lang || lang === "English") {
@@ -388,6 +521,28 @@ function Message({
               </div>
             </div>
           )
+        ) : hasClarify && isLast && onClarify ? (
+          // The latest clarify turn: the question(s) render inside the
+          // interactive ClarifyPanel below, so no plain-text bubble here.
+          null
+        ) : hasClarify ? (
+          // A clarify from a PAST turn — no options anymore (the user has
+          // already answered), but we still show the question(s) so the
+          // conversation history reads naturally instead of leaving a
+          // blank space next to the assistant avatar.
+          <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm space-y-2">
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              Clarification asked
+            </div>
+            {clarifyQuestions.map((q, i) => (
+              <p key={i} className="text-[14px] text-slate-800 leading-snug">
+                {clarifyQuestions.length > 1 && (
+                  <span className="text-slate-400 mr-1.5 tabular-nums">{i + 1}.</span>
+                )}
+                {q.question}
+              </p>
+            ))}
+          </div>
         ) : (
           <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
             <Markdown text={shownText} />
@@ -400,8 +555,8 @@ function Message({
           </div>
         )}
 
-        {settled && isLast && onClarify && clarify?.options?.length ? (
-          <ClarifyPanel options={clarify.options} onPick={onClarify} />
+        {settled && isLast && onClarify && hasClarify ? (
+          <ClarifyPanel questions={clarifyQuestions} onPick={onClarify} />
         ) : null}
 
         {msg.citations && msg.citations.length > 0 && settled && (
@@ -482,7 +637,7 @@ function Message({
           (msg.meta["memory_added"] as unknown[]).length > 0 && (
             <MemoryCue items={msg.meta["memory_added"] as { id: number; content: string }[]} />
           )}
-        {settled && !clarify && (
+        {settled && !hasClarify && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
             <MessageActions
               text={shownText}
