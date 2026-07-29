@@ -1,26 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Download, UserPlus, LogIn, FolderPlus, UploadCloud,
+  Download, UserPlus, Globe, PackagePlus, LogIn, FolderPlus,
   PlayCircle, FileCheck2, Sparkles, FileEdit, Info,
   ChevronRight, ArrowLeft, Search, ExternalLink, HelpCircle,
 } from "lucide-react";
 import { MarketingHeader, MarketingFooter } from "@/components/marketing/MarketingShell";
 
-// End-to-end user manual for the BharathTax desktop application.
-// Each chapter has an anchored heading, an intro, ordered steps, and a
-// screenshot (loaded from /manual/*.png — see /opt/bharathtax/frontend/public/manual/).
+// End-to-end user manual for the BharatTax Appeal Order desktop app.
+// The 26 screenshots in /public/manual (named 1.png … 26.png in the order
+// a first-time user encounters them) are used exactly once each:
+//
+//   1        Web releases page — Download installer
+//   2, 3, 4  Web signup — empty form → filled → "You're all set"
+//   5        Web /ask after signin
+//   6, 7     Installer — Choose options → Choose location
+//   8, 9     Desktop app — first launch → Appeal cases dashboard
+//   10–13    New case dialog empty → filled → file picker → 15 files uploaded
+//   14–19    Pipeline complete → Modules 1-5 outputs
+//   20       Module 6 — Draft appellate order
+//   21, 22   Manual edit tab → Draft open in Word
+//   23–26    Modify with AI — popover → prompt → Applying → result
 
 type Step = {
   n?: number;
   title?: string;
   text?: string;
-  img?: string;              // filename in /manual
+  img?: string;              // filename in /manual (e.g. "6.png")
   alt?: string;
-  callout?: {
-    tone: "info" | "warn";
-    text: string;
-  };
+  callout?: { tone: "info" | "warn"; text: string };
 };
 type Chapter = {
   id: string;
@@ -34,37 +42,23 @@ type Chapter = {
 
 const CHAPTERS: Chapter[] = [
   {
-    id: "install",
+    id: "download",
     n: 1,
-    title: "Install the desktop app",
-    subtitle: "Download the Windows installer from the releases page and set it up.",
+    title: "Download the installer",
+    subtitle: "Grab the Windows installer from the public releases page.",
     icon: <Download className="size-4" />,
     intro:
-      "The BharathTax Appeal Order desktop app is a signed Windows installer. It is the fastest way to draft appellate orders because the drafts save straight to your machine and can be edited in Microsoft Word.",
+      "The desktop app is a signed Windows installer. It's the fastest way to draft appellate orders because drafts save straight to your machine and open in Microsoft Word for review.",
     steps: [
       {
         n: 1,
-        title: "Open the releases page",
-        text: "In your browser, go to bharattax.wenvia.global/releases and click Download for the latest Windows version.",
-        img: "for-downloading-desktop-application-release-page.png",
-        alt: "BharathTax releases page with a Download button",
-      },
-      {
-        n: 2,
-        title: "Run the installer",
-        text: "Double-click the .exe you just downloaded. If Windows SmartScreen asks, click More info → Run anyway — the installer is signed and comes only from the releases page.",
-        img: "after-click-on-installer.png",
-        alt: "BharathTax installer wizard running",
-      },
-      {
-        n: 3,
-        title: "Open the app for the first time",
-        text: "When the installer finishes, BharathTax Appeal Order launches automatically. You'll see the sign-in screen.",
-        img: "after-install-opening-app-interface.png",
-        alt: "Desktop app first-launch sign-in screen",
+        title: "Open the releases page in your browser",
+        text: "Visit bharattax.wenvia.global/releases and click Download installer for the latest version. Portable (.exe) is also available if you'd rather not install.",
+        img: "1.png",
+        alt: "BharatTax releases page with Download installer and Portable buttons",
         callout: {
           tone: "info",
-          text: "The app auto-updates in the background. When a new version is downloaded, a small toast appears — click Restart & install when you're ready.",
+          text: "Save the .exe somewhere you'll find easily (Downloads is fine). You'll come back to it in Chapter 4 once your account is ready.",
         },
       },
     ],
@@ -73,145 +67,160 @@ const CHAPTERS: Chapter[] = [
   {
     id: "signup",
     n: 2,
-    title: "Create your account",
-    subtitle: "Sign up on the web first — the same login works on the desktop app.",
+    title: "Sign up on the website",
+    subtitle: "One signup — the same login works on the web app and the desktop app.",
     icon: <UserPlus className="size-4" />,
     intro:
-      "You register once from any browser. Your admin approves the seat and your licence is issued automatically. Use the same email + password to sign in on the desktop app.",
+      "You register once from any browser. Your trial licence is auto-issued so you can start immediately. The same email and password work on both the web app and the desktop app.",
     steps: [
       {
         n: 1,
-        title: "Go to the sign-up page",
-        text: "Open bharattax.wenvia.global/register in your browser.",
-        img: "signup.png",
-        alt: "Public sign-up page in a web browser",
+        title: "Open the signup page",
+        text: "Go to bharattax.wenvia.global/register. You'll see the Create your account form with the marketing pitch on the left.",
+        img: "2.png",
+        alt: "Public sign-up page with empty form fields",
       },
       {
         n: 2,
         title: "Fill in your details",
-        text: "Enter your full name, official email and a strong password (minimum six characters). Confirm the password to continue.",
-        img: "signup-with-deatils.png",
-        alt: "Sign-up form filled in with officer details",
+        text: "Enter your full name, official email and a strong password (minimum six characters). The strength meter fills up green when the password is Strong. Confirm the password and click Create account.",
+        img: "3.png",
+        alt: "Sign-up form filled in with a Strong strength meter and Passwords match indicator",
       },
       {
         n: 3,
-        title: "Account created",
-        text: "You'll see a confirmation screen once your account is created. Your trial licence is assigned automatically — you can sign in right away.",
-        img: "after-singup.png",
-        alt: "Post-signup confirmation with trial licence details",
+        title: "Free trial active",
+        text: "You'll see a You're all set confirmation. Your 100,000-token free trial is active and your licence has been auto-assigned. Click Sign in now to continue.",
+        img: "4.png",
+        alt: "Signup confirmation with Free trial active badge and Sign in now button",
         callout: {
           tone: "info",
-          text: "New users get a 30-day free trial with 100,000 tokens. Your administrator can extend or upgrade the licence later without changing your sign-in details.",
+          text: "Your admin can extend or upgrade the licence later without changing your sign-in details.",
         },
       },
     ],
   },
 
   {
-    id: "signin",
+    id: "web-signin",
     n: 3,
-    title: "Sign in to the desktop app",
-    subtitle: "Use the same credentials on the desktop app.",
+    title: "Sign in on the website",
+    subtitle: "Confirm your account works and (optionally) try the web app.",
+    icon: <Globe className="size-4" />,
+    intro:
+      "The web app runs at bharattax.wenvia.global and gives you the Ask / Rulings / Documents workspace. Signing in here is a quick way to confirm your credentials work before you install the desktop app.",
+    steps: [
+      {
+        n: 1,
+        title: "You're inside the web app",
+        text: "After Sign in now, you land on the Ask page — a Government-of-India-branded chat that answers your tax-law questions with inline citations to the Act, Rules and CBDT circulars.",
+        img: "5.png",
+        alt: "Web Ask page with Hello, Tapash greeting and suggested starter cards",
+        callout: {
+          tone: "info",
+          text: "The web app is great for research. Drafting a full appellate order runs in the desktop app — continue to Chapter 4 to install it.",
+        },
+      },
+    ],
+  },
+
+  {
+    id: "installer",
+    n: 4,
+    title: "Run the installer",
+    subtitle: "Open the .exe you downloaded and set up the app.",
+    icon: <PackagePlus className="size-4" />,
+    intro:
+      "Now that your account exists, run the installer you saved in Chapter 1. If Windows SmartScreen shows a warning, click More info → Run anyway — the installer is signed and only ever comes from the releases page.",
+    steps: [
+      {
+        n: 1,
+        title: "Choose the installation type",
+        text: "Double-click the .exe. The installer asks whether to install for Anyone who uses this computer (all users) or Only for me. Pick your preference and click Next.",
+        img: "6.png",
+        alt: "BharatTax Appeal Order Setup — Choose Installation Options",
+      },
+      {
+        n: 2,
+        title: "Pick the install location — default or browse",
+        text: "The installer proposes a default folder (you only need about 200 MB free). Click Browse… if you want a different location, otherwise leave it as-is and click Install. Files are copied in a few seconds.",
+        img: "7.png",
+        alt: "Installer — Choose Install Location with destination folder and Browse button",
+        callout: {
+          tone: "info",
+          text: "Installing under D:\\Formonex\\BharatTax Appeal Order (or similar) keeps your Appeal Drafts folder outside C: so drafts survive even if you reinstall Windows.",
+        },
+      },
+    ],
+  },
+
+  {
+    id: "open-signin",
+    n: 5,
+    title: "Open the app and sign in",
+    subtitle: "Use the same email and password from your web signup.",
     icon: <LogIn className="size-4" />,
     steps: [
       {
         n: 1,
-        title: "Enter your login",
-        text: "Open BharathTax Appeal Order and enter the email and password you used at signup. Click Sign in.",
-        img: "put-same-login-credentials-as-signup-in-web.png",
-        alt: "Desktop sign-in screen with credentials filled in",
-      },
-      {
-        n: 2,
-        title: "Signing you in",
-        text: "The app contacts the server, validates your licence and prepares your workspace. This takes a couple of seconds.",
-        img: "after-click-signin.png",
-        alt: "Desktop app during sign-in",
-      },
-      {
-        n: 3,
-        title: "You're in",
-        text: "After sign-in, the Dashboard opens. You'll see recent cases, quick action tiles and the sidebar with Dashboard, New Appeal, Appeals, Report Issue and Settings.",
-        img: "after-signin.png",
-        alt: "Desktop dashboard after sign-in",
-      },
-      {
-        n: 4,
-        title: "The main interface",
-        text: "The left sidebar is the primary nav; the main pane is the active screen; the header shows your name and licence expiry.",
-        img: "after-sign-in-interface.png",
-        alt: "Annotated main interface after sign-in",
-      },
-    ],
-  },
-
-  {
-    id: "new-case",
-    n: 4,
-    title: "Create a new appeal case",
-    subtitle: "Start a case by giving it a title, PAN and section.",
-    icon: <FolderPlus className="size-4" />,
-    steps: [
-      {
-        n: 1,
-        title: "Open the New Appeal dialog",
-        text: "Click New Appeal in the sidebar, or the + icon at the top of the Appeals list. The New Case dialog opens.",
-        img: "create-new-case.png",
-        alt: "New Case dialog with the fields visible",
-      },
-      {
-        n: 2,
-        title: "Fill in the case details",
-        text: "Enter a short case title (e.g. \"ITA 214 / 2024-25 — Sharma vs. ITO\"), the assessment year, the PAN and the section under which the appeal falls. Click Create.",
-        img: "After-click-on-+icon-create-new-appeal-case.png",
-        alt: "Filled-in New Case dialog",
+        title: "The app opens on the Sign-in screen",
+        text: "When the installer finishes, BharatTax Appeal Order launches automatically. You'll see the Government of India / Income Tax Department branded sign-in screen. Type the email and password you registered with in Chapter 2 and click Sign in.",
+        img: "8.png",
+        alt: "Desktop app first-launch Sign in screen",
         callout: {
           tone: "info",
-          text: "You can edit any of these details later from the case header — the case is identified by an internal slug, not the title.",
+          text: "You can also relaunch the app any time from the Start Menu or Desktop shortcut.",
         },
       },
       {
-        n: 3,
-        title: "Case workspace",
-        text: "You land on the case workspace with tabs for Documents, Pipeline, Preview and Edit. This is where every step below happens.",
-        img: "opening-case-interface.png",
-        alt: "Newly created case, empty workspace",
+        n: 2,
+        title: "Appeal cases dashboard",
+        text: "The app opens on the Appeal cases dashboard. The banner shows your licence validity, four status tiles (Total / Running / Ready / Errors), and buttons to start a new appeal or open the case list.",
+        img: "9.png",
+        alt: "Desktop Appeal cases dashboard with the Income-Tax Department seal",
       },
     ],
   },
 
   {
-    id: "upload",
-    n: 5,
-    title: "Upload the case documents",
-    subtitle: "Add the appeal file — order, grounds, evidence and correspondence.",
-    icon: <UploadCloud className="size-4" />,
+    id: "case-upload",
+    n: 6,
+    title: "Create a case and upload the files",
+    subtitle: "Give the case a title, then add the appeal file — order, grounds, evidence and correspondence.",
+    icon: <FolderPlus className="size-4" />,
     intro:
-      "The AI drafts from the documents you upload — nothing more. Add every relevant PDF: the order under challenge, the grounds of appeal, evidence and correspondence.",
+      "Each appeal lives in its own case. Create the case first, then upload every relevant document — the AI drafts from the documents you provide and nothing else.",
     steps: [
       {
         n: 1,
-        title: "Click Upload",
-        text: "Open the Documents tab of the case and click the Upload button.",
-        img: "click-upload-button-to-upload-case-file.png",
-        alt: "Documents tab with Upload button highlighted",
+        title: "Open the New appeal case dialog",
+        text: "Click New Appeal in the sidebar (or the + icon at the top of the Appeals list). The New appeal case dialog opens with placeholder text for each field.",
+        img: "10.png",
+        alt: "New appeal case dialog with empty fields and placeholder examples",
       },
       {
         n: 2,
-        title: "Pick the files",
-        text: "Browse to your case folder and select one or more PDFs, DOCX or plain-text files. Multi-select is supported.",
-        img: "browse-location-to-store.png",
-        alt: "File picker with case documents selected",
+        title: "Fill in the case details and create",
+        text: "Enter a short Case title (mandatory) and optionally the Assessment year, PAN and Section. Click Create & open — the case opens in its own workspace.",
+        img: "11.png",
+        alt: "New appeal case dialog filled with case name, AY, PAN and section",
       },
       {
         n: 3,
-        title: "Documents ready",
-        text: "Each file appears in the list with its filename, page count and category. Wait for the indexing dots to disappear before running the pipeline.",
-        img: "case-document-uploaded.png",
-        alt: "Documents list showing uploaded files",
+        title: "Browse and select the files",
+        text: "In the case workspace, click + Upload case files (top-right of the Documents panel). The Select case documents picker opens — browse to your case folder and pick one or more PDFs, DOCX or plain-text files. Multi-select is supported. Click Open.",
+        img: "12.png",
+        alt: "Windows file picker titled Select case documents",
+      },
+      {
+        n: 4,
+        title: "Documents indexed and ready",
+        text: "Each file appears in the list with its filename, page count and an editable category (Written_submission / Assessment_order / Form_35 / Unclassified). Wait for indexing dots to disappear before running the pipeline.",
+        img: "13.png",
+        alt: "Documents panel showing 15 uploaded files with categories and view / download / delete controls",
         callout: {
           tone: "warn",
-          text: "Files larger than 100 MB may take a minute to index. Do not close the case tab while an upload is in progress.",
+          text: "Files over 100 MB may take a minute to index. Don't close the case tab during upload.",
         },
       },
     ],
@@ -219,135 +228,149 @@ const CHAPTERS: Chapter[] = [
 
   {
     id: "pipeline",
-    n: 6,
-    title: "Run the drafting pipeline",
-    subtitle: "Generate the appellate order in six auditable modules.",
+    n: 7,
+    title: "Click Run pipeline",
+    subtitle: "Six modules run in sequence — deficiency, scope, compliance, issues, findings.",
     icon: <PlayCircle className="size-4" />,
     intro:
-      "The pipeline runs six modules in sequence — deficiency, scope, compliance, issue metrics, issue-wise findings and the final appellate order. Each module is cited and editable before you move to the next.",
+      "Once the documents are indexed, run the pipeline. It executes six modules in sequence and stops if any module errors so you can fix it before the next one starts.",
     steps: [
       {
         n: 1,
-        title: "Scroll to Run Pipeline",
-        text: "On the case page, scroll down past the Documents list. You'll see the Run Pipeline panel.",
-        img: "scroll-just-down-and-get-run-pipeline.png",
-        alt: "Run pipeline panel below the documents list",
+        title: "Scroll to the Pipeline panel and click Run pipeline",
+        text: "Scroll down past the Documents list. You'll see the Pipeline progress panel with six steps. Click Run pipeline. When every step finishes it's green-ticked and the header reads 6/6 · 100%.",
+        img: "14.png",
+        alt: "Pipeline progress panel with all six modules complete and Re-run pipeline / Reassemble draft buttons",
       },
       {
         n: 2,
-        title: "Module 1 — Deficiency",
-        text: "The pipeline first checks the appeal for procedural deficiencies (limitation, verification, fees, etc.) and reports what — if anything — needs curing.",
-        img: "after-pipeline-run-deficiency-report.png",
-        alt: "Deficiency report output",
+        title: "Module 1 — Deficiency Report",
+        text: "Expand Module 1 to see the procedural-deficiency check: Form 35, appeal fee, tax on returned income, limitation. Each item lists what's on record and what (if anything) needs curing.",
+        img: "15.png",
+        alt: "Deficiency Report output with Form 35, Appeal Fee, Tax on Returned Income and Limitation sections",
       },
       {
         n: 3,
-        title: "Module 2 — Scope validation",
-        text: "It then confirms the appellate scope: which grounds are admitted, which are barred and any that need re-framing.",
-        img: "scope-validation.png",
-        alt: "Scope validation output",
+        title: "Module 2 — Scope Validation",
+        text: "Module 2 confirms appealability under Section 246A, checks for excluded / sensitive categories and lists the grounds of appeal actually raised.",
+        img: "16.png",
+        alt: "Scope Validation report with appeal details and validation conclusion",
       },
       {
         n: 4,
-        title: "Module 3 — Document compliance",
-        text: "Each uploaded document is scored for the sections it addresses so nothing is missed in the order.",
-        img: "document-compliance.png",
-        alt: "Document compliance matrix",
+        title: "Module 3 — Document Compliance",
+        text: "Every uploaded document is re-listed with the number of characters extracted and its assigned category — so you can confirm nothing was misread by OCR.",
+        img: "17.png",
+        alt: "Document Compliance panel with each appeal document, category and extracted chars",
       },
       {
         n: 5,
-        title: "Module 4 — Issue metrics",
-        text: "The tool extracts each issue in the appeal, tags the section and reports the amount in dispute.",
-        img: "issue-metrics.png",
-        alt: "Issue metrics table",
+        title: "Module 4 — Issue Matrix",
+        text: "The tool extracts each ground of appeal, numbers them (#1, #2, #3…), and shows a short Facts summary explaining what the AO did and how the appellant responded.",
+        img: "18.png",
+        alt: "Issue Matrix listing numbered grounds of appeal and a Facts summary",
       },
       {
         n: 6,
-        title: "Module 5 — Issue-wise findings",
-        text: "For every issue, the AI drafts the finding — grounds relied on, the analysis, and the conclusion — with citations to the Act, Rules and rulings.",
-        img: "issue-wise-findings.png",
-        alt: "Issue-wise findings pane",
-      },
-      {
-        n: 7,
-        title: "Module 6 — Draft appellate order",
-        text: "The final module stitches the findings into a signable appellate order. It's ready to preview, edit and export.",
-        img: "draft-appelate-order.png",
-        alt: "Complete draft appellate order",
+        title: "Module 5 — Issue-wise Findings",
+        text: "For every issue, the AI drafts the Facts, Submissions, AO's view and Legal position with citations to the Act, Rules and case law.",
+        img: "19.png",
+        alt: "Module 5 output — Issue-wise Findings for Ground No. 1",
         callout: {
           tone: "info",
-          text: "You can re-run any single module without losing the work in the others. The Regenerate button on each module keeps the rest intact.",
+          text: "You can Re-run any single module without losing the work in the others — the Regenerate button on each module keeps the rest intact.",
         },
       },
     ],
   },
 
   {
-    id: "edit-ai",
-    n: 7,
-    title: "Edit with AI",
-    subtitle: "Ask the AI to change a specific paragraph without redrafting the whole order.",
-    icon: <Sparkles className="size-4" />,
-    intro:
-      "The Edit with AI button on each module lets you fix or expand a single paragraph. Describe the change you want in plain English and the AI rewrites just that section — the rest is untouched.",
+    id: "draft",
+    n: 8,
+    title: "Your draft appellate order",
+    subtitle: "Module 6 stitches every finding into a signable appellate order.",
+    icon: <FileCheck2 className="size-4" />,
     steps: [
       {
         n: 1,
-        title: "Click Edit with AI",
-        text: "Open the module you want to change and click Edit with AI at the top of that module's card.",
-        img: "edit-with-ai.png",
-        alt: "Edit with AI button on a module",
+        title: "Preview, download or edit",
+        text: "Module 6 assembles the full appellate order — grounds, facts, submissions, AO's view, findings and the operative order — into a preview pane. From here you can Preview the PDF, Download .docx, Open in Word, Modify with AI (Chapter 10) or Manual edit (Chapter 9).",
+        img: "20.png",
+        alt: "Draft appellate order screen with Preview, Modify with AI, Manual edit and Download buttons",
+        callout: {
+          tone: "info",
+          text: "The draft is stored in your Appeal Drafts folder on disk. Even if you close the app, the .docx is still there — the app doesn't delete drafts.",
+        },
+      },
+    ],
+  },
+
+  {
+    id: "manual-edit",
+    n: 9,
+    title: "Modify manually",
+    subtitle: "Open the draft in Microsoft Word and edit as you normally would.",
+    icon: <FileEdit className="size-4" />,
+    intro:
+      "For deeper edits, open the draft in Microsoft Word (or any .docx editor). BharatTax watches the file — every save in Word syncs back as a new draft version in the app.",
+    steps: [
+      {
+        n: 1,
+        title: "Switch to the Manual edit tab",
+        text: "From the draft appellate order, click the Manual edit tab. You'll see a large Open in Word button along with Download .docx and Preview options.",
+        img: "21.png",
+        alt: "Manual edit tab with Edit the draft in Microsoft Word placeholder and Open in Word button",
+      },
+      {
+        n: 2,
+        title: "Edit in Word",
+        text: "Click Open in Word. The .docx opens in your default handler — usually Microsoft Word. Edit the paragraphs, insert tables, add annotations — everything you'd do in a normal Word document.",
+        img: "22.png",
+        alt: "The draft open in Microsoft Word with formatted paragraphs and standard Word toolbar",
+        callout: {
+          tone: "info",
+          text: "Every time you press Ctrl+S in Word, BharatTax reads the file back and saves it as a new draft version. Close Word when you're done.",
+        },
+      },
+    ],
+  },
+
+  {
+    id: "ai-edit",
+    n: 10,
+    title: "Modify with AI",
+    subtitle: "Rewrite a specific passage without redrafting the whole order.",
+    icon: <Sparkles className="size-4" />,
+    intro:
+      "The Modify with AI popover lets you fix or expand a single passage. Select the phrase you want changed, describe the edit in plain English, and the AI rewrites just that section — the rest of the draft is untouched.",
+    steps: [
+      {
+        n: 1,
+        title: "Open the Modify with AI popover",
+        text: "Select the phrase you want to change (e.g. \"higher demand\"). The Modify with AI popover appears with that phrase pre-filled and an empty instruction box.",
+        img: "23.png",
+        alt: "Modify with AI popover with the selected phrase pre-filled",
       },
       {
         n: 2,
         title: "Describe the change",
-        text: "In the prompt box, describe the edit — e.g. \"Tighten the analysis on limitation and add the Supreme Court ruling in Suo Motu Writ (Civil) No 3 of 2020.\"",
-        img: "prompt-to-edit-with-ai.png",
-        alt: "AI edit prompt with instructions",
+        text: "Type your instruction — e.g. \"make it bold\", \"tighten this paragraph\", or \"add the Supreme Court ruling in Suo Motu Writ (Civil) No 3 of 2020\". Short imperatives work best.",
+        img: "24.png",
+        alt: "Modify with AI popover with an instruction typed into the box",
       },
       {
         n: 3,
         title: "Apply the change",
-        text: "The AI shows a preview of the rewritten paragraph. If it looks right, click Apply change. If not, refine the prompt and try again.",
-        img: "click-on-apply-change.png",
-        alt: "Preview of the AI edit with Apply change button",
+        text: "Click Apply change. The Applying… state appears while the AI rewrites the passage. Cancel is still available if you change your mind.",
+        img: "25.png",
+        alt: "Modify with AI popover showing the Applying state during processing",
       },
       {
         n: 4,
         title: "Changes done",
-        text: "The updated paragraph replaces the original in the module. The rest of the draft — findings, order, other paragraphs — is unchanged and every prior citation is preserved.",
-        img: "changes-done.png",
-        alt: "Module after the AI edit is applied",
-      },
-    ],
-  },
-
-  {
-    id: "edit-manual",
-    n: 8,
-    title: "Manual edit in Microsoft Word",
-    subtitle: "Open the draft in Word, edit as you normally would, and the app picks up your changes.",
-    icon: <FileEdit className="size-4" />,
-    intro:
-      "For deeper edits you can open the draft in Microsoft Word (or any .docx editor). BharathTax watches the file — every save you make in Word is picked up and shows up as a new version in the app.",
-    steps: [
-      {
-        n: 1,
-        title: "Click Manual edit",
-        text: "Open the module you want to edit and click Manual edit. The app saves a .docx into your Appeal Drafts folder.",
-        img: "manual-edit-click.png",
-        alt: "Manual edit button on a module",
-      },
-      {
-        n: 2,
-        title: "Word opens with the draft",
-        text: "The system launches your default .docx handler — usually Microsoft Word. Edit the paragraphs, add annotations, insert tables, whatever you need.",
-        img: "open-in-word-manual-edit.png",
-        alt: "The draft open in Microsoft Word",
-        callout: {
-          tone: "info",
-          text: "You can keep Word open while you sign other cases in the app. Every time you press Ctrl+S in Word, BharathTax reads the file back and saves it as a new version. Close Word when you're done.",
-        },
+        text: "The updated text replaces the original in the draft. The rest of the paragraph is unchanged and every prior citation is preserved.",
+        img: "26.png",
+        alt: "Draft paragraph after the AI edit — the selected phrase now formatted as requested",
       },
     ],
   },
@@ -408,17 +431,18 @@ export default function Docs() {
           </Link>
           <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Documentation</div>
           <h1 className="mt-2 font-serif text-[34px] sm:text-[46px] font-semibold tracking-[-0.02em] leading-[1.05] text-slate-900 max-w-3xl">
-            The BharathTax Appeal Order desktop manual
+            The BharatTax Appeal Order desktop manual
           </h1>
           <p className="mt-4 max-w-2xl text-[16px] text-slate-600 leading-relaxed">
-            An end-to-end walkthrough with screenshots — install the app, create an
-            account, draft an appellate order in six modules, and export a
-            signable Word document. Follow the chapters in order the first time;
-            jump straight to any step later from the sidebar.
+            An end-to-end walkthrough with screenshots — download the installer,
+            sign up on the web, install the desktop app, upload the appeal file,
+            draft an appellate order in six modules and modify it manually or
+            with AI. Follow the chapters in order the first time; jump straight
+            to any step later from the sidebar.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3 text-[13px] text-slate-600">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold">
-              <Info className="size-3.5" /> Reads in ~10 minutes
+              <Info className="size-3.5" /> {CHAPTERS.length} chapters · reads in ~10 minutes
             </span>
             <a href="/releases" className="inline-flex items-center gap-1 hover:text-slate-900">
               <Download className="size-3.5" /> Download the desktop app
@@ -506,7 +530,7 @@ export default function Docs() {
               </h3>
               <p className="mt-2 text-[14px] text-slate-600 leading-relaxed">
                 From here you can export the draft to Word, open the manual editor,
-                or start another case. Any questions? Open a ticket from the app or
+                or start another case. Questions? Open a ticket from the app or
                 write to us.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
