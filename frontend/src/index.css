@@ -33,8 +33,11 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground font-sans antialiased; }
   /* Prevent tiny overflow bugs from producing a body horizontal scrollbar
-     on mobile (any absolute-positioned blob that pokes past 100vw). */
-  html, body { overflow-x: hidden; }
+     on mobile (any absolute-positioned blob that pokes past 100vw).
+     `overflow-x: clip` is preferred over `hidden` because `hidden` on the
+     body/html creates a scroll container and breaks `position: sticky` on
+     descendants (e.g. the docs sidebar TOC). */
+  html, body { overflow-x: clip; }
   /* Nicer tap targets on iOS Safari. */
   button, [role="button"] { -webkit-tap-highlight-color: transparent; }
 }
