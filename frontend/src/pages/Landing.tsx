@@ -104,6 +104,7 @@ function Nav() {
             ["Releases", "Latest desktop-app releases", "/releases"],
             ["Contact", "Talk to sales or support", "/contact"],
           ]} />
+          <NavLink to="/docs">Documentation</NavLink>
           <NavLink to="#pricing">Pricing</NavLink>
           <NavLink to="/releases">Releases</NavLink>
         </nav>
@@ -162,6 +163,12 @@ function Nav() {
                   {l}
                 </a>
               ))}
+              <Link
+                to="/docs" onClick={() => setMobileOpen(false)}
+                className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
+              >
+                Documentation
+              </Link>
               <Link
                 to="/releases" onClick={() => setMobileOpen(false)}
                 className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"

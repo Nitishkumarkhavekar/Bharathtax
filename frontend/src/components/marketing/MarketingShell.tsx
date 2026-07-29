@@ -17,6 +17,7 @@ export function MarketingHeader() {
         </Link>
         <nav className="hidden sm:flex items-center gap-1 text-[14px] text-slate-700 ml-2">
           <Link to="/#features" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Features</Link>
+          <Link to="/docs" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Documentation</Link>
           <Link to="/#pricing" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Pricing</Link>
           <Link to="/contact" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Contact</Link>
           <Link to="/releases" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Releases</Link>
