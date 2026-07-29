@@ -11,6 +11,15 @@ from app.core.config import settings
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
+    # Sized for the threads-pool Celery worker: up to 12 concurrent tasks,
+    # each of which may spawn up to 6 issue-drafting threads (each opens
+    # its own SessionLocal). We keep an overflow so a burst of parallel
+    # /run submissions from officers doesn't starve on pool_size alone.
+    pool_size=20,
+    max_overflow=30,
+    # Kill idle connections after 30 minutes so we don't hoard postgres
+    # slots across a quiet weekend.
+    pool_recycle=1800,
     future=True,
 )
 

@@ -7,9 +7,12 @@ data/manual/case_law/ and run:  python -m app.ingestion.case_law /data/manual/ca
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import os
 import re
+import signal
 import sys
 from pathlib import Path
 
@@ -31,6 +34,26 @@ log = get_logger(__name__)
 SOURCE_KEY = "it_caselaw"
 _CHUNK_CHARS = 1400
 _MIN_CHARS = 80
+# Bulk case-law: stage chunks with NULL embedding (CASELAW_NO_EMBED=1) and fill on the
+# GPU later — inline CPU embedding of ~500k chunks would take days.
+_NO_EMBED = os.getenv("CASELAW_NO_EMBED", "").strip() in ("1", "true", "yes")
+_EXTRACT_TIMEOUT_S = 120  # a single malformed PDF must not stall a 50k-doc run
+
+
+@contextlib.contextmanager
+def _time_limit(seconds: int):
+    def _raise(signum, frame):
+        raise TimeoutError(f"extraction exceeded {seconds}s")
+    if hasattr(signal, "SIGALRM"):
+        old = signal.signal(signal.SIGALRM, _raise)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old)
+    else:
+        yield
 
 
 def get_source(db):
@@ -65,23 +88,57 @@ def _chunks(title: str, text: str) -> list[Chunk]:
     return out
 
 
+def _content_hash(text: str) -> str:
+    """Hash NORMALISED text, not raw bytes. The HC-judgments dataset serves the
+    same connected-matters order ('@ Ors') under many CNRs, each a byte-different
+    PDF (regenerated with a new timestamp) — byte-checksum dedup misses those, so
+    one order would be ingested dozens of times. Content-hash collapses them."""
+    return hashlib.sha256(re.sub(r"\s+", " ", text).strip().lower().encode("utf-8")).hexdigest()
+
+
 def ingest_pdf(db, src, raw: bytes, title: str, source_url: str | None = None) -> int:
-    checksum = hashlib.sha256(raw).hexdigest()
-    if db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum,
-                                              CorpusDocument.source_id == src.id)):
-        return 0  # already ingested
-    text = extract(raw)
+    with _time_limit(_EXTRACT_TIMEOUT_S):
+        text = extract(raw)
+    text = text.replace("\x00", "")   # PostgreSQL text can't store NUL bytes
     if not text.strip():
         return 0
+    checksum = _content_hash(text)
+    if db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum,
+                                              CorpusDocument.source_id == src.id)):
+        return 0  # same judgment text already ingested (connected matter / duplicate)
     key = f"case_law/{checksum[:16]}.pdf"
     storage.put_bytes(key, raw, "application/pdf")
+    status = CorpusDocStatus.parsed if _NO_EMBED else CorpusDocStatus.indexed
     doc = CorpusDocument(source_id=src.id, title=title, doc_type=SourceType.judgment,
                          source_url=source_url, raw_minio_key=key, extracted_text=text,
-                         checksum=checksum, status=CorpusDocStatus.indexed)
+                         checksum=checksum, status=status)
     db.add(doc)
     db.commit()
     db.refresh(doc)
-    return index_document(db, document=doc, source_id=src.id, domain=Domain.case_law, chunks=_chunks(title, text))
+    return index_document(db, document=doc, source_id=src.id, domain=Domain.case_law,
+                          chunks=_chunks(title, text), embed_vectors=not _NO_EMBED)
+
+
+def ingest_text(db, src, text: str, title: str, source_url: str | None = None) -> int:
+    """Ingest a judgment whose plain TEXT we already have (e.g. fetched from the
+    indiankanoon API) — skips the PDF extract + object-store steps but keeps the
+    same content-hash dedup, paragraph chunking and embed/index path as ingest_pdf."""
+    text = (text or "").replace("\x00", "")   # PostgreSQL text can't store NUL bytes
+    if not text.strip():
+        return 0
+    checksum = _content_hash(text)
+    if db.scalar(select(CorpusDocument).where(CorpusDocument.checksum == checksum,
+                                              CorpusDocument.source_id == src.id)):
+        return 0  # same judgment text already ingested
+    status = CorpusDocStatus.parsed if _NO_EMBED else CorpusDocStatus.indexed
+    doc = CorpusDocument(source_id=src.id, title=title[:300], doc_type=SourceType.judgment,
+                         source_url=source_url, raw_minio_key=None, extracted_text=text,
+                         checksum=checksum, status=status)
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return index_document(db, document=doc, source_id=src.id, domain=Domain.case_law,
+                          chunks=_chunks(title, text), embed_vectors=not _NO_EMBED)
 
 
 def _load_manifest(path: str) -> dict:
@@ -107,15 +164,24 @@ def ingest_dir(path: str) -> dict:
         src = get_source(db)
         man = _load_manifest(path)
         docs = sorted(Path(path).glob("**/*.pdf"))
-        total = 0
+        total = failed = done = 0
+        verb = "staged" if _NO_EMBED else "ingested"
         for pdf in docs:
             meta = man.get(pdf.name, {})
             title = (meta.get("title") or pdf.stem.replace("_", " "))[:300]
             url = f"{_S3}/{meta['pdf_key']}" if meta.get("pdf_key") else None
-            n = ingest_pdf(db, src, pdf.read_bytes(), title, source_url=url)
-            log.info("ingested %s -> %d chunks", pdf.name, n)
-            total += n
-        return {"files": len(docs), "chunks": total}
+            try:
+                total += ingest_pdf(db, src, pdf.read_bytes(), title, source_url=url)
+            except Exception as e:
+                # a corrupt/hanging PDF (timeout) must not abort a 50k-doc run
+                db.rollback()
+                failed += 1
+                log.warning("skip (failed): %s -> %s", pdf.name, str(e)[:120])
+            done += 1
+            if done % 500 == 0:
+                log.info("%s %d/%d docs | %d chunks | %d failed", verb, done, len(docs), total, failed)
+        log.info("DONE. %s %d docs, %d chunks, %d failed", verb, len(docs), total, failed)
+        return {"files": len(docs), "chunks": total, "failed": failed}
     finally:
         db.close()
 

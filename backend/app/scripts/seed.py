@@ -54,12 +54,17 @@ def run() -> None:
             if db.scalar(select(User).where(User.username == username)):
                 continue
             db.add(User(
-                username=username, password_hash=hash_password(password), role=role,
+                username=username,
+                email=f"{username}@bharathtax.com",
+                password_hash=hash_password(password), role=role,
                 full_name=full_name, wing_id=wings[wing_code].id,
             ))
         db.commit()
         log.info("seed complete. wings=%s users=%d", list(wings), len(DEMO))
-        print("Seeded. Try logging in as officer1 / officer123 (wing IT I&CI, 5 seats).")
+        print(
+            "Seeded. Try logging in as officer1@bharathtax.com / officer123 "
+            "(wing IT I&CI, 5 seats)."
+        )
     finally:
         db.close()
 

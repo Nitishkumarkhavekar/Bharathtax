@@ -4,32 +4,478 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 214 24% 99%;
+    --foreground: 217 33% 13%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 209 88% 35%;            /* BharathTax blue */
+    --primary: 222 55% 42%;            /* Ink Blue — evolved from the brand blue, desaturated + deepened */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 209 90% 95%;
-    --accent-foreground: 209 88% 30%;
-    --destructive: 0 72% 45%;
+    --secondary: 214 28% 96%;
+    --secondary-foreground: 217 33% 13%;
+    --muted: 214 28% 96%;
+    --muted-foreground: 216 13% 46%;
+    --accent: 222 50% 95%;             /* soft wash for hovers/active tints */
+    --accent-foreground: 222 50% 32%;
+    --destructive: 3 58% 46%;          /* muted danger, less alarm-red */
     --destructive-foreground: 0 0% 100%;
-    --success: 152 60% 36%;
+    --success: 152 46% 34%;            /* muted success */
     --success-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 209 88% 35%;
+    --border: 216 22% 92%;
+    --input: 216 22% 92%;
+    --ring: 222 55% 45%;
     --sidebar: 222 47% 13%;
     --sidebar-foreground: 210 40% 96%;
-    --radius: 0.6rem;
+    --radius: 0.55rem;
   }
 
   * { @apply border-border; }
   body { @apply bg-background text-foreground font-sans antialiased; }
+  /* Prevent tiny overflow bugs from producing a body horizontal scrollbar
+     on mobile (any absolute-positioned blob that pokes past 100vw). */
+  html, body { overflow-x: hidden; }
+  /* Nicer tap targets on iOS Safari. */
+  button, [role="button"] { -webkit-tap-highlight-color: transparent; }
+}
+
+/* ---- Admin form helpers ---- */
+@layer components {
+  .input {
+    @apply w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm
+           focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400;
+  }
+}
+
+/* --------------------------------------------------------------- Global chrome
+   App-wide surfaces so every page inherits a consistent, gradient-tinted feel
+   without every page having to re-invent it. */
+@layer components {
+  /* Application canvas — a clean off-white surface so cards + primary
+     accents carry the visual weight instead of tinted washes. */
+  .bt-app-bg {
+    background: #f7f8fa;
+  }
+  /* Marketing gradient — the soft periwinkle-to-cream wash used on the
+     landing hero and on the public auth pages. */
+  .bt-marketing-bg {
+    /* Flat, near-white — sections and type carry the page, not a colour wash. */
+    background: #FBFCFD;
+  }
+  /* Subtle dotted grid overlay for hero backdrops. */
+  .bt-dot-grid {
+    background-image: radial-gradient(rgba(15,23,42,0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  /* Sticky header — plain white with a hairline bottom. No blur / no
+     gradient tint; keeps focus on the current page's H1 and controls. */
+  .bt-header-glass {
+    background: #ffffff;
+    border-bottom: 1px solid rgb(226, 232, 240);
+  }
+  /* Sidebar — pure white surface, ships a subtle right border. Kept clean
+     so the tinted content pane on the right feels lighter than the sidebar
+     is white and gives a clear visual separation. */
+  .bt-sidebar-bg {
+    background: #ffffff;
+  }
+  /* Rich elevated card with a hair-thin gradient border, primary shadow. */
+  .bt-card {
+    @apply bg-white rounded-2xl border border-slate-200/70;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 12px 32px -18px rgba(46, 124, 200, 0.20);
+  }
+  .bt-card-hoverable {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .bt-card-hoverable:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 20px 40px -18px rgba(46, 124, 200, 0.32);
+    border-color: rgba(46, 124, 200, 0.28);
+  }
+  /* Gradient primary button — smooth two-stop tint + soft glow. */
+  .bt-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg font-medium text-white
+           text-sm tracking-tight transition-all;
+    background-image: linear-gradient(135deg, #2b7cd8 0%, #1d63c2 50%, #1e40af 100%);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.08),
+      0 10px 24px -12px rgba(37, 99, 235, 0.55);
+  }
+  .bt-btn-primary:hover { filter: brightness(1.08); transform: translateY(-0.5px); }
+  .bt-btn-primary:active { transform: translateY(0.5px); filter: brightness(0.98); }
+  .bt-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; filter: none; transform: none; }
+  /* Ghost / secondary — pale accent with primary text. */
+  .bt-btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg font-medium text-sm
+           border border-slate-200 bg-white text-slate-700 transition-colors;
+  }
+  .bt-btn-ghost:hover { @apply border-primary/30 bg-primary/5 text-primary; }
+  /* Section header pill — for the mini-eyebrow titles above tables/charts. */
+  .bt-eyebrow {
+    @apply inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]
+           text-slate-500;
+  }
+  /* Gradient-text emphasis used in hero titles and admin dashboard KPIs. */
+  .bt-gradient-text {
+    background: linear-gradient(90deg, #1e40af 0%, #2b7cd8 45%, #4c6ef5 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+}
+
+/* ---- Chat UI helpers ---- */
+@layer components {
+  .chat-bg {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(46, 124, 200, 0.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(46, 124, 200, 0.05), transparent 60%),
+      hsl(var(--background));
+  }
+  .chat-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .chat-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.15); border-radius: 999px;
+  }
+  .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.28); }
+
+  /* subtle floating composer */
+  .composer-shell {
+    @apply rounded-2xl bg-white border border-slate-200 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)];
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .composer-shell:focus-within {
+    @apply border-primary/40;
+    box-shadow: 0 14px 40px -14px rgba(46,124,200,.32), 0 0 0 4px rgba(46,124,200,0.06);
+  }
+
+  /* typing dots */
+  .typing-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-primary;
+    animation: typing 1.2s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) { animation-delay: .2s; }
+  .typing-dot:nth-child(3) { animation-delay: .4s; }
+
+  /* Pulsing glow ring on assistant avatar while the model is generating. */
+  .avatar-pulse {
+    position: relative;
+  }
+  .avatar-pulse::before,
+  .avatar-pulse::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: hsl(var(--primary) / 0.45);
+    z-index: -1;
+    animation: avatar-pulse 1.6s ease-out infinite;
+  }
+  .avatar-pulse::after { animation-delay: .8s; }
+
+  /* Status phrase fade-in (used by rotating "thinking…" labels). */
+  .status-phrase {
+    animation: status-fade .35s ease-out;
+  }
+}
+
+@keyframes typing {
+  0%, 60%, 100% { opacity: .25; transform: translateY(0); }
+  30%           { opacity:  1;  transform: translateY(-2px); }
+}
+
+@keyframes avatar-pulse {
+  0%   { transform: scale(.92); opacity: .7; }
+  70%  { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes status-fade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up .25s ease-out both; }
+
+/* Pipeline stepper — running-state animations */
+@keyframes bt-slide {
+  0%   { left: -33%; }
+  50%  { left: 100%; }
+  100% { left: 100%; }
+}
+
+@keyframes bt-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes bt-ring {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(1.9); opacity: 0;   }
+}
+@keyframes bt-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes bt-aurora {
+  0%, 100% { transform: translate(-10%, -10%) scale(1);   opacity: 0.55; }
+  50%      { transform: translate( 10%,  10%) scale(1.2); opacity: 1;    }
+}
+
+/* Staggered admin card entrance */
+@keyframes admin-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.admin-rise > * { animation: admin-rise .35s ease-out both; }
+.admin-rise > *:nth-child(2) { animation-delay: .05s; }
+.admin-rise > *:nth-child(3) { animation-delay: .10s; }
+.admin-rise > *:nth-child(4) { animation-delay: .15s; }
+.admin-rise > *:nth-child(5) { animation-delay: .20s; }
+.admin-rise > *:nth-child(6) { animation-delay: .25s; }
+
+/* Soft admin page background */
+.admin-bg {
+  background:
+    radial-gradient(900px 500px at 90% -10%, rgba(46, 124, 200, 0.07), transparent 60%),
+    radial-gradient(700px 400px at -10% 110%, rgba(46, 124, 200, 0.05), transparent 60%),
+    rgb(248 250 252);
+}
+
+/* Subtle row hover for tables */
+.admin-table tbody tr { transition: background-color .15s ease; }
+.admin-table tbody tr:hover { background: rgba(46, 124, 200, 0.035); }
+
+/* Markdown default styles used everywhere the <Markdown /> component renders
+   (Ask/chat, documents, etc). Ancestor styling (e.g. `.prose-appeal`) can
+   override these — they're just sane defaults for the OTHER call sites. */
+.md-body { @apply text-[15px] leading-relaxed text-slate-800; }
+.md-body > * + * { margin-top: 0.65rem; }
+.md-body h1 { @apply text-lg font-semibold text-slate-900; }
+.md-body h2 { @apply text-base font-semibold text-slate-900; }
+.md-body h3 { @apply text-[15px] font-semibold text-slate-900; }
+.md-body h4 { @apply text-[14px] font-semibold text-slate-900; }
+.md-body ul { @apply list-disc pl-5 space-y-1.5; }
+.md-body ol { @apply list-decimal pl-5 space-y-1.5; }
+.md-body blockquote { @apply border-l-2 border-primary/40 pl-3 italic text-slate-600; }
+.md-body p { white-space: pre-wrap; }
+
+/* Inside prose-appeal, the ancestor styles fully take over — reset the .md-body
+   defaults so serif/justified typography wins. */
+.prose-appeal .md-body { font: inherit; color: inherit; }
+.prose-appeal .md-body > * + * { margin-top: 0; }
+.prose-appeal .md-body p { white-space: normal; }
+
+/* Appeal-case module bodies — styled to look like a legal draft rendered on
+   paper (Times New Roman-esque serif, justified body, indent-continued lists)
+   rather than the plain markdown dump we had before. */
+.prose-appeal {
+  font-family: "Georgia", "Cambria", "Times New Roman", serif;
+  color: rgb(30 41 59);            /* slate-800 */
+  font-size: 14.5px;
+  line-height: 1.75;
+  text-align: justify;
+  hyphens: auto;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+/* Give the whole block a paper-like top-of-page indent for the first line
+   of every real paragraph (skips headings + bullets). */
+.prose-appeal > p { @apply my-3; text-indent: 0; }
+.prose-appeal > p:first-child { margin-top: 0; }
+
+/* Headings — bold and upright (never italic), tight vertical rhythm. */
+.prose-appeal h1,
+.prose-appeal h2,
+.prose-appeal h3,
+.prose-appeal h4 {
+  font-family: "Georgia", "Cambria", "Times New Roman", serif;
+  font-weight: 700;
+  color: rgb(15 23 42);            /* slate-900 */
+  font-style: normal;
+  letter-spacing: -0.005em;
+  text-align: left;
+  line-height: 1.3;
+  margin-top: 1.4em;
+  margin-bottom: 0.55em;
+}
+.prose-appeal h1 {
+  font-size: 1.25rem;
+  color: rgb(15 23 42);
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+.prose-appeal h2 {
+  font-size: 1.10rem;
+  color: rgb(15 23 42);
+}
+.prose-appeal h3 {
+  font-size: 1.02rem;
+  color: rgb(15 23 42);
+}
+/* h4 is our "#### 1. IDENTIFICATION" section-marker level — treated as a
+   professional section heading: small-caps look, tight letter-spacing, a
+   subtle brand-tinted underline accent, and a numbered lead. */
+.prose-appeal h4 {
+  font-family: "Georgia", "Cambria", "Times New Roman", serif;
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: rgb(15 23 42);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgb(203 213 225);
+  position: relative;
+  display: block;
+}
+.prose-appeal h4::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 3rem;
+  height: 2px;
+  background: rgb(37 99 235);   /* primary accent under first-few-chars */
+  border-radius: 2px;
+}
+.prose-appeal h4:first-child { margin-top: 0; }
+.prose-appeal h1:first-child,
+.prose-appeal h2:first-child,
+.prose-appeal h3:first-child,
+.prose-appeal h4:first-child { margin-top: 0; }
+
+/* Emphasis and refs. */
+.prose-appeal strong { font-weight: 700; color: rgb(15 23 42); }
+.prose-appeal em { font-style: italic; }
+
+/* Lists — hanging indent so long items wrap flush with the text, not the
+   bullet. Bullets are a subtle muted glyph, not the browser default. */
+.prose-appeal ul,
+.prose-appeal ol {
+  margin: 0.6em 0 0.9em;
+  padding-left: 1.6em;
+  text-align: justify;
+}
+.prose-appeal ul { list-style: none; }
+.prose-appeal ol { list-style: decimal; }
+.prose-appeal ol li::marker { color: rgb(51 65 85); font-weight: 600; }
+.prose-appeal ul > li {
+  position: relative;
+  padding-left: 0;
+  margin: 0.25em 0;
+}
+.prose-appeal ul > li::before {
+  content: "\2022";                /* • */
+  position: absolute;
+  left: -1.1em;
+  top: 0;
+  color: rgb(100 116 139);         /* slate-500 */
+  font-weight: 700;
+  line-height: inherit;
+}
+.prose-appeal ol > li { margin: 0.25em 0; padding-left: 0.35em; }
+.prose-appeal li p { margin: 0.15em 0; }
+
+/* Nested lists step in and switch to a hollow marker for visual hierarchy. */
+.prose-appeal ul ul > li::before { content: "\25E6"; }  /* ◦ */
+.prose-appeal ul ul, .prose-appeal ol ol, .prose-appeal ul ol, .prose-appeal ol ul { margin: 0.25em 0 0.35em; }
+
+/* Blockquote — a formal pull-quote block for quoted orders / statutes /
+   submissions. Thick primary left rule, soft blue-tinted card background,
+   subtle giant opening quote glyph at the top-left for a legal-report feel. */
+.prose-appeal blockquote {
+  position: relative;
+  border-left: 4px solid rgb(37 99 235);      /* primary */
+  padding: 0.9em 1.2em 0.9em 1.4em;
+  margin: 1.1em 0;
+  font-style: italic;
+  color: rgb(30 41 59);                       /* slate-800 */
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.055), rgba(59, 130, 246, 0.02));
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  text-align: justify;
+}
+.prose-appeal blockquote::before {
+  content: "\201C";                            /* “ */
+  position: absolute;
+  top: -0.15em;
+  left: 0.35em;
+  font-family: "Georgia", "Cambria", serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 2.6em;
+  line-height: 1;
+  color: rgb(37 99 235);
+  opacity: 0.18;
+  pointer-events: none;
+}
+.prose-appeal blockquote p { margin: 0.2em 0; }
+.prose-appeal blockquote em { font-style: normal; }
+.prose-appeal blockquote strong { color: rgb(15 23 42); }
+
+/* Inline code / statute refs. */
+.prose-appeal code {
+  padding: 0.05em 0.4em;
+  border-radius: 4px;
+  background: rgb(241 245 249);     /* slate-100 */
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  color: rgb(30 41 59);
+}
+
+/* Horizontal rule — thin decorative divider between sections. */
+.prose-appeal hr {
+  border: 0;
+  height: 1px;
+  margin: 1.4em auto;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, rgb(203 213 225), transparent);
+}
+
+/* Tables — quiet borders, tabular alignment. */
+.prose-appeal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.9em 0;
+  font-size: 0.95em;
+}
+.prose-appeal th,
+.prose-appeal td {
+  border-bottom: 1px solid rgb(226 232 240);
+  padding: 0.5em 0.65em;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-appeal th {
+  background: rgb(248 250 252);
+  font-weight: 700;
+  color: rgb(15 23 42);
+}
+
+/* Links — subtle underline that doesn't fight the body copy. */
+.prose-appeal a {
+  color: rgb(29 78 216);            /* blue-700 */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(29, 78, 216, 0.35);
+}
+.prose-appeal a:hover { text-decoration-color: currentColor; }
+
+/* OnlyOffice editor: the SDK injects an iframe with hard-coded inline
+   width/height attributes — force it to fill whatever container we mount it
+   in, so the document body always has room (not just the toolbars). */
+[id^="oo-editor-"] iframe,
+[id^="oo-editor-"] > div {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  display: block;
 }

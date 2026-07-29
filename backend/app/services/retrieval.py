@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.enums import Domain
+from app.ingestion.parse.section_cites import extract_sections
 from app.models.corpus import CorpusChunk, CorpusDocument
 from app.models.documents import DocumentChunk
 from app.services import embeddings as emb
@@ -31,7 +32,9 @@ class Passage:
     rule_number: str | None
     domain: str
     score: float = 0.0
-    channels: list[str] = field(default_factory=list)  # dense | sparse
+    channels: list[str] = field(default_factory=list)  # dense | sparse | section
+    digest: str | None = None       # judgment headnote ("what it held"), if generated
+    sections_cited: list[str] | None = None
 
 
 @dataclass
@@ -68,6 +71,26 @@ def _sparse(db: Session, query: str, domain: Domain | None, k: int):
     return [(c, float(r)) for c, r in db.execute(stmt).all()]
 
 
+def _section_dense(db: Session, qvec: list[float], sections: list[str],
+                   domain: Domain | None, k: int):
+    """Dense search restricted to documents that CITE one of `sections` — high-precision
+    candidates for 'cases on Section 68'-style queries (uses the GIN-indexed
+    corpus_documents.sections_cited via an array-overlap filter)."""
+    dist = CorpusChunk.embedding.cosine_distance(qvec)
+    stmt = (
+        select(CorpusChunk, dist.label("dist"))
+        .join(CorpusDocument, CorpusChunk.corpus_document_id == CorpusDocument.id)
+        .where(
+            CorpusChunk.is_current.is_(True), CorpusChunk.embedding.isnot(None),
+            CorpusDocument.sections_cited.op("&&")(sections),
+        )
+    )
+    if domain:
+        stmt = stmt.where(CorpusChunk.domain == domain)
+    stmt = stmt.order_by(dist.asc()).limit(k)
+    return [(c, 1.0 - float(d)) for c, d in db.execute(stmt).all()]
+
+
 def _parent_text(db: Session, chunk: CorpusChunk) -> str:
     if chunk.parent_chunk_id:
         parent = db.get(CorpusChunk, chunk.parent_chunk_id)
@@ -76,15 +99,24 @@ def _parent_text(db: Session, chunk: CorpusChunk) -> str:
     return chunk.text
 
 
-def _source_url(db: Session, chunk: CorpusChunk) -> str | None:
+def _doc_meta(db: Session, chunk: CorpusChunk):
+    """(source_url, digest, sections_cited) for a chunk's parent document, one fetch.
+    digest is suppressed for the non-substantive sentinels."""
     doc = db.get(CorpusDocument, chunk.corpus_document_id)
-    return doc.source_url if doc else None
+    if not doc:
+        return None, None, None
+    dg = doc.digest if doc.digest and doc.digest not in ("PROCEDURAL", "INSUFFICIENT") else None
+    return doc.source_url, dg, doc.sections_cited
 
 
 def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> RetrievalResult:
     qvec = emb.embed_one(query)
     dense = _dense(db, qvec, domain, settings.retrieval_dense_k)
     sparse = _sparse(db, query, domain, settings.retrieval_sparse_k)
+    # section-aware channel: if the query names an IT-Act section ("cases on s.68"),
+    # add dense hits restricted to documents that CITE it (high precision).
+    q_sections = extract_sections(query)
+    section = _section_dense(db, qvec, q_sections, domain, settings.retrieval_dense_k) if q_sections else []
 
     # merge candidate set by chunk id, recording channel(s) + a base dense score
     cand: dict[int, tuple[CorpusChunk, set[str]]] = {}
@@ -95,6 +127,9 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
     for c, _ in sparse:
         cand.setdefault(c.id, (c, set()))[1].add("sparse")
         base.setdefault(c.id, 0.0)
+    for c, s in section:
+        cand.setdefault(c.id, (c, set()))[1].add("section")
+        base[c.id] = max(base.get(c.id, 0.0), s)
 
     if not cand:
         return RetrievalResult([], grounded=False, meta={"dense": len(dense), "sparse": 0})
@@ -108,21 +143,39 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
         ranked = sorted(range(len(chunks)), key=lambda i: base[chunks[i].id], reverse=True)
         scores = [(i, base[chunks[i].id]) for i in ranked[: settings.retrieval_rerank_k]]
 
+    # Batch the parent-section and document-metadata lookups instead of two
+    # point queries per passage (was N+1 on the hot path).
+    sel = [(chunks[idx], score) for idx, score in scores]
+    parent_ids = {c.parent_chunk_id for c, _ in sel if c.parent_chunk_id}
+    doc_ids = {c.corpus_document_id for c, _ in sel}
+    parents = {
+        p.id: p for p in db.scalars(select(CorpusChunk).where(CorpusChunk.id.in_(parent_ids)))
+    } if parent_ids else {}
+    docs = {
+        d.id: d for d in db.scalars(select(CorpusDocument).where(CorpusDocument.id.in_(doc_ids)))
+    } if doc_ids else {}
+
     passages: list[Passage] = []
-    for idx, score in scores:
-        c = chunks[idx]
+    for c, score in sel:
+        parent = parents.get(c.parent_chunk_id) if c.parent_chunk_id else None
+        doc = docs.get(c.corpus_document_id)
+        digest = None
+        if doc and doc.digest and doc.digest not in ("PROCEDURAL", "INSUFFICIENT"):
+            digest = doc.digest
         passages.append(
             Passage(
                 chunk_id=c.id,
                 breadcrumb=c.breadcrumb,
-                text=_parent_text(db, c),
+                text=parent.text if parent else c.text,
                 match_text=c.text,
-                source_url=_source_url(db, c),
+                source_url=doc.source_url if doc else None,
                 section_number=c.section_number,
                 rule_number=c.rule_number,
                 domain=c.domain.value if hasattr(c.domain, "value") else str(c.domain),
                 score=round(score, 4),
                 channels=sorted(cand[c.id][1]),
+                digest=digest,
+                sections_cited=doc.sections_cited if doc else None,
             )
         )
 
@@ -130,6 +183,8 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
     meta = {
         "dense": len(dense),
         "sparse": len(sparse),
+        "section": len(section),
+        "sections_in_query": q_sections,
         "candidates": len(cand),
         "top_score": passages[0].score if passages else None,
         "min_score": settings.retrieval_min_score,
@@ -164,7 +219,15 @@ def retrieve_documents(db: Session, query: str, *, namespace: str) -> RetrievalR
         return RetrievalResult([], grounded=False, meta={"candidates": 0})
 
     chunks = [c for c, _ in cand.values()]
-    scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+    try:
+        scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+    except Exception:  # reranker down -> degrade to candidate order, don't 500
+        # These chunks are from the user's OWN uploaded document, so treat them
+        # as grounded at the gate (score = min_score) instead of failing the query.
+        scores = [
+            (i, settings.retrieval_min_score)
+            for i in range(min(len(chunks), settings.retrieval_rerank_k))
+        ]
     passages = [
         Passage(
             chunk_id=chunks[idx].id,

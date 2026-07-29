@@ -40,7 +40,7 @@ export default function Documents() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Documents</h2>
+        <h2 className="font-serif text-xl font-semibold">Documents</h2>
         <p className="text-sm text-muted-foreground">Upload a file and ask questions answered only from that document.</p>
       </div>
       <div className="grid md:grid-cols-2 gap-6">

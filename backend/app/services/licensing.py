@@ -41,7 +41,10 @@ def usage(db: Session, wing_id: int) -> dict:
     wing = db.get(Wing, wing_id)
     used = active_count(db, wing_id)
     limit = wing.seat_limit if wing else 0
-    return {"wing_id": wing_id, "used": used, "limit": limit, "available": max(0, limit - used)}
+    # limit <= 0 means "unlimited" — report available as the used count's headroom
+    # being effectively open (-1 sentinel keeps the response numeric for the UI).
+    available = -1 if limit <= 0 else max(0, limit - used)
+    return {"wing_id": wing_id, "used": used, "limit": limit, "available": available}
 
 
 def acquire_seat(db: Session, *, wing_id: int, user_id: int, session_id: str,
@@ -61,7 +64,8 @@ def acquire_seat(db: Session, *, wing_id: int, user_id: int, session_id: str,
         .with_for_update()
     ).all()
 
-    if active_count(db, wing_id) >= limit:
+    # limit <= 0 means an unlimited pool (wing created without an explicit cap).
+    if limit > 0 and active_count(db, wing_id) >= limit:
         raise SeatPoolExhausted(wing_id, limit)
 
     lease = SeatLease(

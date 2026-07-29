@@ -1,0 +1,5 @@
+services:
+  api:
+    ports: !override ["127.0.0.1:8000:8000"]   # collapse the base+web double-bind
+  frontend:
+    ports: !override ["127.0.0.1:5174:80"]

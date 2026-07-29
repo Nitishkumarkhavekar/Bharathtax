@@ -10,11 +10,11 @@ from app.ingestion.parse.base import parse_sections
 RULES_NAME = "Income Tax Rules, 1962"
 
 
-def parse(text: str) -> Iterator[ParsedUnit]:
+def parse(text: str, act_name: str = RULES_NAME) -> Iterator[ParsedUnit]:
     # No reliable TOC in the partial dept PDFs -> accept all plausible headers.
     yield from parse_sections(
         text,
-        act_name=RULES_NAME,
+        act_name=act_name,
         top_label="Rule",
         number_field="rule_number",
         valid_numbers=None,

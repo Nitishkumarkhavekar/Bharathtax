@@ -1,0 +1,43 @@
+# LiteLLM proxy config — fronts the BharathTax models.
+#
+#   bharattax-rag        -> the grounded income-tax RAG chatbot (retrieval +
+#                           citations), via the OpenAI-compatible RAG API (:8080)
+#   llama-3.1-8b-instruct -> the raw Llama LLM served by vLLM (:8002), no retrieval
+#
+# host.docker.internal = the VPS host (so the container reaches host-published ports).
+model_list:
+  - model_name: bharattax-rag
+    litellm_params:
+      model: openai/bharattax-rag
+      api_base: http://host.docker.internal:8080/v1
+      api_key: os.environ/BHARATTAX_API_KEY
+
+  - model_name: bharattax-appeal
+    litellm_params:
+      model: openai/bharattax-appeal
+      api_base: http://host.docker.internal:8080/v1
+      api_key: os.environ/BHARATTAX_API_KEY
+
+  - model_name: llama-3.1-8b-instruct
+    litellm_params:
+      model: openai/llama-3.1-8b-instruct
+      api_base: http://host.docker.internal:8002/v1
+      api_key: "not-needed"
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  # forward feedback to the RAG backend (LiteLLM only proxies model routes otherwise)
+  pass_through_endpoints:
+    - path: "/v1/feedback"
+      target: "http://host.docker.internal:8080/v1/feedback"
+      headers:
+        Authorization: "Bearer os.environ/BHARATTAX_API_KEY"
+    - path: "/v1/law"
+      target: "http://host.docker.internal:8080/v1/law"
+      headers:
+        Authorization: "Bearer os.environ/BHARATTAX_API_KEY"
+
+litellm_settings:
+  drop_params: true            # ignore unknown OpenAI params instead of erroring
+  request_timeout: 120

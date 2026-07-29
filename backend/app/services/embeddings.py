@@ -10,11 +10,16 @@ import httpx
 from app.core.config import settings
 
 _TIMEOUT = httpx.Timeout(600.0)   # CPU embedding of a batch of long sections can be slow
+# bge-m3 only attends to its first several thousand tokens, so a giant chunk (e.g. a
+# whole-document parent from a large OCR'd doc — one hit 123k chars) adds no signal but
+# grinds CPU embedding for minutes. Cap input length: the head carries the identity.
+_MAX_EMBED_CHARS = 8000
 
 
 def embed(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
+    texts = [t[:_MAX_EMBED_CHARS] for t in texts]
     with httpx.Client(timeout=_TIMEOUT) as client:
         r = client.post(f"{settings.ml_server_url}/embed", json={"texts": texts})
         r.raise_for_status()
@@ -29,6 +34,9 @@ def rerank(query: str, passages: list[str], top_k: int | None = None) -> list[tu
     """Return [(original_index, score)] sorted best-first."""
     if not passages:
         return []
+    # Cross-encoder only attends to the head anyway; cap like embed() so a few
+    # huge parent chunks can't bloat the payload / CPU on the hot path.
+    passages = [p[:_MAX_EMBED_CHARS] for p in passages]
     with httpx.Client(timeout=_TIMEOUT) as client:
         r = client.post(
             f"{settings.ml_server_url}/rerank",

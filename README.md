@@ -7,9 +7,12 @@ exact source; if retrieval finds nothing relevant, the bot says so — it never
 answers from the model's own knowledge.
 
 Two workstreams, one system:
-- **Workstream A — Application:** auth/licensing, hybrid RAG, Ask Bot, document
-  Q&A, **Appeals** (CIT(A)/NFAC order drafting → DOCX), **Rulings** (case-law
-  search), admin console, audit log.
+- **Workstream A — Application:** auth/licensing, hybrid RAG, **Ask Bot**
+  (streamed, cited answers with per-user memory & personalization; live
+  case-law lookup via Indian Kanoon for SC/HC/ITAT), document Q&A, **Appeals**
+  (CIT(A)/NFAC order drafting → DOCX; runs in the dept desktop app), **Drafting**
+  (notices & orders u/s 142(1)/143(2)/154 etc. → ITBA-ready DOCX), **Rulings**
+  (case-law search), admin console, audit log.
 - **Workstream B — Data/Ingestion:** a configurable, re-runnable pipeline that
   turns primary tax law **and case law** into a clean, chunked, embedded,
   indexed corpus.
@@ -25,11 +28,15 @@ points — adding one means editing `config/sources.yaml`, not code.
 
 | | Dev (this laptop) | Production |
 |---|---|---|
-| Embeddings / reranker | bge-m3 + bge-reranker-v2-m3 on **CPU** | on GPU |
-| LLM | Qwen2.5-**3B** via Ollama (or `mock`) | vLLM + **Qwen2.5-14B-Instruct**, ≥24 GB VRAM |
+| Embeddings / reranker | bge-m3 + bge-reranker-v2-m3 on **CPU** | on GPU (ml-server) |
+| Grounded RAG LLM | `mock` / small Ollama model | **vLLM Llama-3.1-8B-Instruct** on the GPU box, reached via a LiteLLM gateway (reverse-SSH tunnel) |
+| Web/agent + streaming | — | **Gemini 2.5 Flash** (tool-calling agent, Google-Search grounding) |
+| Live case law | — | **Indian Kanoon API** (SC / HC / ITAT) |
 
-The LLM sits behind an `LLMClient` interface — switching dev→prod is an `.env`
-change (`LLM_BACKEND`), **no code change**.
+The grounded LLM sits behind an `LLMClient` interface — switching dev→prod is an
+`.env` change (`LLM_BACKEND`), **no code change**. The chat agent, web search,
+and case-law fetch are feature-flagged on top (`CHAT_AGENT_ENABLED`,
+`WEB_SEARCH_ENABLED`, `INDIANKANOON_API_TOKEN`).
 
 ## Layout
 
@@ -117,8 +124,9 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 ## Out of MVP scope (clean extension points left in code)
 
-NJRS bulk case-law ingestion, MS-Word add-in, redaction tool, SSO,
-multi-instance federation.
+MS-Word add-in, redaction tool, SSO, multi-instance federation, GST/Customs
+domains (config-only additions).
 
-(Case-law ingestion and the Appeals draft workflow — formerly out of scope —
-have since shipped; see [`HANDOVER.md`](HANDOVER.md) §5.)
+(Case-law search, live ITAT lookup, the Appeals draft workflow, the Drafting
+suite, streamed chat, and per-user memory — formerly out of scope — have since
+shipped; see [`HANDOVER.md`](HANDOVER.md).)

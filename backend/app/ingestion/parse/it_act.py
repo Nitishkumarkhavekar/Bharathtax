@@ -38,12 +38,12 @@ def _toc_titles(toc_text: str) -> dict[str, str]:
     return titles
 
 
-def parse(text: str) -> Iterator[ParsedUnit]:
+def parse(text: str, act_name: str = ACT_NAME) -> Iterator[ParsedUnit]:
     toc, body = _split_toc_body(text)
     titles = _toc_titles(toc)
     yield from parse_sections(
         body,
-        act_name=ACT_NAME,
+        act_name=act_name,
         top_label="Section",
         number_field="section_number",
         valid_numbers=set(titles) or None,

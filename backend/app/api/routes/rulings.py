@@ -26,5 +26,6 @@ def search(q: str, request: Request,
             continue
         seen.add(x.breadcrumb)
         results.append({"breadcrumb": x.breadcrumb, "snippet": x.match_text[:300],
-                        "source_url": x.source_url, "score": x.score, "chunk_id": x.chunk_id})
+                        "source_url": x.source_url, "score": x.score, "chunk_id": x.chunk_id,
+                        "digest": x.digest, "sections_cited": x.sections_cited})
     return {"grounded": res.grounded, "results": results, "meta": res.meta}

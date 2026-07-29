@@ -3,14 +3,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import decode_token
+from app.models.admin import LicenseKey
 from app.models.enums import Role
 from app.models.org import User
 from app.services import auth as auth_svc
@@ -48,6 +51,75 @@ def require_role(*roles: Role) -> Callable[..., User]:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="insufficient role")
         return user
     return guard
+
+
+# The gateable user-facing modules. Adding a new section = add its key here and a
+# require_feature() guard on its router in main.py. (Profile is always available.)
+ALL_FEATURES = ["chat", "appeals", "rulings", "documents", "history"]
+
+
+def require_feature(feature: str) -> Callable[..., User]:
+    """Router guard: reject a non-admin user who hasn't been allotted `feature`.
+    user.features == None means all modules (default / legacy); admins bypass."""
+    def guard(user: User = Depends(get_current_user)) -> User:
+        if user.role in (Role.super_admin, Role.wing_admin):
+            return user
+        if user.features is not None and feature not in user.features:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail=f"The '{feature}' section is not enabled for your account. "
+                       f"Contact your administrator.",
+            )
+        return user
+    return guard
+
+
+def require_license(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Block officer/auditor users from protected routes until they hold a
+    valid license. Admins are exempt.
+
+    Semantics the desktop relies on:
+      * License was *deactivated* by an admin -> raise 401. The desktop treats
+        401 as "session revoked" and forces sign-out (per admin request:
+        deactivation kicks the user out immediately).
+      * License is missing or expired -> raise 402. The desktop shows a
+        "license expired / please contact admin" screen but keeps the user
+        signed in so quota / subscription issues don't burn their session.
+    """
+    if user.role in (Role.super_admin, Role.wing_admin):
+        return user
+
+    # Look for an explicitly-deactivated license first — that's the "kick this
+    # user out now" signal admins reach for.
+    deactivated = db.scalar(
+        select(LicenseKey).where(
+            LicenseKey.assigned_to == user.username,
+            LicenseKey.status == "deactivated",
+        ).order_by(LicenseKey.updated_at.desc())
+    )
+    if deactivated is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your license has been deactivated by the administrator.",
+        )
+
+    now = datetime.now(timezone.utc)
+    lic = db.scalar(
+        select(LicenseKey).where(
+            LicenseKey.assigned_to == user.username,
+            LicenseKey.status == "active",
+            LicenseKey.valid_until > now,
+        )
+    )
+    if not lic:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="A valid license is required to use this feature.",
+        )
+    return user
 
 
 def client_meta(request: Request) -> dict:

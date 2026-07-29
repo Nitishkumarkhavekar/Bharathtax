@@ -38,7 +38,98 @@ celery_app.conf.beat_schedule = {
         "task": "app.ingestion.tasks.reap_seat_leases",
         "schedule": float(settings.seat_lease_heartbeat_seconds),
     },
+    "model-health-alert": {
+        "task": "app.ingestion.tasks.model_health_alert",
+        "schedule": 600.0,  # every 10 minutes
+    },
 }
+
+
+@celery_app.task
+def model_health_alert() -> dict:
+    """Proactive Gemini watch: ping the API + roll up 24h Gemini spend, and raise
+    a persisted alert (Redis + WARNING log) when credits are depleted / rate-
+    limited, or spend nears the configured cap. Catches a silent credit
+    depletion BEFORE it becomes an outage. (The GPU-box watchdog handles the
+    local model backends separately.)"""
+    import os
+    import json
+    import logging
+    import httpx
+    from datetime import datetime, timezone, timedelta
+
+    log = logging.getLogger("model_alert")
+    key = (os.getenv("GEMINI_API_KEY") or "").strip()
+    model = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
+
+    status, detail = "ok", "Responding normally"
+    if not key:
+        status, detail = "down", "No Gemini API key configured"
+    else:
+        try:
+            with httpx.Client(timeout=10.0) as c:
+                r = c.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                    headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                    json={"contents": [{"parts": [{"text": "ping"}]}],
+                          "generationConfig": {"maxOutputTokens": 1,
+                                               "thinkingConfig": {"thinkingBudget": 0}}},
+                )
+            if r.status_code == 200:
+                status, detail = "ok", "Responding normally"
+            elif r.status_code == 429:
+                msg = ""
+                try:
+                    msg = (r.json().get("error", {}) or {}).get("message", "")
+                except Exception:
+                    pass
+                if "credit" in msg.lower() or "depleted" in msg.lower():
+                    status, detail = "depleted", "Gemini prepaid credits are depleted \u2014 top up billing"
+                else:
+                    status, detail = "rate_limited", "Gemini is rate-limited (HTTP 429)"
+            else:
+                status, detail = "error", f"Gemini HTTP {r.status_code}"
+        except Exception as e:  # noqa: BLE001
+            status, detail = "error", f"Gemini unreachable: {type(e).__name__}"
+
+    spend = 0
+    try:
+        from sqlalchemy import text as _t
+        from app.core.db import SessionLocal
+        db = SessionLocal()
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
+        spend = int(db.execute(_t(
+            "SELECT COALESCE(SUM(total_tokens),0) FROM token_usage "
+            "WHERE model LIKE 'gemini%' AND created_at >= :s"), {"s": since}).scalar() or 0)
+        db.close()
+    except Exception:
+        pass
+    cap = int(os.getenv("GEMINI_DAILY_TOKEN_CAP", "0"))
+    near_cap = cap > 0 and spend >= 0.9 * cap
+
+    alert = None
+    if status in ("depleted", "down"):
+        alert = {"level": "critical", "code": f"gemini_{status}", "message": detail}
+    elif status in ("rate_limited", "error"):
+        alert = {"level": "warning", "code": f"gemini_{status}", "message": detail}
+    elif near_cap:
+        alert = {"level": "warning", "code": "gemini_near_cap",
+                 "message": f"Gemini 24h spend ({spend:,} tokens) is near the {cap:,}-token cap"}
+    if alert:
+        alert["spend_24h_tokens"] = spend
+        alert["at"] = datetime.now(timezone.utc).isoformat()
+
+    try:
+        import redis as _redis
+        rc = _redis.from_url(settings.redis_url)
+        if alert:
+            rc.set("bt:alert:gemini", json.dumps(alert), ex=3600)
+            log.warning("MODEL ALERT: %s", alert["message"])
+        else:
+            rc.delete("bt:alert:gemini")
+    except Exception:
+        pass
+    return {"status": status, "spend_24h_tokens": spend, "alert": bool(alert)}
 
 
 @celery_app.task

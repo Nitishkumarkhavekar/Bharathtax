@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, LargeBinary, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,12 @@ class AppealCase(Base):
     __tablename__ = "appeal_cases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Public opaque identifier — appears in URLs instead of `id` so that the
+    # sequential integer id (an implementation detail + enumeration vector) is
+    # never exposed to users. UUID4 as a hex string, 32 chars, dashless. Every
+    # externally-callable route accepts EITHER slug or numeric id; the numeric
+    # id path is kept for admin/internal tooling. See _get_case().
+    slug: Mapped[str] = mapped_column(String(36), unique=True, index=True)
     owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     wing_id: Mapped[int] = mapped_column(ForeignKey("wings.id"), index=True)
     title: Mapped[str] = mapped_column(String(300))
@@ -44,6 +50,16 @@ class AppealDocument(Base):
     minio_key: Mapped[str] = mapped_column(String(500))
     text: Mapped[str] = mapped_column(Text, default="")
     pages: Mapped[int] = mapped_column(Integer, default=0)
+    # SHA-256 hex of the raw PDF bytes. Populated on upload. Used as the
+    # dedup key — if another AppealDocument already has this sha256 AND
+    # non-empty text, we copy its `text` instead of re-running Gemini OCR.
+    # Nullable so historic rows uploaded before this migration keep working
+    # (they simply skip the dedup path).
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Cached faithful digest of `text` (see appeal_draft._digest_one). An uploaded
+    # doc is immutable, so we compute this once and reuse it on every re-run of the
+    # case instead of paying the LLM digest cost each time.
+    digest: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     case: Mapped[AppealCase] = relationship(back_populates="documents")
@@ -59,6 +75,8 @@ class AppealRun(Base):
     provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
     model: Mapped[str | None] = mapped_column(String(80), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Celery task id so we can revoke a running pipeline on user cancel.
+    task_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -80,5 +98,9 @@ class AppealOutput(Base):
     edited: Mapped[bool] = mapped_column(Boolean, default=False)
     version: Mapped[int] = mapped_column(Integer, default=1)      # higher = newer
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the user edits the draft in OnlyOffice we persist the binary docx
+    # here so subsequent edit sessions load *their* document, not a freshly
+    # re-rendered one from `content` (which would lose formatting).
+    docx_blob: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
     run: Mapped[AppealRun] = relationship(back_populates="outputs")

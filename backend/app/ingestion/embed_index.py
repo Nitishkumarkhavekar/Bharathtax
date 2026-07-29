@@ -20,7 +20,7 @@ _BATCH = 32
 
 
 def index_document(db, *, document: CorpusDocument, source_id: int, domain: Domain,
-                   chunks: list[Chunk], resume_from: int = 0) -> int:
+                   chunks: list[Chunk], resume_from: int = 0, embed_vectors: bool = True) -> int:
     """Embed + persist all chunks for one corpus document, committing per batch so
     progress is durable and visible. Parent-child links resolve correctly because
     a parent always precedes its children in the list.
@@ -28,7 +28,11 @@ def index_document(db, *, document: CorpusDocument, source_id: int, domain: Doma
     `resume_from` lets a partially-ingested document continue: the first N chunks
     (already in the DB, in insertion order) are skipped, and their ids are loaded
     so later children can still link to parents in the skipped range. Returns rows
-    written THIS call."""
+    written THIS call.
+
+    `embed_vectors=False` STAGES the chunks with a NULL embedding (no ml-server
+    call) — used to parse/chunk on CPU now and defer the expensive embedding to a
+    GPU batch pass later (see `pipeline.embed_pending`)."""
     if not chunks:
         return 0
 
@@ -48,7 +52,7 @@ def index_document(db, *, document: CorpusDocument, source_id: int, domain: Doma
 
     for start in range(resume_from, total, _BATCH):
         batch = chunks[start : start + _BATCH]
-        vectors = emb.embed([c.text for c in batch])
+        vectors = emb.embed([c.text for c in batch]) if embed_vectors else [None] * len(batch)
         rows: list[tuple[int, CorpusChunk]] = []
         for offset, (ch, vec) in enumerate(zip(batch, vectors)):
             row = CorpusChunk(
@@ -83,6 +87,7 @@ def index_document(db, *, document: CorpusDocument, source_id: int, domain: Doma
             supersede_prior(db, domain=domain, new=row, effective=row.effective_date)
         db.commit()
         written += len(rows)
-        log.info("  embedded+indexed %d/%d chunks (doc %s)", written, total, document.id)
+        verb = "embedded+indexed" if embed_vectors else "staged (no embed)"
+        log.info("  %s %d/%d chunks (doc %s)", verb, written, total, document.id)
 
     return written

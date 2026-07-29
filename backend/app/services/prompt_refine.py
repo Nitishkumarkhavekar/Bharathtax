@@ -9,7 +9,19 @@ from __future__ import annotations
 
 import re
 
-from app.services.llm import get_llm
+import os
+from app.core.config import settings
+from app.services.llm import get_llm, OpenAICompatLLM
+
+# "Improve prompt" is an instruction-following REWRITE, not a grounded answer,
+# so it must use the raw instruction model (bharattax-rag always does RAG/answers).
+_IMPROVE_MODEL = os.getenv("IMPROVE_MODEL_NAME", "llama-3.1-8b-instruct")
+
+
+def _improve_llm():
+    if settings.llm_backend.lower() in {"openai", "vllm", "ollama"}:
+        return OpenAICompatLLM(settings.llm_base_url, _IMPROVE_MODEL, settings.llm_api_key)
+    return get_llm()  # mock/dev fallback
 
 # A section/rule/article reference, e.g. "section 68", "u/s 44AD", "s. 271(1)(c)".
 _SEC_TOKEN = re.compile(r"(?:section|sec\.?|s\.|u/s\.?|rule|article|art\.?)\s*(\d+[A-Za-z]*)", re.I)
@@ -101,25 +113,33 @@ _DOC_HINT = (
 )
 
 
-def refine(text: str, context: str = "ask") -> str:
-    """Return an improved version of `text`. Falls back to the original prompt
-    when no real model is configured (the mock backend cannot rewrite)."""
+def refine(text: str, context: str = "ask") -> tuple[str, dict | None]:
+    """Return `(improved_text, llm_call_meta)`. `llm_call_meta` is a dict with
+    `{model, usage, latency_ms}` when a real LLM call was made, else None."""
     text = (text or "").strip()
     if not text:
-        return text
+        return text, None
     system = _SYSTEM + (_DOC_HINT if context == "document" else "")
     user = f"Original question:\n{text}\n\nImproved question:"
+    call_meta: dict | None = None
     try:
-        out = get_llm().complete(system, user).strip()
+        client = _improve_llm()
+        out = client.complete(system, user).strip()
+        if isinstance(client, OpenAICompatLLM):
+            call_meta = {
+                "model": client.last_model or _IMPROVE_MODEL,
+                "usage": client.last_usage,
+                "latency_ms": client.last_latency_ms,
+            }
     except Exception:
-        return text
+        return text, None
     # Mock backend (no model) returns a canned, bracketed string — never surface it.
     if not out or out.startswith("[mock LLM"):
-        return text
+        return text, call_meta
     # Strip accidental wrapping quotes/labels some models add.
     out = out.strip().strip('"').strip()
     for prefix in ("Improved question:", "Improved prompt:"):
         if out.lower().startswith(prefix.lower()):
             out = out[len(prefix):].strip()
     out = _strip_invented(text, out)
-    return out or text
+    return (out or text), call_meta

@@ -10,8 +10,57 @@ from app.core.enums import QueryScope, Role
 
 # ---- auth ----
 class LoginRequest(BaseModel):
-    username: str
+    """Email + password is the only supported sign-in method."""
+    email: str
     password: str
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str | None = None
+    organisation: str | None = None
+
+
+class RegisterResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str | None = None
+    approval_status: str
+    message: str
+    license_key: str | None = None
+    trial_tokens: int | None = None
+
+
+class PublicWingOut(BaseModel):
+    """Wings exposed unauthenticated for the registration form."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    code: str
+
+
+class ProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    organisation: str | None = None
+    role: Role
+    wing_id: int
+    is_active: bool
+    approval_status: str
+    created_at: datetime | None = None
+
+
+class ProfileUpdate(BaseModel):
+    full_name: str | None = None
+    organisation: str | None = None
+    designation: str | None = None
+    # Optional password change (only applied when both are sent and match).
+    current_password: str | None = None
+    new_password: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -27,9 +76,13 @@ class MeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     username: str
+    email: str | None = None
     full_name: str | None
+    organisation: str | None = None
     role: Role
+    designation: str | None = None
     wing_id: int
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 # ---- ask / answers ----
@@ -37,6 +90,7 @@ class AskRequest(BaseModel):
     question: str
     domain: str | None = None        # module filter (income_tax | gst | ...)
     style: str | None = "explanatory"
+    chat_id: int | None = None       # persist this turn into a server-owned chat
 
 
 class ImprovePromptRequest(BaseModel):
@@ -56,6 +110,8 @@ class CitationOut(BaseModel):
     breadcrumb: str
     source_url: str | None = None
     section_number: str | None = None
+    digest: str | None = None                    # judgment headnote ("what it held")
+    sections_cited: list[str] | None = None      # IT-Act sections the judgment cites
 
 
 class AnswerResponse(BaseModel):
@@ -93,10 +149,10 @@ class HistoryItem(BaseModel):
 
 # ---- admin ----
 class WingCreate(BaseModel):
-    department_id: int
+    department_id: int | None = None   # defaults to the first/only department
     name: str
-    code: str
-    seat_limit: int
+    code: str | None = None            # auto-derived from name when omitted
+    seat_limit: int = 0                # 0 = unlimited
 
 
 class WingOut(BaseModel):
@@ -120,8 +176,10 @@ class UserCreate(BaseModel):
     full_name: str | None = None
     email: str | None = None
     role: Role = Role.officer
+    designation: str | None = None      # free-text job title
     wing_id: int
     office_id: int | None = None
+    features: list[str] | None = None   # allowed modules; null = all
 
 
 class UserOut(BaseModel):
@@ -129,6 +187,152 @@ class UserOut(BaseModel):
     id: int
     username: str
     full_name: str | None
+    email: str | None = None
+    organisation: str | None = None
     role: Role
+    designation: str | None = None
     wing_id: int
+    office_id: int | None = None
     is_active: bool
+    approval_status: str = "approved"
+    approved_at: datetime | None = None
+    created_at: datetime | None = None
+    features: list[str] | None = None   # allowed modules; null = all
+
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    email: str | None = None
+    role: Role | None = None
+    designation: str | None = None
+    wing_id: int | None = None
+    office_id: int | None = None
+    is_active: bool | None = None
+    password: str | None = None    # optional reset
+    features: list[str] | None = None   # allowed modules; null = all (only applied when key present)
+
+
+# ---- licenses ----
+class LicenseCreate(BaseModel):
+    valid_until: datetime
+    assigned_to: str | None = None
+    notes: str | None = None
+    valid_from: datetime | None = None
+
+
+class LicenseUpdate(BaseModel):
+    valid_until: datetime | None = None
+    assigned_to: str | None = None
+    notes: str | None = None
+    status: str | None = None      # active | expired | deactivated
+
+
+class LicenseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    key: str
+    status: str
+    valid_from: datetime
+    valid_until: datetime
+    assigned_to: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---- revenue ----
+class RevenueCreate(BaseModel):
+    entry_date: datetime | None = None
+    source: str
+    description: str | None = None
+    amount: float
+    currency: str = "INR"
+    license_key_id: int | None = None
+
+
+class RevenueUpdate(BaseModel):
+    entry_date: datetime | None = None
+    source: str | None = None
+    description: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    license_key_id: int | None = None
+
+
+class RevenueOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    entry_date: datetime
+    source: str
+    description: str | None = None
+    amount: float
+    currency: str
+    license_key_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---- dashboard / model / server ----
+class DashboardOut(BaseModel):
+    users_total: int
+    users_active: int
+    pending_approvals: int = 0
+    admins: int
+    queries_24h: int
+    queries_7d: int
+    queries_total: int
+    avg_latency_ms: float | None = None
+    revenue_month: float
+    revenue_total: float
+    licenses_active: int
+    licenses_expired: int
+    licenses_deactivated: int
+    seats_used: int
+    seats_total: int
+    queries_per_day: list[dict]      # [{day: 'YYYY-MM-DD', count: int}]
+    top_questions: list[dict]        # [{question: str, count: int}]
+
+
+class ModelInfoOut(BaseModel):
+    id: str
+    queries_total: int
+    queries_24h: int
+    queries_7d: int
+    avg_latency_ms: float | None
+    success_rate: float              # 0..100
+    is_primary: bool
+    is_fallback: bool
+
+
+class ModelManagementOut(BaseModel):
+    backend: str
+    base_url: str
+    primary_model: str
+    fallback_model: str | None
+    models: list[ModelInfoOut]
+    queries_per_day: list[dict]
+    latency_per_day: list[dict]
+    last_error: str | None = None
+    healthy: bool
+
+
+class ServerStatsOut(BaseModel):
+    healthy: bool
+    cpu_percent: float
+    cpu_count: int
+    load_avg: list[float]            # [1m, 5m, 15m]
+    mem_total_mb: float
+    mem_used_mb: float
+    mem_percent: float
+    swap_used_mb: float
+    swap_percent: float
+    disk_total_gb: float
+    disk_used_gb: float
+    disk_percent: float
+    uptime_seconds: int
+    process_count: int
+    network_bytes_sent: int
+    network_bytes_recv: int
+    containers: list[dict]           # [{name, status, image}]
+    llm_endpoint_healthy: bool
+    llm_endpoint_latency_ms: float | None
