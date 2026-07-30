@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 
 import httpx
@@ -158,10 +159,92 @@ _SYSTEM = (
     "your search surfaces a DIFFERENT case, do not substitute its holding — search "
     "again for the named case, and if you still cannot find it, say so plainly rather "
     "than describing another case as if it were the one asked about. "
+    "ANALYZE THE QUESTION FIRST — before writing anything, silently classify:\n"
+    " - What is the assessee actually asking? (a factual lookup, a "
+    "procedural clarification, an opinion / advice, or a litigation "
+    "defence)\n"
+    " - Which Section / Rule / regime / assessment year does it touch?\n"
+    " - Are any critical facts missing? (if yes and the answer depends on "
+    "them, call ask_user with 2-4 concrete options BEFORE writing)\n"
+    "Then answer using the RESPONSE TEMPLATE below. Do NOT deviate from "
+    "the section order. Sections marked '(if applicable)' may be skipped "
+    "when genuinely irrelevant; the rest are required for every "
+    "substantive tax answer.\n"
+    "\n"
+    "RESPONSE TEMPLATE (opening paragraph has NO heading; the numbered "
+    "H2 headings start at '## 2. Relevant Law' — do NOT emit "
+    "'## 1. Short Answer' or any label above the opening paragraph):\n"
+    "\n"
+    "(un-headed opening)\n"
+    "2-3 sentences giving the direct verdict / bottom line. No preamble, "
+    "NO 'Short Answer' heading, NO other label.\n"
+    "\n"
+    "## 2. Relevant Law\n"
+    "Bullet the exact Section(s), Rule(s), CBDT Circular(s), and "
+    "Notification(s) that govern the answer. Name any relevant proviso or "
+    "Explanation. Include the FY / AY where the rule is regime- or year-"
+    "sensitive (e.g. HRA + Sec 115BAC).\n"
+    "\n"
+    "## 3. Legal Analysis\n"
+    "Use these H3 sub-headings inside this section:\n"
+    "\n"
+    "### Facts Considered\n"
+    "State the facts you're assuming (if user gave them) or the factual "
+    "context you're generalising over (if the question is generic).\n"
+    "\n"
+    "### Conditions\n"
+    "Every statutory condition the assessee must satisfy — bulleted. If "
+    "there is a formula (e.g. HRA = LEAST of actual HRA / 50%%-40%% of "
+    "salary / rent minus 10%% of salary; Sec 80C aggregated with 80CCC + "
+    "80CCD(1) per Sec 80CCE; Sec 54F reinvestment = 1yr before / 2yrs "
+    "after / 3yrs for construction), show the formula fully.\n"
+    "\n"
+    "### Exceptions\n"
+    "Every proviso, exclusion, or non-obvious carve-out — named "
+    "explicitly. If there is a first proviso and a second proviso, name "
+    "both and say what each does. Call out the OLD vs NEW REGIME "
+    "distinction here if the provision behaves differently under Sec "
+    "115BAC (HRA, LTA, most 80-series are DISALLOWED under the new "
+    "regime).\n"
+    "\n"
+    "### Practical Implications\n"
+    "How the rule ACTUALLY applies in practice — the worked mechanic, "
+    "not just the principle. Also cover RELATED COMPLIANCE the "
+    "professional will need: an HRA answer must mention landlord PAN "
+    "threshold (Rs 1L annual) + Sec 194IB TDS (rent > Rs 50k/mo, Form "
+    "26QC) + Sec 269SS/271D (cash rent > Rs 20k) + Sec 80GG alternative "
+    "+ Form 12BB employer declaration; a capital-gains answer must "
+    "mention indexation vs grandfathering + Sec 54/54F/54EC + Sec 50C; "
+    "a Sec 68 answer must mention Sec 115BBE (60%% tax + surcharge) + "
+    "Sec 271AAC (10%% penalty). Don't leave the reader hunting for the "
+    "next step.\n"
+    "\n"
+    "## 4. Documents / Evidence (if applicable)\n"
+    "Bullet the documents to collect / produce. Skip this section for "
+    "pure factual lookups where no documentation is at stake.\n"
+    "\n"
+    "## 5. Judicial Position (if applicable)\n"
+    "Cite real, ON-TOPIC cases in inline prose or a small markdown table. "
+    "ABSOLUTE rules: (a) cases must be on the SAME statutory provision as "
+    "the question — Sec 68 cases (Lovely Exports, NRA Iron & Steel) do "
+    "NOT belong in an HRA answer; (b) NEVER invent citations — if unsure, "
+    "call search_case_law or omit the case; (c) NEVER emit an empty "
+    "markdown table just to have this section — skip the section entirely "
+    "if you have no on-point precedent.\n"
+    "\n"
+    "## 6. Recommended Next Steps\n"
+    "3-7 concrete actions the reader can start today — what to file, by "
+    "when, on which form, with what supporting evidence. Not 'consult a "
+    "professional'.\n"
+    "\n"
+    "## 7. Final Conclusion\n"
+    "One short paragraph tying the answer back to the exact question — "
+    "the 'so what' for the reader. This is where you crystallise the "
+    "verdict from Section 1 in light of everything analysed above.\n"
+    "\n"
     "Always deliver a COMPLETE, self-contained answer — never stop "
     "mid-sentence or leave a list, case, or point unfinished; if space is tight, "
-    "cover fewer points fully rather than many points half-way. Finish with a short "
-    "conclusion when useful."
+    "cover fewer points fully rather than many points half-way."
 )
 
 _TOOLS = [{"functionDeclarations": [
@@ -285,9 +368,74 @@ def _recent_history(db: Session, *, chat_id, user_id, limit: int = 6) -> list:
         return []
 
 
+# ---------------------------------------------------------------------------
+# Continuation intercept — when the user pauses a streaming answer and then
+# types "continue" (or a variant), Gemini otherwise treats "continue" as a
+# fresh question and starts a new answer (often with a new heading like
+# "3. Exceptions and Relief Provisions"), losing state. This helper detects
+# the intent and rewrites the prompt so the model resumes EXACTLY where it
+# left off.
+# ---------------------------------------------------------------------------
+_CONTINUE_INTENT = re.compile(
+    r"^\s*(?:pls\s+|please\s+|kindly\s+)?"
+    r"(?:continue|cont|go\s*on|keep\s*going|carry\s*on|proceed|"
+    r"finish(?:\s+it)?|complete(?:\s+it|\s+the\s+answer)?|resume|next|more|"
+    r"continue\s+where\s+you\s+left\s+off|"
+    r"continue\s+from\s+where\s+you\s+stopped)"
+    r"[\s.!?,]*$",
+    re.IGNORECASE,
+)
+
+
+def _apply_continuation_intent(contents: list, question: str) -> tuple[list, str]:
+    """If `question` is a bare 'continue' request AND the last turn in
+    `contents` is an assistant/model turn, rewrite the trailing user message
+    to explicitly instruct Gemini to resume from where it stopped. Returns
+    the (possibly rewritten) contents list and the (possibly rewritten)
+    question string.
+    """
+    if not _CONTINUE_INTENT.match(question or ""):
+        return contents, question
+    # contents currently ends with the just-appended user turn ('continue').
+    # The turn BEFORE that must be a model turn for continuation to make sense.
+    if len(contents) < 2 or contents[-2].get("role") != "model":
+        return contents, question
+    prev_text = ""
+    for part in contents[-2].get("parts", []) or []:
+        t = (part or {}).get("text")
+        if t:
+            prev_text += t
+    prev_text = prev_text.strip()
+    if not prev_text:
+        return contents, question
+    tail = prev_text[-800:]
+    instruction = (
+        "CONTINUATION REQUEST — the previous assistant answer above was "
+        "interrupted or cut short. Resume it EXACTLY from where it stopped. "
+        "STRICT rules:\n"
+        "- Do NOT restart, recap, greet, or re-introduce the topic.\n"
+        "- Do NOT re-emit a heading you already emitted.\n"
+        "- Do NOT invent a new numbered section — pick up mid-sentence if "
+        "the prior answer was cut mid-sentence.\n"
+        "- Do NOT summarize what you already wrote.\n"
+        "- Continue with the very NEXT sentence / bullet / row that would "
+        "naturally follow.\n"
+        "- Preserve the same voice, headings, and numbering scheme.\n"
+        "- When you have finished the answer, stop cleanly — do not loop.\n"
+        "\n"
+        f"Prior answer ended with:\n---\n…{tail}\n---\n"
+        "Now continue from immediately after that last character."
+    )
+    new_contents = list(contents[:-1]) + [
+        {"role": "user", "parts": [{"text": instruction}]}
+    ]
+    return new_contents, instruction
+
+
 def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, domain=None):
     """Run the tool-calling loop. Returns (text, meta)."""
     contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
+    contents, question = _apply_continuation_intent(contents, question)
     tools_used, all_sources, usage_calls = [], [], []
     law_refs: list[dict] = []   # statutory passages search_tax_law actually returned
     # Temperature 0: the same question must route through the same tools and yield
@@ -414,6 +562,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     delivery differs. The final synthesis is streamed token-by-token from Gemini.
     """
     contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
+    contents, question = _apply_continuation_intent(contents, question)
     tools_used, all_sources, usage_calls, law_refs = [], [], [], []
     cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}

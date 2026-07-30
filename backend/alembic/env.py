@@ -11,7 +11,12 @@ from app.core.db import Base
 import app.models  # noqa: F401  (import side effect: register all tables)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Alembic's config.set_main_option routes through configparser, which treats
+# '%' as an interpolation marker. Our URL contains '%40' (URL-encoded '@' in
+# the password), so we double the '%' to escape it for configparser only.
+config.set_main_option(
+    "sqlalchemy.url", settings.database_url.replace("%", "%%")
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
