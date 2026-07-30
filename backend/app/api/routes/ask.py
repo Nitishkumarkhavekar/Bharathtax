@@ -57,15 +57,29 @@ def ask(body: AskRequest, request: Request,
     domain = _domain(body.domain)
     try:
         _use_agent = False
+        _use_multi = False
         try:
             from app.services import agent as _agent
             _use_agent = _agent.enabled()
         except Exception:  # noqa: BLE001
             _use_agent = False
+        try:
+            from app.services import multi_agent as _multi
+            _use_multi = _multi.enabled()
+        except Exception:  # noqa: BLE001
+            _use_multi = False
         if _use_agent:
             try:
-                _t, _am = _agent.answer_agentic(db, body.question, user_id=p.user.id,
-                                                chat_id=body.chat_id, domain=domain)
+                if _use_multi:
+                    _t, _am = _multi.answer_multi_agent(
+                        db, body.question, user_id=p.user.id,
+                        chat_id=body.chat_id, domain=domain,
+                    )
+                else:
+                    _t, _am = _agent.answer_agentic(
+                        db, body.question, user_id=p.user.id,
+                        chat_id=body.chat_id, domain=domain,
+                    )
                 result = type("AgentResult", (), {})()
                 # Cite what the agent's search_tax_law tool actually retrieved
                 # (act/section per passage). Fall back to parsing the answer's
@@ -232,18 +246,28 @@ def ask_stream(body: AskRequest, request: Request,
 
     def _gen():
         use_agent = False
+        use_multi = False
         try:
             from app.services import agent as _agent
             use_agent = _agent.enabled()
         except Exception:  # noqa: BLE001
             use_agent = False
+        try:
+            from app.services import multi_agent as _multi
+            use_multi = _multi.enabled()
+        except Exception:  # noqa: BLE001
+            use_multi = False
 
         if use_agent:
             from app.services import agent as _agent
+            _stream_fn = (
+                _multi.answer_multi_agent_stream if use_multi
+                else _agent.answer_agentic_stream
+            )
             full, meta = "", {}
             try:
-                for ev in _agent.answer_agentic_stream(db, question, user_id=uid,
-                                                       chat_id=chat_id, domain=domain):
+                for ev in _stream_fn(db, question, user_id=uid,
+                                     chat_id=chat_id, domain=domain):
                     if "delta" in ev:
                         full += ev["delta"]
                         yield _sse({"delta": ev["delta"]})

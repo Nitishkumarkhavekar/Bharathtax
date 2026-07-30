@@ -1,0 +1,9 @@
+services:
+  api:
+    ports: !override
+      - "18000:8000"
+  frontend:
+    ports: !override
+      - "5174:5173"
+    environment:
+      VITE_API_BASE_URL: "http://127.0.0.1:18000"
