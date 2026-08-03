@@ -203,6 +203,8 @@ export function BarChart({
   accent = "blue",
   maxBarWidth = 56,
   yAxis = true,
+  scrollable = false,
+  minBarSlot = 36,
 }: {
   data: { label: string; value: number }[];
   height?: number;
@@ -210,18 +212,35 @@ export function BarChart({
   accent?: Accent;
   maxBarWidth?: number;
   yAxis?: boolean;
+  /** When true, the bars area scrolls horizontally when there isn't room
+   *  for every bar at `minBarSlot` px each. Useful for a 30-day daily
+   *  series that would otherwise squeeze the bars to 1-2 px wide. */
+  scrollable?: boolean;
+  /** Minimum per-bar horizontal slot (bar + gap) in the scrollable mode. */
+  minBarSlot?: number;
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
-  const fmt = valueFormatter ?? ((v) => String(v));
+  // Default to the compact abbrev formatter (7.6M, 234k) so 7-digit token
+  // counts don't overflow into the next bar's label.
+  const fmt = valueFormatter ?? abbrev;
   const a = ACCENT[accent];
 
   // Pick "nice" Y-axis ticks (0, 25%, 50%, 75%, 100%) of niceMax.
   const niceMax = niceCeil(max);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(niceMax * f));
-  // Reserved space for value labels above bars + axis labels below.
+  // Rotate x-axis labels when there are many bars so they don't collapse
+  // into "07..." ellipsis. 45° gives us more character-room without going
+  // full vertical.
+  const rotateLabels = data.length > 10;
+  // Reserved space for value labels above bars + axis labels below (taller
+  // when labels are rotated so they don't clip the plot).
   const topPad = 22;
-  const bottomLabelHeight = 22;
+  const bottomLabelHeight = rotateLabels ? 56 : 22;
   const plotHeight = height - topPad - bottomLabelHeight;
+  // Hide the numeric label above small / zero bars when the chart is dense
+  // — those labels invariably collide with their neighbours' big-bar
+  // labels. The bar's hover title still shows the value.
+  const denseThreshold = data.length > 12 ? 0.08 * niceMax : 0;
 
   return (
     <div className="w-full">
@@ -245,8 +264,20 @@ export function BarChart({
           </div>
         )}
 
-        {/* Plot area */}
-        <div className="flex-1 min-w-0 relative">
+        {/* Plot area — wrapped in a horizontally-scrollable container when
+            `scrollable` is on and there are enough bars that per-slot
+            width would drop below `minBarSlot`. The Y-axis on the left
+            stays fixed while only the bars scroll. */}
+        <div
+          className={cn(
+            "flex-1 min-w-0 relative",
+            scrollable ? "overflow-x-auto chart-scroll" : "",
+          )}
+        >
+          <div
+            className="relative h-full"
+            style={scrollable ? { minWidth: Math.max(0, data.length * minBarSlot) } : undefined}
+          >
           {/* Horizontal grid lines */}
           <div
             className="absolute inset-x-0 flex flex-col-reverse justify-between pointer-events-none"
@@ -277,10 +308,17 @@ export function BarChart({
                   className="group flex flex-col items-center justify-end h-full"
                   style={{ flex: `0 1 ${maxBarWidth}px`, maxWidth: maxBarWidth }}
                 >
-                  {/* Value label above the bar */}
+                  {/* Value label above the bar. Suppressed on tiny bars in
+                      dense charts so it doesn't collide with a big
+                      neighbour's label. The bar's hover title still carries
+                      the exact value. */}
                   <div
-                    className="text-[11.5px] font-semibold text-slate-800 tabular-nums leading-none mb-1.5"
-                    style={{ opacity: d.value === 0 ? 0.5 : 1 }}
+                    className="text-[11.5px] font-semibold text-slate-800 tabular-nums leading-none mb-1.5 whitespace-nowrap"
+                    style={{
+                      opacity: d.value === 0
+                        ? 0
+                        : (d.value < denseThreshold ? 0 : 1),
+                    }}
                   >
                     {fmt(d.value)}
                   </div>
@@ -312,9 +350,11 @@ export function BarChart({
             })}
           </div>
 
-          {/* X-axis labels */}
+          {/* X-axis labels — rotated 45° when dense so the full date fits
+              without ellipsis. Each label anchors at the top-centre of its
+              slot and rotates around that point. */}
           <div
-            className="absolute inset-x-0 bottom-0 flex items-end justify-center"
+            className="absolute inset-x-0 bottom-0 flex items-start justify-center"
             style={{
               height: bottomLabelHeight,
               gap: data.length > 8 ? 6 : 16,
@@ -323,14 +363,27 @@ export function BarChart({
           >
             {data.map((d, i) => (
               <div
-                key={i}
-                className="text-center text-[11px] font-semibold text-slate-600 truncate"
-                style={{ flex: `0 1 ${maxBarWidth}px`, maxWidth: maxBarWidth }}
+                key={`lbl-${i}`}
+                className={
+                  "text-center text-[11px] font-semibold text-slate-600 " +
+                  (rotateLabels ? "" : "truncate")
+                }
+                style={{
+                  flex: `0 1 ${maxBarWidth}px`,
+                  maxWidth: maxBarWidth,
+                  ...(rotateLabels ? {
+                    transform: "rotate(-45deg)",
+                    transformOrigin: "top center",
+                    whiteSpace: "nowrap",
+                    marginTop: 4,
+                  } : {}),
+                }}
                 title={d.label}
               >
                 {d.label}
               </div>
             ))}
+          </div>
           </div>
         </div>
       </div>

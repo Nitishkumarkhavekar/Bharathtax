@@ -140,12 +140,16 @@ function renderInline(text: string): ReactNode[] {
 }
 
 interface Block {
-  type: "p" | "h" | "ul" | "ol" | "quote";
+  type: "p" | "h" | "ul" | "ol" | "quote" | "table";
   // For p / h / quote: lines is a single line. For ul/ol: list of items.
   lines: string[];
   level?: number; // for h
   firstNum?: number; // for ol: the number the model wrote on the first item
   start?: number; // for ol: resolved starting number (continuous across sub-lists)
+  // For table: parsed headers + rows + column alignments (from the separator row).
+  headers?: string[];
+  rows?: string[][];
+  aligns?: ("left" | "right" | "center")[];
 }
 
 // Rewrites the model's raw text into something the block parser handles well.
@@ -251,6 +255,32 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
       blocks.push({ type: "ul", lines: items });
       continue;
     }
+    // GFM table: header row of `| a | b | c |` followed by a separator row
+    // `| --- | :---: | ---: |` (with optional colons for alignment). Only fires
+    // when BOTH rows are present so we don't misinterpret single-pipe prose.
+    if (
+      /^\s*\|.+\|\s*$/.test(ln) &&
+      i + 1 < lines.length &&
+      /^\s*\|?\s*:?-{3,}:?(\s*\|\s*:?-{3,}:?)+\s*\|?\s*$/.test(lines[i + 1])
+    ) {
+      flushPara();
+      const splitRow = (row: string) =>
+        row.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      const headers = splitRow(ln);
+      const sepCells = splitRow(lines[i + 1]);
+      const aligns: ("left" | "right" | "center")[] = sepCells.map((c) => {
+        const l = c.startsWith(":"), r = c.endsWith(":");
+        return l && r ? "center" : r ? "right" : "left";
+      });
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && /^\s*\|.+\|\s*$/.test(lines[i])) {
+        rows.push(splitRow(lines[i]));
+        i++;
+      }
+      blocks.push({ type: "table", lines: [], headers, rows, aligns });
+      continue;
+    }
     if (/^\s*\d+[.)]\s+/.test(ln)) {
       flushPara();
       const items: string[] = [];
@@ -324,6 +354,62 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
         }
         if (b.type === "quote") {
           return <blockquote key={idx}>{renderInline(b.lines[0])}</blockquote>;
+        }
+        if (b.type === "table") {
+          const aligns = b.aligns || [];
+          const alignCls = (i: number) =>
+            aligns[i] === "right"
+              ? "text-right"
+              : aligns[i] === "center"
+                ? "text-center"
+                : "text-left";
+          // The composer often emits literal `<br>` / `<br/>` / `<br />`
+          // inside table cells to force multi-line stacking. Convert them
+          // to real <br/> elements so the tag doesn't render as text.
+          const renderCell = (cell: string): ReactNode[] => {
+            const pieces = cell.split(/<br\s*\/?>/i);
+            const out: ReactNode[] = [];
+            pieces.forEach((piece, i) => {
+              if (i > 0) out.push(<br key={`cbr${i}`} />);
+              out.push(...renderInline(piece));
+            });
+            return out;
+          };
+          return (
+            <div key={idx} className="my-3 overflow-x-auto rounded-lg ring-1 ring-slate-200">
+              <table className="w-full text-[13.5px] border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-700">
+                    {(b.headers || []).map((h, k) => (
+                      <th
+                        key={k}
+                        className={`px-3 py-2 font-semibold border-b border-slate-200 ${alignCls(k)}`}
+                      >
+                        {renderCell(h)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(b.rows || []).map((row, r) => (
+                    <tr
+                      key={r}
+                      className="odd:bg-white even:bg-slate-50/40 hover:bg-primary/5 transition-colors"
+                    >
+                      {row.map((cell, k) => (
+                        <td
+                          key={k}
+                          className={`px-3 py-2 border-t border-slate-100 align-top ${alignCls(k)}`}
+                        >
+                          {renderCell(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
         }
         return (
           <p key={idx}>

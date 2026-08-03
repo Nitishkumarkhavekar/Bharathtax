@@ -26,8 +26,17 @@ const WINDOWS = [
   { label: "365d", days: 365 },
 ];
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+type WindowMode =
+  | { kind: "days"; days: number }
+  | { kind: "month"; year: number; month: number };
+
 export default function GeminiPage() {
-  const [days, setDays] = useState(30);
+  const [mode, setMode] = useState<WindowMode>({ kind: "days", days: 30 });
   const [data, setData] = useState<AdminGeminiStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -41,19 +50,22 @@ export default function GeminiPage() {
 
   useEffect(() => {
     setLoading(true);
+    const opts = mode.kind === "days"
+      ? { days: mode.days }
+      : { year: mode.year, month: mode.month };
     api
-      .adminGemini(days)
+      .adminGemini(opts)
       .then(setData)
       .catch((e) => setErr(e?.message ?? "failed"))
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [mode]);
 
   useEffect(() => {
     setPage(1);
-  }, [q, days, pageSize]);
+  }, [q, mode, pageSize]);
   useEffect(() => {
     setRPage(1);
-  }, [days, rPageSize]);
+  }, [mode, rPageSize]);
 
   const users = useMemo(() => {
     if (!data) return [];
@@ -70,10 +82,13 @@ export default function GeminiPage() {
   if (loading && !data) return <Loading label="Loading Gemini stats…" />;
   if (err || !data) return <ErrorBanner msg={err ?? "no data"} />;
 
-  const dayBars = data.per_day.slice(-30).map((d) => ({
+  // Daily bars for the whole selected window (rolling or full calendar
+  // month). BarChart scrolls horizontally when there are more than 14 days.
+  const dayBars = data.per_day.map((d) => ({
     label: d.day.slice(5),
     value: d.tokens,
   }));
+  const dayChartScrollable = dayBars.length > 14;
   const actionBars = data.per_action.slice(0, 8).map((a) => ({
     label: a.action.replace(/_/g, " ").replace("appeal.", "").slice(0, 14),
     value: a.tokens,
@@ -90,24 +105,7 @@ export default function GeminiPage() {
       <Header
         title="Gemini API monitoring"
         subtitle="Detailed spend, latency and user breakdown for the Gemini web-search backend."
-        actions={
-          <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
-            {WINDOWS.map((w) => (
-              <button
-                key={w.label}
-                onClick={() => setDays(w.days)}
-                className={
-                  "px-3 py-1 text-xs rounded " +
-                  (days === w.days
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100")
-                }
-              >
-                {w.label}
-              </button>
-            ))}
-          </div>
-        }
+        actions={<WindowPicker mode={mode} onChange={setMode} />}
       />
 
       {/* Config / health strip */}
@@ -176,11 +174,21 @@ export default function GeminiPage() {
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Section
-          title={`Tokens per day (${data.window_days}d)`}
+          title={
+            mode.kind === "month"
+              ? `Tokens per day — ${MONTH_NAMES[mode.month - 1]} ${mode.year}`
+              : `Tokens per day (${data.window_days}d)`
+          }
+          subtitle={dayChartScrollable ? "Scroll horizontally · hover bars for exact counts" : undefined}
           icon={<Activity className="size-4" />}
         >
           {dayBars.length > 0 ? (
-            <BarChart data={dayBars} />
+            <BarChart
+              data={dayBars}
+              height={200}
+              scrollable={dayChartScrollable}
+              minBarSlot={38}
+            />
           ) : (
             <Empty label="No Gemini calls yet." />
           )}
@@ -191,7 +199,7 @@ export default function GeminiPage() {
           icon={<Sparkles className="size-4" />}
         >
           {actionBars.length > 0 ? (
-            <BarChart data={actionBars} accent="violet" />
+            <BarChart data={actionBars} accent="violet" height={200} />
           ) : (
             <Empty label="No task breakdown." />
           )}
@@ -624,6 +632,83 @@ function PagerBtn({
     >
       {children}
     </button>
+  );
+}
+
+// Rolling-window + Month/Year picker. Same UX as the Token Usage page.
+function WindowPicker({
+  mode, onChange,
+}: {
+  mode: WindowMode;
+  onChange: (m: WindowMode) => void;
+}) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
+  const activeYear = mode.kind === "month" ? mode.year : currentYear;
+  const activeMonth = mode.kind === "month" ? mode.month : currentMonth;
+  const isMonthMode = mode.kind === "month";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-white p-0.5">
+        {WINDOWS.map((w) => {
+          const active = mode.kind === "days" && mode.days === w.days;
+          return (
+            <button
+              key={w.days}
+              type="button"
+              onClick={() => onChange({ kind: "days", days: w.days })}
+              className={
+                "px-2.5 py-1 text-xs font-semibold rounded " +
+                (active
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50")
+              }
+            >
+              {w.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className={
+        "flex items-center gap-1.5 rounded-md border p-0.5 pl-2 " +
+        (isMonthMode
+          ? "border-primary/40 bg-primary/[0.06]"
+          : "border-slate-200 bg-white")
+      }>
+        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 pr-1">
+          Month
+        </span>
+        <select
+          aria-label="Year"
+          value={activeYear}
+          onChange={(e) => onChange({ kind: "month", year: Number(e.target.value), month: activeMonth })}
+          className="h-7 rounded-md bg-white border border-slate-200 px-1.5 text-[11px] tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/25"
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Month"
+          value={activeMonth}
+          onChange={(e) => onChange({ kind: "month", year: activeYear, month: Number(e.target.value) })}
+          className="h-7 rounded-md bg-white border border-slate-200 px-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-primary/25"
+        >
+          {MONTH_NAMES.map((n, i) => {
+            const m = i + 1;
+            const disabled = activeYear === currentYear && m > currentMonth;
+            return (
+              <option key={m} value={m} disabled={disabled}>
+                {n}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+    </div>
   );
 }
 

@@ -60,7 +60,7 @@ def _clean(html: str) -> str:
     return t.strip()
 
 
-def _post(path: str, timeout: float = 25.0) -> dict | None:
+def _post(path: str, timeout: float = 12.0) -> dict | None:
     if not available():
         return None
     try:
@@ -110,12 +110,22 @@ def search(query: str, *, doctypes: str = "", max_results: int = 5,
             "excerpt": _clean(d.get("headline") or "")[:600],
         })
     # Pull full judgment text for the most relevant few so the model grounds on
-    # the actual ruling, not just the search snippet. Each is a paid call.
-    if fetch_docs:
-        for r in results[:_MAX_DOCS]:
-            full = _post(f"/doc/{r['tid']}/")
-            if full and full.get("doc"):
-                r["excerpt"] = _clean(full["doc"])[:_MAX_DOC_CHARS]
+    # the actual ruling, not just the search snippet. Fetched IN PARALLEL —
+    # sequential fetches were the #1 cause of chat latency (each ~10s, so 2
+    # docs was 20s just here; 3 case_law calls per answer = 60s wasted).
+    if fetch_docs and results[:_MAX_DOCS]:
+        import concurrent.futures as _futures
+        top = results[:_MAX_DOCS]
+        with _futures.ThreadPoolExecutor(max_workers=len(top)) as pool:
+            fut_map = {pool.submit(_post, f"/doc/{r['tid']}/"): r for r in top}
+            for fut in _futures.as_completed(fut_map):
+                r = fut_map[fut]
+                try:
+                    full = fut.result()
+                except Exception:  # noqa: BLE001
+                    full = None
+                if full and full.get("doc"):
+                    r["excerpt"] = _clean(full["doc"])[:_MAX_DOC_CHARS]
 
     if len(_CACHE) > _CACHE_MAX:
         _CACHE.clear()

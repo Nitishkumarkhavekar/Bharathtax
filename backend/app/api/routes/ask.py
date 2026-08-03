@@ -358,7 +358,7 @@ def ask_followups(body: _FollowupsRequest,
     key = (_os.getenv("GEMINI_API_KEY") or "").strip()
     if not key or not (body.question or "").strip():
         return {"suggestions": []}
-    model = _os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-2.5-flash")
+    model = _os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-flash-latest")
     prompt = (
         f"A tax officer asked: {body.question}\n"
         f"The assistant answered: {(body.answer or '')[:1400]}\n\n"
@@ -371,12 +371,18 @@ def ask_followups(body: _FollowupsRequest,
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             headers={"x-goog-api-key": key, "Content-Type": "application/json"},
             json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"temperature": 0.4, "maxOutputTokens": 200,
+                  # thinkingBudget=128 is the sweet spot on gemini-flash-latest:
+                  # (a) 0 combined with responseMimeType=json → 400 INVALID_ARG;
+                  # (b) unset lets the model burn ~192 thinking tokens, blowing
+                  #     past maxOutputTokens=200 and returning a fragment.
+                  # 128 caps thinking so the JSON array actually fits.
+                  "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400,
                                        "responseMimeType": "application/json",
-                                       "thinkingConfig": {"thinkingBudget": 0}}},
+                                       "thinkingConfig": {"thinkingBudget": 128}}},
             timeout=12.0,
         )
         if r.status_code != 200:
+            log.warning("followups HTTP %s: %s", r.status_code, r.text[:200])
             return {"suggestions": []}
         txt = "".join(pt.get("text", "") for pt in
                       ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
@@ -407,7 +413,7 @@ def ask_translate(body: _TranslateRequest,
     key = (_os.getenv("GEMINI_API_KEY") or "").strip()
     if not key:
         return {"translated": text}
-    model = _os.getenv("GEMINI_TRANSLATE_MODEL", "gemini-2.5-flash")
+    model = _os.getenv("GEMINI_TRANSLATE_MODEL", "gemini-flash-latest")
     sys_p = (
         f"You are a precise legal translator. Translate the user's Indian income-tax "
         f"answer into {lang}. Rules: keep the meaning exact and natural; DO NOT "
@@ -422,8 +428,9 @@ def ask_translate(body: _TranslateRequest,
             headers={"x-goog-api-key": key, "Content-Type": "application/json"},
             json={"systemInstruction": {"parts": [{"text": sys_p}]},
                   "contents": [{"role": "user", "parts": [{"text": text}]}],
-                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2000,
-                                       "thinkingConfig": {"thinkingBudget": 0}}},
+                  # NB: drop thinkingConfig — gemini-flash-latest can 400 on
+                  # thinkingBudget=0 for translate prompts. Auto is fine here.
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2000}},
             timeout=40.0,
         )
         if r.status_code != 200:

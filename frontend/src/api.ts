@@ -345,6 +345,11 @@ export interface AdminTokenUsage {
   tokens_7d: number;
   tokens_window: number;
   window_days: number;
+  window_mode?: "days" | "month";
+  window_start?: string;
+  window_end?: string;
+  window_year?: number | null;
+  window_month?: number | null;
   per_user: TokenPerUserRow[];
   per_action: TokenActionRow[];
   per_model: TokenModelRow[];
@@ -381,6 +386,11 @@ export interface AdminGeminiStats {
   tokens_7d: number;
   tokens_window: number;
   window_days: number;
+  window_mode?: "days" | "month";
+  window_start?: string;
+  window_end?: string;
+  window_year?: number | null;
+  window_month?: number | null;
   per_day: TokenDayRow[];
   per_model: TokenModelRow[];
   per_user: AdminGeminiPerUserRow[];
@@ -899,8 +909,20 @@ export const api = {
     ),
 
   // --- admin: token usage ---
-  adminTokenUsage: (days = 30) =>
-    req<AdminTokenUsage>(`/admin/token-usage?days=${days}`),
+  //
+  // Two mutually-exclusive modes on the backend:
+  //   * default — rolling window of `days` days
+  //   * month view — pass { year, month } to get the whole calendar month
+  adminTokenUsage: (opts: { days?: number; year?: number; month?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (opts.year != null && opts.month != null) {
+      p.set("year", String(opts.year));
+      p.set("month", String(opts.month));
+    } else {
+      p.set("days", String(opts.days ?? 30));
+    }
+    return req<AdminTokenUsage>(`/admin/token-usage?${p.toString()}`);
+  },
   // ---- billing (admin + user) ----
   adminBillingPlans: () => req<SubscriptionPlan[]>("/admin/billing/plans"),
   adminBillingCreatePlan: (body: Partial<SubscriptionPlan>) =>
@@ -937,8 +959,18 @@ export const api = {
   myBilling: () => req<MyBilling>("/billing/me"),
   publicPlans: () => req<SubscriptionPlan[]>("/billing/plans"),
 
-  adminGemini: (days = 30) =>
-    req<AdminGeminiStats>(`/admin/gemini?days=${days}`),
+  adminGemini: (opts: { days?: number; year?: number; month?: number } | number = {}) => {
+    // Back-compat: an older signature took just `days`.
+    const o = typeof opts === "number" ? { days: opts } : opts;
+    const p = new URLSearchParams();
+    if (o.year != null && o.month != null) {
+      p.set("year", String(o.year));
+      p.set("month", String(o.month));
+    } else {
+      p.set("days", String(o.days ?? 30));
+    }
+    return req<AdminGeminiStats>(`/admin/gemini?${p.toString()}`);
+  },
   adminUserTokenUsage: (userId: number) =>
     req<AdminUserTokenUsage>(`/admin/users/${userId}/token-usage`),
 

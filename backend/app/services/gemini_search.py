@@ -19,15 +19,30 @@ log = get_logger(__name__)
 
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
 # Web-search fallback for the Ask Bot. Grounding requires Flash or Pro.
-# We use Flash for cost. Envvar `GEMINI_SEARCH_MODEL` lets an operator swap in
-# 2.5 Pro if answer quality on time-sensitive queries needs the upgrade.
-_MODEL = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
+# Primary model is Pro for answer quality; failover to Flash on per-model
+# quota / availability errors so the officer still gets an answer.
+# `GEMINI_SEARCH_MODEL` sets the primary; `GEMINI_SEARCH_FALLBACK_MODELS`
+# (comma-separated) sets the failover chain tried in order on 404/429/5xx.
+_MODEL = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-pro")
+_FALLBACK_MODELS = tuple(
+    m.strip() for m in os.getenv(
+        "GEMINI_SEARCH_FALLBACK_MODELS",
+        "gemini-pro-latest,gemini-flash-latest,gemini-2.5-flash",
+    ).split(",") if m.strip() and m.strip() != _MODEL
+)
 _ENABLED = os.getenv("WEB_SEARCH_ENABLED", "1").lower() not in ("0", "false", "no", "")
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 # Output-token cap. Officer replies are typically 200-400 words (~600 tokens),
 # so 1200 gives ample headroom without paying for a 2600-token ceiling every
 # time. Bring it up via env if answers are getting cut off.
 _MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_SEARCH_MAX_OUTPUT", "1200"))
+# Thinking-budget cap for search calls. Flash 3.5 defaults to spending ~1400
+# thinking tokens per grounded call which doubles latency (30s → 15s). 512 is
+# the measured sweet spot: full answer + 10+ sources in ~10s. Only Flash/Pro
+# 3.x accept a numeric budget; setting to 0 breaks some model versions with
+# 400 INVALID_ARGUMENT — leave unset (empty string / <0) to let the model
+# auto-decide.
+_THINKING_BUDGET = os.getenv("GEMINI_SEARCH_THINKING_BUDGET", "").strip()
 
 # Officer-facing SOURCE POLICY. We only surface citations from authoritative or
 # established outlets — government, courts/tribunals, primary case-law databases,
@@ -63,10 +78,12 @@ last_latency_ms: int | None = None
 # every single web-search call, so we keep it tight. Concrete instructions
 # (source preference, output style, no inline citation markers) survive.
 _SYS = (
-    "Indian income-tax assistant. Answer using current web sources — prefer "
-    "incometax.gov.in / incometaxindia.gov.in / CBDT circulars. Be precise on "
-    "section numbers, limits, dates, and AY. If unsure, say so. Never invent a "
-    "citation.\n"
+    "Indian income-tax assistant. You MUST call the google_search tool FIRST "
+    "for every question — even seemingly-common ones — then answer strictly "
+    "from what search returned. Prefer incometax.gov.in / incometaxindia.gov.in "
+    "/ indiankanoon / itatonline / taxmann / livelaw. Be precise on section "
+    "numbers, limits, dates, and AY. If search returned nothing usable, say so. "
+    "Never invent a citation.\n"
     "COMPOSE A PROPER ANSWER — not a raw data dump:\n"
     "1) Open with ONE short framing sentence that directly answers the question.\n"
     "2) Then the substance, grouped logically, with **bold** key terms. For case "
@@ -129,7 +146,13 @@ def _insert_inline_cites(text: str, supports: list, chunks: list) -> str:
 
 
 def web_answer(question: str) -> tuple[str, list[dict]]:
-    """Return (answer_text, [{'title','url'}, ...]); ('', []) on failure/disabled."""
+    """Return (answer_text, [{'title','url'}, ...]); ('', []) on failure/disabled.
+
+    Tries the primary model first; on 404/429/5xx or per-model 4xx errors
+    (e.g. thinking-budget rejection), cascades through _FALLBACK_MODELS so
+    a quota-exhausted or retired top-tier model doesn't leave the officer
+    with no answer.
+    """
     global last_usage, last_model, last_latency_ms
     last_usage, last_model, last_latency_ms = None, _MODEL, None
     if not available():
@@ -140,26 +163,51 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
         "'recent', 'current' and 'this year' relative to THIS date; give the most recent "
         "applicable circular/notification and the correct current assessment year."
     )
+    gen_cfg = {"temperature": 0.2, "maxOutputTokens": _MAX_OUTPUT_TOKENS}
+    if _THINKING_BUDGET:
+        try:
+            tb = int(_THINKING_BUDGET)
+            # Only inject when strictly positive — 0 breaks gemini-3.1-pro-preview,
+            # and negative means "let the model decide" (skip).
+            if tb > 0:
+                gen_cfg["thinkingConfig"] = {"thinkingBudget": tb}
+        except ValueError:
+            pass
     body = {
         "systemInstruction": {"parts": [{"text": dated_sys}]},
         "contents": [{"role": "user", "parts": [{"text": question}]}],
         "tools": [{"google_search": {}}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": _MAX_OUTPUT_TOKENS, "thinkingConfig": {"thinkingBudget": 0}},
+        "generationConfig": gen_cfg,
     }
     last_err = None
-    for attempt in range(3):
+    model_chain = (_MODEL,) + _FALLBACK_MODELS
+    # Wall-clock budget: never spend more than this on a single web_answer call,
+    # no matter how many models we cycle or how many retries the transient
+    # policy allows. Prevents a Gemini 503 storm from turning one question into
+    # a 4-minute wait. Overridable via env.
+    _budget_ms = int(os.getenv("GEMINI_SEARCH_TIMEOUT_MS", "22000"))
+    for m_idx, model in enumerate(model_chain):
+        if (time.time() - _t0) * 1000 >= _budget_ms:
+            log.warning("web search wall-clock budget exhausted after %dms", _budget_ms)
+            break
+        last_model = model
+        # 1 attempt per model, no exponential-backoff sleep. Prior version
+        # slept up to 1.5+3+6=10.5s per model on 5xx; with 3 models that was
+        # 30s of pure sleep before falling through. On a genuinely down key,
+        # a fast fail-through to the next model is dramatically better than
+        # patient retry.
         try:
-            with httpx.Client(timeout=httpx.Timeout(75.0)) as c:
-                r = c.post(f"{_BASE}/{_MODEL}:generateContent",
+            with httpx.Client(timeout=httpx.Timeout(15.0)) as c:
+                r = c.post(f"{_BASE}/{model}:generateContent",
                            headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
                            json=body)
-            if r.status_code == 429 or r.status_code >= 500:
-                last_err = f"HTTP {r.status_code}"
-                time.sleep(min(1.5 * (2 ** attempt), 8.0))
-                continue
+            if r.status_code in (400, 404, 429) or r.status_code >= 500:
+                last_err = f"{model} HTTP {r.status_code}"
+                log.warning("web search %s HTTP %s — falling to next model", model, r.status_code)
+                continue  # try next model in chain
             if r.status_code != 200:
-                log.warning("web search HTTP %s: %s", r.status_code, r.text[:200])
-                return "", []
+                log.warning("web search %s HTTP %s: %s", model, r.status_code, r.text[:200])
+                continue
             d = r.json()
             cand = (d.get("candidates") or [{}])[0]
             parts = (cand.get("content") or {}).get("parts") or []
@@ -172,28 +220,26 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
                 web = ch.get("web") or {}
                 uri = web.get("uri")
                 title = web.get("title") or uri or ""
-                # Officer-facing: only surface authoritative/established sources.
                 if uri and uri not in seen and _reputable(title):
                     seen.add(uri)
                     sources.append({"title": title, "url": uri})
-            # Insert inline {{cite:domain}} chips at each grounded segment BEFORE
-            # stripping bracket clutter (so byte offsets stay valid).
             text = _insert_inline_cites(raw_text, gm.get("groundingSupports") or [], chunks)
             text = re.sub(r"\s*\[[\d.,\s]+\]", "", text)
             text = re.sub(r"\s*\[[\d.,\s]*$", "", text).strip()
             if not text:
-                last_err = "empty response"
-                time.sleep(min(1.5 * (2 ** attempt), 8.0))
+                last_err = f"{model} empty response"
                 continue
             um = d.get("usageMetadata") or {}
             last_usage = ({"prompt_tokens": um.get("promptTokenCount"),
                            "completion_tokens": um.get("candidatesTokenCount"),
                            "total_tokens": um.get("totalTokenCount")} if um else None)
             last_latency_ms = int((time.time() - _t0) * 1000)
+            if m_idx > 0:
+                log.info("web search recovered on fallback model %s (primary %s failed)", model, _MODEL)
             return text, sources
         except Exception as e:  # noqa: BLE001
-            last_err = f"{type(e).__name__}: {e}"
-            time.sleep(min(1.5 * (2 ** attempt), 8.0))
+            last_err = f"{model} {type(e).__name__}: {e}"
             continue
-    log.warning("gemini web search failed after %d tries: %s", attempt + 1, last_err)
+    log.warning("gemini web search failed on all models (%s): %s",
+                ", ".join(model_chain), last_err)
     return "", []
