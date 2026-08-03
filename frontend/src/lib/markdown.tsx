@@ -140,8 +140,9 @@ function renderInline(text: string): ReactNode[] {
 }
 
 interface Block {
-  type: "p" | "h" | "ul" | "ol" | "quote" | "table";
+  type: "p" | "h" | "ul" | "ol" | "quote" | "table" | "code";
   // For p / h / quote: lines is a single line. For ul/ol: list of items.
+  // For code: raw code lines (kept verbatim, no inline markdown).
   lines: string[];
   level?: number; // for h
   firstNum?: number; // for ol: the number the model wrote on the first item
@@ -150,6 +151,8 @@ interface Block {
   headers?: string[];
   rows?: string[][];
   aligns?: ("left" | "right" | "center")[];
+  // For code: optional language tag from the fence (```python etc.).
+  lang?: string;
 }
 
 // Rewrites the model's raw text into something the block parser handles well.
@@ -220,6 +223,24 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
   let i = 0;
   while (i < lines.length) {
     const ln = lines[i];
+    // Fenced code block: ```lang? ... ```. Collected verbatim so ASCII
+    // trees / tabular data / anything alignment-sensitive stays intact
+    // in a monospaced <pre>. Without this, the closing ``` was rendering
+    // as literal text and the inner alignment collapsed in the prose font.
+    const fenceOpen = /^\s*```(\S*)\s*$/.exec(ln);
+    if (fenceOpen) {
+      flushPara();
+      const lang = fenceOpen[1] || "";
+      const body: string[] = [];
+      i++;
+      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) {
+        body.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // consume the closing fence
+      blocks.push({ type: "code", lines: body, lang });
+      continue;
+    }
     if (!ln.trim()) {
       flushPara();
       i++;
@@ -341,6 +362,26 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
                 <li key={k}>{renderInline(li)}</li>
               ))}
             </ul>
+          );
+        }
+        if (b.type === "code") {
+          // Monospaced block for anything alignment-sensitive: ASCII trees,
+          // tabular text, pseudo-code, JSON. Scrolls horizontally on narrow
+          // screens instead of wrapping (which would destroy alignment).
+          return (
+            <div
+              key={idx}
+              className="my-3 rounded-lg ring-1 ring-slate-200 bg-slate-50/70 overflow-x-auto"
+            >
+              {b.lang ? (
+                <div className="px-3 py-1 text-[10.5px] uppercase tracking-wide text-slate-500 border-b border-slate-200 bg-white/60">
+                  {b.lang}
+                </div>
+              ) : null}
+              <pre className="px-3 py-2 text-[12.5px] leading-[1.55] font-mono text-slate-800 whitespace-pre">
+                <code>{b.lines.join("\n")}</code>
+              </pre>
+            </div>
           );
         }
         if (b.type === "ol") {
