@@ -143,6 +143,14 @@
     background: rgba(15, 23, 42, 0.15); border-radius: 999px;
   }
   .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.28); }
+  /* Compact horizontal scrollbar for the BarChart's scrollable mode.
+     Sits on the bottom of the plot area without blocking bar hover. */
+  .chart-scroll::-webkit-scrollbar { height: 8px; }
+  .chart-scroll::-webkit-scrollbar-track { background: transparent; }
+  .chart-scroll::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.18); border-radius: 999px;
+  }
+  .chart-scroll::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.35); }
 
   /* subtle floating composer */
   .composer-shell {

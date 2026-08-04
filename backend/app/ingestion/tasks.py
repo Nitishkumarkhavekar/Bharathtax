@@ -60,23 +60,26 @@ def model_health_alert() -> dict:
 
     log = logging.getLogger("model_alert")
     key = (os.getenv("GEMINI_API_KEY") or "").strip()
-    model = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
 
+    # Health probe: hit `models.list` (auth-checked, zero token spend).
+    # The old probe POSTed /generateContent with a fixed generationConfig
+    # (maxOutputTokens=1 + thinkingConfig.thinkingBudget=0) which now
+    # returns HTTP 400 INVALID_ARGUMENT on thinking models like
+    # gemini-flash-latest / gemini-2.5-flash, producing spurious alerts.
     status, detail = "ok", "Responding normally"
     if not key:
         status, detail = "down", "No Gemini API key configured"
     else:
         try:
             with httpx.Client(timeout=10.0) as c:
-                r = c.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                    headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-                    json={"contents": [{"parts": [{"text": "ping"}]}],
-                          "generationConfig": {"maxOutputTokens": 1,
-                                               "thinkingConfig": {"thinkingBudget": 0}}},
+                r = c.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    headers={"x-goog-api-key": key},
                 )
             if r.status_code == 200:
                 status, detail = "ok", "Responding normally"
+            elif r.status_code in (401, 403):
+                status, detail = "down", "Gemini API key rejected (auth failed)"
             elif r.status_code == 429:
                 msg = ""
                 try:

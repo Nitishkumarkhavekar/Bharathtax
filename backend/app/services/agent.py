@@ -26,9 +26,18 @@ from app.services import gemini_search as _gs
 log = logging.getLogger("agent")
 
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
-_MODEL = os.getenv("CHAT_AGENT_MODEL", os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash"))
+_MODEL = os.getenv("CHAT_AGENT_MODEL", os.getenv("GEMINI_SEARCH_MODEL", "gemini-flash-latest"))
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_MAX_ITERS = int(os.getenv("CHAT_AGENT_MAX_ITERS", "6"))
+_MAX_ITERS = int(os.getenv("CHAT_AGENT_MAX_ITERS", "4"))
+# Fallback model chain — used when the primary agent model returns 503
+# ("model overloaded") or 429. Prevents Google's per-model capacity blips
+# from bringing the whole chat down.
+_FALLBACK_MODELS = tuple(
+    m.strip() for m in os.getenv(
+        "CHAT_AGENT_FALLBACK_MODELS",
+        "gemini-flash-latest,gemini-3.5-flash",
+    ).split(",") if m.strip() and m.strip() != _MODEL
+)
 
 
 def enabled() -> bool:
@@ -116,21 +125,61 @@ _SYSTEM = (
     "or points for the USER to use. NEVER pose those questions back to the user one "
     "by one. Use ask_user ONLY when you genuinely cannot tell what the user wants "
     "YOU to do; when they have clearly asked for a specific output, produce it. "
-    "TOOL POLICY (follow exactly, for consistent answers): "
-    "(a) greetings and identity/capability questions — use NO tools; "
-    "(b) every other question — ALWAYS call search_tax_law FIRST; "
-    "(c) if it involves case law, a named case, a specific taxpayer's or company's "
-    "litigation, a tribunal/court ruling, or a legal position needing precedent — "
-    "ALSO call search_case_law (real SC/HC/ITAT judgments from Indian Kanoon); "
-    "(d) for current circulars, notifications, press, or 'latest/recent/current' "
-    "items not in the static Act/Rules — ALSO call web_search; "
-    "(e) never answer a substantive tax question, and never decline one, without "
-    "first searching. Answer ONLY from tool results; never rely on unverified "
-    "recollection. Tools: search_tax_law (the Income-tax Act & Rules), "
-    "search_case_law (actual SC/HC/ITAT judgments), web_search (current "
-    "circulars/notifications/press and anything not in the static Act), "
-    "recall_chat_memory (what THIS conversation already established), "
-    "search_my_documents (the user's uploaded files). "
+    "TOOL POLICY (follow exactly — this section directly controls response speed): "
+    "(a) greetings and identity/capability questions — use NO tools. "
+    "(b) SIMPLE DEFINITIONAL / EXPLANATORY questions the well-established statute "
+    "settles on its face — e.g. 'What is Section 68?', 'Explain Section 145(3)', "
+    "'What is TDS under Section 194J?', 'What are the slab rates?', 'What is the "
+    "difference between old and new regime?' — answer DIRECTLY without any tool "
+    "call. These provisions are stable statutory text you know precisely; tool "
+    "calls here add 20–60 s of latency without changing the answer. Cite the "
+    "section number inline and note the AY where relevant. "
+    "(c) STATUTORY-INTERPRETATION questions (Rules, sub-sections, exceptions, "
+    "provisos, disallowances, definitions) — e.g. 'exceptions under Rule 6DD for "
+    "Section 40A(3)', 'when does Section 44AB apply', 'what is disallowance under "
+    "Section 40(a)(ia)', 'what are the conditions of Section 54F' — answer "
+    "DIRECTLY from the settled statutory text you know. Do NOT call web_search "
+    "or search_case_law for these — the answer is stable law, not current news. "
+    "Only cite on-point case law inline (from memory) if truly germane. "
+    "(d) SPECIFIC / GROUNDED questions that genuinely need a live lookup — those "
+    "that name a party or case ('Vodafone', 'Infosys ESOP', 'Lovely Exports'), "
+    "reference a specific numbered circular/notification the user asks you to "
+    "find, or need on-point precedent for a nuanced ratio — call search_case_law "
+    "(Indian Kanoon judgments) and/or web_search. Call at most ONE search_case_law "
+    "AND at most ONE web_search per turn — never both for the same question unless "
+    "the first came back genuinely empty. web_search is EXPENSIVE (~15 s) and "
+    "should be used sparingly. NEVER call search_tax_law — that endpoint is being "
+    "reconfigured and returns nothing; calling it just wastes a round-trip. "
+    "(d) draft/reply/submission requests — call search_case_law once for any "
+    "landmark judgment you need, then draft. Do NOT loop through 3+ case searches "
+    "for one draft. "
+    "(e) NAMED-CASE FALLBACK CHAIN — for any question naming a specific party "
+    "or case (e.g. 'Sanjay Baweja', 'Flipkart', 'Godrej') follow this chain "
+    "STRICTLY IN ORDER; skipping a step is a hallucination risk: "
+    "   (i)  Call search_case_law once with the party name. If it returns "
+    "        judgments whose title clearly matches the named party, use them. "
+    "   (ii) If the returned docs are OFF-TOPIC (wrong party, wrong subject) "
+    "        or empty, call web_search once — Gemini grounded search finds "
+    "        recent High Court cases the Indian Kanoon API sometimes misses. "
+    "   (iii) If BOTH come back without the named case, answer plainly: "
+    "        \"I could not confirm the citation for the *Sanjay Baweja* case "
+    "        in the sources I have access to. If you can share the citation "
+    "        (court, year, appeal no.) I can give the ratio precisely.\" — "
+    "        THEN offer to explain the general legal issue if it is inferable "
+    "        from the party name (e.g. 'ESOP taxation on Flipkart-Walmart "
+    "        acquisition'). NEVER fabricate a court, year, section number, "
+    "        appeal number, factual amount, or holding for a case you could "
+    "        not verify. This is a HARD RULE — a wrong citation shown to an "
+    "        officer is far worse than admitting the lookup failed. "
+    "   (iv) The narrow exception: TRULY LANDMARK cases the entire profession "
+    "        knows verbatim (Kelvinator, Lovely Exports, Vodafone, Azadi "
+    "        Bachao, McDowell, GKN Driveshafts, Sumati Dayal) — you may state "
+    "        the settled ratio from memory even if the tool missed it, but "
+    "        still mark it 'verify — general knowledge'. Do NOT extend this "
+    "        exception to any lesser-known case. "
+    "Tools: search_case_law (Indian Kanoon judgments), web_search (current "
+    "circulars/press), recall_chat_memory (this chat's context), "
+    "search_my_documents (user files). "
     "PERSIST — never ask the user to go and search Google or elsewhere, and never "
     "reply 'provide more details / clarify' for a case, company, ruling or topic you "
     "can look up yourself. If search_case_law or web_search comes back thin or empty "
@@ -296,7 +345,7 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
         try:
             r = httpx.post(settings.llm_base_url.rstrip("/") + "/law",
                            headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                           json={"query": q, "k": 6}, timeout=20.0)
+                           json={"query": q, "k": 6}, timeout=6.0)
             ps = r.json().get("passages", []) if r.status_code == 200 else []
             # Keep act/section: the model cites more precisely with them, and the
             # API layer turns them into resolvable citations[] for the UI.
@@ -460,9 +509,12 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                                       "completion_tokens": um.get("candidatesTokenCount"),
                                       "total_tokens": um.get("totalTokenCount")},
                             "latency_ms": int((time.time() - t0) * 1000)})
-        fcalls = [p["functionCall"] for p in parts if "functionCall" in p]
-        if fcalls:
-            for _fc in fcalls:
+        # Preserve thoughtSignature alongside each functionCall — gemini-3.x
+        # rejects the NEXT turn with HTTP 400 if we drop it on the way back.
+        fcall_parts = [p for p in parts if "functionCall" in p]
+        if fcall_parts:
+            for _p in fcall_parts:
+                _fc = _p["functionCall"]
                 if _fc.get("name") == "ask_user":
                     _a = _fc.get("args") or {}
                     _q = (_a.get("question") or "").strip()
@@ -472,9 +524,16 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                                     "web_sources": [], "law_refs": law_refs,
                                     "llm_calls": usage_calls,
                                     "clarify": {"question": _q, "options": _opts}}
-            contents.append({"role": "model", "parts": [{"functionCall": fc} for fc in fcalls]})
+            model_parts = []
+            for _p in fcall_parts:
+                part = {"functionCall": _p["functionCall"]}
+                if _p.get("thoughtSignature"):
+                    part["thoughtSignature"] = _p["thoughtSignature"]
+                model_parts.append(part)
+            contents.append({"role": "model", "parts": model_parts})
             resp_parts = []
-            for fc in fcalls:
+            for _p in fcall_parts:
+                fc = _p["functionCall"]
                 name = fc.get("name")
                 res = _exec_tool(name, fc.get("args") or {}, db=db, user_id=user_id, chat_id=chat_id)
                 tools_used.append(name)
@@ -567,43 +626,96 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
     final_text = ""
-    for _ in range(_MAX_ITERS):
+    # True when the final answer text has already been streamed via deltas.
+    # Prevents the safety-net "yield final_text as delta" from double-writing
+    # the answer to the UI.
+    _final_streamed = False
+    # Ordered fail-open chain: primary + fallbacks. On 429/503, drop straight
+    # to the next model instead of blowing up the whole chat turn.
+    _model_chain = (_MODEL,) + _FALLBACK_MODELS
+    for _iter_idx in range(_MAX_ITERS):
         t0 = time.time()
         fcalls: list[dict] = []
         turn_text = ""
-        with httpx.Client(timeout=httpx.Timeout(90.0)) as c:
-            with c.stream("POST", f"{_BASE}/{_MODEL}:streamGenerateContent?alt=sse",
-                          headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
-                          json={**base, "contents": contents}) as r:
-                if r.status_code != 200:
-                    raise RuntimeError(f"agent stream HTTP {r.status_code}")
-                for line in r.iter_lines():
-                    if not line or not line.startswith("data:"):
-                        continue
-                    payload = line[5:].strip()
-                    if not payload or payload == "[DONE]":
-                        continue
-                    try:
-                        d = json.loads(payload)
-                    except Exception:  # noqa: BLE001
-                        continue
-                    cand = (d.get("candidates") or [{}])[0]
-                    for p in (cand.get("content") or {}).get("parts") or []:
-                        if "functionCall" in p:
-                            fcalls.append(p["functionCall"])
-                        elif p.get("text"):
-                            turn_text += p["text"]
-                            yield {"delta": p["text"]}
-                    um = d.get("usageMetadata") or {}
-                    if um:
-                        usage_calls.append({"model": _MODEL,
-                                            "usage": {"prompt_tokens": um.get("promptTokenCount"),
-                                                      "completion_tokens": um.get("candidatesTokenCount"),
-                                                      "total_tokens": um.get("totalTokenCount")},
-                                            "latency_ms": int((time.time() - t0) * 1000)})
+        _resp = None
+        # On the FINAL allowed iteration, strip the tools so the model MUST
+        # answer with what it has — otherwise a runaway tool-loop leaves the
+        # bubble empty (sources present, no answer text). "One more search"
+        # is not free.
+        _no_more_tools = _iter_idx == _MAX_ITERS - 1
+        for _mdl in _model_chain:
+            _resp = None
+            _cfg = dict(cfg)
+            if "flash-latest" in _mdl:
+                _cfg = {k: v for k, v in _cfg.items() if k != "thinkingConfig"}
+            _base_body = {"systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                          "generationConfig": _cfg}
+            if not _no_more_tools:
+                _base_body["tools"] = _TOOLS
+            try:
+              with httpx.Client(timeout=httpx.Timeout(45.0)) as c:
+                with c.stream("POST", f"{_BASE}/{_mdl}:streamGenerateContent?alt=sse",
+                              headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                              json={**_base_body, "contents": contents}) as r:
+                    if r.status_code in (429, 503):
+                        log.warning("agent stream %s HTTP %s — falling to next model", _mdl, r.status_code)
+                        continue  # try next model in chain
+                    if r.status_code != 200:
+                        body = ""
+                        try:
+                            for chunk in r.iter_bytes():
+                                body += chunk.decode("utf-8", "ignore")
+                                if len(body) > 800:
+                                    break
+                        except Exception:  # noqa: BLE001
+                            pass
+                        log.warning("agent stream %s HTTP %s: %s", _mdl, r.status_code, body[:600])
+                        raise RuntimeError(f"agent stream HTTP {r.status_code}")
+                    # Consume this stream FULLY here — the outer connection
+                    # closes on exit, so we must accumulate before break.
+                    for line in r.iter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+                        payload = line[5:].strip()
+                        if not payload or payload == "[DONE]":
+                            continue
+                        try:
+                            d = json.loads(payload)
+                        except Exception:  # noqa: BLE001
+                            continue
+                        cand = (d.get("candidates") or [{}])[0]
+                        for p in (cand.get("content") or {}).get("parts") or []:
+                            if "functionCall" in p:
+                                fcalls.append({
+                                    "functionCall": p["functionCall"],
+                                    "thoughtSignature": p.get("thoughtSignature"),
+                                })
+                            elif p.get("text"):
+                                turn_text += p["text"]
+                                yield {"delta": p["text"]}
+                        um = d.get("usageMetadata") or {}
+                        if um:
+                            usage_calls.append({"model": _mdl,
+                                                "usage": {"prompt_tokens": um.get("promptTokenCount"),
+                                                          "completion_tokens": um.get("candidatesTokenCount"),
+                                                          "total_tokens": um.get("totalTokenCount")},
+                                                "latency_ms": int((time.time() - t0) * 1000)})
+                    _resp = "ok"
+            except Exception as e:  # noqa: BLE001
+                log.warning("agent stream %s exception: %s", _mdl, e)
+                continue
+            if _resp == "ok":
+                break  # streamed successfully — exit model-chain loop
+        if _resp != "ok":
+            # Every model in the chain returned 429/503. Give up gracefully
+            # so the user sees a real message instead of a spinner.
+            yield {"delta": "The AI service is temporarily busy — please retry in a moment."}
+            final_text = "The AI service is temporarily busy — please retry in a moment."
+            break
         if fcalls:
             # A clarification request takes priority — pause and ask the user.
-            for _fc in fcalls:
+            for _wrap in fcalls:
+                _fc = _wrap["functionCall"]
                 if _fc.get("name") == "ask_user":
                     _a = _fc.get("args") or {}
                     _q = (_a.get("question") or "").strip()
@@ -617,23 +729,54 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             # preamble text it may have shown, then run the tools.
             if turn_text:
                 yield {"reset": True}
-            contents.append({"role": "model", "parts": [{"functionCall": fc} for fc in fcalls]})
-            resp_parts = []
-            for fc in fcalls:
-                name = fc.get("name")
-                yield {"status": _TOOL_STATUS.get(name, "Working…")}
-                res = _exec_tool(name, fc.get("args") or {}, db=db, user_id=user_id, chat_id=chat_id)
-                tools_used.append(name)
-                if name in ("web_search", "search_case_law") and res.get("sources"):
-                    all_sources += res["sources"]
-                if name == "search_tax_law" and res.get("passages"):
-                    law_refs += [{k: p.get(k) for k in ("n", "act", "section", "breadcrumb")}
-                                 for p in res["passages"]]
-                resp_parts.append({"functionResponse": {"name": name, "response": res}})
+            # Replay the model's functionCall parts EXACTLY as received — including
+            # the thoughtSignature that gemini-3.x demands on every echoed call.
+            model_parts = []
+            for _wrap in fcalls:
+                part = {"functionCall": _wrap["functionCall"]}
+                if _wrap.get("thoughtSignature"):
+                    part["thoughtSignature"] = _wrap["thoughtSignature"]
+                model_parts.append(part)
+            contents.append({"role": "model", "parts": model_parts})
+            # Yield ALL tool statuses up-front so the user sees the fan-out,
+            # then execute the tools IN PARALLEL — a turn with 3 case-law
+            # searches used to take 3× the wall-time of a single one; now it
+            # takes ~1×. Ordering of resp_parts must match fcalls so Gemini
+            # pairs each response with the right call.
+            for _wrap in fcalls:
+                _name = _wrap["functionCall"].get("name")
+                yield {"status": _TOOL_STATUS.get(_name, "Working…")}
+            import concurrent.futures as _futures
+            resp_parts = [None] * len(fcalls)
+            with _futures.ThreadPoolExecutor(max_workers=max(1, len(fcalls))) as pool:
+                fut_map = {
+                    pool.submit(_exec_tool, _wrap["functionCall"].get("name"),
+                                _wrap["functionCall"].get("args") or {},
+                                db=db, user_id=user_id, chat_id=chat_id): idx
+                    for idx, _wrap in enumerate(fcalls)
+                }
+                for fut in _futures.as_completed(fut_map):
+                    idx = fut_map[fut]
+                    fc = fcalls[idx]["functionCall"]
+                    name = fc.get("name")
+                    try:
+                        res = fut.result()
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("tool %s failed: %s", name, e)
+                        res = {"error": str(e)[:200]}
+                    tools_used.append(name)
+                    if name in ("web_search", "search_case_law") and res.get("sources"):
+                        all_sources += res["sources"]
+                    if name == "search_tax_law" and res.get("passages"):
+                        law_refs += [{k: p.get(k) for k in ("n", "act", "section", "breadcrumb")}
+                                     for p in res["passages"]]
+                    resp_parts[idx] = {"functionResponse": {"name": name, "response": res}}
             contents.append({"role": "user", "parts": resp_parts})
             continue
         # No tool calls — the streamed turn_text is the final answer.
         final_text = turn_text.strip()
+        if final_text:
+            _final_streamed = True
         break
     seen, srcs = set(), []
     for s in all_sources:
@@ -641,7 +784,47 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
         if u and u not in seen:
             seen.add(u)
             srcs.append(s)
+    # Belt-and-braces: if the loop ended without streaming any answer text
+    # (tool loop hit MAX_ITERS with no natural closing turn, or a stream was
+    # reset and never followed by content), synthesize one last non-tool call
+    # so the bubble is never empty. Uses the accumulated tool responses in
+    # `contents` — the model has everything it needs.
     if not final_text:
-        final_text = "I couldn't complete that — please rephrase."
+        try:
+            _cfg = dict(cfg)
+            # Drop thinkingConfig for the fallback synthesis — flash-latest is
+            # picky and this call must NOT fail silently.
+            _cfg.pop("thinkingConfig", None)
+            _synth_body = {
+                "systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                "generationConfig": _cfg,
+                "contents": contents + [{
+                    "role": "user",
+                    "parts": [{"text":
+                        "Answer the ORIGINAL question NOW using only the tool "
+                        "results already gathered above. Do NOT request more "
+                        "tools. If the tools didn't find the specific case, "
+                        "say so plainly and offer the general legal issue."
+                    }]},
+                ],
+            }
+            with httpx.Client(timeout=httpx.Timeout(30.0)) as c:
+                r = c.post(f"{_BASE}/{_MODEL}:generateContent",
+                           headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                           json=_synth_body)
+            if r.status_code == 200:
+                d = r.json()
+                cand = (d.get("candidates") or [{}])[0]
+                parts = (cand.get("content") or {}).get("parts") or []
+                final_text = "".join(p.get("text", "") for p in parts).strip()
+        except Exception as e:  # noqa: BLE001
+            log.warning("final-synthesis fallback failed: %s", e)
+    if not final_text:
+        final_text = ("I searched but couldn't put together a complete answer "
+                      "just now — please rephrase or ask again.")
+    # Emit as delta ONLY if the streaming path didn't already deliver the
+    # answer body — otherwise we'd double-write the text to the UI.
+    if not _final_streamed:
+        yield {"delta": final_text}
     yield {"done": {"text": final_text, "used": "agent", "tools_used": tools_used,
                     "web_sources": srcs, "law_refs": law_refs, "llm_calls": usage_calls}}

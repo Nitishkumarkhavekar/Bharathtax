@@ -21,8 +21,17 @@ const WINDOWS = [
   { label: "365d", days: 365 },
 ];
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+type WindowMode =
+  | { kind: "days"; days: number }
+  | { kind: "month"; year: number; month: number };
+
 export default function TokenUsagePage() {
-  const [days, setDays] = useState(30);
+  const [mode, setMode] = useState<WindowMode>({ kind: "days", days: 30 });
   const [data, setData] = useState<AdminTokenUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -32,18 +41,21 @@ export default function TokenUsagePage() {
 
   useEffect(() => {
     setLoading(true);
+    const opts = mode.kind === "days"
+      ? { days: mode.days }
+      : { year: mode.year, month: mode.month };
     api
-      .adminTokenUsage(days)
+      .adminTokenUsage(opts)
       .then(setData)
       .catch((e) => setErr(e?.message ?? "failed"))
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [mode]);
 
   // Reset to page 1 whenever the search or window changes so the user isn't
   // stranded on an empty page after narrowing results.
   useEffect(() => {
     setPage(1);
-  }, [q, days, pageSize]);
+  }, [q, mode, pageSize]);
 
   const users = useMemo(() => {
     if (!data) return [];
@@ -60,10 +72,15 @@ export default function TokenUsagePage() {
   if (loading && !data) return <Loading label="Loading token usage…" />;
   if (err || !data) return <ErrorBanner msg={err ?? "no data"} />;
 
-  const dayBars = data.per_day.slice(-30).map((d) => ({
-    label: d.day.slice(5),
+  // Day-of-window bars. In month mode we show every day of the calendar
+  // month (up to 31); in days mode we show the requested rolling window.
+  // The BarChart's `scrollable` mode kicks in when the window is >14 days
+  // so 30-day / month / 90-day charts don't squeeze the bars to nothing.
+  const dayBars = data.per_day.map((d) => ({
+    label: d.day.slice(5), // MM-DD
     value: d.tokens,
   }));
+  const dayChartScrollable = dayBars.length > 14;
   const actionBars = data.per_action.slice(0, 8).map((a) => ({
     label: a.action.replace(/_/g, " ").replace("appeal.", "").slice(0, 12),
     value: a.tokens,
@@ -79,25 +96,7 @@ export default function TokenUsagePage() {
       <Header
         title="Token Usage"
         subtitle="How many tokens each user, action and model is consuming on the gateway."
-        actions={
-          <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-white p-0.5">
-            {WINDOWS.map((w) => (
-              <button
-                key={w.days}
-                type="button"
-                onClick={() => setDays(w.days)}
-                className={
-                  "px-2.5 py-1 text-xs font-semibold rounded " +
-                  (days === w.days
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50")
-                }
-              >
-                {w.label}
-              </button>
-            ))}
-          </div>
-        }
+        actions={<WindowPicker mode={mode} onChange={setMode} />}
       />
 
       {/* KPI row */}
@@ -140,16 +139,22 @@ export default function TokenUsagePage() {
       <div className="grid lg:grid-cols-3 gap-4 admin-rise">
         <Section
           className="lg:col-span-2"
-          title={`Tokens per day (${data.window_days}d)`}
-          subtitle="Hover bars for exact counts"
+          title={
+            mode.kind === "month"
+              ? `Tokens per day — ${MONTH_NAMES[mode.month - 1]} ${mode.year}`
+              : `Tokens per day (${data.window_days}d)`
+          }
+          subtitle={dayChartScrollable ? "Scroll horizontally · hover bars for exact counts" : "Hover bars for exact counts"}
           icon={<Activity className="size-4" />}
         >
           {dayBars.length > 0 ? (
             <BarChart
               data={dayBars}
-              height={180}
+              height={200}
               accent="amber"
               valueFormatter={fmt}
+              scrollable={dayChartScrollable}
+              minBarSlot={38}
             />
           ) : (
             <Empty label="No token activity in this window yet." />
@@ -453,6 +458,91 @@ function PagerBtn({
     >
       {children}
     </button>
+  );
+}
+
+// Window picker — a small segmented control with three modes:
+//   * Rolling day windows (7d / 30d / 90d / 365d)
+//   * Month picker (Year → Month → view that calendar month)
+// Emits a WindowMode; the parent re-fetches whenever `mode` changes.
+function WindowPicker({
+  mode, onChange,
+}: {
+  mode: WindowMode;
+  onChange: (m: WindowMode) => void;
+}) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  // Show 6 years: this year and the previous 5.
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
+  const activeYear = mode.kind === "month" ? mode.year : currentYear;
+  const activeMonth = mode.kind === "month" ? mode.month : currentMonth;
+
+  const isMonthMode = mode.kind === "month";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Days / Rolling window buttons */}
+      <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-white p-0.5">
+        {WINDOWS.map((w) => {
+          const active = mode.kind === "days" && mode.days === w.days;
+          return (
+            <button
+              key={w.days}
+              type="button"
+              onClick={() => onChange({ kind: "days", days: w.days })}
+              className={
+                "px-2.5 py-1 text-xs font-semibold rounded " +
+                (active
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50")
+              }
+            >
+              {w.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Month + Year selectors — switch to month mode when any change */}
+      <div className={
+        "flex items-center gap-1.5 rounded-md border p-0.5 pl-2 " +
+        (isMonthMode
+          ? "border-primary/40 bg-primary/[0.06]"
+          : "border-slate-200 bg-white")
+      }>
+        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 pr-1">
+          Month
+        </span>
+        <select
+          aria-label="Year"
+          value={activeYear}
+          onChange={(e) => onChange({ kind: "month", year: Number(e.target.value), month: activeMonth })}
+          className="h-7 rounded-md bg-white border border-slate-200 px-1.5 text-[11px] tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/25"
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Month"
+          value={activeMonth}
+          onChange={(e) => onChange({ kind: "month", year: activeYear, month: Number(e.target.value) })}
+          className="h-7 rounded-md bg-white border border-slate-200 px-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-primary/25"
+        >
+          {MONTH_NAMES.map((n, i) => {
+            const monthNum = i + 1;
+            const disabled = activeYear === currentYear && monthNum > currentMonth;
+            return (
+              <option key={monthNum} value={monthNum} disabled={disabled}>
+                {n}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+    </div>
   );
 }
 

@@ -899,16 +899,25 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
             break
         cand = (d.get("candidates") or [{}])[0]
         parts = (cand.get("content") or {}).get("parts") or []
-        fcalls = [p["functionCall"] for p in parts if "functionCall" in p]
+        # Preserve thoughtSignature alongside each functionCall — gemini-3.x
+        # rejects the next turn with 400 if the echoed model turn drops it.
+        fcall_parts = [p for p in parts if "functionCall" in p]
         turn_text = "".join(p.get("text", "") for p in parts).strip()
 
-        if fcalls:
-            contents.append({"role": "model", "parts": [{"functionCall": fc} for fc in fcalls]})
+        if fcall_parts:
+            model_parts = []
+            for _p in fcall_parts:
+                mp = {"functionCall": _p["functionCall"]}
+                if _p.get("thoughtSignature"):
+                    mp["thoughtSignature"] = _p["thoughtSignature"]
+                model_parts.append(mp)
+            contents.append({"role": "model", "parts": model_parts})
             resp_parts = []
             # Execute tool calls in parallel so a researcher iteration that
             # fires 3 searches doesn't take 3x sequential time.
             import concurrent.futures as _futures
-            to_run = [fc for fc in fcalls if fc.get("name") != "ask_user"]
+            to_run = [_p["functionCall"] for _p in fcall_parts
+                      if _p["functionCall"].get("name") != "ask_user"]
             with _futures.ThreadPoolExecutor(max_workers=max(1, len(to_run))) as pool:
                 fut_map = {
                     pool.submit(
