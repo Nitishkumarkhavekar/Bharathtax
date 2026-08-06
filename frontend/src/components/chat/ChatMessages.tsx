@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Globe, Languages, Loader2, Pencil, RotateCcw, Scale, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
-import { Markdown } from "@/lib/markdown";
+import { Markdown, copyMarkdownRich } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
 import { api } from "@/api";
 import { useAuth } from "@/auth";
@@ -705,7 +705,11 @@ function MessageActions({
 }) {
   const [copied, setCopied] = useState(false);
   function copy() {
-    navigator.clipboard?.writeText(text).then(() => {
+    // Rich clipboard: styled HTML for Word/Docs/Notion/Gmail (headings,
+    // bullets, tables, code blocks all preserved) + a clean plain-text
+    // fallback with markdown syntax stripped for terminal/plain paste
+    // targets. Beats a raw `## foo` / `**bar**` dump every time.
+    copyMarkdownRich(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
