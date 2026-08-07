@@ -32,6 +32,7 @@ from app.services import agent as _single_agent
 log = logging.getLogger("multi_agent")
 
 # Reuse the same Gemini config / auth / retry helper as the single agent.
+from app.services import gemini_transport as _tx
 _KEY = _single_agent._KEY
 _BASE = _single_agent._BASE
 _TOOLS = _single_agent._TOOLS
@@ -400,7 +401,7 @@ def enabled() -> bool:
     """Multi-agent is opt-in via env, and requires the API key + the
     single-agent to also be enabled (we still use its tool infra)."""
     return (
-        bool(_KEY)
+        _tx.available()
         and os.getenv("MULTI_AGENT_ENABLED", "0").lower() in ("1", "true", "yes")
         and _single_agent.enabled()
     )
@@ -539,9 +540,8 @@ def _run_coverage(question: str) -> dict | None:
     contents = [{"role": "user", "parts": [{"text": question}]}]
     try:
         with httpx.Client(timeout=httpx.Timeout(20.0)) as c:
-            r = c.post(f"{_BASE}/{_PLANNER_MODEL}:generateContent",
-                       headers={"x-goog-api-key": _KEY,
-                                "Content-Type": "application/json"},
+            r = c.post(_tx.url(_PLANNER_MODEL, "generateContent"),
+                       headers=_tx.headers(),
                        json={**base, "contents": contents})
         if r.status_code != 200:
             log.info("coverage HTTP %s — proceeding without checklist", r.status_code)
@@ -828,9 +828,8 @@ def _run_planner(question: str) -> dict | None:
     contents = [{"role": "user", "parts": [{"text": question}]}]
     try:
         with httpx.Client(timeout=httpx.Timeout(20.0)) as c:
-            r = c.post(f"{_BASE}/{_PLANNER_MODEL}:generateContent",
-                       headers={"x-goog-api-key": _KEY,
-                                "Content-Type": "application/json"},
+            r = c.post(_tx.url(_PLANNER_MODEL, "generateContent"),
+                       headers=_tx.headers(),
                        json={**base, "contents": contents})
         if r.status_code != 200:
             log.info("planner HTTP %s — proceeding without plan", r.status_code)
@@ -887,9 +886,8 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
         t0 = time.time()
         try:
             with httpx.Client(timeout=httpx.Timeout(45.0)) as c:
-                r = c.post(f"{_BASE}/{_RESEARCHER_MODEL}:generateContent",
-                           headers={"x-goog-api-key": _KEY,
-                                    "Content-Type": "application/json"},
+                r = c.post(_tx.url(_RESEARCHER_MODEL, "generateContent"),
+                           headers=_tx.headers(),
                            json={**base, "contents": contents})
             if r.status_code != 200:
                 log.warning("researcher HTTP %s: %s", r.status_code, r.text[:150])
@@ -1037,9 +1035,8 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
     try:
         with httpx.Client(timeout=httpx.Timeout(120.0)) as c:
             with c.stream("POST",
-                          f"{_BASE}/{_COMPOSER_MODEL}:streamGenerateContent?alt=sse",
-                          headers={"x-goog-api-key": _KEY,
-                                   "Content-Type": "application/json"},
+                          _tx.url(_COMPOSER_MODEL, "streamGenerateContent") + "?alt=sse",
+                          headers=_tx.headers(),
                           json={**base, "contents": contents}) as r:
                 if r.status_code != 200:
                     log.warning("composer HTTP %s", r.status_code)

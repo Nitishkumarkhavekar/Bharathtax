@@ -23,6 +23,7 @@ log = get_logger(__name__)
 
 _PREFIX = "bt:starters:trend:"
 _TTL = 26 * 3600  # a little over a day so the day's set survives until refreshed
+from app.services import gemini_transport as _tx
 _KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
 _MODEL = os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-flash-latest")
 
@@ -77,7 +78,7 @@ def _today() -> str:
 
 def _trending() -> list[dict]:
     """Today's LLM-generated trending starters, cached for the day. [] on any failure."""
-    if not _KEY:
+    if not _tx.available():
         return []
     r = _redis()
     key = _PREFIX + _today()
@@ -100,8 +101,8 @@ def _trending() -> list[dict]:
             'Return ONLY a JSON array of objects: {"category": "...", "text": "..."}.'
         )
         resp = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{_MODEL}:generateContent",
-            headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+            _tx.url(_MODEL, "generateContent"),
+            headers=_tx.headers(),
             json={"contents": [{"parts": [{"text": prompt}]}],
                   # thinkingBudget=128 caps deliberation so the JSON array
                   # fits in maxOutputTokens. 0 rejects with 400 on

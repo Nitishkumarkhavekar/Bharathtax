@@ -580,9 +580,43 @@ def model_health(admin: User = Depends(_admin)) -> dict:
                 "latency_ms": latency, "endpoint": endpoint, "models": models or [], "meta": meta or {}}
 
     def probe_gemini():
+        from app.services import gemini_transport as _tx
         gkey = (_os.getenv("GEMINI_API_KEY") or "").strip()
         gmodels = [m.strip() for m in _os.getenv("GEMINI_MODELS", "gemini-flash-latest").split(",") if m.strip()]
-        gep = "generativelanguage.googleapis.com"
+        gep = _tx.endpoint_host()
+        # Vertex backend: auth is an OAuth bearer minted from the service
+        # account (not an API key), and the model list lives at a different
+        # endpoint. Probe the model resource with the bearer token instead.
+        if _tx.is_vertex():
+            role = "Primary LLM + web search (Vertex — free-credit eligible)"
+            if not _tx.available():
+                return _svc("gemini", "Gemini API (Vertex)", role, "down",
+                            "GEMINI_VERTEX_PROJECT not configured", None, gep, gmodels)
+            t0 = time.time()
+            try:
+                # Vertex has no zero-token GET on a publisher model, so we send
+                # the smallest possible generateContent (thinking off, 5 tokens)
+                # — proves auth + role + model availability for ~0.0001 credit.
+                pbody = {"contents": [{"role": "user", "parts": [{"text": "ping"}]}],
+                         "generationConfig": {"maxOutputTokens": 5, "temperature": 0,
+                                              "thinkingConfig": {"thinkingBudget": 0}}}
+                pmodel = gmodels[0] if gmodels else "gemini-2.5-flash"
+                with httpx.Client(timeout=10.0) as c:
+                    r = c.post(_tx.url(pmodel, "generateContent"),
+                               headers=_tx.headers(), json=pbody)
+                lat = (time.time() - t0) * 1000
+                if r.status_code == 200:
+                    return _svc("gemini", "Gemini API (Vertex)", role, "ok",
+                                "Responding via Vertex AI", lat, gep, gmodels)
+                if r.status_code in (401, 403):
+                    return _svc("gemini", "Gemini API (Vertex)", role, "down",
+                                "Vertex auth failed — SA may lack the Vertex AI User role",
+                                lat, gep, gmodels, {"http": r.status_code})
+                return _svc("gemini", "Gemini API (Vertex)", role, "degraded",
+                            f"Vertex HTTP {r.status_code}", lat, gep, gmodels, {"http": r.status_code})
+            except Exception as e:  # noqa: BLE001
+                return _svc("gemini", "Gemini API (Vertex)", role, "down",
+                            f"Vertex unreachable: {type(e).__name__}", None, gep, gmodels)
         if not gkey:
             return _svc("gemini", "Gemini API", "Primary LLM + web search", "down", "No API key configured", None, gep, gmodels)
         # Health probe: hit `models.list` (auth-checked, no generation).

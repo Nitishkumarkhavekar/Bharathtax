@@ -20,6 +20,7 @@ from app.core.enums import Domain, QueryScope
 from app.models.activity import Query
 from app.schemas import AnswerResponse, AskRequest, CitationOut
 from app.services import audit, capture, rag
+from app.services import gemini_transport as _tx
 
 router = APIRouter(prefix="/ask", tags=["ask"])
 log = logging.getLogger(__name__)
@@ -65,7 +66,10 @@ def ask(body: AskRequest, request: Request,
             _use_agent = False
         try:
             from app.services import multi_agent as _multi
-            _use_multi = _multi.enabled()
+            from app.services import query_router as _router
+            # Multi-agent (3–6 Gemini calls) only for genuinely complex asks;
+            # simple lookups fall through to the single grounded agent.
+            _use_multi = _multi.enabled() and _router.should_use_multi(body.question)
         except Exception:  # noqa: BLE001
             _use_multi = False
         if _use_agent:
@@ -254,7 +258,8 @@ def ask_stream(body: AskRequest, request: Request,
             use_agent = False
         try:
             from app.services import multi_agent as _multi
-            use_multi = _multi.enabled()
+            from app.services import query_router as _router
+            use_multi = _multi.enabled() and _router.should_use_multi(question)
         except Exception:  # noqa: BLE001
             use_multi = False
 
@@ -368,8 +373,8 @@ def ask_followups(body: _FollowupsRequest,
     )
     try:
         r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            _tx.url(model, "generateContent"),
+            headers=_tx.headers(),
             json={"contents": [{"parts": [{"text": prompt}]}],
                   # thinkingBudget=128 is the sweet spot on gemini-flash-latest:
                   # (a) 0 combined with responseMimeType=json → 400 INVALID_ARG;
@@ -424,8 +429,8 @@ def ask_translate(body: _TranslateRequest,
     )
     try:
         r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            _tx.url(model, "generateContent"),
+            headers=_tx.headers(),
             json={"systemInstruction": {"parts": [{"text": sys_p}]},
                   "contents": [{"role": "user", "parts": [{"text": text}]}],
                   # NB: drop thinkingConfig — gemini-flash-latest can 400 on

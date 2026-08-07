@@ -25,6 +25,7 @@ from app.services import gemini_search as _gs
 
 log = logging.getLogger("agent")
 
+from app.services import gemini_transport as _tx
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
 _MODEL = os.getenv("CHAT_AGENT_MODEL", os.getenv("GEMINI_SEARCH_MODEL", "gemini-flash-latest"))
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -41,7 +42,7 @@ _FALLBACK_MODELS = tuple(
 
 
 def enabled() -> bool:
-    return bool(_KEY) and os.getenv("CHAT_AGENT_ENABLED", "0").lower() in ("1", "true", "yes")
+    return _tx.available() and os.getenv("CHAT_AGENT_ENABLED", "0").lower() in ("1", "true", "yes")
 
 
 _SYSTEM = (
@@ -508,8 +509,8 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
     for _ in range(_MAX_ITERS):
         t0 = time.time()
         with httpx.Client(timeout=httpx.Timeout(60.0)) as c:
-            r = c.post(f"{_BASE}/{_MODEL}:generateContent",
-                       headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+            r = c.post(_tx.url(_MODEL, "generateContent"),
+                       headers=_tx.headers(),
                        json={**base, "contents": contents})
         if r.status_code != 200:
             raise RuntimeError(f"agent HTTP {r.status_code}: {r.text[:150]}")
@@ -575,8 +576,8 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
             t1 = time.time()
             try:
                 with httpx.Client(timeout=httpx.Timeout(60.0)) as c2:
-                    rc = c2.post(f"{_BASE}/{_MODEL}:generateContent",
-                                 headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                    rc = c2.post(_tx.url(_MODEL, "generateContent"),
+                                 headers=_tx.headers(),
                                  json={**base, "contents": contents})
                 if rc.status_code != 200:
                     break
@@ -674,8 +675,8 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                 _base_body["tools"] = _TOOLS
             try:
               with httpx.Client(timeout=httpx.Timeout(45.0)) as c:
-                with c.stream("POST", f"{_BASE}/{_mdl}:streamGenerateContent?alt=sse",
-                              headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                with c.stream("POST", _tx.url(_mdl, "streamGenerateContent") + "?alt=sse",
+                              headers=_tx.headers(),
                               json={**_base_body, "contents": contents}) as r:
                     if r.status_code in (429, 503):
                         log.warning("agent stream %s HTTP %s — falling to next model", _mdl, r.status_code)
@@ -829,8 +830,8 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                 ],
             }
             with httpx.Client(timeout=httpx.Timeout(30.0)) as c:
-                r = c.post(f"{_BASE}/{_MODEL}:generateContent",
-                           headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                r = c.post(_tx.url(_MODEL, "generateContent"),
+                           headers=_tx.headers(),
                            json=_synth_body)
             if r.status_code == 200:
                 d = r.json()

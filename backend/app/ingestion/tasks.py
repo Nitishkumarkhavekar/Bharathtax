@@ -66,8 +66,29 @@ def model_health_alert() -> dict:
     # (maxOutputTokens=1 + thinkingConfig.thinkingBudget=0) which now
     # returns HTTP 400 INVALID_ARGUMENT on thinking models like
     # gemini-flash-latest / gemini-2.5-flash, producing spurious alerts.
+    from app.services import gemini_transport as _tx
     status, detail = "ok", "Responding normally"
-    if not key:
+    if _tx.is_vertex():
+        # Vertex: bearer-token auth + per-project model resource endpoint.
+        if not _tx.available():
+            status, detail = "down", "GEMINI_VERTEX_PROJECT not configured"
+        else:
+            try:
+                pbody = {"contents": [{"role": "user", "parts": [{"text": "ping"}]}],
+                         "generationConfig": {"maxOutputTokens": 5, "temperature": 0,
+                                              "thinkingConfig": {"thinkingBudget": 0}}}
+                with httpx.Client(timeout=10.0) as c:
+                    r = c.post(_tx.url("gemini-2.5-flash", "generateContent"),
+                               headers=_tx.headers(), json=pbody)
+                if r.status_code == 200:
+                    status, detail = "ok", "Responding via Vertex AI"
+                elif r.status_code in (401, 403):
+                    status, detail = "down", "Vertex auth failed (SA role?)"
+                else:
+                    status, detail = "error", f"Vertex HTTP {r.status_code}"
+            except Exception as e:  # noqa: BLE001
+                status, detail = "error", f"Vertex unreachable: {type(e).__name__}"
+    elif not key:
         status, detail = "down", "No Gemini API key configured"
     else:
         try:

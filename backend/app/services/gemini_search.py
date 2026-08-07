@@ -17,6 +17,7 @@ from app.core.logging import get_logger
 
 log = get_logger(__name__)
 
+from app.services import gemini_transport as _tx
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
 # Web-search fallback for the Ask Bot. Grounding requires Flash or Pro.
 # Primary model is Pro for answer quality; failover to Flash on per-model
@@ -101,7 +102,7 @@ _SYS = (
 
 
 def available() -> bool:
-    return bool(_KEY) and _ENABLED
+    return _tx.available() and _ENABLED
 
 
 def _domain_of(title: str) -> str:
@@ -176,7 +177,7 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
     body = {
         "systemInstruction": {"parts": [{"text": dated_sys}]},
         "contents": [{"role": "user", "parts": [{"text": question}]}],
-        "tools": [{"google_search": {}}],
+        "tools": [_tx.search_tool()],
         "generationConfig": gen_cfg,
     }
     last_err = None
@@ -198,8 +199,8 @@ def web_answer(question: str) -> tuple[str, list[dict]]:
         # patient retry.
         try:
             with httpx.Client(timeout=httpx.Timeout(15.0)) as c:
-                r = c.post(f"{_BASE}/{model}:generateContent",
-                           headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+                r = c.post(_tx.url(model, "generateContent"),
+                           headers=_tx.headers(),
                            json=body)
             if r.status_code in (400, 404, 429) or r.status_code >= 500:
                 last_err = f"{model} HTTP {r.status_code}"

@@ -40,3 +40,8 @@ handover/
 
 # celery beat runtime state (regenerated; never commit)
 backend/celerybeat-schedule*
+
+# Service-account keys / local secrets (NEVER commit)
+backend/secrets/
+gen-lang-client-*.json
+*-service-account*.json
