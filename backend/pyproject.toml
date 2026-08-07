@@ -41,6 +41,9 @@ dependencies = [
     "python-docx>=1.1",               # DOCX export of draft orders
     # --- admin console: system stats ---
     "psutil>=5.9",
+    # --- Vertex AI backend: mint OAuth tokens from the service-account JSON
+    # (bundles pure-Python rsa; no cryptography needed) ---
+    "google-auth>=2.0",
 ]
 
 [project.optional-dependencies]
