@@ -99,6 +99,28 @@ def _load_credentials():
     return _creds
 
 
+class _HttpxAuthRequest:
+    """Minimal ``google.auth.transport.Request`` implemented on httpx.
+
+    google-auth's stock transports pull in the ``requests`` or ``urllib3``
+    packages; httpx is already a project dependency, so we adapt it and add
+    nothing new. The interface google-auth calls: ``(url, method, body,
+    headers, timeout)`` → object exposing ``.status``, ``.headers``, ``.data``.
+    """
+
+    def __call__(self, url, method="GET", body=None, headers=None,
+                 timeout=None, **kwargs):
+        import httpx
+        r = httpx.request(method, url, content=body, headers=headers,
+                          timeout=timeout or 120.0)
+
+        class _Resp:
+            status = r.status_code
+            data = r.content
+        _Resp.headers = r.headers
+        return _Resp()
+
+
 def _access_token() -> str:
     """Return a valid bearer token, refreshing (thread-safely) when stale."""
     global _token_value, _token_exp
@@ -106,9 +128,8 @@ def _access_token() -> str:
         now = time.time()
         if _token_value and now < _token_exp - 60:
             return _token_value
-        from google.auth.transport.requests import Request
         creds = _load_credentials()
-        creds.refresh(Request())
+        creds.refresh(_HttpxAuthRequest())
         _token_value = creds.token
         exp = getattr(creds, "expiry", None)
         if exp is not None:
