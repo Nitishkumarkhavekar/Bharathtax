@@ -595,7 +595,11 @@ def model_health(admin: User = Depends(_admin)) -> dict:
         t0 = time.time()
         try:
             with httpx.Client(timeout=10.0) as c:
+                # pageSize=1000 (the API max) returns the full model list in one
+                # call — the default page (~50) can push a configured model onto
+                # page 2 and falsely flag it "not available".
                 r = c.get("https://generativelanguage.googleapis.com/v1beta/models",
+                          params={"pageSize": 1000},
                           headers={"x-goog-api-key": gkey})
             lat = (time.time() - t0) * 1000
             if r.status_code == 200:

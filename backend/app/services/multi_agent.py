@@ -37,6 +37,7 @@ _BASE = _single_agent._BASE
 _TOOLS = _single_agent._TOOLS
 _TOOL_STATUS = _single_agent._TOOL_STATUS
 _exec_tool = _single_agent._exec_tool
+_exec_tool_isolated = _single_agent._exec_tool_isolated
 _recent_history = _single_agent._recent_history
 _apply_continuation_intent = _single_agent._apply_continuation_intent
 
@@ -905,8 +906,18 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
         turn_text = "".join(p.get("text", "") for p in parts).strip()
 
         if fcall_parts:
+            # Only echo the calls we will actually respond to. Echoing an
+            # ask_user call without a matching functionResponse makes Gemini
+            # reject the next turn with HTTP 400 (call/response count mismatch).
+            runnable = [_p for _p in fcall_parts
+                        if _p["functionCall"].get("name") != "ask_user"]
+            if not runnable:
+                # Researcher only asked to clarify — nothing to research; use
+                # whatever text it produced as the packet and stop.
+                packet_text = turn_text
+                break
             model_parts = []
-            for _p in fcall_parts:
+            for _p in runnable:
                 mp = {"functionCall": _p["functionCall"]}
                 if _p.get("thoughtSignature"):
                     mp["thoughtSignature"] = _p["thoughtSignature"]
@@ -914,15 +925,16 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
             contents.append({"role": "model", "parts": model_parts})
             resp_parts = []
             # Execute tool calls in parallel so a researcher iteration that
-            # fires 3 searches doesn't take 3x sequential time.
+            # fires 3 searches doesn't take 3x sequential time. Each worker gets
+            # its OWN DB session (_exec_tool_isolated) — the request session is
+            # not thread-safe.
             import concurrent.futures as _futures
-            to_run = [_p["functionCall"] for _p in fcall_parts
-                      if _p["functionCall"].get("name") != "ask_user"]
+            to_run = [_p["functionCall"] for _p in runnable]
             with _futures.ThreadPoolExecutor(max_workers=max(1, len(to_run))) as pool:
                 fut_map = {
                     pool.submit(
-                        _exec_tool, fc.get("name"), fc.get("args") or {},
-                        db=db, user_id=user_id, chat_id=chat_id,
+                        _exec_tool_isolated, fc.get("name"), fc.get("args") or {},
+                        user_id=user_id, chat_id=chat_id,
                     ): fc for fc in to_run
                 }
                 for fut in _futures.as_completed(fut_map):
@@ -963,9 +975,11 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
 # Composer execution — non-tool, streaming answer using the packet.
 # ============================================================================
 def _stream_composer(question: str, packet: str, history: list, plan: dict | None = None,
-                     coverage_bullets: list[str] | None = None):
+                     coverage_bullets: list[str] | None = None, resume_hint: str = ""):
     """Stream the composer's final answer. Yields {'delta': str} for each
-    text chunk from Gemini."""
+    text chunk from Gemini. `history` gives conversational context for
+    follow-ups; `resume_hint` (set for 'continue' turns) tells it to resume
+    the prior answer rather than restart."""
     plan_hint = ""
     if plan and isinstance(plan, dict):
         parts = []
@@ -1005,13 +1019,16 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
             "one of these bullets in enough depth to be actionable."
         )
     composer_user_msg = (
-        f"USER QUESTION:\n{question}\n\n"
-        f"RESEARCH EVIDENCE PACKET (this is your source of truth — do not "
-        f"invent beyond it):\n\n{packet or '(researcher returned no packet)'}"
-        f"{plan_hint}"
-        f"{coverage_block}"
+        (f"{resume_hint}\n\n" if resume_hint else "")
+        + f"USER QUESTION:\n{question}\n\n"
+        + f"RESEARCH EVIDENCE PACKET (this is your source of truth — do not "
+        + f"invent beyond it):\n\n{packet or '(researcher returned no packet)'}"
+        + f"{plan_hint}"
+        + f"{coverage_block}"
     )
-    contents = [{"role": "user", "parts": [{"text": composer_user_msg}]}]
+    # Prepend the conversation history so follow-ups keep context (a bare
+    # "and the new regime?" must know the prior turn).
+    contents = list(history or []) + [{"role": "user", "parts": [{"text": composer_user_msg}]}]
     cfg = {"temperature": 0.0, "maxOutputTokens": 4096,
            "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _COMPOSER_SYSTEM}]},
@@ -1118,8 +1135,16 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
 
     yield {"status": "Composing answer"}
     final_text = ""
-    for ev in _stream_composer(question, packet, history=[], plan=plan,
-                               coverage_bullets=coverage_bullets):
+    # Give the composer the conversation history (context for follow-ups), and
+    # detect a 'continue' request so it RESUMES the prior answer rather than
+    # restarting — the researcher handled its own continuation, but the
+    # composer never saw it.
+    _comp_history = _recent_history(db, chat_id=chat_id, user_id=user_id)
+    _probe = _comp_history + [{"role": "user", "parts": [{"text": question}]}]
+    _resolved = _apply_continuation_intent(_probe, question)[1]
+    _resume_hint = _resolved if _resolved != question else ""
+    for ev in _stream_composer(question, packet, history=_comp_history, plan=plan,
+                               coverage_bullets=coverage_bullets, resume_hint=_resume_hint):
         if "delta" in ev:
             final_text += ev["delta"]
         yield ev

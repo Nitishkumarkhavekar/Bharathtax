@@ -390,6 +390,19 @@ def _exec_tool(name: str, args: dict, *, db: Session, user_id: int, chat_id):
     return {"error": "unknown tool"}
 
 
+def _exec_tool_isolated(name: str, args: dict, *, user_id: int, chat_id):
+    """Thread-safe variant for parallel tool execution: opens its OWN DB session
+    so concurrent ThreadPoolExecutor workers never share one request-scoped
+    Session (SQLAlchemy Sessions are not thread-safe). Sequential callers keep
+    using the request session via _exec_tool directly."""
+    from app.core.db import SessionLocal
+    s = SessionLocal()
+    try:
+        return _exec_tool(name, args, db=s, user_id=user_id, chat_id=chat_id)
+    finally:
+        s.close()
+
+
 def _recent_history(db: Session, *, chat_id, user_id, limit: int = 6) -> list:
     """Last few turns of THIS chat, verbatim, so a vague follow-up
     ('what is the max limit?') always carries its immediate context."""
@@ -645,6 +658,13 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
         _no_more_tools = _iter_idx == _MAX_ITERS - 1
         for _mdl in _model_chain:
             _resp = None
+            # Reset accumulators per model attempt. If a PRIOR model in the chain
+            # already streamed partial answer text and then failed mid-stream,
+            # tell the client to drop it so the retry doesn't double-write.
+            if turn_text:
+                yield {"reset": True}
+            fcalls = []
+            turn_text = ""
             _cfg = dict(cfg)
             if "flash-latest" in _mdl:
                 _cfg = {k: v for k, v in _cfg.items() if k != "thinkingConfig"}
@@ -750,9 +770,9 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             resp_parts = [None] * len(fcalls)
             with _futures.ThreadPoolExecutor(max_workers=max(1, len(fcalls))) as pool:
                 fut_map = {
-                    pool.submit(_exec_tool, _wrap["functionCall"].get("name"),
+                    pool.submit(_exec_tool_isolated, _wrap["functionCall"].get("name"),
                                 _wrap["functionCall"].get("args") or {},
-                                db=db, user_id=user_id, chat_id=chat_id): idx
+                                user_id=user_id, chat_id=chat_id): idx
                     for idx, _wrap in enumerate(fcalls)
                 }
                 for fut in _futures.as_completed(fut_map):
