@@ -1120,10 +1120,11 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
     # concurrent execution saves ~1s vs sequential. copy_context() carries the
     # usage sink (a ContextVar) into the worker threads.
     import concurrent.futures as _futures
-    _ctx = contextvars.copy_context()
+    # A fresh context copy per task — a single Context can't be entered by two
+    # threads at once. Both copies share the same usage-sink list object.
     with _futures.ThreadPoolExecutor(max_workers=2) as _pool:
-        _plan_fut = _pool.submit(_ctx.run, _run_planner, question)
-        _cov_fut = _pool.submit(_ctx.run, _run_coverage, question)
+        _plan_fut = _pool.submit(contextvars.copy_context().run, _run_planner, question)
+        _cov_fut = _pool.submit(contextvars.copy_context().run, _run_coverage, question)
         plan = _plan_fut.result()
         coverage = _cov_fut.result()
     # Attach the deterministic typo note to the plan (composer surfaces it).
