@@ -694,6 +694,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                         raise RuntimeError(f"agent stream HTTP {r.status_code}")
                     # Consume this stream FULLY here — the outer connection
                     # closes on exit, so we must accumulate before break.
+                    _last_um = None  # SSE emits usageMetadata cumulatively per chunk
                     for line in r.iter_lines():
                         if not line or not line.startswith("data:"):
                             continue
@@ -714,13 +715,15 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                             elif p.get("text"):
                                 turn_text += p["text"]
                                 yield {"delta": p["text"]}
-                        um = d.get("usageMetadata") or {}
-                        if um:
-                            usage_calls.append({"model": _mdl,
-                                                "usage": {"prompt_tokens": um.get("promptTokenCount"),
-                                                          "completion_tokens": um.get("candidatesTokenCount"),
-                                                          "total_tokens": um.get("totalTokenCount")},
-                                                "latency_ms": int((time.time() - t0) * 1000)})
+                        if d.get("usageMetadata"):
+                            _last_um = d["usageMetadata"]  # keep latest; record once below
+                    if _last_um:
+                        usage_calls.append({"model": _mdl,
+                                            "usage": {"prompt_tokens": _last_um.get("promptTokenCount"),
+                                                      "completion_tokens": _last_um.get("candidatesTokenCount"),
+                                                      "total_tokens": _last_um.get("totalTokenCount"),
+                                                      "cached_tokens": _last_um.get("cachedContentTokenCount")},
+                                            "latency_ms": int((time.time() - t0) * 1000)})
                     _resp = "ok"
             except Exception as e:  # noqa: BLE001
                 log.warning("agent stream %s exception: %s", _mdl, e)
