@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from celery import Celery
@@ -42,7 +43,61 @@ celery_app.conf.beat_schedule = {
         "task": "app.ingestion.tasks.model_health_alert",
         "schedule": 600.0,  # every 10 minutes
     },
+    # Daily fresh-precedent pull: new ITAT orders from Indian Kanoon into the
+    # case-law corpus so answers cite current tribunal decisions. Runs at 03:30
+    # UTC (after the 02:00 statutory-corpus update), idempotent + cost-capped.
+    "daily-case-law-update": {
+        "task": "app.ingestion.tasks.daily_case_law_update",
+        "schedule": _crontab_from_str(os.getenv("CASE_LAW_UPDATE_CRON", "30 3 * * *")),
+    },
 }
+
+
+# Common income-tax appeal grounds — broad enough to catch most fresh ITAT
+# orders. Query overlap is harmless: case_law.ingest_text dedups by content
+# hash, so a judgment matched by several queries is stored exactly once.
+_CASE_LAW_QUERIES = [
+    "income tax", "section 68", "section 69", "capital gains", "TDS",
+    "penalty section 271", "reassessment section 147", "transfer pricing",
+    "ESOP", "section 14A", "section 54", "bogus purchases",
+]
+
+
+@celery_app.task
+def daily_case_law_update() -> dict:
+    """Pull the last few days of fresh ITAT orders from Indian Kanoon into the
+    case-law corpus, so answers cite current precedent instead of only the
+    static seed set. Idempotent (content-hash dedup skips already-ingested
+    orders) and cost-capped per run. Token: IK_API_TOKEN or INDIANKANOON_API_TOKEN.
+
+    Tunables (env): CASE_LAW_LOOKBACK_DAYS (default 8, overlaps the daily run so
+    nothing slips through a gap), CASE_LAW_DAILY_CAP_PER_QUERY (default 15)."""
+    from datetime import date, timedelta
+    from app.ingestion.acquire import indiankanoon
+
+    tok = (os.getenv("IK_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
+    if not tok:
+        log.warning("daily_case_law_update: no Indian Kanoon token — skipping")
+        return {"skipped": "no_token"}
+    os.environ["IK_API_TOKEN"] = tok  # the acquire module reads this exact name
+
+    lookback = int(os.getenv("CASE_LAW_LOOKBACK_DAYS", "8"))
+    cap = int(os.getenv("CASE_LAW_DAILY_CAP_PER_QUERY", "15"))
+    today = date.today()
+    fromdate = (today - timedelta(days=lookback)).strftime("%d-%m-%Y")
+    todate = today.strftime("%d-%m-%Y")
+
+    total = {"ingested": 0, "docs_fetched": 0, "search_pages": 0}
+    for q in _CASE_LAW_QUERIES:
+        try:
+            r = indiankanoon.run(q, cap, fromdate, todate)
+            for k in total:
+                total[k] += int(r.get(k, 0) or 0)
+        except Exception as e:  # noqa: BLE001  (one bad query must not abort the sweep)
+            log.warning("daily_case_law_update: query %r failed: %s", q, str(e)[:150])
+    total["approx_billable_pages"] = total["search_pages"] + total["docs_fetched"]
+    log.info("daily_case_law_update DONE %s (window %s..%s)", total, fromdate, todate)
+    return total
 
 
 @celery_app.task
