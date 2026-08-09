@@ -1058,6 +1058,7 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
     base = {"systemInstruction": {"parts": [{"text": _COMPOSER_SYSTEM}]},
             "generationConfig": cfg}
 
+    _last_usage = None  # streamGenerateContent emits usageMetadata cumulatively
     try:
         with httpx.Client(timeout=httpx.Timeout(120.0)) as c:
             with c.stream("POST",
@@ -1079,12 +1080,14 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
                     except Exception:  # noqa: BLE001
                         continue
                     if d.get("usageMetadata"):
-                        _rec_usage(_COMPOSER_MODEL, d)
+                        _last_usage = d  # keep only the latest; record once at end
                     cand = (d.get("candidates") or [{}])[0]
                     for p in (cand.get("content") or {}).get("parts") or []:
                         t = p.get("text")
                         if t:
                             yield {"delta": t}
+        if _last_usage is not None:
+            _rec_usage(_COMPOSER_MODEL, _last_usage)
     except Exception as e:  # noqa: BLE001
         log.warning("composer stream failed: %s", e)
         yield {"delta": f"\n\n_(streaming error: {e})_"}
