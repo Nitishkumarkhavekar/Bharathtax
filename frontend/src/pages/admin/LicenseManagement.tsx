@@ -390,7 +390,7 @@ function LicenseForm({
             <Button
               className="flex-1"
               size="sm"
-              onClick={() => navigator.clipboard.writeText(newlyIssuedKey)}
+              onClick={() => { navigator.clipboard.writeText(newlyIssuedKey); toast.success("Key copied"); }}
             >
               <Copy className="size-4" /> Copy key to clipboard
             </Button>
@@ -455,7 +455,7 @@ function LicenseForm({
           </div>
           <button
             type="button"
-            onClick={() => navigator.clipboard.writeText(current.key)}
+            onClick={() => { navigator.clipboard.writeText(current.key); toast.success("Key copied"); }}
             className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500"
             title="Copy key"
           >

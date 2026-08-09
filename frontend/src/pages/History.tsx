@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { HistoryItem, HistoryKind, HistoryCounts, api } from "../api";
+import { toast } from "@/lib/toast";
 import { useAuth } from "../auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,8 +68,9 @@ export default function History() {
     try {
       await api.historyDelete(id);
       setItems((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Entry deleted");
     } catch {
-      alert("Could not delete this row. Please try again.");
+      toast.error("Could not delete this row. Please try again.");
     } finally {
       setDeleting((d) => {
         const nxt = { ...d };
@@ -95,8 +97,9 @@ export default function History() {
     try {
       await api.historyClear(kind);
       await refresh(kind);
+      toast.success(kind === "all" ? "History cleared" : `Cleared ${kind} entries`);
     } catch {
-      alert("Could not clear history. Please try again.");
+      toast.error("Could not clear history. Please try again.");
     } finally {
       setBusyClear(false);
     }

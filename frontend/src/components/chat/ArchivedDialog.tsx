@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Archive, ArchiveRestore, Trash2, Loader2 } from "lucide-react";
 import { api, ServerChat } from "@/api";
+import { toast } from "@/lib/toast";
 
 // Browse archived chats: restore them to the active list, or delete for good.
 export default function ArchivedDialog({
@@ -39,14 +40,17 @@ export default function ArchivedDialog({
     try {
       await api.chatPatch(c.id, { archived: false });
       onUnarchived(c);
+      toast.success("Chat restored");
     } catch {
-      /* best-effort */
+      toast.error("Couldn't restore the chat");
     }
   }
   async function remove(c: ServerChat) {
     if (!confirm(`Delete "${c.title}" permanently?`)) return;
     setRows((r) => r.filter((x) => x.id !== c.id));
-    api.chatDelete(c.id).catch(() => {});
+    api.chatDelete(c.id)
+      .then(() => toast.success("Chat deleted"))
+      .catch(() => toast.error("Couldn't delete the chat"));
   }
 
   return (

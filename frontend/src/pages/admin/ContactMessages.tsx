@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Mail, Loader2, Check, Trash2, Building2, ExternalLink, Inbox } from "lucide-react";
 import { api, ContactMessage } from "../../api";
+import { toast } from "@/lib/toast";
 
 export default function ContactMessagesPage() {
   const [rows, setRows] = useState<ContactMessage[]>([]);
@@ -19,12 +20,17 @@ export default function ContactMessagesPage() {
 
   async function setHandled(m: ContactMessage, handled: boolean) {
     setRows((r) => r.map((x) => (x.id === m.id ? { ...x, handled } : x)));
-    try { await api.adminContactSetHandled(m.id, handled); } catch { load(); }
+    try {
+      await api.adminContactSetHandled(m.id, handled);
+      toast.success(handled ? "Marked handled" : "Reopened");
+    } catch { toast.error("Couldn't update the enquiry"); load(); }
   }
   async function remove(m: ContactMessage) {
     if (!confirm(`Delete the enquiry from ${m.name}?`)) return;
     setRows((r) => r.filter((x) => x.id !== m.id));
-    api.adminContactDelete(m.id).catch(() => load());
+    api.adminContactDelete(m.id)
+      .then(() => toast.success("Enquiry deleted"))
+      .catch(() => { toast.error("Couldn't delete the enquiry"); load(); });
   }
 
   const shown = useMemo(

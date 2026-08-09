@@ -14,6 +14,7 @@ import {
   Play,
 } from "lucide-react";
 import { api, MemoryItem, Personalization } from "../api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   useVoices,
@@ -69,8 +70,13 @@ export function PersonalizationTab() {
         setMems={setMems}
         enabled={p.memory_enabled}
         onToggleEnabled={async (v) => {
-          const up = await api.updatePersonalization({ memory_enabled: v });
-          setP(up);
+          try {
+            const up = await api.updatePersonalization({ memory_enabled: v });
+            setP(up);
+            toast.success(v ? "Memory turned on" : "Memory turned off");
+          } catch (e: any) {
+            toast.error(e?.message ?? "Couldn't update memory setting");
+          }
         }}
       />
       <VoiceCard />
@@ -339,19 +345,25 @@ function MemoryCard({
       const m = await api.addMemory({ content });
       setMems([m, ...mems]);
       setDraft("");
-    } catch {
-      /* surfaced by the disabled state; keep the draft */
+      toast.success("Memory saved");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't save memory");
     } finally {
       setBusy(false);
     }
   }
   async function pin(m: MemoryItem) {
-    const up = await api.updateMemory(m.id, { pinned: !m.pinned });
-    setMems(mems.map((x) => (x.id === m.id ? up : x)).sort((a, b) => Number(b.pinned) - Number(a.pinned)));
+    try {
+      const up = await api.updateMemory(m.id, { pinned: !m.pinned });
+      setMems(mems.map((x) => (x.id === m.id ? up : x)).sort((a, b) => Number(b.pinned) - Number(a.pinned)));
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't update memory"); }
   }
   async function del(m: MemoryItem) {
-    await api.deleteMemory(m.id);
-    setMems(mems.filter((x) => x.id !== m.id));
+    try {
+      await api.deleteMemory(m.id);
+      setMems(mems.filter((x) => x.id !== m.id));
+      toast.success("Memory removed");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't remove memory"); }
   }
 
   return (

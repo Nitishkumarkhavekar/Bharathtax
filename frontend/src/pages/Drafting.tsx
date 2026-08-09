@@ -5,6 +5,7 @@ import {
   Gavel, Scale as ScaleIcon, ChevronRight, ShieldCheck, Clock,
 } from "lucide-react";
 import { api, DraftDoc, DraftListItem, DraftTemplate } from "../api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSidebarPanel } from "@/components/SidebarSlot";
@@ -442,15 +443,17 @@ function DraftEditor({
     setBusy("save");
     try {
       const d = await api.updateDraft(draft.id, { content });
-      onChange(d); onSaved();
-    } finally { setBusy(null); }
+      onChange(d); onSaved(); toast.success("Draft saved");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't save the draft"); }
+    finally { setBusy(null); }
   }
   async function regen() {
     setBusy("regen");
     try {
       const d = await api.regenerateDraft(draft.id);
-      onChange(d);
-    } finally { setBusy(null); }
+      onChange(d); toast.success("Draft regenerated");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't regenerate the draft"); }
+    finally { setBusy(null); }
   }
   function copy() {
     navigator.clipboard?.writeText(content).then(() => {
@@ -458,14 +461,18 @@ function DraftEditor({
     });
   }
   async function downloadWord() {
-    if (dirty) await save();
-    const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
-    await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+    try {
+      if (dirty) await save();
+      const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
+      await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+    } catch (e: any) { toast.error(e?.message ?? "Word export failed"); }
   }
   async function del() {
     if (!confirm("Delete this draft?")) return;
-    await api.deleteDraft(draft.id);
-    onDeleted();
+    try {
+      await api.deleteDraft(draft.id);
+      onDeleted(); toast.success("Draft deleted");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't delete the draft"); }
   }
 
   const wordCount = useMemo(() => content.trim().split(/\s+/).filter(Boolean).length, [content]);

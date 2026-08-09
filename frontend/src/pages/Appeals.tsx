@@ -522,8 +522,9 @@ function CaseRow({ c, onChanged }: { c: any; onChanged: () => void }) {
     try {
       await api.appealStopCase(c.id);
       onChanged();
+      toast.success("Pipeline stopped");
     } catch (err: any) {
-      alert(err?.message ?? "Could not stop the run.");
+      toast.error(err?.message ?? "Could not stop the run.");
     } finally {
       setStopping(false);
     }

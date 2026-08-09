@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { DesktopRelease, api } from "@/api";
+import { toast } from "@/lib/toast";
 import { Section } from "@/components/admin/charts";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
 
@@ -141,8 +142,11 @@ export default function ReleasesPage() {
                         <button
                           onClick={async () => {
                             if (!confirm(`Publish v${r.version} as the current release? Every installed desktop app will pick it up on next launch.`)) return;
-                            await api.adminPublishRelease(r.id);
-                            refresh();
+                            try {
+                              await api.adminPublishRelease(r.id);
+                              refresh();
+                              toast.success(`v${r.version} published`);
+                            } catch (e: any) { toast.error(e?.message ?? "Publish failed"); }
                           }}
                           className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100 mr-1"
                         >
@@ -156,12 +160,13 @@ export default function ReleasesPage() {
                       </button>
                       <button
                         onClick={async () => {
-                          if (r.is_current) { alert("Publish another release first — you cannot delete the current one."); return; }
+                          if (r.is_current) { toast.info("Publish another release first — you cannot delete the current one."); return; }
                           if (!confirm(`Delete v${r.version} and its artefacts from R2?`)) return;
                           try {
                             await api.adminDeleteRelease(r.id);
                             refresh();
-                          } catch (e: any) { alert(e?.message ?? "delete failed"); }
+                            toast.success(`v${r.version} deleted`);
+                          } catch (e: any) { toast.error(e?.message ?? "Delete failed"); }
                         }}
                         className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                         title="Delete release"

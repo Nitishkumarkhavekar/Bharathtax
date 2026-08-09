@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { Upload, FileText, AlertTriangle, Loader2 } from "lucide-react";
 import { AnswerResponse, ApiError, DocumentOut, api } from "../api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,8 +24,11 @@ export default function Documents() {
     const file = e.target.files?.[0];
     if (!file) return;
     setBusy(true); setError(null);
-    try { await api.uploadDocument(file); await refresh(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : "Upload failed"); }
+    try { await api.uploadDocument(file); await refresh(); toast.success("Document uploaded"); }
+    catch (err) {
+      const m = err instanceof ApiError ? err.message : "Upload failed";
+      setError(m); toast.error(m);
+    }
     finally { setBusy(false); e.target.value = ""; }
   }
 

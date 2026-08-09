@@ -4,6 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles, Undo2, Redo2 } from "lucide-react";
 import { StarRating } from "../components/ui/StarRating";
 import { api } from "../api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -219,15 +220,23 @@ export default function AppealCase() {
 
   async function upload(e: ChangeEvent<HTMLInputElement>) {
     if (!e.target.files?.length) return;
-    const r = await api.appealUpload(cid, e.target.files);
-    setMissing(r.missing);
-    if (r.skipped?.length) {
-      setUploadNote(`Skipped unsupported files: ${r.skipped.join(", ")}`);
-    } else {
-      setUploadNote("");
+    const n = e.target.files.length;
+    try {
+      const r = await api.appealUpload(cid, e.target.files);
+      setMissing(r.missing);
+      if (r.skipped?.length) {
+        setUploadNote(`Skipped unsupported files: ${r.skipped.join(", ")}`);
+        toast.info(`Uploaded — skipped ${r.skipped.length} unsupported file(s)`);
+      } else {
+        setUploadNote("");
+        toast.success(`Uploaded ${n} file${n > 1 ? "s" : ""}`);
+      }
+      loadCase();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Upload failed");
+    } finally {
+      e.target.value = "";
     }
-    loadCase();
-    e.target.value = "";
   }
   async function start() {
     // Reset the pipeline UI on rerun — the previous run's outputs otherwise
@@ -235,10 +244,15 @@ export default function AppealCase() {
     // stranding the progress bar at 100%.
     setOutputs([]); setFindings([]); setDraft(""); setVersions([]);
     setBusy(true); setProgress("queued");
-    const r = await api.appealRun(cid);
-    // Setting `run` with status="queued" or "running" triggers the polling
-    // useEffect above — no manual setInterval needed.
-    setRun(r);
+    try {
+      const r = await api.appealRun(cid);
+      // Setting `run` with status="queued"/"running" triggers the polling
+      // useEffect above — no manual setInterval needed.
+      setRun(r);
+    } catch (e: any) {
+      setBusy(false); setProgress("");
+      toast.error(e?.message ?? "Could not start the pipeline");
+    }
   }
   async function stopRun() {
     const ok = await confirm({
@@ -254,18 +268,25 @@ export default function AppealCase() {
       await api.appealStopCase(cid);
       setBusy(false); setProgress("");
       await loadLatest(); await loadCase();
+      toast.success("Pipeline stopped");
     } catch (e: any) {
-      alert(e?.message ?? "Could not stop the run.");
+      toast.error(e?.message ?? "Could not stop the run.");
     }
   }
   async function regenerate(seq: number) {
     setRegen((s) => ({ ...s, [seq]: true }));
-    try { await api.appealRegenerate(cid, seq); await loadLatest(); } finally { setRegen((s) => ({ ...s, [seq]: false })); }
+    try { await api.appealRegenerate(cid, seq); await loadLatest(); toast.success("Section regenerated"); }
+    catch (e: any) { toast.error(e?.message ?? "Couldn't regenerate this section"); }
+    finally { setRegen((s) => ({ ...s, [seq]: false })); }
   }
-  async function reassemble() { await api.appealReassemble(cid); await loadLatest(); flash("Reassembled ✓"); }
+  async function reassemble() {
+    try { await api.appealReassemble(cid); await loadLatest(); flash("Reassembled ✓"); }
+    catch (e: any) { toast.error(e?.message ?? "Couldn't reassemble the draft"); }
+  }
   async function saveDraft() {
     const o = outputs.find((x) => x.kind === "draft"); if (!o) return;
-    await api.appealEditOutput(o.id, draft); flash("Saved ✓"); loadLatest();
+    try { await api.appealEditOutput(o.id, draft); flash("Saved ✓"); loadLatest(); }
+    catch (e: any) { toast.error(e?.message ?? "Couldn't save the draft"); }
   }
   function flash(m: string) { setSaved(m); setTimeout(() => setSaved(""), 2000); }
 
@@ -842,7 +863,7 @@ function DraftSection({
                 `/appeal/cases/${cid}/export.docx`,
                 `draft_order_case_${cid}.docx`,
               )
-              .catch((e) => alert(e.message))
+              .catch((e) => toast.error(e?.message ?? "Download failed"))
           }
         >
           <FileDown className="size-4" /> Download .docx

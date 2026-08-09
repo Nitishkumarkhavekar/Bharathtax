@@ -487,7 +487,7 @@ function Message({
       const text = await api.translate(msg.content, lang);
       setXlate({ lang, text });
     } catch {
-      /* keep original */
+      toast.error(`Couldn't translate to ${lang}`);
     } finally {
       setXbusy(false);
     }
