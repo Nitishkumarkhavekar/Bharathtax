@@ -108,9 +108,9 @@ function CurrentPlanCard({
 }) {
   const pct = Math.min(100, sub.pct_used);
   const barTone =
-    pct >= 90 ? "from-rose-500 to-rose-400" :
-    pct >= 70 ? "from-amber-500 to-orange-400" :
-                "from-emerald-500 to-teal-400";
+    pct >= 90 ? "bg-destructive" :
+    pct >= 70 ? "bg-amber-500" :
+                "bg-success";
   const daysLeft = sub.expires_at
     ? Math.max(0, Math.round((new Date(sub.expires_at).getTime() - Date.now()) / (86400 * 1000)))
     : null;
@@ -192,7 +192,7 @@ function CurrentPlanCard({
           </div>
         </div>
         <div className="h-2 rounded-full bg-white/15 overflow-hidden">
-          <div className={"h-full bg-gradient-to-r rounded-full transition-[width] duration-500 " + barTone}
+          <div className={"h-full rounded-full transition-[width] duration-500 " + barTone}
                style={{ width: `${pct}%` }} />
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-white/75">

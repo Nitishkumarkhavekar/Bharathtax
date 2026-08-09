@@ -7,6 +7,7 @@ import {
 import { api, DraftDoc, DraftListItem, DraftTemplate } from "../api";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { useSidebarPanel } from "@/components/SidebarSlot";
 
@@ -435,6 +436,7 @@ function DraftEditor({
   const [content, setContent] = useState(draft.content);
   const [busy, setBusy] = useState<"save" | "regen" | null>(null);
   const [copied, setCopied] = useState(false);
+  const { confirm, dialog } = useConfirm();
   useEffect(() => setContent(draft.content), [draft.id, draft.content]);
   const dirty = content !== draft.content;
   const style = tmpl ? catStyle(tmpl.category) : { chip: "bg-slate-100 text-slate-500 ring-slate-200" };
@@ -468,7 +470,11 @@ function DraftEditor({
     } catch (e: any) { toast.error(e?.message ?? "Word export failed"); }
   }
   async function del() {
-    if (!confirm("Delete this draft?")) return;
+    if (!(await confirm({
+      title: "Delete this draft?",
+      description: "This removes the draft permanently. This cannot be undone.",
+      tone: "danger", confirmLabel: "Delete draft",
+    }))) return;
     try {
       await api.deleteDraft(draft.id);
       onDeleted(); toast.success("Draft deleted");
@@ -479,6 +485,7 @@ function DraftEditor({
 
   return (
     <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden">
+      {dialog}
       {/* Toolbar header */}
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
         <div className={cn("shrink-0 size-10 rounded-xl ring-1 grid place-items-center", style.chip)}>

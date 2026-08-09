@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { DesktopRelease, api } from "@/api";
 import { toast } from "@/lib/toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { Section } from "@/components/admin/charts";
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
 
@@ -29,6 +30,7 @@ export default function ReleasesPage() {
   const [err, setErr] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState<DesktopRelease | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   async function refresh() {
     try {
@@ -44,6 +46,7 @@ export default function ReleasesPage() {
 
   return (
     <div className="space-y-5">
+      {dialog}
       <Header
         title="Desktop app releases"
         subtitle="Upload a new .exe here and every installed BharatTax desktop app on the current channel picks it up on its next launch."
@@ -141,7 +144,11 @@ export default function ReleasesPage() {
                       {!r.is_current && (
                         <button
                           onClick={async () => {
-                            if (!confirm(`Publish v${r.version} as the current release? Every installed desktop app will pick it up on next launch.`)) return;
+                            if (!(await confirm({
+                              title: `Publish v${r.version} as the current release?`,
+                              description: "Every installed desktop app will pick it up on next launch.",
+                              tone: "primary", confirmLabel: "Publish",
+                            }))) return;
                             try {
                               await api.adminPublishRelease(r.id);
                               refresh();
@@ -161,7 +168,11 @@ export default function ReleasesPage() {
                       <button
                         onClick={async () => {
                           if (r.is_current) { toast.info("Publish another release first — you cannot delete the current one."); return; }
-                          if (!confirm(`Delete v${r.version} and its artefacts from R2?`)) return;
+                          if (!(await confirm({
+                            title: `Delete v${r.version}?`,
+                            description: "The release and its artefacts are removed from R2.",
+                            tone: "danger", confirmLabel: "Delete release",
+                          }))) return;
                           try {
                             await api.adminDeleteRelease(r.id);
                             refresh();

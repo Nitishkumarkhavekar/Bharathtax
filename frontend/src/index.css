@@ -131,10 +131,8 @@
 /* ---- Chat UI helpers ---- */
 @layer components {
   .chat-bg {
-    background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(46, 124, 200, 0.06), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(46, 124, 200, 0.05), transparent 60%),
-      hsl(var(--background));
+    /* Flat canvas — no gradient wash (design system: flat / one accent). */
+    background: hsl(var(--background));
   }
   .chat-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
   .chat-scrollbar::-webkit-scrollbar-thumb {
@@ -249,12 +247,9 @@
 .admin-rise > *:nth-child(5) { animation-delay: .20s; }
 .admin-rise > *:nth-child(6) { animation-delay: .25s; }
 
-/* Soft admin page background */
+/* Admin page background — flat (design system: no gradient wash). */
 .admin-bg {
-  background:
-    radial-gradient(900px 500px at 90% -10%, rgba(46, 124, 200, 0.07), transparent 60%),
-    radial-gradient(700px 400px at -10% 110%, rgba(46, 124, 200, 0.05), transparent 60%),
-    rgb(248 250 252);
+  background: rgb(248 250 252);
 }
 
 /* Subtle row hover for tables */

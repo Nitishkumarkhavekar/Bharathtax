@@ -28,6 +28,7 @@ import {
 import { ChatThread, groupByRecency } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 // Tools available to officers / auditors alongside the chat.
 const TOOLS = [
@@ -453,6 +454,7 @@ function ThreadItem({
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(thread.title);
   const rootRef = useRef<HTMLLIElement | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   // Close the menu on any outside click / Escape.
   useEffect(() => {
@@ -495,6 +497,7 @@ function ThreadItem({
   const menuItem = "w-full flex items-center gap-2 px-3 py-1.5 text-[13px] text-slate-700 hover:bg-slate-100 text-left";
   return (
     <li ref={rootRef} className="relative">
+      {dialog}
       <button
         onClick={onSelect}
         className={cn(
@@ -577,9 +580,13 @@ function ThreadItem({
           <div className="my-1 h-px bg-slate-100" />
           <button
             className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] text-rose-600 hover:bg-rose-50 text-left"
-            onClick={() => {
+            onClick={async () => {
               setMenuOpen(false);
-              if (confirm(`Delete "${thread.title}"?`)) onDelete();
+              if (await confirm({
+                title: `Delete "${thread.title}"?`,
+                description: "This permanently removes the chat and its messages.",
+                tone: "danger", confirmLabel: "Delete chat",
+              })) onDelete();
             }}
           >
             <Trash2 className="size-3.5" /> Delete

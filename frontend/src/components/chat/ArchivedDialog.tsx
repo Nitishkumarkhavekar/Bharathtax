@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X, Archive, ArchiveRestore, Trash2, Loader2 } from "lucide-react";
 import { api, ServerChat } from "@/api";
 import { toast } from "@/lib/toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 // Browse archived chats: restore them to the active list, or delete for good.
 export default function ArchivedDialog({
@@ -15,6 +16,7 @@ export default function ArchivedDialog({
 }) {
   const [rows, setRows] = useState<ServerChat[]>([]);
   const [loading, setLoading] = useState(true);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +48,11 @@ export default function ArchivedDialog({
     }
   }
   async function remove(c: ServerChat) {
-    if (!confirm(`Delete "${c.title}" permanently?`)) return;
+    if (!(await confirm({
+      title: `Delete "${c.title}" permanently?`,
+      description: "This removes the archived chat and its messages for good.",
+      tone: "danger", confirmLabel: "Delete permanently",
+    }))) return;
     setRows((r) => r.filter((x) => x.id !== c.id));
     api.chatDelete(c.id)
       .then(() => toast.success("Chat deleted"))
@@ -55,6 +61,7 @@ export default function ArchivedDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {dialog}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
