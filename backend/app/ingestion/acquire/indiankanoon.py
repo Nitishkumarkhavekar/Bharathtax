@@ -66,7 +66,11 @@ def _doc_text(client: httpx.Client, tid: int) -> tuple[str, str]:
 
 
 def run(form_input: str, max_docs: int, fromdate: str | None, todate: str | None,
-        rate: float = 0.3) -> dict:
+        rate: float = 0.3, accept=None) -> dict:
+    """`accept(title, text) -> bool`, if given, gates ingestion — a doc that
+    fails is fetched but NOT ingested (used by the unsupervised daily task to
+    reject statutory-provision pages and non-income-tax matter). Default None =
+    ingest everything (preserves the manual-run behaviour)."""
     configure_logging()
     token = os.getenv("IK_API_TOKEN", "").strip()
     if not token:
@@ -97,6 +101,9 @@ def run(form_input: str, max_docs: int, fromdate: str | None, todate: str | None
                     title, text = _doc_text(client, tid)
                     docs_fetched += 1
                     if len(text) < 200:
+                        continue
+                    if accept is not None and not accept(title, text):
+                        log.info("  skip (off-topic) tid=%s %s", tid, (title or "")[:70])
                         continue
                     n = case_law.ingest_text(
                         db, src, text, title or d.get("title") or "ITAT order",

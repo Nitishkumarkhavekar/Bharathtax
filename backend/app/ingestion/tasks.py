@@ -62,6 +62,26 @@ _CASE_LAW_QUERIES = [
     "ESOP", "section 14A", "section 54", "bogus purchases",
 ]
 
+# Relevance guard for unsupervised ingestion. Indian Kanoon's doctypes=itat
+# still surfaces statutory-provision pages ("Section 11 in The Land Acquisition
+# Act, 1894") and non-income-tax matter; those must not pollute the corpus.
+import re as _re
+_PROVISION_RE = _re.compile(r"^\s*section\s+\d+\s+in\s+the\b", _re.I)
+_ITAX_SIGNALS = (
+    "income tax", "income-tax", "i.t.a", "ita no", "i.t.a. no", "itat",
+    "appellate tribunal", "acit", "dcit", "assessing officer",
+    "commissioner of income", "income tax officer", "assessment year",
+)
+
+
+def _accept_itax_judgment(title: str, text: str) -> bool:
+    """True only for what looks like an actual income-tax tribunal judgment."""
+    t = (title or "").lower()
+    if _PROVISION_RE.match(t):          # a bare statutory-provision page, not a ruling
+        return False
+    blob = t + " " + (text or "")[:1500].lower()
+    return any(sig in blob for sig in _ITAX_SIGNALS)
+
 
 @celery_app.task
 def daily_case_law_update() -> dict:
@@ -90,7 +110,7 @@ def daily_case_law_update() -> dict:
     total = {"ingested": 0, "docs_fetched": 0, "search_pages": 0}
     for q in _CASE_LAW_QUERIES:
         try:
-            r = indiankanoon.run(q, cap, fromdate, todate)
+            r = indiankanoon.run(q, cap, fromdate, todate, accept=_accept_itax_judgment)
             for k in total:
                 total[k] += int(r.get(k, 0) or 0)
         except Exception as e:  # noqa: BLE001  (one bad query must not abort the sweep)
