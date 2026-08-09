@@ -36,6 +36,29 @@ from app.services import gemini_transport as _tx
 _KEY = _single_agent._KEY
 _BASE = _single_agent._BASE
 _TOOLS = _single_agent._TOOLS
+
+import contextvars
+# Per-request token-usage sink. The multi-agent path previously reported
+# llm_calls=[] so its Gemini spend was invisible in token_usage. Each sub-agent
+# call records here; the orchestrator seeds it and hands it back in `done`.
+_usage_sink: "contextvars.ContextVar" = contextvars.ContextVar("_mt_usage_sink", default=None)
+
+
+def _rec_usage(model: str, resp_json, t0=None) -> None:
+    """Append one Gemini call's token usage to the per-request sink (if set).
+    Also captures cachedContentTokenCount to monitor the implicit-cache hit rate."""
+    sink = _usage_sink.get()
+    if sink is None:
+        return
+    um = (resp_json or {}).get("usageMetadata") or {}
+    sink.append({
+        "model": model,
+        "usage": {"prompt_tokens": um.get("promptTokenCount"),
+                  "completion_tokens": um.get("candidatesTokenCount"),
+                  "total_tokens": um.get("totalTokenCount"),
+                  "cached_tokens": um.get("cachedContentTokenCount")},
+        "latency_ms": int((time.time() - t0) * 1000) if t0 else None,
+    })
 _TOOL_STATUS = _single_agent._TOOL_STATUS
 _exec_tool = _single_agent._exec_tool
 _exec_tool_isolated = _single_agent._exec_tool_isolated
@@ -547,6 +570,7 @@ def _run_coverage(question: str) -> dict | None:
             log.info("coverage HTTP %s — proceeding without checklist", r.status_code)
             return None
         d = r.json()
+        _rec_usage(_PLANNER_MODEL, d)
         cand = (d.get("candidates") or [{}])[0]
         text = "".join(p.get("text", "") for p in
                        (cand.get("content") or {}).get("parts") or []).strip()
@@ -835,6 +859,7 @@ def _run_planner(question: str) -> dict | None:
             log.info("planner HTTP %s — proceeding without plan", r.status_code)
             return None
         d = r.json()
+        _rec_usage(_PLANNER_MODEL, d)
         cand = (d.get("candidates") or [{}])[0]
         text = "".join(p.get("text", "") for p in
                        (cand.get("content") or {}).get("parts") or []).strip()
@@ -893,6 +918,7 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
                 log.warning("researcher HTTP %s: %s", r.status_code, r.text[:150])
                 break
             d = r.json()
+            _rec_usage(_RESEARCHER_MODEL, d, t0)
         except Exception as e:  # noqa: BLE001
             log.warning("researcher error: %s", e)
             break
@@ -1052,6 +1078,8 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
                         d = json.loads(payload)
                     except Exception:  # noqa: BLE001
                         continue
+                    if d.get("usageMetadata"):
+                        _rec_usage(_COMPOSER_MODEL, d)
                     cand = (d.get("candidates") or [{}])[0]
                     for p in (cand.get("content") or {}).get("parts") or []:
                         t = p.get("text")
@@ -1083,13 +1111,19 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
         log.info("normaliser: corrected typos in query — %s", typo_note)
         question = normalised
 
+    # Seed the per-request token-usage sink so every sub-agent call is booked.
+    usage_calls: list = []
+    _usage_sink.set(usage_calls)
+
     yield {"status": "Planning research"}
     # Run PLANNER + COVERAGE agents in parallel — both are ~1s, so
-    # concurrent execution saves ~1s vs sequential.
+    # concurrent execution saves ~1s vs sequential. copy_context() carries the
+    # usage sink (a ContextVar) into the worker threads.
     import concurrent.futures as _futures
+    _ctx = contextvars.copy_context()
     with _futures.ThreadPoolExecutor(max_workers=2) as _pool:
-        _plan_fut = _pool.submit(_run_planner, question)
-        _cov_fut = _pool.submit(_run_coverage, question)
+        _plan_fut = _pool.submit(_ctx.run, _run_planner, question)
+        _cov_fut = _pool.submit(_ctx.run, _run_coverage, question)
         plan = _plan_fut.result()
         coverage = _cov_fut.result()
     # Attach the deterministic typo note to the plan (composer surfaces it).
@@ -1156,7 +1190,7 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
         "tools_used": tools_used,
         "web_sources": web_sources,
         "law_refs": law_refs,
-        "llm_calls": [],
+        "llm_calls": usage_calls,
     }}
 
 
