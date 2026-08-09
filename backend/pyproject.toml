@@ -52,6 +52,12 @@ dev = [
     "pytest-asyncio>=0.24",
     "ruff>=0.8",
 ]
+# On-prem NER name-scrubbing for the fine-tune data export. Kept optional so the
+# base image stays lean (the export runs occasionally, once flywheel volume
+# builds). Enable: pip install ".[finetune]" && python -m spacy download en_core_web_sm
+finetune = [
+    "spacy>=3.7",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

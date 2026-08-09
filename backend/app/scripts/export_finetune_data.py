@@ -37,9 +37,55 @@ _PII = [
 
 
 def scrub(s: str) -> str:
+    """Regex pass: structured identifiers (PAN/GSTIN/Aadhaar/phone/email)."""
     s = s or ""
     for rx, repl in _PII:
         s = rx.sub(repl, s)
+    return s
+
+
+# --- On-prem NER name scrubbing (spaCy). Runs entirely in-container — no data
+#     leaves the box, so it respects the tax-data governance rule. Masks PERSON
+#     (individual taxpayers/officers) by default; ORG opt-in (masking company
+#     names in legal citations degrades the data, so it is off unless asked). ---
+_nlp = None
+_ner_tried = False
+
+
+def _get_nlp():
+    global _nlp, _ner_tried
+    if _ner_tried:
+        return _nlp
+    _ner_tried = True
+    try:
+        import spacy
+        # NER-only pipeline — drop the components we don't need for speed.
+        _nlp = spacy.load("en_core_web_sm",
+                          disable=["lemmatizer", "tagger", "parser", "attribute_ruler"])
+    except Exception as e:  # noqa: BLE001
+        print(f"[warn] spaCy NER unavailable ({type(e).__name__}); "
+              f"name scrubbing DISABLED — regex PII only. "
+              f"Install: pip install spacy && python -m spacy download en_core_web_sm")
+        _nlp = None
+    return _nlp
+
+
+def ner_scrub(s: str, mask_orgs: bool = False) -> str:
+    nlp = _get_nlp()
+    if not nlp or not s:
+        return s
+    labels = {"PERSON"} | ({"ORG"} if mask_orgs else set())
+    doc = nlp(s)
+    spans = [(e.start_char, e.end_char, e.label_) for e in doc.ents if e.label_ in labels]
+    for a, b, lab in sorted(spans, reverse=True):  # right-to-left keeps offsets valid
+        s = s[:a] + f"[{lab}]" + s[b:]
+    return s
+
+
+def redact(s: str, *, ner: bool, mask_orgs: bool) -> str:
+    s = scrub(s)
+    if ner:
+        s = ner_scrub(s, mask_orgs=mask_orgs)
     return s
 
 
@@ -55,7 +101,8 @@ def _stars_lookup(db) -> dict:
     return out
 
 
-def export(out_path: str, min_answer_chars: int, min_stars: int) -> dict:
+def export(out_path: str, min_answer_chars: int, min_stars: int,
+           *, ner: bool = True, mask_orgs: bool = False) -> dict:
     db = SessionLocal()
     stars = _stars_lookup(db)
     kept = skipped = 0
@@ -77,8 +124,8 @@ def export(out_path: str, min_answer_chars: int, min_stars: int) -> dict:
                     continue
                 rec = {
                     "messages": [
-                        {"role": "user", "content": scrub(q)},
-                        {"role": "assistant", "content": scrub(a)},
+                        {"role": "user", "content": redact(q, ner=ner, mask_orgs=mask_orgs)},
+                        {"role": "assistant", "content": redact(a, ner=ner, mask_orgs=mask_orgs)},
                     ],
                     "meta": {"id": _id, "model": model, "stars": st or None,
                              "ts": ts.isoformat() if ts else None},
@@ -99,5 +146,10 @@ if __name__ == "__main__":
                     help="drop stub answers shorter than this")
     ap.add_argument("--min-stars", type=int, default=0,
                     help="keep only turns rated >= N stars (0 = all)")
+    ap.add_argument("--no-ner", action="store_true",
+                    help="disable spaCy PERSON-name scrubbing (regex PII only)")
+    ap.add_argument("--mask-orgs", action="store_true",
+                    help="also mask ORG names (stricter; degrades legal citations)")
     a = ap.parse_args()
-    export(a.out, a.min_answer_chars, a.min_stars)
+    export(a.out, a.min_answer_chars, a.min_stars,
+           ner=not a.no_ner, mask_orgs=a.mask_orgs)
