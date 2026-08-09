@@ -53,14 +53,11 @@ celery_app.conf.beat_schedule = {
 }
 
 
-# Common income-tax appeal grounds — broad enough to catch most fresh ITAT
-# orders. Query overlap is harmless: case_law.ingest_text dedups by content
-# hash, so a judgment matched by several queries is stored exactly once.
-_CASE_LAW_QUERIES = [
-    "income tax", "section 68", "section 69", "capital gains", "TDS",
-    "penalty section 271", "reassessment section 147", "transfer pricing",
-    "ESOP", "section 14A", "section 54", "bogus purchases",
-]
+# Every ITAT order is income-tax, so one broad catch-all query + doctypes:itat +
+# sortby:mostrecent (embedded in acquire._search) surfaces the recent tribunal
+# orders; the publishdate window then keeps only fresh ones. Extra terms would
+# just re-fetch the same orders (dedup collapses them) and cost billable pages.
+_CASE_LAW_QUERIES = ["income tax"]
 
 # Relevance guard for unsupervised ingestion. Indian Kanoon's doctypes=itat
 # still surfaces statutory-provision pages ("Section 11 in The Land Acquisition
@@ -126,7 +123,7 @@ def daily_case_law_update() -> dict:
     os.environ["IK_API_TOKEN"] = tok  # the acquire module reads this exact name
 
     lookback = int(os.getenv("CASE_LAW_LOOKBACK_DAYS", "8"))
-    cap = int(os.getenv("CASE_LAW_DAILY_CAP_PER_QUERY", "15"))
+    cap = int(os.getenv("CASE_LAW_DAILY_CAP_PER_QUERY", "40"))
     today = date.today()
     fromdate = (today - timedelta(days=lookback)).strftime("%d-%m-%Y")
     todate = today.strftime("%d-%m-%Y")

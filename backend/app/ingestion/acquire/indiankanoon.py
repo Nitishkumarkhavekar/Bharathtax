@@ -23,6 +23,8 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from datetime import date as _date
+from urllib.parse import quote
 
 import httpx
 from bs4 import BeautifulSoup
@@ -42,15 +44,36 @@ def _client(token: str) -> httpx.Client:
 
 
 def _search(client: httpx.Client, form_input: str, pagenum: int,
-            fromdate: str | None, todate: str | None) -> dict:
-    params = {"formInput": form_input, "doctypes": "itat", "pagenum": pagenum}
-    if fromdate:
-        params["fromdate"] = fromdate
-    if todate:
-        params["todate"] = todate
-    r = client.post("/search/", params=params)
+            fromdate: str | None, todate: str | None,
+            *, sortby: str = "mostrecent") -> dict:
+    # IK reads `doctypes:` and `sortby:` as query-language operators INSIDE
+    # formInput. Passed as separate ?doctypes= params they silently return
+    # section-digest pages instead of judgments; and ?fromdate/?todate are
+    # unreliable — callers post-filter on each doc's publishdate instead.
+    q = form_input.strip()
+    if "doctypes:" not in q:
+        q += " doctypes:itat"
+    if sortby and "sortby:" not in q:
+        q += f" sortby:{sortby}"
+    r = client.post(f"/search/?formInput={quote(q)}&pagenum={pagenum}")
     r.raise_for_status()
     return r.json()
+
+
+def _parse_ymd(s) -> _date | None:
+    try:
+        y, m, d = str(s).split("-")[:3]
+        return _date(int(y), int(m), int(d))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _ddmmyyyy(s: str | None) -> _date | None:
+    try:
+        d, m, y = str(s).split("-")[:3]
+        return _date(int(y), int(m), int(d))
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _doc_text(client: httpx.Client, tid: int) -> tuple[str, str]:
@@ -81,8 +104,14 @@ def run(form_input: str, max_docs: int, fromdate: str | None, todate: str | None
     search_pages = docs_fetched = ingested = 0
     seen: set[int] = set()
     pagenum = 0
+    # Recency window from the (unreliable) API date args — we enforce it
+    # ourselves on each doc's publishdate. Results are sortby:mostrecent, so
+    # once we pass a real date older than `lo` we can stop (with a small grace
+    # for IK's corrupt future-dated rows, which sort to the very top).
+    lo, hi = _ddmmyyyy(fromdate), _ddmmyyyy(todate)
+    stop = False
     try:
-        while ingested < max_docs and pagenum <= 200:
+        while ingested < max_docs and pagenum <= 200 and not stop:
             res = _search(client, form_input, pagenum, fromdate, todate)
             search_pages += 1
             docs = res.get("docs") or []
@@ -97,6 +126,14 @@ def run(form_input: str, max_docs: int, fromdate: str | None, todate: str | None
                 if not tid or tid in seen:
                     continue
                 seen.add(tid)
+                # Date-window gate (before the billable full-text fetch).
+                if lo and hi:
+                    pub = _parse_ymd(d.get("publishdate"))
+                    if pub is None or pub > hi:
+                        continue                 # missing / corrupt-future date
+                    if pub < lo:
+                        stop = True              # older than window; sorted desc → done
+                        break
                 try:
                     title, text = _doc_text(client, tid)
                     docs_fetched += 1
