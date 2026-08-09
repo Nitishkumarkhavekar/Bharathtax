@@ -165,6 +165,10 @@ export default function Chat() {
     saveThreads(username, threads);
   }, [username, threads]);
 
+  // Abort any in-flight answer stream when leaving the page, so the SSE reader
+  // stops and we don't setState on an unmounted component.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   // Load chats from the SERVER (source of truth; syncs across devices). Falls
   // back to the local cache only if the server is unreachable.
   useEffect(() => {

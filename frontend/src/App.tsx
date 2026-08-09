@@ -1,43 +1,56 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { ReactNode } from "react";
+import { ReactNode, Suspense, lazy } from "react";
+import { Loader2 } from "lucide-react";
 import Layout from "./components/Layout";
 import { landingPath, useAuth } from "./auth";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Landing from "./pages/Landing";
-import ReleasesLanding from "./pages/Releases";
-import Ask from "./pages/Ask";
-import ProfilePage from "./pages/Profile";
-import Documents from "./pages/Documents";
-import History from "./pages/History";
-import Appeals from "./pages/Appeals";
-import AppealCase from "./pages/AppealCase";
-import Rulings from "./pages/Rulings";
-import Drafting from "./pages/Drafting";
-import SharedChat from "./pages/SharedChat";
-import Contact from "./pages/Contact";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import Docs from "./pages/Docs";
 
-// Admin console
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboardPage from "./pages/admin/Dashboard";
-import UserManagement from "./pages/admin/UserManagement";
-import ModelManagementPage from "./pages/admin/ModelManagement";
-import ServerStatsPage from "./pages/admin/ServerStats";
-import RevenueManagementPage from "./pages/admin/RevenueManagement";
-import LicenseManagementPage from "./pages/admin/LicenseManagement";
-import TokenUsagePage from "./pages/admin/TokenUsage";
-import AdminPricingPage from "./pages/admin/Pricing";
-import AdminBillingPage from "./pages/admin/Billing";
-import AdminReleasesPage from "./pages/admin/Releases";
-import AdminSupportTicketsPage from "./pages/admin/SupportTickets";
-import AdminContactMessagesPage from "./pages/admin/ContactMessages";
-import AdminDesktopLogsPage from "./pages/admin/DesktopLogs";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import GeminiPage from "./pages/admin/Gemini";
+// Every route is code-split so a logged-out visitor no longer downloads the
+// whole app (incl. the ~5k-line admin console). Vite emits one chunk per lazy
+// import; the admin subtree only loads for admins, heavy pages only on visit.
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Landing = lazy(() => import("./pages/Landing"));
+const ReleasesLanding = lazy(() => import("./pages/Releases"));
+const Ask = lazy(() => import("./pages/Ask"));
+const ProfilePage = lazy(() => import("./pages/Profile"));
+const Documents = lazy(() => import("./pages/Documents"));
+const History = lazy(() => import("./pages/History"));
+const Appeals = lazy(() => import("./pages/Appeals"));
+const AppealCase = lazy(() => import("./pages/AppealCase"));
+const Rulings = lazy(() => import("./pages/Rulings"));
+const Drafting = lazy(() => import("./pages/Drafting"));
+const SharedChat = lazy(() => import("./pages/SharedChat"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Docs = lazy(() => import("./pages/Docs"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+
+// Admin console (loads only for admin accounts)
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/Dashboard"));
+const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
+const ModelManagementPage = lazy(() => import("./pages/admin/ModelManagement"));
+const ServerStatsPage = lazy(() => import("./pages/admin/ServerStats"));
+const RevenueManagementPage = lazy(() => import("./pages/admin/RevenueManagement"));
+const LicenseManagementPage = lazy(() => import("./pages/admin/LicenseManagement"));
+const TokenUsagePage = lazy(() => import("./pages/admin/TokenUsage"));
+const AdminPricingPage = lazy(() => import("./pages/admin/Pricing"));
+const AdminBillingPage = lazy(() => import("./pages/admin/Billing"));
+const AdminReleasesPage = lazy(() => import("./pages/admin/Releases"));
+const AdminSupportTicketsPage = lazy(() => import("./pages/admin/SupportTickets"));
+const AdminContactMessagesPage = lazy(() => import("./pages/admin/ContactMessages"));
+const AdminDesktopLogsPage = lazy(() => import("./pages/admin/DesktopLogs"));
+const GeminiPage = lazy(() => import("./pages/admin/Gemini"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] text-slate-400">
+      <Loader2 className="size-6 animate-spin" />
+    </div>
+  );
+}
 
 function Protected({ children, raw }: { children: ReactNode; raw?: boolean }) {
   const { session, loading } = useAuth();
@@ -74,6 +87,7 @@ export default function App() {
   const { session } = useAuth();
   const landing = landingPath(session?.role);
   return (
+    <Suspense fallback={<PageLoader />}>
     <Routes>
       {/* Public landing page — the front door for logged-out visitors;
           signed-in users skip straight to their role's home. */}
@@ -155,5 +169,6 @@ export default function App() {
         element={<Navigate to={session ? landing : "/"} replace />}
       />
     </Routes>
+    </Suspense>
   );
 }
