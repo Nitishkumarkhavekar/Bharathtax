@@ -66,7 +66,11 @@ _CASE_LAW_QUERIES = [
 # still surfaces statutory-provision pages ("Section 11 in The Land Acquisition
 # Act, 1894") and non-income-tax matter; those must not pollute the corpus.
 import re as _re
-_PROVISION_RE = _re.compile(r"^\s*section\s+\d+\s+in\s+the\b", _re.I)
+# "Section 158BB in The Income Tax Act, 1961", "Article 14 in ...", etc. — these
+# are Indian Kanoon statutory-provision landing pages, NOT judgments.
+_PROVISION_RE = _re.compile(r"^\s*(section|article|rule|order|regulation)\s+[\w.\-]+\s+in\b", _re.I)
+# Real judgments are party-vs-party.
+_PARTY_RE = _re.compile(r"\b(vs?\.?|versus)\b", _re.I)
 _ITAX_SIGNALS = (
     "income tax", "income-tax", "i.t.a", "ita no", "i.t.a. no", "itat",
     "appellate tribunal", "acit", "dcit", "assessing officer",
@@ -75,11 +79,16 @@ _ITAX_SIGNALS = (
 
 
 def _accept_itax_judgment(title: str, text: str) -> bool:
-    """True only for what looks like an actual income-tax tribunal judgment."""
-    t = (title or "").lower()
-    if _PROVISION_RE.match(t):          # a bare statutory-provision page, not a ruling
+    """True only for what looks like an actual income-tax tribunal judgment:
+    a party-vs-party title (not a statutory-provision page) that carries an
+    income-tax signal. Deliberately strict — a clean, smaller pull beats a
+    polluted corpus."""
+    t = (title or "").strip()
+    if _PROVISION_RE.match(t):           # statutory-provision landing page
         return False
-    blob = t + " " + (text or "")[:1500].lower()
+    if not _PARTY_RE.search(t):          # not "X vs Y" → not a judgment
+        return False
+    blob = (t + " " + (text or "")[:2000]).lower()
     return any(sig in blob for sig in _ITAX_SIGNALS)
 
 
