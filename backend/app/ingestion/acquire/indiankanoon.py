@@ -28,6 +28,7 @@ from urllib.parse import quote
 
 import httpx
 from bs4 import BeautifulSoup
+from sqlalchemy import text as _sql_text
 
 from app.core.db import SessionLocal
 from app.core.logging import configure_logging, get_logger
@@ -134,6 +135,14 @@ def run(form_input: str, max_docs: int, fromdate: str | None, todate: str | None
                     if pub < lo:
                         stop = True              # older than window; sorted desc → done
                         break
+                # Pre-fetch dedup: if this order's URL is already in the corpus,
+                # skip the billable full-text fetch entirely (content-hash dedup
+                # in ingest_text would catch it, but only AFTER paying to fetch).
+                url = f"https://indiankanoon.org/doc/{tid}/"
+                if db.execute(_sql_text(
+                        "SELECT 1 FROM corpus_documents WHERE source_url = :u LIMIT 1"),
+                        {"u": url}).first():
+                    continue
                 try:
                     title, text = _doc_text(client, tid)
                     docs_fetched += 1
