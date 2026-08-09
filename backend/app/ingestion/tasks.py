@@ -78,18 +78,26 @@ _ITAX_SIGNALS = (
 )
 
 
+# The income-tax party signal must be in the TITLE — income-tax tribunal cases
+# are "Commissioner of Income Tax / ACIT / DCIT / ITO vs X". Requiring it in the
+# title (not the body) rejects off-topic party-vs-party cases that merely mention
+# tax in passing (e.g. a wills or constitutional judgment).
+_TITLE_ITAX_RE = _re.compile(
+    r"\b(income[\s-]?tax|itat|a\.?c\.?i\.?t|d\.?c\.?i\.?t|\bito\b|"
+    r"commissioner of income|appellate tribunal|\bcit\b)\b", _re.I)
+
+
 def _accept_itax_judgment(title: str, text: str) -> bool:
-    """True only for what looks like an actual income-tax tribunal judgment:
-    a party-vs-party title (not a statutory-provision page) that carries an
-    income-tax signal. Deliberately strict — a clean, smaller pull beats a
-    polluted corpus."""
+    """True only for an actual income-tax tribunal judgment: a party-vs-party
+    title (not a statutory-provision page) whose parties are an income-tax
+    authority. Deliberately strict — a clean, smaller pull beats a polluted
+    corpus."""
     t = (title or "").strip()
     if _PROVISION_RE.match(t):           # statutory-provision landing page
         return False
     if not _PARTY_RE.search(t):          # not "X vs Y" → not a judgment
         return False
-    blob = (t + " " + (text or "")[:2000]).lower()
-    return any(sig in blob for sig in _ITAX_SIGNALS)
+    return bool(_TITLE_ITAX_RE.search(t))  # income-tax party in the title
 
 
 @celery_app.task
@@ -103,6 +111,13 @@ def daily_case_law_update() -> dict:
     nothing slips through a gap), CASE_LAW_DAILY_CAP_PER_QUERY (default 15)."""
     from datetime import date, timedelta
     from app.ingestion.acquire import indiankanoon
+
+    # OFF by default: the fetch/dedup/relevance mechanism is proven, but Indian
+    # Kanoon's date window still surfaces old landmark cases, so recency must be
+    # validated before this runs unsupervised. Enable with CASE_LAW_DAILY_ENABLED=1.
+    if os.getenv("CASE_LAW_DAILY_ENABLED", "0").lower() not in ("1", "true", "yes", "on"):
+        log.info("daily_case_law_update disabled (set CASE_LAW_DAILY_ENABLED=1 to enable)")
+        return {"skipped": "disabled"}
 
     tok = (os.getenv("IK_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
     if not tok:
