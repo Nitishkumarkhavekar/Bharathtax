@@ -231,6 +231,10 @@ def _send_email(to: str, reset_url: str, recipient_name: str | None = None) -> N
 @router.post("/request", status_code=202)
 def request_reset(body: ResetRequest, request: Request,
                   db: Session = Depends(get_db)) -> dict:
+    # Throttle: an unauthenticated endpoint that sends an email + writes a token
+    # per call — cap it so it can't be used to email-bomb a registered address.
+    from app.core import ratelimit
+    ratelimit.enforce(request, "pwreset_request", max_hits=5, window_s=600)
     email = str(body.email).strip().lower()
     user = db.scalar(select(User).where(User.email == email))
     if user is not None:
@@ -260,7 +264,10 @@ def request_reset(body: ResetRequest, request: Request,
 
 
 @router.post("/confirm")
-def confirm_reset(body: ResetConfirm, db: Session = Depends(get_db)) -> dict:
+def confirm_reset(body: ResetConfirm, request: Request,
+                  db: Session = Depends(get_db)) -> dict:
+    from app.core import ratelimit
+    ratelimit.enforce(request, "pwreset_confirm", max_hits=10, window_s=600)
     pr = db.scalar(select(PasswordResetToken).where(
         PasswordResetToken.token == body.token
     ))

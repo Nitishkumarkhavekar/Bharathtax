@@ -99,18 +99,16 @@
       0 20px 40px -18px rgba(46, 124, 200, 0.32);
     border-color: rgba(46, 124, 200, 0.28);
   }
-  /* Gradient primary button — smooth two-stop tint + soft glow. */
+  /* Primary button — flat, single-token accent (design system: no gradients). */
   .bt-btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg font-medium text-white
-           text-sm tracking-tight transition-all;
-    background-image: linear-gradient(135deg, #2b7cd8 0%, #1d63c2 50%, #1e40af 100%);
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.08),
-      0 10px 24px -12px rgba(37, 99, 235, 0.55);
+           text-sm tracking-tight transition-colors bg-primary
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   }
-  .bt-btn-primary:hover { filter: brightness(1.08); transform: translateY(-0.5px); }
-  .bt-btn-primary:active { transform: translateY(0.5px); filter: brightness(0.98); }
-  .bt-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; filter: none; transform: none; }
+  .bt-btn-primary:hover { @apply bg-primary/90; }
+  .bt-btn-primary:active { @apply bg-primary; }
+  .bt-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
   /* Ghost / secondary — pale accent with primary text. */
   .bt-btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg font-medium text-sm

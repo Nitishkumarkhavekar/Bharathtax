@@ -35,6 +35,48 @@ from app.services import licensing
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+import logging as _logging
+_log = _logging.getLogger("auth")
+
+
+def _notify_admins_new_user(username: str, email: str,
+                            full_name: str | None, organisation: str | None) -> None:
+    """Best-effort admin notification of a new self-signup, sent on a daemon
+    thread so it never delays or breaks the registration response. Emails
+    ADMIN_NOTIFY_EMAIL via the same SMTP env as password-reset; if unset, logs."""
+    import os
+    to = os.getenv("ADMIN_NOTIFY_EMAIL", "").strip()
+    host = os.getenv("SMTP_HOST")
+    if not to or not host:
+        _log.info("new signup: %s <%s> (ADMIN_NOTIFY_EMAIL/SMTP not set)", username, email)
+        return
+
+    def _send() -> None:
+        import smtplib
+        from email.message import EmailMessage
+        try:
+            msg = EmailMessage()
+            msg["Subject"] = f"New BharatTax signup: {username}"
+            msg["From"] = os.getenv("SMTP_FROM", os.getenv("SMTP_USER") or "no-reply@bharattax.wenvia.global")
+            msg["To"] = to
+            msg.set_content(
+                "A new user self-registered on BharatTax (auto-approved).\n\n"
+                f"Username : {username}\nEmail    : {email}\n"
+                f"Name     : {full_name or '-'}\nOrg      : {organisation or '-'}\n")
+            port = int(os.getenv("SMTP_PORT", "587"))
+            with smtplib.SMTP(host, port, timeout=15) as s:
+                if os.getenv("SMTP_STARTTLS", "1") in ("1", "true", "True"):
+                    s.starttls()
+                u, pw = os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD")
+                if u and pw:
+                    s.login(u, pw)
+                s.send_message(msg)
+        except Exception as e:  # noqa: BLE001
+            _log.warning("admin new-signup notify failed for %s: %s", email, e)
+
+    import threading
+    threading.Thread(target=_send, daemon=True).start()
+
 
 # -------- license activation (shown to non-admin users on first login) -------
 class LicenseActivateRequest(BaseModel):
@@ -106,7 +148,7 @@ def license_status(user: User = Depends(get_current_user),
         return LicenseStatusResponse(
             required=True, licensed=False,
             pending_key=pkey,
-            message=None if pkey else "Please enter your license key to start using BharathTax.",
+            message=None if pkey else "Please enter your license key to start using BharatTax.",
         )
     return LicenseStatusResponse(
         required=True, licensed=True,
@@ -255,6 +297,10 @@ def register(body: RegisterRequest, request: Request,
     from app.services.provisioning import provision_trial, TRIAL_TOKENS
     lic_key = provision_trial(db, user)
     db.commit()
+    # Self-signup is auto-approved (deliberate GTM choice) — notify admins so
+    # they can watch who's coming in. Fire-and-forget; never blocks/breaks signup.
+    _notify_admins_new_user(user.username, user.email or email,
+                            user.full_name, user.organisation)
     return RegisterResponse(
         id=user.id,
         email=user.email or email,
@@ -264,7 +310,7 @@ def register(body: RegisterRequest, request: Request,
         trial_tokens=TRIAL_TOKENS,
         message=(
             "Account created and approved. Your free trial with 100,000 tokens is active. "
-            "Save your license key below and paste it when you sign in to start using BharathTax."
+            "Save your license key below and paste it when you sign in to start using BharatTax."
         ),
     )
 

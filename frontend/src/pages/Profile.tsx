@@ -220,7 +220,7 @@ function LicenseCard() {
                 ? " \u00b7 valid until " + new Date(st.valid_until).toLocaleDateString()
                 : ""
             }.`
-          : "This key is pre-filled in the activation dialog \u2014 click Activate to start using BharathTax."}
+          : "This key is pre-filled in the activation dialog \u2014 click Activate to start using BharatTax."}
       </p>
     </div>
   );

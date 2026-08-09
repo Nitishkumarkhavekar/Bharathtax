@@ -1,10 +1,10 @@
 # Design — User Memory & Personalization
 
 Goal: make the chat *feel* like ChatGPT/Claude (memory + personalization) while
-keeping BharathTax's grounding, and work in **both** deployment modes — cloud SaaS
+keeping BharatTax's grounding, and work in **both** deployment modes — cloud SaaS
 and the installable on-prem/air-gapped app (like the appeals desktop app). Memory
 always lives in the deployment's own DB; the subscription is controlled centrally
-by the BharathTax admin via the existing license-key/seat system. Personal context
+by the BharatTax admin via the existing license-key/seat system. Personal context
 is only ever fed to the **self-hosted** model — never the external web-search fallback.
 
 ## What already exists (don't duplicate)

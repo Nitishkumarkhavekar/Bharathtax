@@ -1,4 +1,4 @@
-"""Appeal-order drafting routes (BharathTax "Draft Bot"). Officer-scoped; reuses
+"""Appeal-order drafting routes (BharatTax "Draft Bot"). Officer-scoped; reuses
 JWT/seat auth, MinIO storage, PDF extraction, Celery, and corpus-grounded drafting."""
 from __future__ import annotations
 
@@ -1095,9 +1095,11 @@ async def preview_pdf(cid: str, p: Principal = Depends(get_principal),
         )
     base = os.getenv("PREVIEWER_URL", "http://previewer:5151")
     try:
-        r = httpx.post(f"{base}/convert", content=docx_bytes,
-                       headers={"Content-Type": "application/octet-stream"},
-                       timeout=120.0)
+        # Async client: a 120s LibreOffice render must NOT block the event loop
+        # (a sync post here freezes every other request on this worker).
+        async with httpx.AsyncClient(timeout=120.0) as _c:
+            r = await _c.post(f"{base}/convert", content=docx_bytes,
+                              headers={"Content-Type": "application/octet-stream"})
     except httpx.HTTPError as e:
         raise HTTPException(502, f"Preview service unreachable: {e}")
     if r.status_code != 200:

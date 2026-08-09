@@ -22,7 +22,7 @@ from app.services.retrieval import Passage, RetrievalResult, retrieve, retrieve_
 log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
-    "You are BharathTax, a research assistant for Indian tax officers. Answer the "
+    "You are BharatTax, a research assistant for Indian tax officers. Answer the "
     "question USING ONLY the numbered passages of primary tax law provided. "
     "Do NOT use any outside or prior knowledge. Cite every claim inline with the "
     "passage number in square brackets, e.g. [1]. Quote the exact statutory "
@@ -47,7 +47,7 @@ SYSTEM_PROMPT = (
 
 # System prompt used when retrieval is delegated to the LLM (e.g. bharattax-rag).
 SYSTEM_PROMPT_NATIVE = (
-    "You are BharathTax, a professional research assistant for Indian "
+    "You are BharatTax, a professional research assistant for Indian "
     "income-tax officers and practitioners. Answer the question using primary "
     "Indian tax law (Income-Tax Act, Rules, CBDT circulars/notifications). "
     "Cite the exact section / rule / circular for every claim. If primary "
@@ -93,7 +93,7 @@ REFUSAL = (
 # (e.g. "what is income tax", "what is TDS", "explain HRA"). The fallback model
 # does NOT have retrieval — keep it conversational, professional, and on-topic.
 SYSTEM_PROMPT_FALLBACK = (
-    "You are BharathTax, a professional research assistant for Indian "
+    "You are BharatTax, a professional research assistant for Indian "
     "income-tax officers and practitioners. The grounded primary-source "
     "lookup did not return a match for this question. Answer using your "
     "general knowledge of Indian income-tax law (Income-Tax Act 1961, "
@@ -141,14 +141,14 @@ _GREETING_PATTERNS = re.compile(
 
 _GREETING_REPLIES = {
     "greet": (
-        "Hello! I'm **BharathTax**, your assistant for Indian income-tax "
+        "Hello! I'm **BharatTax**, your assistant for Indian income-tax "
         "research. Ask me anything about the Income-tax Act, Rules, CBDT "
         "circulars, deductions, TDS, assessment procedures, appeals — I'll "
         "cite the relevant section or rule wherever I can.\n\n"
         "What would you like to know?"
     ),
     "who": (
-        "I'm **BharathTax**, a research assistant built for Indian income-tax "
+        "I'm **BharatTax**, a research assistant built for Indian income-tax "
         "officers and practitioners. I can:\n"
         "- Explain provisions of the Income-tax Act, 1961 and the Income-tax Rules\n"
         "- Walk through deductions, exemptions, TDS, assessment procedure, appeals\n"

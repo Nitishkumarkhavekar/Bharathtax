@@ -6,7 +6,7 @@ import ChatMessages from "@/components/chat/ChatMessages";
 import { ChatMessage } from "@/lib/chatStore";
 
 // Read-only view of a chat shared via an internal link. The route is behind
-// auth (App.tsx), so only signed-in BharathTax users who have the link get here.
+// auth (App.tsx), so only signed-in BharatTax users who have the link get here.
 export default function SharedChat() {
   const { shareId } = useParams();
   const [chat, setChat] = useState<ServerChatFull | null>(null);
@@ -39,7 +39,7 @@ export default function SharedChat() {
             <Scale className="size-4 text-white" strokeWidth={2.2} />
           </div>
           <div className="leading-tight">
-            <div className="text-[14px] font-semibold text-slate-900">BharathTax</div>
+            <div className="text-[14px] font-semibold text-slate-900">BharatTax</div>
             <div className="text-[10.5px] text-slate-500 -mt-0.5">Shared conversation · read-only</div>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default function SharedChat() {
           to="/ask"
           className="inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline"
         >
-          Open BharathTax <ArrowRight className="size-3.5" />
+          Open BharatTax <ArrowRight className="size-3.5" />
         </Link>
       </header>
 
@@ -70,7 +70,7 @@ export default function SharedChat() {
           <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 pt-6">
             <h1 className="text-xl font-semibold text-slate-900">{chat?.title}</h1>
             <div className="text-[12px] text-slate-500 mb-2">
-              Read-only · shared inside BharathTax
+              Read-only · shared inside BharatTax
             </div>
             <ChatMessages messages={msgs} busy={false} />
           </div>

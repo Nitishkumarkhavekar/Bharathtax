@@ -4,7 +4,7 @@ Two backends, one env flag ``GEMINI_BACKEND``:
 
 * ``aistudio`` (default) — AI Studio Gemini API
   (``generativelanguage.googleapis.com``), authed with an API key.
-  This is what BharathTax has always used. **Not** covered by the Google
+  This is what BharatTax has always used. **Not** covered by the Google
   Cloud $300 free-trial credit (excluded since March 2026).
 
 * ``vertex`` — Vertex AI Gemini

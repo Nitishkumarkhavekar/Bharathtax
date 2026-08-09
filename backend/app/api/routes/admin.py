@@ -568,7 +568,7 @@ def server_stats(admin: User = Depends(_admin)) -> dict:
 # ---------- model health (per-backend status) ----------
 @router.get("/model/health")
 def model_health(admin: User = Depends(_admin)) -> dict:
-    """Live health of every model/backend BharathTax depends on, for the admin
+    """Live health of every model/backend BharatTax depends on, for the admin
     Model-Management console. Probes run concurrently; each service reports
     ok / degraded / down + a human detail + latency, so the admin sees at a
     glance what works and which LLM is actively serving generation."""
@@ -1305,7 +1305,7 @@ def admin_gemini_stats(
         for uid, un, fn, em, c, t, p, cc, avg in per_user_rows
     ]
 
-    # Per-action — which BharathTax feature is driving Gemini spend.
+    # Per-action — which BharatTax feature is driving Gemini spend.
     per_action_rows = db.execute(
         select(
             TokenUsage.action,

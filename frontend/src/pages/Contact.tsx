@@ -31,7 +31,7 @@ export default function Contact() {
   return (
     <MarketingShell
       eyebrow="Contact"
-      title="Talk to the BharathTax team."
+      title="Talk to the BharatTax team."
       intro="Sales, a demo for your bench, licensing for a wing, or a support question — tell us what you need and we'll get back within one business day."
     >
       <div className="grid lg:grid-cols-[1fr_260px] gap-8 items-start">

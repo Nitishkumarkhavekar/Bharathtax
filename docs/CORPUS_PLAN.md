@@ -1,7 +1,7 @@
-# BharathTax — Corpus Build Plan & Progress Tracker
+# BharatTax — Corpus Build Plan & Progress Tracker
 
 **Goal:** a comprehensive, citation-grounded Indian **income-tax** corpus that lets
-BharathTax answer what people use Taxmann/Taxsutra for — built **only from
+BharatTax answer what people use Taxmann/Taxsutra for — built **only from
 primary, public-domain, legally-clean sources**. No scraped commentary, ever.
 
 **Principle:** statutes + executive + judiciary are free government/public records.

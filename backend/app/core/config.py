@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # general
     app_env: str = "dev"
     
-    app_name: str = "BharathTax"
+    app_name: str = "BharatTax"
     log_level: str = "INFO"
     # CORS: comma-separated allowed origins. "*" is fine for dev; set explicit
     # origins in prod (e.g. "https://app.bharathtax.com,https://bharattax.wenvia.global").
@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     manual_drop_dir: str = "/data/manual"
     crawl_cache_dir: str = "/data/cache"
     crawl_rate_limit_seconds: int = 3
-    crawl_user_agent: str = "BharathTax-Ingest/0.1"
+    crawl_user_agent: str = "BharatTax-Ingest/0.1"
     incremental_update_cron: str = "0 2 * * *"
 
     @property

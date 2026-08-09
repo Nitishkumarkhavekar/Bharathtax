@@ -793,7 +793,7 @@ function FeatureStrip() {
   );
 }
 
-// Share = an internal read-only link. Only signed-in BharathTax users who have
+// Share = an internal read-only link. Only signed-in BharatTax users who have
 // the link can open it. One click generates the link and copies it — the
 // per-answer Copy button already covers copying text, so there's no copy here.
 function ShareMenu({ serverId }: { serverId: number | null }) {
@@ -898,7 +898,7 @@ function ActiveChat(props: {
             compact
           />
           <div className="text-center text-[10.5px] text-slate-400">
-            BharathTax can make mistakes. Verify against the latest Act and CBDT circulars before acting.
+            BharatTax can make mistakes. Verify against the latest Act and CBDT circulars before acting.
           </div>
         </div>
       </div>

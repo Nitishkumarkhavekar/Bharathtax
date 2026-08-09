@@ -171,7 +171,7 @@ _TYPO_DICT = {
 _LANDMARK_CASE_PRIMER: dict[str, str] = {
     # Flipkart ESOP — the case Instakart searches keep polluting.
     r"flipkart\s+(esop|e\.?s\.?o\.?p\.?)": (
-        "## PRIMER: Flipkart ESOP Case (from BharathTax curated case index)\n"
+        "## PRIMER: Flipkart ESOP Case (from BharatTax curated case index)\n"
         "**Case:** Flipkart India Pvt Ltd vs ACIT (2018) 79 taxmann.com 251 (Bangalore ITAT)\n"
         "**Leading Precedent (followed):** Biocon Ltd vs DCIT (2020) 430 ITR 151 (Karnataka HC, Full Bench)\n"
         "**Provision:** Section 37(1) of the Income-tax Act, 1961 (revenue-expenditure deduction)\n"
@@ -237,7 +237,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # Infosys ESOP — the classic perquisite-valuation case.
     r"infosys\s+(esop|e\.?s\.?o\.?p\.?)": (
-        "## PRIMER: Infosys ESOP Case (from BharathTax curated case index)\n"
+        "## PRIMER: Infosys ESOP Case (from BharatTax curated case index)\n"
         "**Case:** CIT vs Infosys Technologies Ltd (2008) 297 ITR 167 (SC)\n"
         "**Provision:** Section 17(2) of the Income-tax Act, 1961 "
         "(perquisite in salary)\n"
@@ -261,7 +261,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # Vodafone offshore transfer.
     r"\bvodafone\b": (
-        "## PRIMER: Vodafone Case (from BharathTax curated case index)\n"
+        "## PRIMER: Vodafone Case (from BharatTax curated case index)\n"
         "**Case:** Vodafone International Holdings BV vs UOI (2012) 341 ITR "
         "1 (SC) [reversed by Finance Act 2012 retrospective amendment to "
         "Sec 9(1)(i); later resolved by the 2021 Taxation Laws (Amendment) "
@@ -283,7 +283,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # Biocon (Full Bench) — separate lookup path.
     r"\bbiocon\b.*(esop|e\.?s\.?o\.?p\.?)": (
-        "## PRIMER: Biocon ESOP Case (from BharathTax curated case index)\n"
+        "## PRIMER: Biocon ESOP Case (from BharatTax curated case index)\n"
         "**Case:** Biocon Ltd vs DCIT (2020) 430 ITR 151 (Karnataka HC, "
         "Full Bench)\n"
         "**Provision:** Section 37(1) of the Income-tax Act, 1961\n"
@@ -302,7 +302,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # Lovely Exports — Sec 68 identity.
     r"\blovely\s+exports?\b": (
-        "## PRIMER: Lovely Exports Case (from BharathTax curated case index)\n"
+        "## PRIMER: Lovely Exports Case (from BharatTax curated case index)\n"
         "**Case:** CIT vs Lovely Exports (P) Ltd (2008) 216 CTR 195 (SC)\n"
         "**Provision:** Section 68 of the Income-tax Act, 1961 (cash credits)\n"
         "**Issue:** Whether an addition under Sec 68 for share application "
@@ -321,7 +321,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # Kelvinator — reassessment 'reason to believe'.
     r"\bkelvinator\b": (
-        "## PRIMER: Kelvinator Case (from BharathTax curated case index)\n"
+        "## PRIMER: Kelvinator Case (from BharatTax curated case index)\n"
         "**Case:** CIT vs Kelvinator of India Ltd (2010) 320 ITR 561 (SC)\n"
         "**Provision:** Section 147 / 148 of the Income-tax Act, 1961 "
         "(reassessment)\n"
@@ -338,7 +338,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # GKN Driveshafts — procedure for reassessment challenge.
     r"gkn\s+driveshafts?": (
-        "## PRIMER: GKN Driveshafts Case (from BharathTax curated index)\n"
+        "## PRIMER: GKN Driveshafts Case (from BharatTax curated index)\n"
         "**Case:** GKN Driveshafts (India) Ltd vs ITO (2003) 259 ITR 19 (SC)\n"
         "**Provision:** Section 148 of the Income-tax Act, 1961\n"
         "**Issue:** Procedure to be followed when the assessee wishes to "
@@ -352,7 +352,7 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
     ),
     # NRA Iron & Steel — Sec 68 creditworthiness.
     r"nra\s+iron": (
-        "## PRIMER: NRA Iron & Steel Case (from BharathTax curated index)\n"
+        "## PRIMER: NRA Iron & Steel Case (from BharatTax curated index)\n"
         "**Case:** PCIT vs NRA Iron & Steel (P) Ltd (2019) 412 ITR 161 (SC)\n"
         "**Provision:** Section 68 of the Income-tax Act, 1961\n"
         "**Issue:** Whether identity of share applicants is sufficient to "
@@ -437,7 +437,7 @@ def enabled() -> bool:
 # uses `likely_sections_to_include` to know which of Sections 4/5 to keep.
 # ============================================================================
 _PLANNER_SYSTEM = (
-    "You are BharathTax's PLANNER agent. Given the user's tax question, "
+    "You are BharatTax's PLANNER agent. Given the user's tax question, "
     "produce a compact JSON plan that guides the downstream research + "
     "composition agents. Return ONLY the JSON — no prose, no markdown.\n"
     "\n"
@@ -513,7 +513,7 @@ _PLANNER_SYSTEM = (
 # because it missed X, Y, Z" failure mode.
 # ============================================================================
 _COVERAGE_SYSTEM = (
-    "You are BharathTax's COVERAGE agent. Given a tax question, return "
+    "You are BharatTax's COVERAGE agent. Given a tax question, return "
     "a comprehensive JSON checklist of aspects that a proper professional "
     "answer MUST cover. Return ONLY JSON — no prose, no markdown, no "
     "code fences.\n"
@@ -651,7 +651,7 @@ def _match_topic_coverage(question: str) -> list[str]:
 # RESEARCHER agent — sharp, tool-focused prompt. Returns evidence, not prose.
 # ============================================================================
 _RESEARCHER_SYSTEM = (
-    "You are BharathTax's RESEARCH agent. Your ONLY job is to gather every "
+    "You are BharatTax's RESEARCH agent. Your ONLY job is to gather every "
     "piece of primary Indian tax law relevant to the user's question, plus "
     "any on-point case law and CBDT circulars. You do NOT write the final "
     "answer for the user.\n"
@@ -742,7 +742,7 @@ _RESEARCHER_SYSTEM = (
 # COMPOSER agent — no tools, formats the answer from the researcher's packet.
 # ============================================================================
 _COMPOSER_SYSTEM = (
-    "You are BharathTax's COMPOSER agent. You receive:\n"
+    "You are BharatTax's COMPOSER agent. You receive:\n"
     "  (1) the user's question, and\n"
     "  (2) a research evidence packet already gathered by the research "
     "agent (statutes, cases, cross-references, thresholds, regime notes).\n"

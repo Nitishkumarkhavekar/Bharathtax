@@ -214,7 +214,7 @@ export default function ChatSidebar({
           </div>
           <div className="leading-tight">
             <div className="text-[15px] font-semibold tracking-tight text-slate-900">
-              BharathTax
+              BharatTax
             </div>
             <div className="text-[10.5px] text-slate-500 -mt-0.5 flex items-center gap-1">
               <Sparkles className="size-2.5" /> Income-tax research

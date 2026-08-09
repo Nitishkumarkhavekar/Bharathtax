@@ -102,7 +102,7 @@ function VoiceCard() {
     const synth = window.speechSynthesis;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(
-      "This is how BharathTax will read answers aloud.",
+      "This is how BharatTax will read answers aloud.",
     );
     if (prefs.voiceURI) {
       const v = voices.find((x) => x.voiceURI === prefs.voiceURI);
@@ -234,7 +234,7 @@ function ProfileForAiCard({ p, onSaved }: { p: Personalization; onSaved: (p: Per
     <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-          <Sparkles className="size-4 text-primary" /> How BharathTax answers you
+          <Sparkles className="size-4 text-primary" /> How BharatTax answers you
         </div>
         {msg && (
           <span className={"inline-flex items-center gap-1 text-[12px] font-medium " + (msg.kind === "ok" ? "text-emerald-700" : "text-rose-700")}>
@@ -268,7 +268,7 @@ function ProfileForAiCard({ p, onSaved }: { p: Personalization; onSaved: (p: Per
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           rows={3}
-          placeholder="How should BharathTax respond? e.g. 'Always give the governing section first, then the reasoning.'"
+          placeholder="How should BharatTax respond? e.g. 'Always give the governing section first, then the reasoning.'"
           className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -279,7 +279,7 @@ function ProfileForAiCard({ p, onSaved }: { p: Personalization; onSaved: (p: Per
           value={about}
           onChange={(e) => setAbout(e.target.value)}
           rows={2}
-          placeholder="Anything BharathTax should know — e.g. 'I mostly handle 69A/68 additions and 147 reassessments.'"
+          placeholder="Anything BharatTax should know — e.g. 'I mostly handle 69A/68 additions and 147 reassessments.'"
           className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -378,7 +378,7 @@ function MemoryCard({
         </label>
       </div>
       <p className="text-[11.5px] text-slate-500 -mt-2">
-        Durable facts BharathTax remembers across all your chats. It stays on this system and is only used with the self-hosted model.
+        Durable facts BharatTax remembers across all your chats. It stays on this system and is only used with the self-hosted model.
       </p>
 
       <div className="flex gap-2">

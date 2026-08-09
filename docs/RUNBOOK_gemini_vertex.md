@@ -1,6 +1,6 @@
 # Runbook — Gemini on Vertex AI (free-credit billing)
 
-**Purpose:** BharathTax runs Gemini through **Vertex AI** so calls draw down a
+**Purpose:** BharatTax runs Gemini through **Vertex AI** so calls draw down a
 GCP account's **$300 / 90-day free credit** instead of a credit card. This
 runbook covers: how it works, how to **rotate to a new account** when a credit
 runs low, how to **monitor burn**, and how to **roll back**.

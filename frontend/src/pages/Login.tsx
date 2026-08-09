@@ -31,10 +31,10 @@ export default function Login() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Sign in to continue drafting and researching with BharathTax."
+      subtitle="Sign in to continue drafting and researching with BharatTax."
       footer={
         <>
-          New to BharathTax?{" "}
+          New to BharatTax?{" "}
           <Link to="/register" className="font-semibold text-primary hover:underline">
             Request an account
           </Link>
@@ -111,7 +111,7 @@ export default function Login() {
         <div className="size-5 rounded-md bg-primary/10 text-primary grid place-items-center">
           <Scale className="size-3" />
         </div>
-        BharathTax · Purpose-built for the Income-tax Department
+        BharatTax · Purpose-built for the Income-tax Department
       </div>
     </AuthShell>
   );

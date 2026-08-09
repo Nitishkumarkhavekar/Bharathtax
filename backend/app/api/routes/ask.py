@@ -353,6 +353,7 @@ def ask_starters(p: Principal = Depends(get_principal)) -> dict:
 @router.post("/followups")
 def ask_followups(body: _FollowupsRequest,
                   p: Principal = Depends(get_principal),
+                  _quota: Principal = Depends(require_quota),
                   db: Session = Depends(get_db)) -> dict:
     """Return 3 short, topic-relevant follow-up questions for the last Q&A, so the
     UI can offer them as one-tap suggestions. Best-effort + cheap (flash-lite);
@@ -389,8 +390,17 @@ def ask_followups(body: _FollowupsRequest,
         if r.status_code != 200:
             log.warning("followups HTTP %s: %s", r.status_code, r.text[:200])
             return {"suggestions": []}
+        d = r.json()
         txt = "".join(pt.get("text", "") for pt in
-                      ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+                      ((d.get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+        um = d.get("usageMetadata") or {}
+        try:
+            tokens.record(db, user_id=p.user.id, action="followups", model=model,
+                          usage={"prompt_tokens": um.get("promptTokenCount"),
+                                 "completion_tokens": um.get("candidatesTokenCount"),
+                                 "total_tokens": um.get("totalTokenCount")})
+        except Exception:  # noqa: BLE001
+            pass
         arr = _json.loads(txt)
         sugg = [str(x).strip() for x in arr if str(x).strip()][:3]
         return {"suggestions": sugg}
@@ -405,7 +415,9 @@ class _TranslateRequest(BaseModel):
 
 @router.post("/translate")
 def ask_translate(body: _TranslateRequest,
-                  p: Principal = Depends(get_principal)) -> dict:
+                  p: Principal = Depends(get_principal),
+                  _quota: Principal = Depends(require_quota),
+                  db: Session = Depends(get_db)) -> dict:
     """On-demand translation of an answer into an Indian language. Section
     numbers, amounts, dates, case names and citations are preserved verbatim so
     the legal content stays exact. Fail-open: returns the original on any error."""
@@ -441,8 +453,17 @@ def ask_translate(body: _TranslateRequest,
         if r.status_code != 200:
             log.warning("translate HTTP %s", r.status_code)
             return {"translated": text}
+        d = r.json()
         out = "".join(pt.get("text", "") for pt in
-                      ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+                      ((d.get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+        um = d.get("usageMetadata") or {}
+        try:
+            tokens.record(db, user_id=p.user.id, action="translate", model=model,
+                          usage={"prompt_tokens": um.get("promptTokenCount"),
+                                 "completion_tokens": um.get("candidatesTokenCount"),
+                                 "total_tokens": um.get("totalTokenCount")})
+        except Exception:  # noqa: BLE001
+            pass
         return {"translated": out.strip() or text}
     except Exception:  # noqa: BLE001
         log.exception("translate failed")

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bharathtax-backend"
 version = "0.1.0"
-description = "BharathTax — self-hosted, citation-grounded tax-law RAG (backend + ingestion)"
+description = "BharatTax — self-hosted, citation-grounded tax-law RAG (backend + ingestion)"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     # --- web / api ---

@@ -6,7 +6,7 @@ Snapshot of recent work so a new Claude Code session (run in
 
 ## Where things stand
 The old `IT-Appeal` tool (formerly `C:\Users\HP\Projects\appeal`) was
-**consolidated into this BharathTax repo and retired**. Work happens **only
+**consolidated into this BharatTax repo and retired**. Work happens **only
 here** now. Repo: https://github.com/Nitinkaroshi/bharathtax (private), owner
 Nitin, **Anand @anandkaman invited as admin** (pending acceptance).
 
@@ -53,7 +53,7 @@ chunks** — image-only scans; the pipeline has no OCR (see open items).
    `Appeal Order tool.docx` + `RETIRED.md` remain; backup at
    `C:\Users\HP\Projects\appeal_RETIRED_2026-06-26.zip`, 553 MB).
 
-## How to continue this conversation in the BharathTax repo
+## How to continue this conversation in the BharatTax repo
 Open Claude Code in `C:\Users\HP\Projects\taxmedha` and run `/resume` (or
 `claude --resume`) — this session's transcript was copied into taxmedha's session
 store, so it appears in the list. If it's not there, this file is the fallback.

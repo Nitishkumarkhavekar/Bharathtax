@@ -1,4 +1,4 @@
-"""Appeal-order drafting engine (BharathTax "Draft Bot").
+"""Appeal-order drafting engine (BharatTax "Draft Bot").
 
 Implements the officer's 6-module CIT(A)/NFAC workflow, GROUNDED on the primary-law
 corpus via the existing hybrid retrieval (bge-m3 + reranker) and generated via the

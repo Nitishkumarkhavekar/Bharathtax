@@ -149,7 +149,7 @@ function SidebarBody({
   return (
     <>
       {/* Brand + sidebar collapse toggle. The toggle sits next to the
-          BharathTax mark (right side when expanded, stacked below when
+          BharatTax mark (right side when expanded, stacked below when
           collapsed) so hiding / showing the sidebar always happens on the
           sidebar itself, not from the main content header. */}
       <div
@@ -164,7 +164,7 @@ function SidebarBody({
         {!collapsed && (
           <div className="leading-tight min-w-0">
             <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
-              BharathTax
+              BharatTax
             </div>
             <div className="text-[10.5px] text-slate-500 -mt-0.5 truncate">
               Income-tax research
@@ -416,10 +416,10 @@ function LayoutInner({ children }: { children: ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <aside className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] relative overflow-hidden bt-sidebar-bg text-slate-800 border-r border-slate-200 flex flex-col shadow-2xl">
-            <div className="md:hidden flex items-center justify-end px-3 py-2 border-b border-white/10">
+            <div className="md:hidden flex items-center justify-end px-3 py-2 border-b border-slate-200">
               <button
                 onClick={() => setMobileOpen(false)}
-                className="p-2 rounded-md text-sidebar-foreground/85 hover:bg-white/10 hover:text-white"
+                className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                 aria-label="Close menu"
               >
                 <X className="size-4" />
@@ -441,9 +441,9 @@ function LayoutInner({ children }: { children: ReactNode }) {
             <Menu className="size-5" />
           </button>
           {/* Sidebar collapse toggle lives inside the sidebar itself
-              (next to the BharathTax mark) — no duplicate control here. */}
+              (next to the BharatTax mark) — no duplicate control here. */}
           <h1 className="text-base font-semibold text-foreground truncate">
-            {current?.label ?? "BharathTax"}
+            {current?.label ?? "BharatTax"}
           </h1>
           <div className="ml-auto hidden sm:flex items-center gap-2 text-xs text-slate-500">
             <span className="inline-block size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.20)]" />
