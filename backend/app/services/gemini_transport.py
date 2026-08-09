@@ -46,20 +46,15 @@ _VERTEX_LOCATION = os.getenv("GEMINI_VERTEX_LOCATION", "asia-south1").strip()
 _VERTEX_API_VERSION = os.getenv("GEMINI_VERTEX_API_VERSION", "v1").strip()
 _SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
-# AI Studio model ids (incl. "-latest" aliases) → concrete Vertex model ids.
-# Vertex has no "-latest" aliases and no gemini-3.5-* line, so map them onto
-# the current 2.5 tier. Override with GEMINI_VERTEX_MODEL_MAP="a=b,c=d".
-_DEFAULT_MODEL_MAP = {
-    "gemini-flash-latest": "gemini-2.5-flash",
-    "gemini-flash-lite-latest": "gemini-2.5-flash-lite",
-    "gemini-pro-latest": "gemini-2.5-pro",
-    "gemini-3.5-flash": "gemini-2.5-flash",
-    "gemini-3.5-flash-lite": "gemini-2.5-flash-lite",
-    "gemini-2.5-flash": "gemini-2.5-flash",
-    "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
-    "gemini-2.5-pro": "gemini-2.5-pro",
-    "gemini-2.0-flash": "gemini-2.0-flash",
-}
+# Model-name mapping AI Studio → Vertex. Vertex's `global` endpoint serves the
+# very same model ids the app already uses — including the "-latest" aliases
+# and the gemini-3.5-* line — so the map is EMPTY by default (identity): the
+# exact same model answers on Vertex as on AI Studio, no quality change.
+#
+# It stays a hook only for the rare model that a chosen region genuinely lacks
+# (e.g. the -lite models are absent in asia-south1 — but we run in `global`,
+# where they exist). Override per-deployment with GEMINI_VERTEX_MODEL_MAP="a=b,c=d".
+_DEFAULT_MODEL_MAP: dict[str, str] = {}
 
 
 def _parse_map_override() -> dict[str, str]:
