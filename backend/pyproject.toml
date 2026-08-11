@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bharathtax-backend"
 version = "0.1.0"
-description = "BharathTax — self-hosted, citation-grounded tax-law RAG (backend + ingestion)"
+description = "BharatTax — self-hosted, citation-grounded tax-law RAG (backend + ingestion)"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     # --- web / api ---
@@ -41,6 +41,9 @@ dependencies = [
     "python-docx>=1.1",               # DOCX export of draft orders
     # --- admin console: system stats ---
     "psutil>=5.9",
+    # --- Vertex AI backend: mint OAuth tokens from the service-account JSON
+    # (bundles pure-Python rsa; no cryptography needed) ---
+    "google-auth>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +51,12 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.8",
+]
+# On-prem NER name-scrubbing for the fine-tune data export. Kept optional so the
+# base image stays lean (the export runs occasionally, once flywheel volume
+# builds). Enable: pip install ".[finetune]" && python -m spacy download en_core_web_sm
+finetune = [
+    "spacy>=3.7",
 ]
 
 [tool.setuptools.packages.find]

@@ -143,7 +143,7 @@ def delete_chat(cid: int, p: Principal = Depends(get_principal),
 def share_chat(cid: int, p: Principal = Depends(get_principal),
                db: Session = Depends(get_db)) -> dict:
     """Owner: create (or return the existing) internal share token for a chat.
-    Any signed-in BharathTax user who has the link can then view it read-only."""
+    Any signed-in BharatTax user who has the link can then view it read-only."""
     c = _owned_chat(db, p.user.id, cid)
     if not c.share_id:
         c.share_id = uuid.uuid4().hex

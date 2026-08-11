@@ -1,4 +1,4 @@
-"""Appeal-order drafting engine (BharathTax "Draft Bot").
+"""Appeal-order drafting engine (BharatTax "Draft Bot").
 
 Implements the officer's 6-module CIT(A)/NFAC workflow, GROUNDED on the primary-law
 corpus via the existing hybrid retrieval (bge-m3 + reranker) and generated via the
@@ -120,9 +120,9 @@ class GeminiLLM:
                 try:
                     with _GEMINI_SEM:
                         with httpx.Client(timeout=httpx.Timeout(150.0)) as client:
-                            r = client.post(f"{self._BASE}/{m}:generateContent",
-                                            headers={"x-goog-api-key": self.api_key,
-                                                     "Content-Type": "application/json"},
+                            from app.services import gemini_transport as _tx
+                            r = client.post(_tx.url(m, "generateContent"),
+                                            headers=_tx.headers(),
                                             json=body)
                     # transient -> back off and RETRY THE SAME (fast) model rather
                     # than dropping to the slower fallback model immediately.

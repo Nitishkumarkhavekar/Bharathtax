@@ -22,6 +22,7 @@ import { Revenue, RevenueCreate, RevenueUpdate, api } from "@/api";
 import { Empty, ErrorBanner, Header, Loading, inr } from "./Dashboard";
 import { BarChart, Section, StatCard } from "@/components/admin/charts";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export default function RevenueManagementPage() {
   const [rows, setRows] = useState<Revenue[]>([]);
@@ -49,8 +50,14 @@ export default function RevenueManagementPage() {
     refresh();
   }, []);
 
+  const { confirm, dialog } = useConfirm();
+
   async function onDelete(e: Revenue) {
-    if (!confirm(`Delete revenue entry of ${inr(e.amount)} from ${e.source}?`)) return;
+    if (!(await confirm({
+      title: "Delete revenue entry?",
+      description: `${inr(e.amount)} from ${e.source} will be removed.`,
+      tone: "danger", confirmLabel: "Delete entry",
+    }))) return;
     try {
       await api.adminDeleteRevenue(e.id);
       await refresh();
@@ -73,6 +80,7 @@ export default function RevenueManagementPage() {
 
   return (
     <div className="space-y-6 admin-rise">
+      {dialog}
       <Header
         title="Revenue Management"
         subtitle="Record and track license sales, subscriptions and other revenue."

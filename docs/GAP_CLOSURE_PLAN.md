@@ -1,4 +1,4 @@
-# BharathTax — Gap-Closure Execution Plan
+# BharatTax — Gap-Closure Execution Plan
 
 Baseline (2026-07-03): **113,639 docs / 519,158 chunks**, live on prod. Phases 0–5 done.
 This plan closes the remaining gaps to full Taxmann-parity, tiered by **value ÷ effort**.

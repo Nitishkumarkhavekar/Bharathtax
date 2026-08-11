@@ -1,4 +1,4 @@
-# BharathTax — GPU Embedding Handoff (the `embed-pending` pass)
+# BharatTax — GPU Embedding Handoff (the `embed-pending` pass)
 
 **Goal:** turn the already-staged CBDT corpus (chunks in Postgres with `embedding = NULL`)
 into a fully vector-searchable corpus by running **one batch job on the 16 GB GPU box**.
@@ -71,7 +71,7 @@ Keep the laptop awake + online for the ~10–30 min pass.
 
 ## PROMPT TO RUN ON THE GPU BOX (full runbook / other paths)
 
-> You are operating the BharathTax repo on a Linux host with an NVIDIA 16 GB GPU and the
+> You are operating the BharatTax repo on a Linux host with an NVIDIA 16 GB GPU and the
 > NVIDIA Container Toolkit installed. The income-tax corpus has already been crawled,
 > parsed and chunked on another machine; every chunk is in Postgres with a NULL
 > embedding. Your ONLY job is to embed those chunks on the GPU and verify the result.

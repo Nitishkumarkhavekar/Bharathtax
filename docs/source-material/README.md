@@ -1,7 +1,7 @@
 # Source material — IT-Appeal tool (original requirements & research)
 
 Preserved from the original `appeal` project (now retired; superseded by this
-BharathTax repo). This is the **foundational context** for the Appeals module —
+BharatTax repo). This is the **foundational context** for the Appeals module —
 what the officer asked for and why. Kept here so it travels with the project.
 
 ## Requirements & specification
@@ -28,6 +28,6 @@ what the officer asked for and why. Kept here so it travels with the project.
 
 > Not preserved here: the old app's source code and the bulk corpus PDFs. The
 > 289 Bombay HC income-tax judgments from the old corpus were **ingested into
-> the BharathTax case-law corpus** (domain `case_law`) — see
+> the BharatTax case-law corpus** (domain `case_law`) — see
 > [`docs/case_law_corpus.md`](../case_law_corpus.md). The large statute PDFs
 > (IT Act/Rules) were dropped — this repo maintains its own primary-law corpus.

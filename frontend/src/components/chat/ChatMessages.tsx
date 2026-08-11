@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Globe, Languages, Loader2, Pencil, RotateCcw, Scale, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
-import { Markdown } from "@/lib/markdown";
+import { Markdown, copyMarkdownRich } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
 import { api } from "@/api";
 import { useAuth } from "@/auth";
@@ -487,17 +487,41 @@ function Message({
       const text = await api.translate(msg.content, lang);
       setXlate({ lang, text });
     } catch {
-      /* keep original */
+      toast.error(`Couldn't translate to ${lang}`);
     } finally {
       setXbusy(false);
     }
   }
 
+  // A "refusal" is a genuinely short reply that reads like the model
+  // declined — think "I don't have enough information to answer that."
+  // A grounded=false response with a full draft in it is NOT a refusal;
+  // the RAG layer flags web-sourced content as ungrounded even when the
+  // content itself is a useful answer. Only paint the amber warning card
+  // for actual refusals.
+  const looksLikeRefusal = (() => {
+    const t = (shownText || "").trim();
+    if (!t) return false;
+    if (t.length > 400) return false;
+    const refusalHints = [
+      "don't have", "do not have", "cannot", "can not", "unable",
+      "insufficient", "not enough", "cannot answer", "cant answer",
+      "no relevant", "sorry", "not able",
+    ];
+    const low = t.toLowerCase();
+    return refusalHints.some((h) => low.includes(h));
+  })();
+  const isRefusal = msg.grounded === false && looksLikeRefusal;
+  // Note: some answers come from live web-search; when grounded=false but the
+  // reply is substantive we still render it as a normal message and add a
+  // discreet "Web-sourced" chip so the officer knows it wasn't corpus-cited.
+  const isWebSourced = msg.grounded === false && !isRefusal;
+
   return (
     <div className="flex gap-3 animate-fade-up">
       <AssistantAvatar pulse={!!live} />
       <div className="min-w-0 flex-1 space-y-3">
-        {msg.grounded === false ? (
+        {isRefusal ? (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 flex gap-3 text-amber-900">
             <AlertTriangle className="size-5 shrink-0 mt-0.5" />
             <p className="text-sm leading-relaxed">{msg.content}</p>
@@ -545,6 +569,11 @@ function Message({
           </div>
         ) : (
           <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+            {isWebSourced && (
+              <div className="mb-2 -mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-[10.5px] font-semibold tracking-wide px-2 py-0.5">
+                <Globe className="size-3" /> Web-sourced · verify before relying
+              </div>
+            )}
             <Markdown text={shownText} />
             {xlate && (
               <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 text-[11.5px] text-slate-400">
@@ -646,7 +675,10 @@ function Message({
               onRegenerate={onRegenerate}
             />
             <LanguageMenu current={xlate?.lang ?? "English"} busy={xbusy} onPick={translateTo} />
-            {msg.grounded !== false && (
+            {/* Feedback + rating on every real answer, including web-sourced
+                ones. Only genuine refusals hide it because there's nothing
+                to rate there. */}
+            {!isRefusal && (
               <>
                 <span className="hidden sm:block w-px h-4 bg-slate-200 mx-0.5" />
                 <FeedbackRow question={question} answer={msg.content} />
@@ -673,7 +705,11 @@ function MessageActions({
 }) {
   const [copied, setCopied] = useState(false);
   function copy() {
-    navigator.clipboard?.writeText(text).then(() => {
+    // Rich clipboard: styled HTML for Word/Docs/Notion/Gmail (headings,
+    // bullets, tables, code blocks all preserved) + a clean plain-text
+    // fallback with markdown syntax stripped for terminal/plain paste
+    // targets. Beats a raw `## foo` / `**bar**` dump every time.
+    copyMarkdownRich(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });

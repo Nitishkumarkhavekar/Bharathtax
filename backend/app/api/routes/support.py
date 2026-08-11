@@ -389,6 +389,12 @@ def admin_patch_ticket(ticket_id: int, body: TicketPatch,
     t = db.get(SupportTicket, ticket_id)
     if not t:
         raise HTTPException(404, "Ticket not found")
+    # Wing scoping — a wing_admin may only act on their own wing's tickets
+    # (mirrors admin_get_ticket / admin_add_message).
+    if admin.role == Role.wing_admin:
+        officer = db.get(User, t.officer_user_id)
+        if officer and officer.wing_id != admin.wing_id:
+            raise HTTPException(403, "Not in your wing")
     if body.status in ("open", "closed"):
         t.status = body.status
     db.commit(); db.refresh(t)

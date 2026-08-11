@@ -568,7 +568,7 @@ def server_stats(admin: User = Depends(_admin)) -> dict:
 # ---------- model health (per-backend status) ----------
 @router.get("/model/health")
 def model_health(admin: User = Depends(_admin)) -> dict:
-    """Live health of every model/backend BharathTax depends on, for the admin
+    """Live health of every model/backend BharatTax depends on, for the admin
     Model-Management console. Probes run concurrently; each service reports
     ok / degraded / down + a human detail + latency, so the admin sees at a
     glance what works and which LLM is actively serving generation."""
@@ -580,22 +580,77 @@ def model_health(admin: User = Depends(_admin)) -> dict:
                 "latency_ms": latency, "endpoint": endpoint, "models": models or [], "meta": meta or {}}
 
     def probe_gemini():
+        from app.services import gemini_transport as _tx
         gkey = (_os.getenv("GEMINI_API_KEY") or "").strip()
         gmodels = [m.strip() for m in _os.getenv("GEMINI_MODELS", "gemini-flash-latest").split(",") if m.strip()]
-        gep = "generativelanguage.googleapis.com"
+        gep = _tx.endpoint_host()
+        # Vertex backend: auth is an OAuth bearer minted from the service
+        # account (not an API key), and the model list lives at a different
+        # endpoint. Probe the model resource with the bearer token instead.
+        if _tx.is_vertex():
+            role = "Primary LLM + web search (Vertex — free-credit eligible)"
+            if not _tx.available():
+                return _svc("gemini", "Gemini API (Vertex)", role, "down",
+                            "GEMINI_VERTEX_PROJECT not configured", None, gep, gmodels)
+            t0 = time.time()
+            try:
+                # Vertex has no zero-token GET on a publisher model, so we send
+                # the smallest possible generateContent (thinking off, 5 tokens)
+                # — proves auth + role + model availability for ~0.0001 credit.
+                pbody = {"contents": [{"role": "user", "parts": [{"text": "ping"}]}],
+                         "generationConfig": {"maxOutputTokens": 5, "temperature": 0,
+                                              "thinkingConfig": {"thinkingBudget": 0}}}
+                pmodel = gmodels[0] if gmodels else "gemini-2.5-flash"
+                with httpx.Client(timeout=10.0) as c:
+                    r = c.post(_tx.url(pmodel, "generateContent"),
+                               headers=_tx.headers(), json=pbody)
+                lat = (time.time() - t0) * 1000
+                if r.status_code == 200:
+                    return _svc("gemini", "Gemini API (Vertex)", role, "ok",
+                                "Responding via Vertex AI", lat, gep, gmodels)
+                if r.status_code in (401, 403):
+                    return _svc("gemini", "Gemini API (Vertex)", role, "down",
+                                "Vertex auth failed — SA may lack the Vertex AI User role",
+                                lat, gep, gmodels, {"http": r.status_code})
+                return _svc("gemini", "Gemini API (Vertex)", role, "degraded",
+                            f"Vertex HTTP {r.status_code}", lat, gep, gmodels, {"http": r.status_code})
+            except Exception as e:  # noqa: BLE001
+                return _svc("gemini", "Gemini API (Vertex)", role, "down",
+                            f"Vertex unreachable: {type(e).__name__}", None, gep, gmodels)
         if not gkey:
             return _svc("gemini", "Gemini API", "Primary LLM + web search", "down", "No API key configured", None, gep, gmodels)
-        gm = gmodels[0] if gmodels else "gemini-flash-latest"
+        # Health probe: hit `models.list` (auth-checked, no generation).
+        # We used to POST /generateContent with maxOutputTokens=1 +
+        # thinkingConfig=0 but Google now returns HTTP 400 INVALID_ARGUMENT
+        # for that combination on gemini-flash-latest. A GET on the models
+        # list uses the same API key + endpoint, incurs zero token spend,
+        # and additionally lets us verify our configured models are still
+        # available on this key.
         t0 = time.time()
         try:
             with httpx.Client(timeout=10.0) as c:
-                r = c.post(f"https://generativelanguage.googleapis.com/v1beta/models/{gm}:generateContent",
-                           headers={"x-goog-api-key": gkey, "Content-Type": "application/json"},
-                           json={"contents": [{"parts": [{"text": "ping"}]}],
-                                 "generationConfig": {"maxOutputTokens": 1, "thinkingConfig": {"thinkingBudget": 0}}})
+                # pageSize=1000 (the API max) returns the full model list in one
+                # call — the default page (~50) can push a configured model onto
+                # page 2 and falsely flag it "not available".
+                r = c.get("https://generativelanguage.googleapis.com/v1beta/models",
+                          params={"pageSize": 1000},
+                          headers={"x-goog-api-key": gkey})
             lat = (time.time() - t0) * 1000
             if r.status_code == 200:
+                try:
+                    listed = {(m.get("name") or "").split("/")[-1]
+                              for m in (r.json().get("models") or [])}
+                except Exception:
+                    listed = set()
+                missing = [m for m in gmodels if m and m not in listed]
+                if missing:
+                    return _svc("gemini", "Gemini API", "Primary LLM + web search", "degraded",
+                                f"Model(s) not available on this key: {', '.join(missing)}",
+                                lat, gep, gmodels, {"missing": missing})
                 return _svc("gemini", "Gemini API", "Primary LLM + web search", "ok", "Responding normally", lat, gep, gmodels)
+            if r.status_code in (401, 403):
+                return _svc("gemini", "Gemini API", "Primary LLM + web search", "down",
+                            "API key rejected (auth failed)", lat, gep, gmodels, {"http": r.status_code})
             if r.status_code == 429:
                 msg = ""
                 try:
@@ -848,14 +903,44 @@ _ = platform.python_version
 @router.get("/token-usage")
 def admin_token_usage(
     days: int = Q(30, ge=1, le=365),
+    year: int | None = Q(None, ge=2020, le=2100),
+    month: int | None = Q(None, ge=1, le=12),
     admin: User = Depends(_admin),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Aggregate token spend across all users, for the admin console."""
+    """Aggregate token spend across all users, for the admin console.
+
+    Two modes, mutually exclusive:
+      * default — rolling window of the last `days` days.
+      * month view — when both `year` and `month` are given, the window
+        is the full calendar month (00:00 first day → 00:00 first day of
+        next month). Useful for month-by-month reviews from the admin
+        console's Year / Month pickers.
+    """
+    from calendar import monthrange
     now = datetime.now(timezone.utc)
     d1 = now - timedelta(days=1)
     d7 = now - timedelta(days=7)
-    dW = now - timedelta(days=days)
+
+    month_mode = year is not None and month is not None
+    if month_mode:
+        # Full calendar month in UTC.
+        start = datetime(year, month, 1, tzinfo=timezone.utc)
+        # First day of next month.
+        if month == 12:
+            end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+        # Cap `end` at "now" so the window doesn't include future days that
+        # obviously have zero data.
+        end = min(end, now)
+        dW = start
+        window_end = end
+        window_label_days = monthrange(year, month)[1]
+    else:
+        dW = now - timedelta(days=days)
+        window_end = now
+        window_label_days = days
 
     totals = db.execute(
         select(
@@ -877,7 +962,7 @@ def admin_token_usage(
     ) or 0)
     tokens_window = int(db.scalar(
         select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
-        .where(TokenUsage.created_at >= dW)
+        .where(TokenUsage.created_at >= dW, TokenUsage.created_at < window_end)
     ) or 0)
 
     # Per-user leaderboard — return EVERY user who ever spent tokens; the
@@ -930,21 +1015,38 @@ def admin_token_usage(
         {"model": m, "calls": int(c), "tokens": int(t)} for m, c, t in per_model_rows
     ]
 
-    # Daily time series
+    # Daily time series. In month mode we return every day of the calendar
+    # month (including zeros) so the daily chart shows the full month even
+    # if some days had no activity.
     per_day_rows = db.execute(
         select(
             func.date_trunc("day", TokenUsage.created_at).label("day"),
             func.coalesce(func.sum(TokenUsage.total_tokens), 0),
             func.count(TokenUsage.id),
         )
-        .where(TokenUsage.created_at >= dW)
+        .where(TokenUsage.created_at >= dW, TokenUsage.created_at < window_end)
         .group_by("day").order_by("day")
     ).all()
-    per_day = [
-        {"day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
-         "tokens": int(t), "calls": int(c)}
+    per_day_map = {
+        (d.date().isoformat() if hasattr(d, "date") else str(d)): (int(t), int(c))
         for d, t, c in per_day_rows
-    ]
+    }
+    if month_mode:
+        # Enumerate every calendar day in the month.
+        from datetime import date as _date, timedelta as _td
+        first = _date(year, month, 1)
+        days_in_month = monthrange(year, month)[1]
+        per_day = []
+        for i in range(days_in_month):
+            d = first + _td(days=i)
+            iso = d.isoformat()
+            t, c = per_day_map.get(iso, (0, 0))
+            per_day.append({"day": iso, "tokens": t, "calls": c})
+    else:
+        per_day = [
+            {"day": k, "tokens": v[0], "calls": v[1]}
+            for k, v in sorted(per_day_map.items())
+        ]
 
     return {
         "prompt_tokens": int(totals[0]),
@@ -955,7 +1057,12 @@ def admin_token_usage(
         "tokens_24h": tokens_24h,
         "tokens_7d": tokens_7d,
         "tokens_window": tokens_window,
-        "window_days": days,
+        "window_days": window_label_days,
+        "window_mode": "month" if month_mode else "days",
+        "window_start": dW.isoformat(),
+        "window_end": window_end.isoformat(),
+        "window_year": year,
+        "window_month": month,
         "per_user": per_user,
         "per_action": per_action,
         "per_model": per_model,
@@ -1059,16 +1166,19 @@ def admin_user_token_usage(
 @router.get("/gemini")
 def admin_gemini_stats(
     days: int = Q(30, ge=1, le=365),
+    year: int | None = Q(None, ge=2020, le=2100),
+    month: int | None = Q(None, ge=1, le=12),
     admin: User = Depends(_admin),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Detailed Gemini-API health & spend for the admin console.
 
-    Aggregates every `token_usage` row whose `model` matches the configured
-    Gemini model — that's the source of truth since we bill every Gemini
-    call through the same `tokens.record()` path as LiteLLM.
+    Two window modes, mutually exclusive:
+      * default — rolling `days` window (7 / 30 / 90 / 365).
+      * month view — pass `year` + `month` for the full calendar month.
     """
     import os as _os
+    from calendar import monthrange
     gemini_model = _os.getenv("GEMINI_SEARCH_MODEL", "gemini-flash-latest")
     key_configured = bool((_os.getenv("GEMINI_API_KEY") or "").strip())
     web_search_enabled = _os.getenv("WEB_SEARCH_ENABLED", "1").lower() not in (
@@ -1078,7 +1188,20 @@ def admin_gemini_stats(
     now = datetime.now(timezone.utc)
     d24 = now - timedelta(hours=24)
     d7 = now - timedelta(days=7)
-    dW = now - timedelta(days=days)
+
+    month_mode = year is not None and month is not None
+    if month_mode:
+        start = datetime(year, month, 1, tzinfo=timezone.utc)
+        end = (datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+               if month == 12 else datetime(year, month + 1, 1, tzinfo=timezone.utc))
+        end = min(end, now)
+        dW = start
+        window_end = end
+        window_label_days = monthrange(year, month)[1]
+    else:
+        dW = now - timedelta(days=days)
+        window_end = now
+        window_label_days = days
 
     # Base filter: any row where model looks like Gemini (accept prefix
     # match so gemini-flash-latest / gemini-1.5-pro / etc. all count).
@@ -1110,27 +1233,38 @@ def admin_gemini_stats(
     ) or 0)
     tokens_window = int(db.scalar(
         select(func.coalesce(func.sum(TokenUsage.total_tokens), 0))
-        .where(gemini_filter, TokenUsage.created_at >= dW)
+        .where(gemini_filter, TokenUsage.created_at >= dW, TokenUsage.created_at < window_end)
     ) or 0)
 
-    # Per-day series in the window
+    # Per-day series in the window. In month mode we zero-fill missing days
+    # so the chart shows every day of the month even when some had no calls.
     per_day_rows = db.execute(
         select(
             func.date_trunc("day", TokenUsage.created_at).label("day"),
             func.coalesce(func.sum(TokenUsage.total_tokens), 0),
             func.count(TokenUsage.id),
         )
-        .where(gemini_filter, TokenUsage.created_at >= dW)
+        .where(gemini_filter, TokenUsage.created_at >= dW, TokenUsage.created_at < window_end)
         .group_by("day").order_by("day")
     ).all()
-    per_day = [
-        {
-            "day": (d.date().isoformat() if hasattr(d, "date") else str(d)),
-            "tokens": int(t),
-            "calls": int(c),
-        }
+    per_day_map = {
+        (d.date().isoformat() if hasattr(d, "date") else str(d)): (int(t), int(c))
         for d, t, c in per_day_rows
-    ]
+    }
+    if month_mode:
+        from datetime import date as _date, timedelta as _td
+        first = _date(year, month, 1)
+        per_day = []
+        for i in range(monthrange(year, month)[1]):
+            d = first + _td(days=i)
+            iso = d.isoformat()
+            t, c = per_day_map.get(iso, (0, 0))
+            per_day.append({"day": iso, "tokens": t, "calls": c})
+    else:
+        per_day = [
+            {"day": k, "tokens": v[0], "calls": v[1]}
+            for k, v in sorted(per_day_map.items())
+        ]
 
     # Per-model variant breakdown (in case a deploy uses more than one
     # Gemini SKU over time).
@@ -1171,7 +1305,7 @@ def admin_gemini_stats(
         for uid, un, fn, em, c, t, p, cc, avg in per_user_rows
     ]
 
-    # Per-action — which BharathTax feature is driving Gemini spend.
+    # Per-action — which BharatTax feature is driving Gemini spend.
     per_action_rows = db.execute(
         select(
             TokenUsage.action,
@@ -1236,7 +1370,12 @@ def admin_gemini_stats(
         "tokens_24h": tokens_24h,
         "tokens_7d": tokens_7d,
         "tokens_window": tokens_window,
-        "window_days": days,
+        "window_days": window_label_days,
+        "window_mode": "month" if month_mode else "days",
+        "window_start": dW.isoformat(),
+        "window_end": window_end.isoformat(),
+        "window_year": year,
+        "window_month": month,
         # Breakdowns
         "per_day": per_day,
         "per_model": per_model,

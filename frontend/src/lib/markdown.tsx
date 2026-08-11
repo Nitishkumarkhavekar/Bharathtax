@@ -140,12 +140,19 @@ function renderInline(text: string): ReactNode[] {
 }
 
 interface Block {
-  type: "p" | "h" | "ul" | "ol" | "quote";
+  type: "p" | "h" | "ul" | "ol" | "quote" | "table" | "code";
   // For p / h / quote: lines is a single line. For ul/ol: list of items.
+  // For code: raw code lines (kept verbatim, no inline markdown).
   lines: string[];
   level?: number; // for h
   firstNum?: number; // for ol: the number the model wrote on the first item
   start?: number; // for ol: resolved starting number (continuous across sub-lists)
+  // For table: parsed headers + rows + column alignments (from the separator row).
+  headers?: string[];
+  rows?: string[][];
+  aligns?: ("left" | "right" | "center")[];
+  // For code: optional language tag from the fence (```python etc.).
+  lang?: string;
 }
 
 // Rewrites the model's raw text into something the block parser handles well.
@@ -216,6 +223,24 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
   let i = 0;
   while (i < lines.length) {
     const ln = lines[i];
+    // Fenced code block: ```lang? ... ```. Collected verbatim so ASCII
+    // trees / tabular data / anything alignment-sensitive stays intact
+    // in a monospaced <pre>. Without this, the closing ``` was rendering
+    // as literal text and the inner alignment collapsed in the prose font.
+    const fenceOpen = /^\s*```(\S*)\s*$/.exec(ln);
+    if (fenceOpen) {
+      flushPara();
+      const lang = fenceOpen[1] || "";
+      const body: string[] = [];
+      i++;
+      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) {
+        body.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // consume the closing fence
+      blocks.push({ type: "code", lines: body, lang });
+      continue;
+    }
     if (!ln.trim()) {
       flushPara();
       i++;
@@ -251,6 +276,32 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
       blocks.push({ type: "ul", lines: items });
       continue;
     }
+    // GFM table: header row of `| a | b | c |` followed by a separator row
+    // `| --- | :---: | ---: |` (with optional colons for alignment). Only fires
+    // when BOTH rows are present so we don't misinterpret single-pipe prose.
+    if (
+      /^\s*\|.+\|\s*$/.test(ln) &&
+      i + 1 < lines.length &&
+      /^\s*\|?\s*:?-{3,}:?(\s*\|\s*:?-{3,}:?)+\s*\|?\s*$/.test(lines[i + 1])
+    ) {
+      flushPara();
+      const splitRow = (row: string) =>
+        row.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      const headers = splitRow(ln);
+      const sepCells = splitRow(lines[i + 1]);
+      const aligns: ("left" | "right" | "center")[] = sepCells.map((c) => {
+        const l = c.startsWith(":"), r = c.endsWith(":");
+        return l && r ? "center" : r ? "right" : "left";
+      });
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && /^\s*\|.+\|\s*$/.test(lines[i])) {
+        rows.push(splitRow(lines[i]));
+        i++;
+      }
+      blocks.push({ type: "table", lines: [], headers, rows, aligns });
+      continue;
+    }
     if (/^\s*\d+[.)]\s+/.test(ln)) {
       flushPara();
       const items: string[] = [];
@@ -268,6 +319,193 @@ function parseBlocks(src: string, skipNormalize = false): Block[] {
   }
   flushPara();
   return blocks;
+}
+
+// -------- Clipboard exports ----------------------------------------------
+// Produce (a) a rich-HTML representation of an assistant answer, and (b) a
+// clean plain-text representation. Both are written to the clipboard via
+// `navigator.clipboard.write` so a paste into Word / Notion / Gmail / Docs
+// picks up styled text (headings, bullets, tables), while a paste into a
+// plain-text field (terminal, Slack in code mode, notes) gets a stripped
+// version with no raw `##` or `**` characters.
+
+const _esc = (s: string): string =>
+  s.replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;");
+
+// Inline markdown → HTML (bold, italic, inline code, [n] citation chips,
+// autolinks). Deliberately narrow: matches what renderInline() supports so
+// the pasted output looks like the in-app rendering.
+function _inlineHtml(text: string): string {
+  let s = _esc(_stripHl(text));
+  // Order: bold BEFORE italic so `**foo**` doesn't get half-eaten.
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+  s = s.replace(/_([^_\n]+)_/g, "<em>$1</em>");
+  s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  // Bare URLs.
+  s = s.replace(
+    /(https?:\/\/[^\s)<]+)/g,
+    '<a href="$1">$1</a>',
+  );
+  // Inline citations: [1] etc. — kept as-is, no chip styling (target editors
+  // wouldn't preserve our Tailwind chip anyway).
+  return s;
+}
+
+function _blockHtml(b: Block): string {
+  if (b.type === "h") {
+    const lvl = Math.min(Math.max(b.level || 2, 1), 4);
+    return `<h${lvl} style="margin:16px 0 8px;font-weight:600;line-height:1.3">${_inlineHtml(b.lines[0])}</h${lvl}>`;
+  }
+  if (b.type === "ul") {
+    return `<ul style="margin:8px 0;padding-left:24px">${b.lines.map((li) => `<li style="margin:4px 0">${_inlineHtml(li)}</li>`).join("")}</ul>`;
+  }
+  if (b.type === "ol") {
+    const start = b.start ?? 1;
+    return `<ol start="${start}" style="margin:8px 0;padding-left:24px">${b.lines.map((li) => `<li style="margin:4px 0">${_inlineHtml(li)}</li>`).join("")}</ol>`;
+  }
+  if (b.type === "quote") {
+    return `<blockquote style="margin:10px 0;padding:8px 12px;border-left:3px solid #cbd5e1;color:#475569;background:#f8fafc">${_inlineHtml(b.lines[0])}</blockquote>`;
+  }
+  if (b.type === "code") {
+    return `<pre style="margin:10px 0;padding:12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55;color:#1e293b;white-space:pre;overflow-x:auto"><code>${_esc(b.lines.join("\n"))}</code></pre>`;
+  }
+  if (b.type === "table") {
+    const aligns = b.aligns || [];
+    const cellStyle = (i: number) =>
+      `padding:6px 10px;border:1px solid #e2e8f0;text-align:${aligns[i] || "left"};vertical-align:top`;
+    const inlineCell = (c: string) =>
+      c.split(/<br\s*\/?>/i).map(_inlineHtml).join("<br>");
+    const thead = (b.headers || [])
+      .map((h, k) =>
+        `<th style="${cellStyle(k)};background:#f1f5f9;font-weight:600;color:#1e293b">${inlineCell(h)}</th>`,
+      )
+      .join("");
+    const tbody = (b.rows || [])
+      .map(
+        (row, r) =>
+          `<tr style="background:${r % 2 ? "#ffffff" : "#f8fafc"}">${row.map((c, k) => `<td style="${cellStyle(k)}">${inlineCell(c)}</td>`).join("")}</tr>`,
+      )
+      .join("");
+    return `<table style="border-collapse:collapse;margin:12px 0;font-size:13px;width:100%"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
+  }
+  // paragraph
+  const html = b.lines.map(_inlineHtml).join("<br>");
+  return `<p style="margin:8px 0;line-height:1.55">${html}</p>`;
+}
+
+/** Convert a raw assistant markdown answer into inline-styled HTML that
+ *  pastes cleanly into Word / Google Docs / Notion / Gmail. */
+export function markdownToHtml(src: string): string {
+  const blocks = parseBlocks(src);
+  // Continuous-numbering pass, same rules as the on-screen renderer.
+  let olRun = 0;
+  for (const b of blocks) {
+    if (b.type === "ol") {
+      b.start = olRun === 0 && b.firstNum && b.firstNum > 0 ? b.firstNum : olRun + 1;
+      olRun = b.start + b.lines.length - 1;
+    } else if (b.type !== "ul") {
+      olRun = 0;
+    }
+  }
+  const body = blocks.map(_blockHtml).join("\n");
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55">${body}</div>`;
+}
+
+/** Strip markdown syntax to a clean plain-text version — headings become
+ *  bare titles, bullets keep `- ` and `1. ` prefixes, tables become aligned
+ *  columns, code fences become verbatim monospace blocks. */
+export function markdownToPlain(src: string): string {
+  const blocks = parseBlocks(src);
+  let olRun = 0;
+  for (const b of blocks) {
+    if (b.type === "ol") {
+      b.start = olRun === 0 && b.firstNum && b.firstNum > 0 ? b.firstNum : olRun + 1;
+      olRun = b.start + b.lines.length - 1;
+    } else if (b.type !== "ul") {
+      olRun = 0;
+    }
+  }
+  const stripInline = (s: string): string =>
+    _stripHl(s)
+      .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1$2")
+      .replace(/_([^_\n]+)_/g, "$1")
+      .replace(/`([^`\n]+)`/g, "$1")
+      .replace(/\{\{cite:([^|}]+)(\|[^}]+)?\}\}/g, "[$1]");
+  const out: string[] = [];
+  for (const b of blocks) {
+    if (b.type === "h") {
+      out.push(stripInline(b.lines[0]).toUpperCase());
+      out.push("");
+    } else if (b.type === "ul") {
+      for (const li of b.lines) out.push(`- ${stripInline(li)}`);
+      out.push("");
+    } else if (b.type === "ol") {
+      let n = b.start ?? 1;
+      for (const li of b.lines) {
+        out.push(`${n}. ${stripInline(li)}`);
+        n++;
+      }
+      out.push("");
+    } else if (b.type === "quote") {
+      out.push(`> ${stripInline(b.lines[0])}`);
+      out.push("");
+    } else if (b.type === "code") {
+      out.push(...b.lines);
+      out.push("");
+    } else if (b.type === "table") {
+      // Compute column widths so the ASCII table reads cleanly.
+      const cellText = (c: string) =>
+        stripInline(c.replace(/<br\s*\/?>/gi, " ")).trim();
+      const rows = [
+        (b.headers || []).map(cellText),
+        ...(b.rows || []).map((row) => row.map(cellText)),
+      ];
+      const cols = rows[0].length;
+      const widths: number[] = [];
+      for (let c = 0; c < cols; c++) {
+        let w = 0;
+        for (const row of rows) w = Math.max(w, (row[c] || "").length);
+        widths.push(w);
+      }
+      const line = (row: string[]) =>
+        row.map((c, i) => (c || "").padEnd(widths[i])).join("  ");
+      out.push(line(rows[0]));
+      out.push(widths.map((w) => "-".repeat(w)).join("  "));
+      for (let r = 1; r < rows.length; r++) out.push(line(rows[r]));
+      out.push("");
+    } else {
+      out.push(b.lines.map(stripInline).join("\n"));
+      out.push("");
+    }
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Copy an answer to the clipboard in BOTH styled HTML and clean plain text.
+ *  Rich editors (Word/Docs/Notion/Gmail) paste the HTML with formatting
+ *  intact; plain-text targets get the stripped version. Falls back to a
+ *  plain-text writeText on browsers without ClipboardItem. */
+export async function copyMarkdownRich(src: string): Promise<void> {
+  const html = markdownToHtml(src);
+  const plain = markdownToPlain(src);
+  try {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      const item = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([item]);
+      return;
+    }
+  } catch {
+    // fall through to plain-text writeText
+  }
+  await navigator.clipboard.writeText(plain);
 }
 
 export function Markdown({ text, preNormalized }: { text: string; preNormalized?: boolean }) {
@@ -313,6 +551,26 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
             </ul>
           );
         }
+        if (b.type === "code") {
+          // Monospaced block for anything alignment-sensitive: ASCII trees,
+          // tabular text, pseudo-code, JSON. Scrolls horizontally on narrow
+          // screens instead of wrapping (which would destroy alignment).
+          return (
+            <div
+              key={idx}
+              className="my-3 rounded-lg ring-1 ring-slate-200 bg-slate-50/70 overflow-x-auto"
+            >
+              {b.lang ? (
+                <div className="px-3 py-1 text-[10.5px] uppercase tracking-wide text-slate-500 border-b border-slate-200 bg-white/60">
+                  {b.lang}
+                </div>
+              ) : null}
+              <pre className="px-3 py-2 text-[12.5px] leading-[1.55] font-mono text-slate-800 whitespace-pre">
+                <code>{b.lines.join("\n")}</code>
+              </pre>
+            </div>
+          );
+        }
         if (b.type === "ol") {
           return (
             <ol key={idx} start={b.start ?? 1}>
@@ -324,6 +582,62 @@ export function Markdown({ text, preNormalized }: { text: string; preNormalized?
         }
         if (b.type === "quote") {
           return <blockquote key={idx}>{renderInline(b.lines[0])}</blockquote>;
+        }
+        if (b.type === "table") {
+          const aligns = b.aligns || [];
+          const alignCls = (i: number) =>
+            aligns[i] === "right"
+              ? "text-right"
+              : aligns[i] === "center"
+                ? "text-center"
+                : "text-left";
+          // The composer often emits literal `<br>` / `<br/>` / `<br />`
+          // inside table cells to force multi-line stacking. Convert them
+          // to real <br/> elements so the tag doesn't render as text.
+          const renderCell = (cell: string): ReactNode[] => {
+            const pieces = cell.split(/<br\s*\/?>/i);
+            const out: ReactNode[] = [];
+            pieces.forEach((piece, i) => {
+              if (i > 0) out.push(<br key={`cbr${i}`} />);
+              out.push(...renderInline(piece));
+            });
+            return out;
+          };
+          return (
+            <div key={idx} className="my-3 overflow-x-auto rounded-lg ring-1 ring-slate-200">
+              <table className="w-full text-[13.5px] border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-700">
+                    {(b.headers || []).map((h, k) => (
+                      <th
+                        key={k}
+                        className={`px-3 py-2 font-semibold border-b border-slate-200 ${alignCls(k)}`}
+                      >
+                        {renderCell(h)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(b.rows || []).map((row, r) => (
+                    <tr
+                      key={r}
+                      className="odd:bg-white even:bg-slate-50/40 hover:bg-primary/5 transition-colors"
+                    >
+                      {row.map((cell, k) => (
+                        <td
+                          key={k}
+                          className={`px-3 py-2 border-t border-slate-100 align-top ${alignCls(k)}`}
+                        >
+                          {renderCell(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
         }
         return (
           <p key={idx}>

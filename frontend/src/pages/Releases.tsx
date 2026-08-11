@@ -279,7 +279,7 @@ function TopBar() {
           <div className="size-9 rounded-lg bg-primary/10 ring-1 ring-primary/30 flex items-center justify-center">
             <Scale className="size-5 text-primary" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">BharathTax</span>
+          <span className="text-lg font-semibold tracking-tight">BharatTax</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1 ml-6 text-sm">
           <Link to="/" className="px-3 py-2 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900">Home</Link>
@@ -303,7 +303,7 @@ function TopBar() {
 function Footer() {
   return (
     <footer className="border-t border-slate-200 mt-16 py-8 text-center text-[12px] text-slate-500">
-      © {new Date().getFullYear()} BharathTax · CIT(A) / NFAC appeal drafting
+      © {new Date().getFullYear()} BharatTax · CIT(A) / NFAC appeal drafting
     </footer>
   );
 }

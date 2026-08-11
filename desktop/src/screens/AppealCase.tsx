@@ -339,20 +339,30 @@ export default function AppealCaseScreen({ slug, onBack }: Props) {
         )}
 
         {/* Draft — Preview / Modify with AI / Manual edit */}
-        {run?.status === "done" && (
+        {run?.status === "done" && (() => {
+          const draftOut = outputs.find((o) => o.kind === "draft");
+          const draftVer = draftOut?.version ?? 0;
+          // Include draftVer AND a hash of the content so the Preview pane
+          // re-fetches the PDF every time the draft is rewritten in place.
+          // (outputs.length alone doesn't change on an in-place edit, so
+          // the earlier key was stale and the preview stayed on the old
+          // page rendering.)
+          const draftHash = (draftOut?.content || "").length;
+          return (
           <DraftPane
             slug={slug}
             caseTitle={c.title}
-            draftText={(outputs.find((o) => o.kind === "draft")?.content) || ""}
-            draftVersion={outputs.find((o) => o.kind === "draft")?.version ?? null}
-            refreshKey={outputs.length + findings.length}
+            draftText={draftOut?.content || ""}
+            draftVersion={draftOut?.version ?? null}
+            refreshKey={outputs.length + findings.length + draftVer * 100000 + draftHash}
             onDownload={onDownload}
             downloadBusy={busy === "download"}
             onFullInstruct={onInstruct}
             fullBusy={busy === "instruct"}
             onSynced={() => refresh(true)}
           />
-        )}
+          );
+        })()}
 
         <div className="text-[12.5px] text-slate-400 text-center pb-2">
           Case slug: <span className="font-mono">{c.slug}</span>

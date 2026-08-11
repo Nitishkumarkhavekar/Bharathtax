@@ -82,7 +82,7 @@ function Rail({
           </div>
           {!collapsed && (
             <div className="leading-tight">
-              <div className="text-[15px] font-semibold tracking-tight text-white">BharathTax</div>
+              <div className="text-[15px] font-semibold tracking-tight text-white">BharatTax</div>
               <div className="text-[11px] text-sidebar-foreground/80 -mt-0.5">Admin console</div>
             </div>
           )}

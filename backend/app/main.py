@@ -1,4 +1,4 @@
-"""BharathTax API entrypoint."""
+"""BharatTax API entrypoint."""
 from __future__ import annotations
 
 from fastapi import Depends, FastAPI

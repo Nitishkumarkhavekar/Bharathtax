@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from celery import Celery
@@ -42,7 +43,102 @@ celery_app.conf.beat_schedule = {
         "task": "app.ingestion.tasks.model_health_alert",
         "schedule": 600.0,  # every 10 minutes
     },
+    # Daily fresh-precedent pull: new ITAT orders from Indian Kanoon into the
+    # case-law corpus so answers cite current tribunal decisions. Runs at 03:30
+    # UTC (after the 02:00 statutory-corpus update), idempotent + cost-capped.
+    "daily-case-law-update": {
+        "task": "app.ingestion.tasks.daily_case_law_update",
+        "schedule": _crontab_from_str(os.getenv("CASE_LAW_UPDATE_CRON", "30 3 * * *")),
+    },
 }
+
+
+# Every ITAT order is income-tax, so one broad catch-all query + doctypes:itat +
+# sortby:mostrecent (embedded in acquire._search) surfaces the recent tribunal
+# orders; the publishdate window then keeps only fresh ones. Extra terms would
+# just re-fetch the same orders (dedup collapses them) and cost billable pages.
+_CASE_LAW_QUERIES = ["income tax"]
+
+# Relevance guard for unsupervised ingestion. Indian Kanoon's doctypes=itat
+# still surfaces statutory-provision pages ("Section 11 in The Land Acquisition
+# Act, 1894") and non-income-tax matter; those must not pollute the corpus.
+import re as _re
+# "Section 158BB in The Income Tax Act, 1961", "Article 14 in ...", etc. — these
+# are Indian Kanoon statutory-provision landing pages, NOT judgments.
+_PROVISION_RE = _re.compile(r"^\s*(section|article|rule|order|regulation)\s+[\w.\-]+\s+in\b", _re.I)
+# Real judgments are party-vs-party.
+_PARTY_RE = _re.compile(r"\b(vs?\.?|versus)\b", _re.I)
+_ITAX_SIGNALS = (
+    "income tax", "income-tax", "i.t.a", "ita no", "i.t.a. no", "itat",
+    "appellate tribunal", "acit", "dcit", "assessing officer",
+    "commissioner of income", "income tax officer", "assessment year",
+)
+
+
+# The income-tax party signal must be in the TITLE — income-tax tribunal cases
+# are "Commissioner of Income Tax / ACIT / DCIT / ITO vs X". Requiring it in the
+# title (not the body) rejects off-topic party-vs-party cases that merely mention
+# tax in passing (e.g. a wills or constitutional judgment).
+_TITLE_ITAX_RE = _re.compile(
+    r"\b(income[\s-]?tax|itat|a\.?c\.?i\.?t|d\.?c\.?i\.?t|\bito\b|"
+    r"commissioner of income|appellate tribunal|\bcit\b)\b", _re.I)
+
+
+def _accept_itax_judgment(title: str, text: str) -> bool:
+    """True only for an actual income-tax tribunal judgment: a party-vs-party
+    title (not a statutory-provision page) whose parties are an income-tax
+    authority. Deliberately strict — a clean, smaller pull beats a polluted
+    corpus."""
+    t = (title or "").strip()
+    if _PROVISION_RE.match(t):           # statutory-provision landing page
+        return False
+    if not _PARTY_RE.search(t):          # not "X vs Y" → not a judgment
+        return False
+    return bool(_TITLE_ITAX_RE.search(t))  # income-tax party in the title
+
+
+@celery_app.task
+def daily_case_law_update() -> dict:
+    """Pull the last few days of fresh ITAT orders from Indian Kanoon into the
+    case-law corpus, so answers cite current precedent instead of only the
+    static seed set. Idempotent (content-hash dedup skips already-ingested
+    orders) and cost-capped per run. Token: IK_API_TOKEN or INDIANKANOON_API_TOKEN.
+
+    Tunables (env): CASE_LAW_LOOKBACK_DAYS (default 8, overlaps the daily run so
+    nothing slips through a gap), CASE_LAW_DAILY_CAP_PER_QUERY (default 15)."""
+    from datetime import date, timedelta
+    from app.ingestion.acquire import indiankanoon
+
+    # OFF by default: the fetch/dedup/relevance mechanism is proven, but Indian
+    # Kanoon's date window still surfaces old landmark cases, so recency must be
+    # validated before this runs unsupervised. Enable with CASE_LAW_DAILY_ENABLED=1.
+    if os.getenv("CASE_LAW_DAILY_ENABLED", "0").lower() not in ("1", "true", "yes", "on"):
+        log.info("daily_case_law_update disabled (set CASE_LAW_DAILY_ENABLED=1 to enable)")
+        return {"skipped": "disabled"}
+
+    tok = (os.getenv("IK_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
+    if not tok:
+        log.warning("daily_case_law_update: no Indian Kanoon token — skipping")
+        return {"skipped": "no_token"}
+    os.environ["IK_API_TOKEN"] = tok  # the acquire module reads this exact name
+
+    lookback = int(os.getenv("CASE_LAW_LOOKBACK_DAYS", "8"))
+    cap = int(os.getenv("CASE_LAW_DAILY_CAP_PER_QUERY", "40"))
+    today = date.today()
+    fromdate = (today - timedelta(days=lookback)).strftime("%d-%m-%Y")
+    todate = today.strftime("%d-%m-%Y")
+
+    total = {"ingested": 0, "docs_fetched": 0, "search_pages": 0}
+    for q in _CASE_LAW_QUERIES:
+        try:
+            r = indiankanoon.run(q, cap, fromdate, todate, accept=_accept_itax_judgment)
+            for k in total:
+                total[k] += int(r.get(k, 0) or 0)
+        except Exception as e:  # noqa: BLE001  (one bad query must not abort the sweep)
+            log.warning("daily_case_law_update: query %r failed: %s", q, str(e)[:150])
+    total["approx_billable_pages"] = total["search_pages"] + total["docs_fetched"]
+    log.info("daily_case_law_update DONE %s (window %s..%s)", total, fromdate, todate)
+    return total
 
 
 @celery_app.task
@@ -60,23 +156,47 @@ def model_health_alert() -> dict:
 
     log = logging.getLogger("model_alert")
     key = (os.getenv("GEMINI_API_KEY") or "").strip()
-    model = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
 
+    # Health probe: hit `models.list` (auth-checked, zero token spend).
+    # The old probe POSTed /generateContent with a fixed generationConfig
+    # (maxOutputTokens=1 + thinkingConfig.thinkingBudget=0) which now
+    # returns HTTP 400 INVALID_ARGUMENT on thinking models like
+    # gemini-flash-latest / gemini-2.5-flash, producing spurious alerts.
+    from app.services import gemini_transport as _tx
     status, detail = "ok", "Responding normally"
-    if not key:
+    if _tx.is_vertex():
+        # Vertex: bearer-token auth + per-project model resource endpoint.
+        if not _tx.available():
+            status, detail = "down", "GEMINI_VERTEX_PROJECT not configured"
+        else:
+            try:
+                pbody = {"contents": [{"role": "user", "parts": [{"text": "ping"}]}],
+                         "generationConfig": {"maxOutputTokens": 5, "temperature": 0,
+                                              "thinkingConfig": {"thinkingBudget": 0}}}
+                with httpx.Client(timeout=10.0) as c:
+                    r = c.post(_tx.url("gemini-2.5-flash", "generateContent"),
+                               headers=_tx.headers(), json=pbody)
+                if r.status_code == 200:
+                    status, detail = "ok", "Responding via Vertex AI"
+                elif r.status_code in (401, 403):
+                    status, detail = "down", "Vertex auth failed (SA role?)"
+                else:
+                    status, detail = "error", f"Vertex HTTP {r.status_code}"
+            except Exception as e:  # noqa: BLE001
+                status, detail = "error", f"Vertex unreachable: {type(e).__name__}"
+    elif not key:
         status, detail = "down", "No Gemini API key configured"
     else:
         try:
             with httpx.Client(timeout=10.0) as c:
-                r = c.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                    headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-                    json={"contents": [{"parts": [{"text": "ping"}]}],
-                          "generationConfig": {"maxOutputTokens": 1,
-                                               "thinkingConfig": {"thinkingBudget": 0}}},
+                r = c.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    headers={"x-goog-api-key": key},
                 )
             if r.status_code == 200:
                 status, detail = "ok", "Responding normally"
+            elif r.status_code in (401, 403):
+                status, detail = "down", "Gemini API key rejected (auth failed)"
             elif r.status_code == 429:
                 msg = ""
                 try:

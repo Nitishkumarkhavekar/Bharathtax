@@ -3,6 +3,7 @@ environment (coding standard: nothing hardcoded). Import `settings` everywhere."
 from __future__ import annotations
 
 from functools import lru_cache
+from urllib.parse import quote_plus
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,7 +14,8 @@ class Settings(BaseSettings):
 
     # general
     app_env: str = "dev"
-    app_name: str = "BharathTax"
+    
+    app_name: str = "BharatTax"
     log_level: str = "INFO"
     # CORS: comma-separated allowed origins. "*" is fine for dev; set explicit
     # origins in prod (e.g. "https://app.bharathtax.com,https://bharattax.wenvia.global").
@@ -87,13 +89,17 @@ class Settings(BaseSettings):
     manual_drop_dir: str = "/data/manual"
     crawl_cache_dir: str = "/data/cache"
     crawl_rate_limit_seconds: int = 3
-    crawl_user_agent: str = "BharathTax-Ingest/0.1"
+    crawl_user_agent: str = "BharatTax-Ingest/0.1"
     incremental_update_cron: str = "0 2 * * *"
 
     @property
     def database_url(self) -> str:
+        # URL-encode user + password so passwords containing '@', ':', '/', etc.
+        # don't break the DSN (e.g. "Tapash@123" would otherwise be parsed as host).
+        user = quote_plus(self.postgres_user)
+        pwd = quote_plus(self.postgres_password)
         return (
-            f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql+psycopg://{user}:{pwd}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 

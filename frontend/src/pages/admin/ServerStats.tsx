@@ -47,7 +47,7 @@ export default function ServerStatsPage() {
     <div className="space-y-6 admin-rise">
       <Header
         title="Model Server"
-        subtitle="Live system metrics for the host running the BharathTax web app. Auto-refreshes every 8s."
+        subtitle="Live system metrics for the host running the BharatTax web app. Auto-refreshes every 8s."
         actions={
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ring-1 ${

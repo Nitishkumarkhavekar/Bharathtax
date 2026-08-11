@@ -2,14 +2,14 @@
 
 Flow:
   1. Frontend asks `GET /appeal/cases/{cid}/oo/config` (auth-required). We mint
-     a short-lived BharathTax JWT bound to (cid, user, draft.id) and return the
+     a short-lived BharatTax JWT bound to (cid, user, draft.id) and return the
      OnlyOffice editor config — including a `documentUrl` that points at our
      own `/appeal/oo/doc/{token}` and a `callbackUrl` that points at
      `/appeal/oo/save/{token}`. The config blob is *itself* signed with the
      shared OO_JWT_SECRET so DocumentServer trusts it.
   2. Browser hands the config to `DocsAPI.DocEditor` (loaded from /oo/web-apps/
      apps/api/documents/api.js).
-  3. DocumentServer fetches the docx from documentUrl. We verify the BharathTax
+  3. DocumentServer fetches the docx from documentUrl. We verify the BharatTax
      token, stream the latest blob (or freshly-rendered docx if none yet).
   4. When the editor decides to save (user-close, force-save), DocumentServer
      POSTs to callbackUrl with `{status, url, ...}`. We download the new docx
@@ -69,7 +69,7 @@ _SESSION_DOC_KEY: dict[int, str] = {}
 
 # -------------------------------------------------------- helpers
 def _mint_doc_token(*, cid: int, user_id: int, output_id: int | None) -> str:
-    """Short-lived BharathTax JWT used to authorise DocumentServer's fetch /
+    """Short-lived BharatTax JWT used to authorise DocumentServer's fetch /
     callback requests for one editing session."""
     now = datetime.now(timezone.utc)
     return jwt.encode(
@@ -163,7 +163,7 @@ class OOForceSaveOut(BaseModel):
 def oo_config(cid: str, p: Principal = Depends(get_principal),
               db: Session = Depends(get_db)) -> OOConfigOut:
     """Hand the frontend the editor's `<script src>` URL + the DocsAPI config
-    JSON, with both the BharathTax doc-token and the OnlyOffice JWT already
+    JSON, with both the BharatTax doc-token and the OnlyOffice JWT already
     embedded."""
     if not _OO_SECRET:
         raise HTTPException(503, "Editor not configured: OO_JWT_SECRET is missing")

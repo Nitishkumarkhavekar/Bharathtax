@@ -21,7 +21,7 @@ export default function AuthShell({
           <div className="size-8 rounded-lg bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
             <Scale className="size-4.5" />
           </div>
-          <span className="text-[17px] font-semibold tracking-tight">BharathTax</span>
+          <span className="text-[17px] font-semibold tracking-tight">BharatTax</span>
         </Link>
         <div className="ml-auto text-[13px] text-slate-600">
           <Link to="/" className="hover:text-slate-900">← Back to home</Link>

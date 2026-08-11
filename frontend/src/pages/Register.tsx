@@ -176,7 +176,7 @@ function RegistrationSuccess({ email, message }: { email: string; message: strin
           <div className="mt-0.5 font-mono text-[13.5px] text-slate-900 truncate">{email}</div>
         </div>
         <p className="text-[12.5px] text-slate-500 leading-relaxed">
-          Sign in to start using BharathTax — your license has been auto-assigned by the system.
+          Sign in to start using BharatTax — your license has been auto-assigned by the system.
         </p>
         <button
           onClick={() => nav("/login", { replace: true })}

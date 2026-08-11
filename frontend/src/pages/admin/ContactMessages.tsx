@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Mail, Loader2, Check, Trash2, Building2, ExternalLink, Inbox } from "lucide-react";
 import { api, ContactMessage } from "../../api";
+import { toast } from "@/lib/toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export default function ContactMessagesPage() {
   const [rows, setRows] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<"open" | "all">("open");
+  const { confirm, dialog } = useConfirm();
 
   function load() {
     setLoading(true);
@@ -19,12 +22,21 @@ export default function ContactMessagesPage() {
 
   async function setHandled(m: ContactMessage, handled: boolean) {
     setRows((r) => r.map((x) => (x.id === m.id ? { ...x, handled } : x)));
-    try { await api.adminContactSetHandled(m.id, handled); } catch { load(); }
+    try {
+      await api.adminContactSetHandled(m.id, handled);
+      toast.success(handled ? "Marked handled" : "Reopened");
+    } catch { toast.error("Couldn't update the enquiry"); load(); }
   }
   async function remove(m: ContactMessage) {
-    if (!confirm(`Delete the enquiry from ${m.name}?`)) return;
+    if (!(await confirm({
+      title: `Delete the enquiry from ${m.name}?`,
+      description: "This removes the message permanently.",
+      tone: "danger", confirmLabel: "Delete enquiry",
+    }))) return;
     setRows((r) => r.filter((x) => x.id !== m.id));
-    api.adminContactDelete(m.id).catch(() => load());
+    api.adminContactDelete(m.id)
+      .then(() => toast.success("Enquiry deleted"))
+      .catch(() => { toast.error("Couldn't delete the enquiry"); load(); });
   }
 
   const shown = useMemo(
@@ -35,6 +47,7 @@ export default function ContactMessagesPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+      {dialog}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
         <div>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">

@@ -13,10 +13,11 @@ export function MarketingHeader() {
           <div className="size-8 rounded-lg bg-primary text-white grid place-items-center ring-1 ring-primary/20">
             <Scale className="size-4" />
           </div>
-          <span className="text-[17px] font-semibold tracking-tight text-slate-900">BharathTax</span>
+          <span className="text-[17px] font-semibold tracking-tight text-slate-900">BharatTax</span>
         </Link>
         <nav className="hidden sm:flex items-center gap-1 text-[14px] text-slate-700 ml-2">
           <Link to="/#features" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Features</Link>
+          <Link to="/docs" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Documentation</Link>
           <Link to="/#pricing" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Pricing</Link>
           <Link to="/contact" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Contact</Link>
           <Link to="/releases" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Releases</Link>
@@ -39,7 +40,7 @@ export function MarketingFooter() {
         <div>
           <div className="flex items-center gap-2 text-slate-900">
             <div className="size-7 rounded-lg bg-primary grid place-items-center text-white"><Scale className="size-4" /></div>
-            <span className="font-semibold">BharathTax</span>
+            <span className="font-semibold">BharatTax</span>
           </div>
           <p className="mt-3 text-[12.5px] leading-relaxed">
             Citation-grounded research and drafting for the Income-tax Department,
@@ -62,7 +63,7 @@ export function MarketingFooter() {
         </FooterCol>
       </div>
       <div className="border-t border-slate-200 py-4 text-center text-[12px] text-slate-500 flex items-center justify-center gap-3 flex-wrap px-4">
-        <span>&copy; {new Date().getFullYear()} BharathTax</span>
+        <span>&copy; {new Date().getFullYear()} BharatTax</span>
         <span className="text-slate-300">·</span>
         <span className="inline-flex items-center gap-1"><Mail className="size-3" /> hello@bharattax.wenvia.global</span>
       </div>

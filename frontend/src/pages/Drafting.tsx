@@ -5,7 +5,9 @@ import {
   Gavel, Scale as ScaleIcon, ChevronRight, ShieldCheck, Clock,
 } from "lucide-react";
 import { api, DraftDoc, DraftListItem, DraftTemplate } from "../api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { useSidebarPanel } from "@/components/SidebarSlot";
 
@@ -434,6 +436,7 @@ function DraftEditor({
   const [content, setContent] = useState(draft.content);
   const [busy, setBusy] = useState<"save" | "regen" | null>(null);
   const [copied, setCopied] = useState(false);
+  const { confirm, dialog } = useConfirm();
   useEffect(() => setContent(draft.content), [draft.id, draft.content]);
   const dirty = content !== draft.content;
   const style = tmpl ? catStyle(tmpl.category) : { chip: "bg-slate-100 text-slate-500 ring-slate-200" };
@@ -442,15 +445,17 @@ function DraftEditor({
     setBusy("save");
     try {
       const d = await api.updateDraft(draft.id, { content });
-      onChange(d); onSaved();
-    } finally { setBusy(null); }
+      onChange(d); onSaved(); toast.success("Draft saved");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't save the draft"); }
+    finally { setBusy(null); }
   }
   async function regen() {
     setBusy("regen");
     try {
       const d = await api.regenerateDraft(draft.id);
-      onChange(d);
-    } finally { setBusy(null); }
+      onChange(d); toast.success("Draft regenerated");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't regenerate the draft"); }
+    finally { setBusy(null); }
   }
   function copy() {
     navigator.clipboard?.writeText(content).then(() => {
@@ -458,20 +463,29 @@ function DraftEditor({
     });
   }
   async function downloadWord() {
-    if (dirty) await save();
-    const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
-    await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+    try {
+      if (dirty) await save();
+      const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
+      await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+    } catch (e: any) { toast.error(e?.message ?? "Word export failed"); }
   }
   async function del() {
-    if (!confirm("Delete this draft?")) return;
-    await api.deleteDraft(draft.id);
-    onDeleted();
+    if (!(await confirm({
+      title: "Delete this draft?",
+      description: "This removes the draft permanently. This cannot be undone.",
+      tone: "danger", confirmLabel: "Delete draft",
+    }))) return;
+    try {
+      await api.deleteDraft(draft.id);
+      onDeleted(); toast.success("Draft deleted");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't delete the draft"); }
   }
 
   const wordCount = useMemo(() => content.trim().split(/\s+/).filter(Boolean).length, [content]);
 
   return (
     <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden">
+      {dialog}
       {/* Toolbar header */}
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
         <div className={cn("shrink-0 size-10 rounded-xl ring-1 grid place-items-center", style.chip)}>

@@ -1,6 +1,6 @@
 """Appeal-order drafting: a case, its uploaded documents, pipeline runs and the
 issue-wise outputs. Grounding/citations reuse the corpus retrieval; these tables
-hold the case-specific workflow state (BharathTax's "Draft Bot")."""
+hold the case-specific workflow state (BharatTax's "Draft Bot")."""
 from __future__ import annotations
 
 from datetime import datetime

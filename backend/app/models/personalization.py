@@ -29,9 +29,9 @@ class UserSettings(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    # "How should BharathTax answer you?" — free text, injected into the prompt.
+    # "How should BharatTax answer you?" — free text, injected into the prompt.
     custom_instructions: Mapped[str] = mapped_column(Text, default="")
-    # "What should BharathTax know about your work?" — free text.
+    # "What should BharatTax know about your work?" — free text.
     about_me: Mapped[str] = mapped_column(Text, default="")
     # Response-style toggles, e.g. {"concise": true, "tables": true,
     # "citation_density": "high", "standpoint": "officer"}.

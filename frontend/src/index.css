@@ -33,8 +33,11 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground font-sans antialiased; }
   /* Prevent tiny overflow bugs from producing a body horizontal scrollbar
-     on mobile (any absolute-positioned blob that pokes past 100vw). */
-  html, body { overflow-x: hidden; }
+     on mobile (any absolute-positioned blob that pokes past 100vw).
+     `overflow-x: clip` is preferred over `hidden` because `hidden` on the
+     body/html creates a scroll container and breaks `position: sticky` on
+     descendants (e.g. the docs sidebar TOC). */
+  html, body { overflow-x: clip; }
   /* Nicer tap targets on iOS Safari. */
   button, [role="button"] { -webkit-tap-highlight-color: transparent; }
 }
@@ -96,18 +99,16 @@
       0 20px 40px -18px rgba(46, 124, 200, 0.32);
     border-color: rgba(46, 124, 200, 0.28);
   }
-  /* Gradient primary button — smooth two-stop tint + soft glow. */
+  /* Primary button — flat, single-token accent (design system: no gradients). */
   .bt-btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg font-medium text-white
-           text-sm tracking-tight transition-all;
-    background-image: linear-gradient(135deg, #2b7cd8 0%, #1d63c2 50%, #1e40af 100%);
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.08),
-      0 10px 24px -12px rgba(37, 99, 235, 0.55);
+           text-sm tracking-tight transition-colors bg-primary
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   }
-  .bt-btn-primary:hover { filter: brightness(1.08); transform: translateY(-0.5px); }
-  .bt-btn-primary:active { transform: translateY(0.5px); filter: brightness(0.98); }
-  .bt-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; filter: none; transform: none; }
+  .bt-btn-primary:hover { @apply bg-primary/90; }
+  .bt-btn-primary:active { @apply bg-primary; }
+  .bt-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
   /* Ghost / secondary — pale accent with primary text. */
   .bt-btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg font-medium text-sm
@@ -130,16 +131,22 @@
 /* ---- Chat UI helpers ---- */
 @layer components {
   .chat-bg {
-    background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(46, 124, 200, 0.06), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(46, 124, 200, 0.05), transparent 60%),
-      hsl(var(--background));
+    /* Flat canvas — no gradient wash (design system: flat / one accent). */
+    background: hsl(var(--background));
   }
   .chat-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
   .chat-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(15, 23, 42, 0.15); border-radius: 999px;
   }
   .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.28); }
+  /* Compact horizontal scrollbar for the BarChart's scrollable mode.
+     Sits on the bottom of the plot area without blocking bar hover. */
+  .chart-scroll::-webkit-scrollbar { height: 8px; }
+  .chart-scroll::-webkit-scrollbar-track { background: transparent; }
+  .chart-scroll::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.18); border-radius: 999px;
+  }
+  .chart-scroll::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.35); }
 
   /* subtle floating composer */
   .composer-shell {
@@ -240,12 +247,9 @@
 .admin-rise > *:nth-child(5) { animation-delay: .20s; }
 .admin-rise > *:nth-child(6) { animation-delay: .25s; }
 
-/* Soft admin page background */
+/* Admin page background — flat (design system: no gradient wash). */
 .admin-bg {
-  background:
-    radial-gradient(900px 500px at 90% -10%, rgba(46, 124, 200, 0.07), transparent 60%),
-    radial-gradient(700px 400px at -10% 110%, rgba(46, 124, 200, 0.05), transparent 60%),
-    rgb(248 250 252);
+  background: rgb(248 250 252);
 }
 
 /* Subtle row hover for tables */
@@ -478,4 +482,18 @@
   height: 100% !important;
   border: 0;
   display: block;
+}
+
+/* Accessibility: honour the OS "reduce motion" setting — neutralise the
+   pulse/typing/rise/aurora/shimmer animations and long transitions for users
+   who are motion-sensitive. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

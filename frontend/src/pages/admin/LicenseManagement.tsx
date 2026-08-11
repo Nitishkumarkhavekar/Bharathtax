@@ -26,6 +26,7 @@ import {
 import { Empty, ErrorBanner, Header, Loading } from "./Dashboard";
 import { DonutChart, Section, StatCard } from "@/components/admin/charts";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export default function LicenseManagementPage() {
   const [rows, setRows] = useState<License[]>([]);
@@ -72,8 +73,14 @@ export default function LicenseManagementPage() {
     }
   }
 
+  const { confirm, dialog } = useConfirm();
+
   async function deactivate(l: License) {
-    if (!confirm(`Deactivate ${l.key}? It will stop working immediately.`)) return;
+    if (!(await confirm({
+      title: `Deactivate ${l.key}?`,
+      description: "It will stop working immediately.",
+      tone: "warning", confirmLabel: "Deactivate",
+    }))) return;
     try {
       await api.adminDeactivateLicense(l.id);
       await refresh();
@@ -84,7 +91,11 @@ export default function LicenseManagementPage() {
   }
 
   async function remove(l: License) {
-    if (!confirm(`Permanently delete ${l.key}? Audit history would be lost.`)) return;
+    if (!(await confirm({
+      title: `Permanently delete ${l.key}?`,
+      description: "The license and its audit history would be lost.",
+      tone: "danger", confirmLabel: "Delete license",
+    }))) return;
     try {
       await api.adminDeleteLicense(l.id);
       await refresh();
@@ -102,6 +113,7 @@ export default function LicenseManagementPage() {
 
   return (
     <div className="space-y-6 admin-rise">
+      {dialog}
       <Header
         title="License Key Management"
         subtitle="Issue auto-generated license keys with a validity window. Deactivate or delete revoked keys."
@@ -390,7 +402,7 @@ function LicenseForm({
             <Button
               className="flex-1"
               size="sm"
-              onClick={() => navigator.clipboard.writeText(newlyIssuedKey)}
+              onClick={() => { navigator.clipboard.writeText(newlyIssuedKey); toast.success("Key copied"); }}
             >
               <Copy className="size-4" /> Copy key to clipboard
             </Button>
@@ -455,7 +467,7 @@ function LicenseForm({
           </div>
           <button
             type="button"
-            onClick={() => navigator.clipboard.writeText(current.key)}
+            onClick={() => { navigator.clipboard.writeText(current.key); toast.success("Key copied"); }}
             className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500"
             title="Copy key"
           >

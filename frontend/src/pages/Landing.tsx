@@ -86,7 +86,7 @@ function Nav() {
           <div className="size-8 rounded-lg bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
             <Scale className="size-4.5" />
           </div>
-          <span className="text-[17px] sm:text-[18px] font-semibold tracking-tight text-slate-900">BharathTax</span>
+          <span className="text-[17px] sm:text-[18px] font-semibold tracking-tight text-slate-900">BharatTax</span>
         </Link>
         <nav className="hidden lg:flex items-center gap-1 text-[14px] text-slate-700">
           <NavDrop label="Products" items={[
@@ -104,6 +104,7 @@ function Nav() {
             ["Releases", "Latest desktop-app releases", "/releases"],
             ["Contact", "Talk to sales or support", "/contact"],
           ]} />
+          <NavLink to="/docs">Documentation</NavLink>
           <NavLink to="#pricing">Pricing</NavLink>
           <NavLink to="/releases">Releases</NavLink>
         </nav>
@@ -139,7 +140,7 @@ function Nav() {
               <div className="size-7 rounded-md bg-primary text-white grid place-items-center">
                 <Scale className="size-4" />
               </div>
-              <span className="text-[16px] font-semibold">BharathTax</span>
+              <span className="text-[16px] font-semibold">BharatTax</span>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="ml-auto size-9 rounded-md text-slate-600 hover:bg-slate-100 inline-flex items-center justify-center"
@@ -162,6 +163,12 @@ function Nav() {
                   {l}
                 </a>
               ))}
+              <Link
+                to="/docs" onClick={() => setMobileOpen(false)}
+                className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
+              >
+                Documentation
+              </Link>
               <Link
                 to="/releases" onClick={() => setMobileOpen(false)}
                 className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
@@ -316,7 +323,7 @@ function HeroPreview() {
               <div>
                 <div className="text-[15px] font-semibold">Build faster appeals with the drafting pipeline</div>
                 <div className="text-[12.5px] text-white/85 mt-1">
-                  Upload the appeal file, verify facts, then let BharathTax draft the fully-cited order in six modules.
+                  Upload the appeal file, verify facts, then let BharatTax draft the fully-cited order in six modules.
                 </div>
                 <div className="mt-3 flex gap-2">
                   <span className="inline-flex items-center h-8 px-3 rounded-md bg-white text-primary text-[12.5px] font-semibold">
@@ -423,7 +430,7 @@ function ProductPreview() {
       <SplitBlock
         eyebrow="Ask"
         title="Citation-grounded answers, in seconds."
-        desc="Every response points at the exact section, rule or circular it relies on. If the corpus can't support the claim, BharathTax refuses — no confident invention."
+        desc="Every response points at the exact section, rule or circular it relies on. If the corpus can't support the claim, BharatTax refuses — no confident invention."
         bullets={["Answers with inline citations", "Follow-up suggestions", "Domain filters (Income-tax, GST, Companies)"]}
         preview={<AskPreview />}
       />
@@ -431,7 +438,7 @@ function ProductPreview() {
         reverse
         eyebrow="Appeals"
         title="A drafting pipeline built for CIT(A)."
-        desc="Upload the appeal file. BharathTax generates facts, deficiencies, scope, compliance, findings and the order — each editable, each cited, exported to a signable .docx."
+        desc="Upload the appeal file. BharatTax generates facts, deficiencies, scope, compliance, findings and the order — each editable, each cited, exported to a signable .docx."
         bullets={["6-module pipeline", "Manual + AI edits round-trip through the same doc", "Export to Word or PDF"]}
         preview={<AppealPreview />}
       />
@@ -603,7 +610,7 @@ function Testimonial() {
       <div className="rounded-3xl bg-white ring-1 ring-slate-200 p-8 sm:p-12 shadow-md relative">
         <Quote className="absolute top-6 right-6 size-12 text-primary/10" />
         <p className="text-[19px] sm:text-[22px] leading-snug text-slate-800 font-medium">
-          "We used to spend three days drafting an order. With BharathTax the first
+          "We used to spend three days drafting an order. With BharatTax the first
           full draft is on my screen in under ten minutes — and every citation is
           already there. It changed how our bench works."
         </p>
@@ -674,7 +681,7 @@ function Pricing() {
 // ============================================================== FAQ
 function FAQ() {
   const items = [
-    ["Where do the citations come from?", "BharathTax indexes the Income-tax Act, Rules, and CBDT circulars. Every answer is anchored to the exact section or clause and the raw source is one click away."],
+    ["Where do the citations come from?", "BharatTax indexes the Income-tax Act, Rules, and CBDT circulars. Every answer is anchored to the exact section or clause and the raw source is one click away."],
     ["Is my case data private?", "Yes. Documents you upload are stored in your wing's tenant. Every access is audit-logged. No corpus you upload is used to train shared models."],
     ["What if the corpus can't answer?", "The system refuses rather than confabulate. If the statutes don't support the claim, you'll see a clear 'insufficient support' response — not a made-up citation."],
     ["Which formats can I export?", "Signable Microsoft Word (.docx) and fully-formatted PDF. Both are audit-logged automatically."],
@@ -740,7 +747,7 @@ function Footer() {
         <div>
           <div className="flex items-center gap-2 text-slate-900">
             <div className="size-7 rounded-lg bg-primary grid place-items-center text-white"><Scale className="size-4" /></div>
-            <span className="font-semibold">BharathTax</span>
+            <span className="font-semibold">BharatTax</span>
           </div>
           <p className="mt-3 text-[12.5px] leading-relaxed">Citation-grounded research and drafting for the Income-tax Department, CIT(A) benches and legal counsel.</p>
         </div>
@@ -760,7 +767,7 @@ function Footer() {
         </FooterCol>
       </div>
       <div className="border-t border-slate-200 py-4 text-center text-[12px] text-slate-500 flex items-center justify-center gap-3">
-        <span>&copy; {new Date().getFullYear()} BharathTax</span>
+        <span>&copy; {new Date().getFullYear()} BharatTax</span>
         <span className="text-slate-300">·</span>
         <span className="inline-flex items-center gap-1"><Mail className="size-3" /> hello@bharattax.wenvia.global</span>
       </div>

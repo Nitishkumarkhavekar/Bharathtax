@@ -14,6 +14,7 @@ import {
   Play,
 } from "lucide-react";
 import { api, MemoryItem, Personalization } from "../api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   useVoices,
@@ -69,8 +70,13 @@ export function PersonalizationTab() {
         setMems={setMems}
         enabled={p.memory_enabled}
         onToggleEnabled={async (v) => {
-          const up = await api.updatePersonalization({ memory_enabled: v });
-          setP(up);
+          try {
+            const up = await api.updatePersonalization({ memory_enabled: v });
+            setP(up);
+            toast.success(v ? "Memory turned on" : "Memory turned off");
+          } catch (e: any) {
+            toast.error(e?.message ?? "Couldn't update memory setting");
+          }
         }}
       />
       <VoiceCard />
@@ -96,7 +102,7 @@ function VoiceCard() {
     const synth = window.speechSynthesis;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(
-      "This is how BharathTax will read answers aloud.",
+      "This is how BharatTax will read answers aloud.",
     );
     if (prefs.voiceURI) {
       const v = voices.find((x) => x.voiceURI === prefs.voiceURI);
@@ -228,7 +234,7 @@ function ProfileForAiCard({ p, onSaved }: { p: Personalization; onSaved: (p: Per
     <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-          <Sparkles className="size-4 text-primary" /> How BharathTax answers you
+          <Sparkles className="size-4 text-primary" /> How BharatTax answers you
         </div>
         {msg && (
           <span className={"inline-flex items-center gap-1 text-[12px] font-medium " + (msg.kind === "ok" ? "text-emerald-700" : "text-rose-700")}>
@@ -262,7 +268,7 @@ function ProfileForAiCard({ p, onSaved }: { p: Personalization; onSaved: (p: Per
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           rows={3}
-          placeholder="How should BharathTax respond? e.g. 'Always give the governing section first, then the reasoning.'"
+          placeholder="How should BharatTax respond? e.g. 'Always give the governing section first, then the reasoning.'"
           className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -273,7 +279,7 @@ function ProfileForAiCard({ p, onSaved }: { p: Personalization; onSaved: (p: Per
           value={about}
           onChange={(e) => setAbout(e.target.value)}
           rows={2}
-          placeholder="Anything BharathTax should know — e.g. 'I mostly handle 69A/68 additions and 147 reassessments.'"
+          placeholder="Anything BharatTax should know — e.g. 'I mostly handle 69A/68 additions and 147 reassessments.'"
           className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -339,19 +345,25 @@ function MemoryCard({
       const m = await api.addMemory({ content });
       setMems([m, ...mems]);
       setDraft("");
-    } catch {
-      /* surfaced by the disabled state; keep the draft */
+      toast.success("Memory saved");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't save memory");
     } finally {
       setBusy(false);
     }
   }
   async function pin(m: MemoryItem) {
-    const up = await api.updateMemory(m.id, { pinned: !m.pinned });
-    setMems(mems.map((x) => (x.id === m.id ? up : x)).sort((a, b) => Number(b.pinned) - Number(a.pinned)));
+    try {
+      const up = await api.updateMemory(m.id, { pinned: !m.pinned });
+      setMems(mems.map((x) => (x.id === m.id ? up : x)).sort((a, b) => Number(b.pinned) - Number(a.pinned)));
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't update memory"); }
   }
   async function del(m: MemoryItem) {
-    await api.deleteMemory(m.id);
-    setMems(mems.filter((x) => x.id !== m.id));
+    try {
+      await api.deleteMemory(m.id);
+      setMems(mems.filter((x) => x.id !== m.id));
+      toast.success("Memory removed");
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't remove memory"); }
   }
 
   return (
@@ -366,7 +378,7 @@ function MemoryCard({
         </label>
       </div>
       <p className="text-[11.5px] text-slate-500 -mt-2">
-        Durable facts BharathTax remembers across all your chats. It stays on this system and is only used with the self-hosted model.
+        Durable facts BharatTax remembers across all your chats. It stays on this system and is only used with the self-hosted model.
       </p>
 
       <div className="flex gap-2">

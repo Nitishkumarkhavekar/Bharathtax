@@ -15,8 +15,14 @@ from app.models.activity import Query
 from app.models.documents import Document
 from app.schemas import AnswerResponse, CitationOut, DocAskRequest, DocumentOut
 from app.services import audit, documents, rag
+from app.services.quota import require_quota
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+# Mirror the appeal-upload guardrails: bound the accepted types and file size so
+# an authenticated user can't OOM a worker or drive unbounded extract/embed cost.
+_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".html", ".htm"}
+_MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
 
 
 def _owned(db: Session, doc_id: int, user_id: int) -> Document:
@@ -28,8 +34,23 @@ def _owned(db: Session, doc_id: int, user_id: int) -> Document:
 
 @router.post("", response_model=DocumentOut)
 async def upload(request: Request, file: UploadFile = File(...),
-                 p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> Document:
+                 p: Principal = Depends(get_principal),
+                 _quota: Principal = Depends(require_quota),
+                 db: Session = Depends(get_db)) -> Document:
+    import os as _os
+    filename = file.filename or "upload"
+    ext = _os.path.splitext(filename)[1].lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported file type '{ext or filename}'. "
+                   f"Accepted: {', '.join(sorted(_ALLOWED_EXTENSIONS))}")
     raw = await file.read()
+    if len(raw) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large ({len(raw) // (1024 * 1024)} MB). "
+                   f"Maximum is {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
     doc = documents.create_document(
         db, owner_user_id=p.user.id, wing_id=p.user.wing_id,
         filename=file.filename or "upload", content_type=file.content_type or "", raw=raw,

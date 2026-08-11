@@ -20,6 +20,7 @@ from app.core.enums import Domain, QueryScope
 from app.models.activity import Query
 from app.schemas import AnswerResponse, AskRequest, CitationOut
 from app.services import audit, capture, rag
+from app.services import gemini_transport as _tx
 
 router = APIRouter(prefix="/ask", tags=["ask"])
 log = logging.getLogger(__name__)
@@ -57,15 +58,32 @@ def ask(body: AskRequest, request: Request,
     domain = _domain(body.domain)
     try:
         _use_agent = False
+        _use_multi = False
         try:
             from app.services import agent as _agent
             _use_agent = _agent.enabled()
         except Exception:  # noqa: BLE001
             _use_agent = False
+        try:
+            from app.services import multi_agent as _multi
+            from app.services import query_router as _router
+            # Multi-agent (3–6 Gemini calls) only for genuinely complex asks;
+            # simple lookups fall through to the single grounded agent.
+            _use_multi = _multi.enabled() and _router.should_use_multi(body.question)
+        except Exception:  # noqa: BLE001
+            _use_multi = False
         if _use_agent:
             try:
-                _t, _am = _agent.answer_agentic(db, body.question, user_id=p.user.id,
-                                                chat_id=body.chat_id, domain=domain)
+                if _use_multi:
+                    _t, _am = _multi.answer_multi_agent(
+                        db, body.question, user_id=p.user.id,
+                        chat_id=body.chat_id, domain=domain,
+                    )
+                else:
+                    _t, _am = _agent.answer_agentic(
+                        db, body.question, user_id=p.user.id,
+                        chat_id=body.chat_id, domain=domain,
+                    )
                 result = type("AgentResult", (), {})()
                 # Cite what the agent's search_tax_law tool actually retrieved
                 # (act/section per passage). Fall back to parsing the answer's
@@ -232,18 +250,29 @@ def ask_stream(body: AskRequest, request: Request,
 
     def _gen():
         use_agent = False
+        use_multi = False
         try:
             from app.services import agent as _agent
             use_agent = _agent.enabled()
         except Exception:  # noqa: BLE001
             use_agent = False
+        try:
+            from app.services import multi_agent as _multi
+            from app.services import query_router as _router
+            use_multi = _multi.enabled() and _router.should_use_multi(question)
+        except Exception:  # noqa: BLE001
+            use_multi = False
 
         if use_agent:
             from app.services import agent as _agent
+            _stream_fn = (
+                _multi.answer_multi_agent_stream if use_multi
+                else _agent.answer_agentic_stream
+            )
             full, meta = "", {}
             try:
-                for ev in _agent.answer_agentic_stream(db, question, user_id=uid,
-                                                       chat_id=chat_id, domain=domain):
+                for ev in _stream_fn(db, question, user_id=uid,
+                                     chat_id=chat_id, domain=domain):
                     if "delta" in ev:
                         full += ev["delta"]
                         yield _sse({"delta": ev["delta"]})
@@ -324,6 +353,7 @@ def ask_starters(p: Principal = Depends(get_principal)) -> dict:
 @router.post("/followups")
 def ask_followups(body: _FollowupsRequest,
                   p: Principal = Depends(get_principal),
+                  _quota: Principal = Depends(require_quota),
                   db: Session = Depends(get_db)) -> dict:
     """Return 3 short, topic-relevant follow-up questions for the last Q&A, so the
     UI can offer them as one-tap suggestions. Best-effort + cheap (flash-lite);
@@ -334,7 +364,7 @@ def ask_followups(body: _FollowupsRequest,
     key = (_os.getenv("GEMINI_API_KEY") or "").strip()
     if not key or not (body.question or "").strip():
         return {"suggestions": []}
-    model = _os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-2.5-flash")
+    model = _os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-flash-latest")
     prompt = (
         f"A tax officer asked: {body.question}\n"
         f"The assistant answered: {(body.answer or '')[:1400]}\n\n"
@@ -344,18 +374,33 @@ def ask_followups(body: _FollowupsRequest,
     )
     try:
         r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            _tx.url(model, "generateContent"),
+            headers=_tx.headers(),
             json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"temperature": 0.4, "maxOutputTokens": 200,
+                  # thinkingBudget=128 is the sweet spot on gemini-flash-latest:
+                  # (a) 0 combined with responseMimeType=json → 400 INVALID_ARG;
+                  # (b) unset lets the model burn ~192 thinking tokens, blowing
+                  #     past maxOutputTokens=200 and returning a fragment.
+                  # 128 caps thinking so the JSON array actually fits.
+                  "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400,
                                        "responseMimeType": "application/json",
-                                       "thinkingConfig": {"thinkingBudget": 0}}},
+                                       "thinkingConfig": {"thinkingBudget": 128}}},
             timeout=12.0,
         )
         if r.status_code != 200:
+            log.warning("followups HTTP %s: %s", r.status_code, r.text[:200])
             return {"suggestions": []}
+        d = r.json()
         txt = "".join(pt.get("text", "") for pt in
-                      ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+                      ((d.get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+        um = d.get("usageMetadata") or {}
+        try:
+            tokens.record(db, user_id=p.user.id, action="followups", model=model,
+                          usage={"prompt_tokens": um.get("promptTokenCount"),
+                                 "completion_tokens": um.get("candidatesTokenCount"),
+                                 "total_tokens": um.get("totalTokenCount")})
+        except Exception:  # noqa: BLE001
+            pass
         arr = _json.loads(txt)
         sugg = [str(x).strip() for x in arr if str(x).strip()][:3]
         return {"suggestions": sugg}
@@ -370,7 +415,9 @@ class _TranslateRequest(BaseModel):
 
 @router.post("/translate")
 def ask_translate(body: _TranslateRequest,
-                  p: Principal = Depends(get_principal)) -> dict:
+                  p: Principal = Depends(get_principal),
+                  _quota: Principal = Depends(require_quota),
+                  db: Session = Depends(get_db)) -> dict:
     """On-demand translation of an answer into an Indian language. Section
     numbers, amounts, dates, case names and citations are preserved verbatim so
     the legal content stays exact. Fail-open: returns the original on any error."""
@@ -383,7 +430,7 @@ def ask_translate(body: _TranslateRequest,
     key = (_os.getenv("GEMINI_API_KEY") or "").strip()
     if not key:
         return {"translated": text}
-    model = _os.getenv("GEMINI_TRANSLATE_MODEL", "gemini-2.5-flash")
+    model = _os.getenv("GEMINI_TRANSLATE_MODEL", "gemini-flash-latest")
     sys_p = (
         f"You are a precise legal translator. Translate the user's Indian income-tax "
         f"answer into {lang}. Rules: keep the meaning exact and natural; DO NOT "
@@ -394,19 +441,29 @@ def ask_translate(body: _TranslateRequest,
     )
     try:
         r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            _tx.url(model, "generateContent"),
+            headers=_tx.headers(),
             json={"systemInstruction": {"parts": [{"text": sys_p}]},
                   "contents": [{"role": "user", "parts": [{"text": text}]}],
-                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2000,
-                                       "thinkingConfig": {"thinkingBudget": 0}}},
+                  # NB: drop thinkingConfig — gemini-flash-latest can 400 on
+                  # thinkingBudget=0 for translate prompts. Auto is fine here.
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2000}},
             timeout=40.0,
         )
         if r.status_code != 200:
             log.warning("translate HTTP %s", r.status_code)
             return {"translated": text}
+        d = r.json()
         out = "".join(pt.get("text", "") for pt in
-                      ((r.json().get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+                      ((d.get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []))
+        um = d.get("usageMetadata") or {}
+        try:
+            tokens.record(db, user_id=p.user.id, action="translate", model=model,
+                          usage={"prompt_tokens": um.get("promptTokenCount"),
+                                 "completion_tokens": um.get("candidatesTokenCount"),
+                                 "total_tokens": um.get("totalTokenCount")})
+        except Exception:  # noqa: BLE001
+            pass
         return {"translated": out.strip() or text}
     except Exception:  # noqa: BLE001
         log.exception("translate failed")

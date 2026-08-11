@@ -23,8 +23,9 @@ log = get_logger(__name__)
 
 _PREFIX = "bt:starters:trend:"
 _TTL = 26 * 3600  # a little over a day so the day's set survives until refreshed
+from app.services import gemini_transport as _tx
 _KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
-_MODEL = os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-2.5-flash")
+_MODEL = os.getenv("GEMINI_FOLLOWUP_MODEL", "gemini-flash-latest")
 
 # Curated, evergreen high-value questions across every module. Always available
 # so the mix is sensible even before/without the daily trending call.
@@ -77,7 +78,7 @@ def _today() -> str:
 
 def _trending() -> list[dict]:
     """Today's LLM-generated trending starters, cached for the day. [] on any failure."""
-    if not _KEY:
+    if not _tx.available():
         return []
     r = _redis()
     key = _PREFIX + _today()
@@ -100,12 +101,16 @@ def _trending() -> list[dict]:
             'Return ONLY a JSON array of objects: {"category": "...", "text": "..."}.'
         )
         resp = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{_MODEL}:generateContent",
-            headers={"x-goog-api-key": _KEY, "Content-Type": "application/json"},
+            _tx.url(_MODEL, "generateContent"),
+            headers=_tx.headers(),
             json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600,
+                  # thinkingBudget=128 caps deliberation so the JSON array
+                  # fits in maxOutputTokens. 0 rejects with 400 on
+                  # gemini-flash-latest + responseMimeType=json; unset lets
+                  # the model burn tokens on thinking and return a fragment.
+                  "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800,
                                        "responseMimeType": "application/json",
-                                       "thinkingConfig": {"thinkingBudget": 0}}},
+                                       "thinkingConfig": {"thinkingBudget": 128}}},
             timeout=12.0,
         )
         if resp.status_code != 200:

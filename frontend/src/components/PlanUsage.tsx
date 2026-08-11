@@ -61,9 +61,9 @@ export function PlanUsage() {
   const sub = billing?.current_subscription ?? null;
   const pct = sub ? Math.min(100, Math.round(sub.pct_used)) : 0;
   const barTone =
-    pct >= 90 ? "from-rose-500 to-rose-400" :
-    pct >= 70 ? "from-amber-500 to-orange-400" :
-                "from-emerald-500 to-teal-400";
+    pct >= 90 ? "bg-destructive" :
+    pct >= 70 ? "bg-amber-500" :
+                "bg-success";
   const daysLeft = sub?.expires_at
     ? Math.max(0, Math.round((new Date(sub.expires_at).getTime() - Date.now()) / 86400000))
     : null;
@@ -98,7 +98,7 @@ export function PlanUsage() {
               <div className="text-[12px] text-slate-500 text-right pb-1">of this month's AI allowance used</div>
             </div>
             <div className="mt-2 h-2.5 rounded-full bg-slate-100 overflow-hidden">
-              <div className={"h-full rounded-full bg-gradient-to-r " + barTone} style={{ width: pct + "%" }} />
+              <div className={"h-full rounded-full " + barTone} style={{ width: pct + "%" }} />
             </div>
             <div className="mt-2 text-[11.5px] text-slate-500">
               {fmt(sub.tokens_used)} of {fmt(sub.tokens_allowed)} AI units used · {fmt(sub.tokens_left)} left

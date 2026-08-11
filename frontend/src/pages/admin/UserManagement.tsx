@@ -29,6 +29,7 @@ import {
 } from "@/components/admin/Modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface Wing {
   id: number;
@@ -114,8 +115,15 @@ export default function UserManagement({ mode }: Props) {
     });
   }, [users, q, tab]);
 
+  const { confirm, dialog } = useConfirm();
+
   async function onDelete(u: AdminUser) {
-    if (!confirm(`Delete ${u.username}? This cannot be undone.`)) return;
+    if (!(await confirm({
+      title: `Delete ${u.username}?`,
+      description: "This permanently removes the user and cannot be undone.",
+      tone: "danger", confirmLabel: "Delete user",
+      confirmPhrase: "delete",
+    }))) return;
     try {
       await api.adminDeleteUser(u.id);
       await refresh();
@@ -136,7 +144,11 @@ export default function UserManagement({ mode }: Props) {
   }
 
   async function onReject(u: AdminUser) {
-    if (!confirm(`Reject ${u.email ?? u.username}? They won't be able to sign in.`)) return;
+    if (!(await confirm({
+      title: `Reject ${u.email ?? u.username}?`,
+      description: "They won't be able to sign in.",
+      tone: "warning", confirmLabel: "Reject",
+    }))) return;
     try {
       await api.adminRejectUser(u.id);
       await refresh();
@@ -150,6 +162,7 @@ export default function UserManagement({ mode }: Props) {
 
   return (
     <div className="space-y-6 admin-rise">
+      {dialog}
       <Header
         title={title}
         subtitle={subtitle}

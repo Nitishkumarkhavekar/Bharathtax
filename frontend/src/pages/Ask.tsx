@@ -15,6 +15,7 @@ import {
   Check,
 } from "lucide-react";
 import { ApiError, api } from "../api";
+import { toast } from "@/lib/toast";
 import { useAuth } from "../auth";
 import {
   ChatThread,
@@ -164,6 +165,10 @@ export default function Chat() {
     saveThreads(username, threads);
   }, [username, threads]);
 
+  // Abort any in-flight answer stream when leaving the page, so the SSE reader
+  // stops and we don't setState on an unmounted component.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   // Load chats from the SERVER (source of truth; syncs across devices). Falls
   // back to the local cache only if the server is unreachable.
   useEffect(() => {
@@ -253,37 +258,48 @@ export default function Chat() {
   function deleteThread(id: string) {
     const gone = threads.find((t) => t.id === id);
     if (gone?.serverId != null) {
-      api.chatDelete(gone.serverId).catch(() => {});
+      api.chatDelete(gone.serverId).catch(() =>
+        toast.error("Couldn't delete the chat on the server"));
     }
     setThreads((prev) => {
       const next = prev.filter((t) => t.id !== id);
       if (activeId === id) setActiveId(next[0]?.id ?? null);
       return next;
     });
+    toast.success("Chat deleted");
   }
 
   function renameThread(id: string, title: string) {
     setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
     const t = threads.find((x) => x.id === id);
-    if (t?.serverId != null) api.chatPatch(t.serverId, { title }).catch(() => {});
+    if (t?.serverId != null)
+      api.chatPatch(t.serverId, { title })
+        .then(() => toast.success("Chat renamed"))
+        .catch(() => toast.error("Couldn't rename the chat"));
   }
 
   function togglePin(id: string) {
     const t = threads.find((x) => x.id === id);
     const next = !t?.pinned;
     setThreads((prev) => prev.map((x) => (x.id === id ? { ...x, pinned: next } : x)));
-    if (t?.serverId != null) api.chatPatch(t.serverId, { pinned: next }).catch(() => {});
+    if (t?.serverId != null)
+      api.chatPatch(t.serverId, { pinned: next }).catch(() =>
+        toast.error("Couldn't update pin"));
+    toast.success(next ? "Pinned to top" : "Unpinned");
   }
 
   function archiveThread(id: string) {
     const t = threads.find((x) => x.id === id);
-    if (t?.serverId != null) api.chatPatch(t.serverId, { archived: true }).catch(() => {});
+    if (t?.serverId != null)
+      api.chatPatch(t.serverId, { archived: true }).catch(() =>
+        toast.error("Couldn't archive the chat"));
     // Archived chats drop out of the active list.
     setThreads((prev) => {
       const next = prev.filter((x) => x.id !== id);
       if (activeId === id) setActiveId(null);
       return next;
     });
+    toast.success("Chat archived");
   }
 
   // Stream an answer into the assistant message at `asstIdx` of thread `tid`.
@@ -781,7 +797,7 @@ function FeatureStrip() {
   );
 }
 
-// Share = an internal read-only link. Only signed-in BharathTax users who have
+// Share = an internal read-only link. Only signed-in BharatTax users who have
 // the link can open it. One click generates the link and copies it — the
 // per-answer Copy button already covers copying text, so there's no copy here.
 function ShareMenu({ serverId }: { serverId: number | null }) {
@@ -886,7 +902,7 @@ function ActiveChat(props: {
             compact
           />
           <div className="text-center text-[10.5px] text-slate-400">
-            BharathTax can make mistakes. Verify against the latest Act and CBDT circulars before acting.
+            BharatTax can make mistakes. Verify against the latest Act and CBDT circulars before acting.
           </div>
         </div>
       </div>
