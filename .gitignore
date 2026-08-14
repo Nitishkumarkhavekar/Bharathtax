@@ -17,14 +17,8 @@ node_modules/
 dist/
 .vite/
 
-# data: keep folder structure, ignore contents (source files are large/external)
-data/manual/**
-!data/manual/.gitkeep
-!data/manual/**/.gitkeep
-data/cache/**
-!data/cache/.gitkeep
-# built vector store + large media (belongs in LFS/external, not git)
-data/corpus_dataset/
+# data: source corpora + built artefacts, all large/external — never commit
+data/
 *.npy
 *.m4a
 
