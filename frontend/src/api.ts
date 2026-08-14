@@ -65,6 +65,10 @@ export interface ServerChatMessage {
 }
 export interface ServerChatFull extends ServerChat {
   messages: ServerChatMessage[];
+  /** Set on the /chats/shared/{share_id} response. */
+  shared?: boolean;
+  /** True on the shared-view when the current user owns the source chat. */
+  owned?: boolean;
 }
 export interface TokenResponse {
   access_token: string;
@@ -726,14 +730,33 @@ export const api = {
     req<{ state: "ok" | "logout" | "blocked"; reason: string; message: string | null }>(
       "/auth/session/status",
     ),
-  ask: (question: string, domain?: string, style?: string, chat_id?: number) =>
-    req<AnswerResponse>("/ask", { method: "POST", body: JSON.stringify({ question, domain, style, chat_id }) }),
+  ask: (
+    question: string,
+    domain?: string,
+    style?: string,
+    chat_id?: number,
+    attached_document_ids?: number[],
+    attachments_meta?: Array<Record<string, unknown>>,
+  ) =>
+    req<AnswerResponse>("/ask", {
+      method: "POST",
+      body: JSON.stringify({
+        question, domain, style, chat_id,
+        attached_document_ids, attachments_meta,
+      }),
+    }),
   // Streamed answer over Server-Sent Events. Same agent/citations as `ask`, but
   // emits live tool status + token deltas. Uses fetch (not EventSource) so we can
   // send the bearer token. Handlers fire as events arrive; resolves when done.
   async askStream(
     question: string,
-    opts: { domain?: string; style?: string; chatId?: number },
+    opts: {
+      domain?: string;
+      style?: string;
+      chatId?: number;
+      attachedDocumentIds?: number[];
+      attachmentsMeta?: Array<Record<string, unknown>>;
+    },
     handlers: {
       onStatus?: (s: string) => void;
       onDelta: (d: string) => void;
@@ -746,7 +769,14 @@ export const api = {
     const res = await fetch(`${BASE}/ask/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-      body: JSON.stringify({ question, domain: opts.domain, style: opts.style, chat_id: opts.chatId }),
+      body: JSON.stringify({
+        question,
+        domain: opts.domain,
+        style: opts.style,
+        chat_id: opts.chatId,
+        attached_document_ids: opts.attachedDocumentIds,
+        attachments_meta: opts.attachmentsMeta,
+      }),
       signal,
     });
     if (!res.ok || !res.body) throw new ApiError(res.status, "Stream failed");
@@ -812,6 +842,8 @@ export const api = {
     req<{ share_id: string }>(`/chats/${id}/share`, { method: "POST" }),
   chatUnshare: (id: number) => req<void>(`/chats/${id}/share`, { method: "DELETE" }),
   getSharedChat: (shareId: string) => req<ServerChatFull>(`/chats/shared/${shareId}`),
+  forkSharedChat: (shareId: string) =>
+    req<ServerChat>(`/chats/shared/${shareId}/fork`, { method: "POST" }),
   feedback: (b: { question?: string; answer?: string; rating?: string; correction?: string }) =>
     req<{ ok: boolean }>("/assist/feedback", { method: "POST", body: JSON.stringify(b) }),
   rate: (b: { target_type: "appeal" | "chat"; target_id?: string | number; stars: number; question?: string; answer?: string; comment?: string }) =>
@@ -826,6 +858,18 @@ export const api = {
   },
   askDocument: (id: number, question: string) =>
     req<AnswerResponse>(`/documents/${id}/ask`, { method: "POST", body: JSON.stringify({ question }) }),
+  /** Fetch an owned document's raw bytes for download or in-browser
+   * preview. Uses the bearer token so the URL itself can't leak. We
+   * download into a Blob and mint a local object-URL so the browser
+   * can either save it (`<a download>`) or render it in a new tab. */
+  async documentFile(id: number, opts: { inline?: boolean } = {}): Promise<Blob> {
+    const q = opts.inline ? "?inline=1" : "";
+    const res = await fetch(`${BASE}/documents/${id}/file${q}`, {
+      headers: { Authorization: `Bearer ${token()}` },
+    });
+    if (!res.ok) throw new ApiError(res.status, `document fetch failed (${res.status})`);
+    return await res.blob();
+  },
   history: (kind: HistoryKind = "all", limit = 100) =>
     req<HistoryItem[]>(`/history?kind=${kind}&limit=${limit}`),
   historyCounts: () => req<HistoryCounts>("/history/counts"),

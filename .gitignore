@@ -38,10 +38,18 @@ desktop/.ebcache/
 # handover artifacts (large DB dump kept out of git; ship separately)
 handover/
 
+# local QA / persona test corpora — real user documents, not for git
+25-Sale Deed/
+test_questions/
+
 # celery beat runtime state (regenerated; never commit)
 backend/celerybeat-schedule*
 
 # Service-account keys / local secrets (NEVER commit)
 backend/secrets/
+backend/app/secrets/
+secrets/
+**/vertex*.json
+**/service-account*.json
 gen-lang-client-*.json
 *-service-account*.json

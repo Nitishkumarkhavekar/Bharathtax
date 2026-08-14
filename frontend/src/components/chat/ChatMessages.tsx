@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Globe, Languages, Loader2, Pencil, RotateCcw, Scale, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Scale, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2, X } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, copyMarkdownRich } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -303,7 +304,15 @@ function ClarifyPanel({
   );
 }
 
-function UserMessage({ content, onEdit }: { content: string; onEdit?: (v: string) => void }) {
+function UserMessage({
+  content,
+  attachments,
+  onEdit,
+}: {
+  content: string;
+  attachments?: import("@/lib/chatStore").ChatAttachment[];
+  onEdit?: (v: string) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
   const [copied, setCopied] = useState(false);
@@ -379,9 +388,22 @@ function UserMessage({ content, onEdit }: { content: string; onEdit?: (v: string
 
   return (
     <div className="group flex flex-col items-end animate-fade-up">
-      <div className="max-w-[80%] rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 shadow-sm whitespace-pre-wrap text-[15px] leading-relaxed">
-        {content}
-      </div>
+      {/* Attachment chips — rendered ABOVE the text bubble in the same
+          right-aligned column, so it's visually clear these files belong
+          to this turn. Images get an inline thumbnail; other files show
+          a file glyph + name + size. */}
+      {attachments && attachments.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap justify-end gap-1.5 max-w-[80%]">
+          {attachments.map((a, i) => (
+            <UserAttachmentChip key={`${a.docId ?? i}_${a.filename}`} att={a} />
+          ))}
+        </div>
+      )}
+      {content && (
+        <div className="max-w-[80%] rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 shadow-sm whitespace-pre-wrap text-[15px] leading-relaxed">
+          {content}
+        </div>
+      )}
       <div className="mt-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           type="button"
@@ -403,6 +425,264 @@ function UserMessage({ content, onEdit }: { content: string; onEdit?: (v: string
         )}
       </div>
     </div>
+  );
+}
+
+// A single attachment "chip" inside a user's message bubble. Compact
+// pill with a thumbnail (images) or file glyph (everything else), the
+// filename, and the size — matches the visual language of the composer
+// preview strip so the user recognises what they attached.
+function UserAttachmentChip({ att }: { att: import("@/lib/chatStore").ChatAttachment }) {
+  const isImage = (att.contentType || "").startsWith("image/") || !!att.previewDataUrl;
+  const isPdf = (att.contentType || "") === "application/pdf" ||
+                (att.filename || "").toLowerCase().endsWith(".pdf");
+  const canInline = isImage || isPdf;
+  const [preview, setPreview] = useState<{ url: string; kind: "image" | "pdf" } | null>(null);
+  const [busy, setBusy] = useState<"preview" | "download" | null>(null);
+  const sizeLabel = (() => {
+    const n = att.size;
+    if (!n && n !== 0) return "";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  })();
+
+  // Fetch the file bytes and either preview (in-app modal) or download.
+  // Both paths use a Blob + object-URL so the bearer-token stays out of
+  // the URL. Preview renders in our own dialog — for images an <img>,
+  // for PDFs an <iframe> — never `window.open` (which some browsers /
+  // pop-up blockers turn into a silent download).
+  async function open(mode: "preview" | "download", ev?: React.MouseEvent) {
+    // Stop the click from bubbling into the parent chip's own handler
+    // — otherwise the Preview button click also fired the chip click,
+    // running open() twice (once as "preview", once as fallback).
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    if (typeof att.docId !== "number" || busy) return;
+    setBusy(mode);
+    try {
+      const blob = await api.documentFile(att.docId, { inline: mode === "preview" });
+      const url = URL.createObjectURL(blob);
+      if (mode === "download") {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = att.filename || "download";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        return;
+      }
+      // preview mode
+      if (isImage) {
+        setPreview({ url, kind: "image" });
+      } else if (isPdf) {
+        setPreview({ url, kind: "pdf" });
+      } else {
+        // Nothing sensible to render inline — download instead.
+        const a = document.createElement("a");
+        a.href = url; a.download = att.filename || "download";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      }
+    } catch (e) {
+      toast.error(
+        `Couldn't ${mode === "preview" ? "preview" : "download"} the file — ${(e as Error).message || "please retry"}.`,
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function closePreview() {
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  }
+
+  return (
+    <>
+      <div
+        className="group relative flex items-center gap-2 rounded-lg bg-white/95 ring-1 ring-primary/20 shadow-sm pl-1.5 pr-1.5 py-1.5 max-w-[280px]"
+        title={att.filename}
+      >
+        <button
+          type="button"
+          onClick={(e) => open(canInline ? "preview" : "download", e)}
+          disabled={typeof att.docId !== "number"}
+          className="flex items-center gap-2 min-w-0 flex-1 rounded-md hover:bg-primary/5 pr-1.5 pl-0.5 py-0.5 text-left disabled:cursor-not-allowed"
+          title={canInline ? "Click to preview" : "Click to download"}
+        >
+          {att.previewDataUrl && isImage ? (
+            <img
+              src={att.previewDataUrl}
+              alt={att.filename}
+              className="size-9 rounded-md object-cover bg-slate-100 shrink-0"
+            />
+          ) : (
+            <div className="size-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+              {isImage ? (
+                <ImageIcon className="size-4 text-primary" />
+              ) : (
+                <FileText className="size-4 text-primary" />
+              )}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-[12.5px] font-medium text-slate-800 truncate leading-tight">
+              {att.filename}
+            </div>
+            {sizeLabel && (
+              <div className="text-[11px] text-slate-500 leading-tight">{sizeLabel}</div>
+            )}
+          </div>
+        </button>
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          {canInline && (
+            <button
+              type="button"
+              onClick={(e) => open("preview", e)}
+              disabled={typeof att.docId !== "number" || !!busy}
+              aria-label="Preview"
+              title="Preview"
+              className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              {busy === "preview"
+                ? <Loader2 className="size-3.5 animate-spin" />
+                : <Eye className="size-3.5" />}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => open("download", e)}
+            disabled={typeof att.docId !== "number" || !!busy}
+            aria-label="Download"
+            title="Download"
+            className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            {busy === "download"
+              ? <Loader2 className="size-3.5 animate-spin" />
+              : <Download className="size-3.5" />}
+          </button>
+        </div>
+      </div>
+      {preview && (
+        <FilePreviewModal
+          url={preview.url}
+          kind={preview.kind}
+          filename={att.filename}
+          docId={att.docId}
+          onClose={closePreview}
+        />
+      )}
+    </>
+  );
+}
+
+/** In-app preview dialog. Renders images with <img> and PDFs with
+ *  <iframe> so the user never leaves the app. Esc / backdrop-click /
+ *  close-button all dismiss. Includes a Download button in the header
+ *  because you can't right-click-save an <iframe> reliably. */
+function FilePreviewModal({
+  url, kind, filename, docId, onClose,
+}: {
+  url: string;
+  kind: "image" | "pdf";
+  filename: string;
+  docId?: number;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  async function saveAs() {
+    // The blob URL we already have works for direct save — no need for
+    // a second network round-trip.
+    const a = document.createElement("a");
+    a.href = url; a.download = filename || `document.${kind === "pdf" ? "pdf" : "png"}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    if (typeof docId !== "number") return;
+  }
+
+  const isImage = kind === "image";
+  // Portal into <body> so we escape any ancestor with `transform` /
+  // `filter` / `backdrop-filter` (e.g. the chat message's
+  // `animate-fade-up`), which would otherwise become the containing
+  // block for our `position: fixed` root and force the modal to render
+  // inline inside the chat bubble instead of covering the viewport.
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Preview ${filename}`}
+      onMouseDown={(e) => {
+        // Close only when the backdrop itself (not the inner card) is clicked.
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fade-up"
+    >
+      {/* Framed inner card so PDFs get a real container instead of
+          floating in the void — matches the rest of the app's chrome. */}
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        className={cn(
+          "relative bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 flex flex-col overflow-hidden",
+          isImage
+            ? "max-w-[92vw] max-h-[92vh]"
+            : "w-[92vw] h-[92vh] max-w-6xl",
+        )}
+      >
+        {/* Header: filename + Download + Close */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
+          <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            {isImage ? <ImageIcon className="size-4" /> : <FileText className="size-4" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-slate-800 truncate">{filename}</div>
+            <div className="text-[11px] text-slate-500">{isImage ? "Image preview" : "Document preview"}</div>
+          </div>
+          <button
+            type="button"
+            onClick={saveAs}
+            className="inline-flex items-center gap-1 text-[12.5px] font-medium text-slate-700 hover:text-primary hover:bg-primary/10 rounded-md px-2.5 py-1.5 transition-colors"
+            title="Download"
+          >
+            <Download className="size-3.5" /> Download
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close preview"
+            className="size-8 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-200 flex items-center justify-center transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        {/* Body: <img> for images (bounded by card), <iframe> for PDFs */}
+        <div className="flex-1 min-h-0 bg-slate-100 flex items-center justify-center overflow-auto">
+          {isImage ? (
+            <img
+              src={url}
+              alt={filename}
+              className="max-w-full max-h-[85vh] object-contain"
+            />
+          ) : (
+            <iframe
+              src={url}
+              title={filename}
+              className="w-full h-full min-h-[70vh] bg-white"
+            />
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -434,7 +714,13 @@ function Message({
   const [xbusy, setXbusy] = useState(false);
 
   if (msg.role === "user") {
-    return <UserMessage content={msg.content} onEdit={onEdit} />;
+    return (
+      <UserMessage
+        content={msg.content}
+        attachments={msg.attachments}
+        onEdit={onEdit}
+      />
+    );
   }
 
   // Extras (citations, source chips, feedback) only once the turn has settled.

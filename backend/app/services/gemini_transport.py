@@ -27,6 +27,7 @@ Required env for ``vertex`` mode
 """
 from __future__ import annotations
 
+import collections
 import logging
 import os
 import threading
@@ -35,6 +36,68 @@ import time
 log = logging.getLogger("gemini_transport")
 
 _BACKEND = os.getenv("GEMINI_BACKEND", "aistudio").strip().lower()
+
+# ---------------------------------------------------------------------------
+# Rate-limiting gate
+# ---------------------------------------------------------------------------
+# Vertex's `global` endpoint on newer Gemini models runs under Dynamic Shared
+# Quota — no per-project RPM to raise. Bursts of parallel /ask requests trip
+# the shared pool and produce 429 → 10s-sleep → retry → fallback-to-2.5-pro
+# spikes (measured 30-90s vs the 8-15s cache-warm baseline).
+#
+# This gate limits our OWN burst behaviour so we never present the DSQ pool
+# with more than N concurrent calls or more than M calls/minute. Two knobs:
+#   * VERTEX_MAX_CONCURRENT — cap on in-flight Vertex requests (default 6).
+#   * VERTEX_MAX_RPM        — soft cap on calls per rolling 60s (default 50).
+# Both live in gemini_transport so any caller that opts in (`with _tx.gate():
+# ...`) inherits the same limits — one place, one policy.
+_MAX_CONCURRENT = int(os.getenv("VERTEX_MAX_CONCURRENT", "6"))
+_MAX_RPM = int(os.getenv("VERTEX_MAX_RPM", "50"))
+_semaphore = threading.Semaphore(_MAX_CONCURRENT)
+_rate_lock = threading.Lock()
+_recent_calls: collections.deque[float] = collections.deque(maxlen=_MAX_RPM)
+_gate_stats = {"acquired": 0, "waited_ms_total": 0, "rpm_holds": 0}
+
+
+class _Gate:
+    """Context manager that spaces our own Vertex calls so the DSQ shared
+    pool never sees more than _MAX_CONCURRENT parallel from us at once, and
+    never more than _MAX_RPM in any rolling 60-second window. Waits (does
+    not fail) when either cap is hit."""
+
+    def __enter__(self) -> "_Gate":
+        t0 = time.time()
+        _semaphore.acquire()
+        # RPM window check — hold until oldest slot is >60s old.
+        with _rate_lock:
+            now = time.time()
+            if len(_recent_calls) == _MAX_RPM:
+                oldest = _recent_calls[0]
+                wait = 60.0 - (now - oldest)
+                if wait > 0:
+                    _gate_stats["rpm_holds"] += 1
+                    log.info("rate-gate: RPM window full, sleeping %.2fs", wait)
+                    time.sleep(wait + 0.05)
+                    now = time.time()
+            _recent_calls.append(now)
+        _gate_stats["acquired"] += 1
+        waited = int((time.time() - t0) * 1000)
+        _gate_stats["waited_ms_total"] += waited
+        return self
+
+    def __exit__(self, *_exc):
+        _semaphore.release()
+
+
+def gate() -> _Gate:
+    """Return a context manager that reserves one Vertex call slot. Use
+    around every httpx call to a Vertex endpoint: `with _tx.gate(): ...`."""
+    return _Gate()
+
+
+def gate_stats() -> dict:
+    """Diagnostics for /health-style endpoints."""
+    return dict(_gate_stats)
 
 # --- AI Studio (default) -------------------------------------------------
 _AISTUDIO_BASE = "https://generativelanguage.googleapis.com/v1beta/models"

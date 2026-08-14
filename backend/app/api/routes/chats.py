@@ -176,7 +176,61 @@ def get_shared_chat(share_id: str, p: Principal = Depends(get_principal),
     out = _chat_out(c, message_count=len(msgs))
     out["messages"] = [_msg_out(m) for m in msgs]
     out["shared"] = True
+    # `owned` lets the frontend hide the "Continue this chat" button when the
+    # viewer is already the owner (they can just open their own copy).
+    out["owned"] = c.user_id == p.user.id
     return out
+
+
+@router.post("/shared/{share_id}/fork", status_code=201)
+def fork_shared_chat(share_id: str, p: Principal = Depends(get_principal),
+                     db: Session = Depends(get_db)) -> dict:
+    """Any signed-in user can "Continue this chat": we deep-copy the shared
+    chat (title + all messages) into a NEW chat owned by the caller so they
+    can keep the conversation going. The original chat is untouched; the
+    fork gets a fresh share_id=NULL so it isn't accidentally re-shared.
+
+    If the viewer already owns the source chat, we short-circuit and return
+    the existing chat instead of duplicating it (avoids a UX where the
+    owner ends up with two identical copies).
+    """
+    src = db.scalar(select(Chat).where(Chat.share_id == share_id))
+    if not src:
+        raise HTTPException(404, "Shared chat not found")
+    if src.user_id == p.user.id:
+        return _chat_out(src)
+    # Duplicate chat metadata under the caller's account.
+    title = (src.title or "Shared chat").strip()[:200] or "Shared chat"
+    fork = Chat(
+        user_id=p.user.id,
+        wing_id=getattr(p.user, "wing_id", None),
+        title=title,
+        archived=False,
+        pinned=False,
+        share_id=None,
+    )
+    db.add(fork)
+    db.flush()  # populate fork.id before inserting messages
+    # Copy every message in order. Rewrite user_id to the new owner so
+    # per-user history filters keep working. citations/meta are JSONB so a
+    # shallow copy is fine — they are read-only reference data.
+    src_msgs = db.scalars(
+        select(ChatMessage)
+        .where(ChatMessage.chat_id == src.id)
+        .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+    ).all()
+    for m in src_msgs:
+        db.add(ChatMessage(
+            chat_id=fork.id,
+            user_id=p.user.id,
+            role=m.role,
+            content=m.content,
+            citations=m.citations or [],
+            meta=m.meta or {},
+        ))
+    db.commit()
+    db.refresh(fork)
+    return _chat_out(fork, message_count=len(src_msgs))
 
 
 @router.post("/{cid}/messages", status_code=201)

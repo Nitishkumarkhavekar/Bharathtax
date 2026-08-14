@@ -24,6 +24,7 @@ import {
   PinOff,
   Pencil,
   Archive,
+  Share2,
 } from "lucide-react";
 import { ChatThread, groupByRecency } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ interface ChatSidebarProps {
   onRename?: (id: string, title: string) => void;
   onTogglePin?: (id: string) => void;
   onArchive?: (id: string) => void;
+  onShare?: (id: string) => void;
   onOpenArchived?: () => void;
   onClose?: () => void; // mobile
   /** Desktop collapse — when true, renders as a thin icon rail. */
@@ -82,6 +84,7 @@ export default function ChatSidebar({
   onRename,
   onTogglePin,
   onArchive,
+  onShare,
   onOpenArchived,
   onClose,
   collapsed = false,
@@ -299,6 +302,7 @@ export default function ChatSidebar({
                       onRename={onRename}
                       onTogglePin={onTogglePin}
                       onArchive={onArchive}
+                      onShare={onShare}
                     />
                   ))}
                 </ul>
@@ -320,6 +324,7 @@ export default function ChatSidebar({
                       onRename={onRename}
                       onTogglePin={onTogglePin}
                       onArchive={onArchive}
+                      onShare={onShare}
                     />
                   ))}
                 </ul>
@@ -441,6 +446,7 @@ function ThreadItem({
   onRename,
   onTogglePin,
   onArchive,
+  onShare,
 }: {
   thread: ChatThread;
   active: boolean;
@@ -449,6 +455,7 @@ function ThreadItem({
   onRename?: (id: string, title: string) => void;
   onTogglePin?: (id: string) => void;
   onArchive?: (id: string) => void;
+  onShare?: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -575,6 +582,17 @@ function ThreadItem({
               }}
             >
               <Archive className="size-3.5 text-slate-400" /> Archive
+            </button>
+          )}
+          {onShare && (
+            <button
+              className={menuItem}
+              onClick={() => {
+                setMenuOpen(false);
+                onShare(thread.id);
+              }}
+            >
+              <Share2 className="size-3.5 text-slate-400" /> Share
             </button>
           )}
           <div className="my-1 h-px bg-slate-100" />
