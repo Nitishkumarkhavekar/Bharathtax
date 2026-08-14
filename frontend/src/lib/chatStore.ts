@@ -7,6 +7,20 @@
 
 import { Citation } from "../api";
 
+/** A file the user attached to a specific turn (via the composer's + button,
+ *  paste, or drag-drop). We keep enough to render a chip: filename, MIME,
+ *  size, and — for images — a preview data URL so it renders offline. */
+export interface ChatAttachment {
+  docId?: number;
+  filename: string;
+  contentType?: string;
+  size?: number;
+  /** Data-URL (data:image/…;base64,…) for images so the chip renders
+   *  without a network trip and survives a reload. Kept only for small
+   *  images (~256 KB max) to avoid bloating localStorage. */
+  previewDataUrl?: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -15,6 +29,9 @@ export interface ChatMessage {
   grounded?: boolean;
   meta?: Record<string, unknown>;
   ts: number;
+  /** Files the user attached to this specific turn. Present only on user
+   *  messages that carried an inline upload. */
+  attachments?: ChatAttachment[];
 }
 
 export interface ChatThread {

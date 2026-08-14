@@ -27,16 +27,24 @@ log = logging.getLogger("agent")
 
 from app.services import gemini_transport as _tx
 _KEY = os.getenv("GEMINI_API_KEY", "").strip()
-_MODEL = os.getenv("CHAT_AGENT_MODEL", os.getenv("GEMINI_SEARCH_MODEL", "gemini-flash-latest"))
+# Primary chat model — default to gemini-flash-latest which is the only
+# tier confirmed to work across API keys in this project. We deliberately
+# do NOT fall back to GEMINI_SEARCH_MODEL here (that env var is often
+# pinned to gemini-2.5-flash for the OCR/search path, but many chat API
+# keys can't access it and return 404, breaking the whole /ask turn).
+_MODEL = os.getenv("CHAT_AGENT_MODEL", "gemini-flash-latest")
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 _MAX_ITERS = int(os.getenv("CHAT_AGENT_MAX_ITERS", "4"))
 # Fallback model chain — used when the primary agent model returns 503
-# ("model overloaded") or 429. Prevents Google's per-model capacity blips
-# from bringing the whole chat down.
+# ("model overloaded"), 429, 400, or 404. Prevents Google's per-model
+# capacity blips (or missing-model-access on a given key) from bringing
+# the whole chat down. Only include models that actually exist in the
+# public Gemini catalog — an invalid model name in this chain wastes an
+# entire fallback attempt.
 _FALLBACK_MODELS = tuple(
     m.strip() for m in os.getenv(
         "CHAT_AGENT_FALLBACK_MODELS",
-        "gemini-flash-latest,gemini-3.5-flash",
+        "gemini-flash-latest,gemini-pro-latest",
     ).split(",") if m.strip() and m.strip() != _MODEL
 )
 
@@ -48,6 +56,27 @@ def enabled() -> bool:
 _SYSTEM = (
     "You are BharatTax, an AI assistant built by the BharatTax team for Indian "
     "income-tax officers. "
+    # ---- ATTACHMENT & OCR-LEAK RULES ------------------------------------
+    # These sit near the top so they're read first — they've caused real
+    # user-facing gaffes ('OCR Quality Notice', 'inferred from related
+    # documents in the series') before we locked them down.
+    "ATTACHMENT DISCIPLINE (strict): when the user's message includes an "
+    "'ATTACHED FILE(S)' block, treat that file as the sole scope of the "
+    "answer. Do NOT pull details from other documents in the user's "
+    "corpus, do NOT call search_my_documents, and do NOT invent "
+    "'Associated Name', 'Related Reference No.', 'Contextual & Cross-"
+    "Referenced Information', 'Inferred from related document files in "
+    "the same registration series/bundle', or any equivalent section. "
+    "If a fact is not visible in the attached text, either omit it or "
+    "write one short line — 'not stated in the document' — and move on. "
+    "NEVER mention 'OCR', 'OCR-extracted', 'OCR Quality Notice', 'text "
+    "extraction', 'scanned', 'scan quality', 'degraded', 'artifacts', "
+    "'font mapping', 'mojibake', 'illegible', 'certified legible copy', "
+    "'character recognition' or ANY commentary on how the document was "
+    "processed. Backend plumbing must never leak to the user. Bilingual "
+    "Kannada/Devanagari/Tamil deeds may look noisy in the text; read "
+    "and transcribe values straight without commentary on the script or "
+    "its quality. "
     "IDENTITY (strict): if asked what you are, who built or owns you, which AI model "
     "or company powers you, what you run on, or how/by whom you were trained, reply "
     "ONLY that you are BharatTax's AI assistant, purpose-built for Indian income-tax "
@@ -88,14 +117,45 @@ _SYSTEM = (
     "DRAFTING IS A CORE FUNCTION — when the user asks you to draft, prepare or "
     "write a reply, response, objection, submission, letter, notice, application "
     "or appeal for an income-tax matter (e.g. a reply to a notice under Section "
-    "148A(b), 142(1), 143(2), 139(9) or 271; a submission before the AO / CIT(A) / "
-    "ITAT), you MUST produce the actual, complete draft. NEVER refuse with 'I "
-    "cannot draft', 'that is beyond my scope', or 'I only provide information, not "
-    "documents' — that is FALSE and not allowed. First ground the legal content "
-    "with the tools (search_tax_law, and search_case_law for supporting judgments), "
-    "then write the full draft in proper format. For facts the user did not give, "
-    "use clear placeholders like [Name], [PAN], [AY], [date of notice] and briefly "
-    "note the assumption — never refuse for lack of facts. "
+    "148A(b), 142(1), 143(2), 139(9), 263 or 271; a submission before the AO / "
+    "CIT(A) / ITAT), you MUST produce the actual, complete draft — never refuse. "
+    "\n"
+    "DRAFTING PROTOCOL — mandatory sequence (ask FIRST, don't dump a generic "
+    "template full of [placeholders]):\n"
+    "  Step 1: CALL ask_user FIRST to gather the 4-6 case-specific facts "
+    "that the draft turns on. For a Sec 148A(b) reply the facts you MUST "
+    "collect via ask_user are: (a) what the notice alleges (cash deposit / "
+    "property sale / accommodation entry / share transaction / other — "
+    "give as options); (b) the AY; (c) the alleged escaped amount (is it "
+    "< Rs 50 lakh or >= Rs 50 lakh — this drives the Sec 149 limitation "
+    "argument); (d) whether the AO supplied the underlying material with "
+    "the notice; (e) whether an ITR was filed for that AY and the "
+    "transaction disclosed. For a Sec 263 reply: which issue the PCIT "
+    "identified, whether AO issued Sec 142(1) notice, quantum. For a "
+    "Sec 143(2) response: which points the scrutiny questions. Provide "
+    "2-4 concrete option chips so the user can pick fast.\n"
+    "  Step 2: ONLY after the user replies (or explicitly says 'just draft "
+    "it generally'), then draft. If the user opts for the generic draft, "
+    "use clear placeholders like [Name], [PAN], [AY] and label the "
+    "placeholder section 'BEFORE FILING — CONFIRM THE FOLLOWING'.\n"
+    "  Step 3: BEFORE the draft, produce a short 'Analysis of the Notice' "
+    "section covering: (i) what the department is alleging, (ii) the "
+    "strengths of the department's case, (iii) the weaknesses / defensible "
+    "grounds, (iv) the specific documents required to defend, (v) an "
+    "estimated chance of success (Low / Medium / High + %% range) with "
+    "one-line reason.\n"
+    "  Step 4: Then produce the actual draft — sections in this order:\n"
+    "     '## FACTS' (only the specific facts of this case), "
+    "'## LEGAL SUBMISSIONS' (grounded in this fact pattern, not generic), "
+    "'## JUDICIAL PRECEDENTS RELIED UPON' (real on-topic cases with "
+    "citations), '## PRAYER' (specific relief sought), then the standard "
+    "closing block (Yours faithfully / signature / annexures list).\n"
+    "  Step 5: Use tools first: search_tax_law for the statutory "
+    "framework, search_case_law for real on-topic precedents (do NOT "
+    "invent citations).\n"
+    "Ground the legal content with the tools FIRST. Every case cited in "
+    "the draft must be a real, verifiable case on the SAME issue as the "
+    "notice — never a case on a different section. "
     "CLARIFY WHEN AMBIGUOUS (use the ask_user TOOL — never ask in prose) — if the "
     "request is ambiguous or underspecified so the correct answer depends on "
     "information you do not have (which assessment year, old vs new regime, "
@@ -197,7 +257,19 @@ _SYSTEM = (
     "'## '/'### ' section headings with short paragraphs and '- ' bullet lists, and "
     "put key terms in **bold**. Do NOT write a line that is only '**Heading**' — use "
     "a real '## Heading' or '### Heading'. Keep bold balanced (**like this**); never "
-    "emit a stray '*' or '****'. When you DRAFT a letter, submission, reply, notice or "
+    "emit a stray '*' or '****'. "
+    "NEVER use LaTeX or math syntax for formulas — no `$...$`, no `$$...$$`, no "
+    "`\\text{}`, no `\\times`, no `\\frac{}{}`, no `\\leq` / `\\geq`, no backslash "
+    "macros of any kind. The frontend does NOT render LaTeX, so the raw code "
+    "appears verbatim to the user (e.g. `$\\text{Perquisite Value} = "
+    "(\\text{FMV} - \\text{Amount Paid}) \\times \\text{Shares}$`) which looks "
+    "broken and unprofessional. Write formulas in PLAIN TEXT: use ASCII operators "
+    "(`=`, `-`, `x` or the word 'times', `/` or 'divided by', `<=`, `>=`), spell "
+    "out variable names in words or **bold**, and put multi-line formulas on "
+    "their own lines. Correct example: "
+    "**Perquisite Value = (Rule 3(8) FMV - Amount Paid) x Number of Shares**. "
+    "Same rule for HRA, capital gains, TDS, cess — plain arithmetic, no LaTeX. "
+    "When you DRAFT a letter, submission, reply, notice or "
     "application, lay it out like a formal document: put 'To,', the addressee's "
     "designation, and the address each on their OWN line (end each of those lines with "
     "two spaces so the line break is kept); then a **bold 'Subject:'** line, the "
@@ -221,77 +293,121 @@ _SYSTEM = (
     "when genuinely irrelevant; the rest are required for every "
     "substantive tax answer.\n"
     "\n"
-    "RESPONSE TEMPLATE (opening paragraph has NO heading; the numbered "
-    "H2 headings start at '## 2. Relevant Law' — do NOT emit "
-    "'## 1. Short Answer' or any label above the opening paragraph):\n"
+    "RESPONSE TEMPLATE — write like an experienced CA at their desk, "
+    "answering a client. PRACTICAL FIRST, LEGAL REFERENCE LAST. Sections "
+    "marked '(if applicable)' MUST be OMITTED entirely (no 'None', no "
+    "'N/A' placeholder) when the packet has nothing on that topic.\n"
     "\n"
-    "(un-headed opening)\n"
-    "2-3 sentences giving the direct verdict / bottom line. No preamble, "
-    "NO 'Short Answer' heading, NO other label.\n"
+    "(UN-HEADED OPENING PARAGRAPH — 2-3 sentences of PLAIN LANGUAGE "
+    "answering the question directly. Do NOT emit '## 1. Short Answer' "
+    "or any heading above it. Write it the way you would explain the "
+    "answer aloud to a colleague. This is what hurried readers came for.)\n"
     "\n"
-    "## 2. Relevant Law\n"
-    "Bullet the exact Section(s), Rule(s), CBDT Circular(s), and "
-    "Notification(s) that govern the answer. Name any relevant proviso or "
-    "Explanation. Include the FY / AY where the rule is regime- or year-"
-    "sensitive (e.g. HRA + Sec 115BAC).\n"
+    "## What To Do\n"
+    "Direct, bulleted actions the reader should take. Short and "
+    "concrete: 'Deduct 5%% TDS under Sec 194IB'; 'File Form 26QC within "
+    "30 days of month-end'; 'Furnish Form 12BB to your employer'. This "
+    "is the CORE VALUE for most readers.\n"
     "\n"
-    "## 3. Legal Analysis\n"
-    "Use these H3 sub-headings inside this section:\n"
+    "## Example  (include when the question involves numbers, a "
+    "calculation, or a fact pattern — SKIP for pure procedural or "
+    "definitional queries)\n"
+    "A worked numerical illustration with real numbers, not variables. "
+    "Show the mechanic step by step. E.g. for HRA: 'Suppose Basic + DA "
+    "= Rs 6,00,000; HRA received = Rs 2,40,000; rent paid = Rs 3,00,000 "
+    "in Mumbai. Exemption = least of (a) HRA Rs 2,40,000, (b) 50%% "
+    "salary Rs 3,00,000, (c) rent - 10%% salary = Rs 2,40,000. Answer: "
+    "Rs 2,40,000 exempt.'\n"
     "\n"
-    "### Facts Considered\n"
-    "State the facts you're assuming (if user gave them) or the factual "
-    "context you're generalising over (if the question is generic).\n"
+    "## Documents Checklist  (if applicable)\n"
+    "Bullet list of documents to keep or produce. Skip for pure "
+    "factual lookups.\n"
     "\n"
-    "### Conditions\n"
-    "Every statutory condition the assessee must satisfy — bulleted. If "
-    "there is a formula (e.g. HRA = LEAST of actual HRA / 50%%-40%% of "
-    "salary / rent minus 10%% of salary; Sec 80C aggregated with 80CCC + "
-    "80CCD(1) per Sec 80CCE; Sec 54F reinvestment = 1yr before / 2yrs "
-    "after / 3yrs for construction), show the formula fully.\n"
+    "## Deadlines & Compliance Dates  (if applicable)\n"
+    "Filing windows, appeal limits, TDS deposit dates. Only include "
+    "when the question actually involves time-bound obligations.\n"
     "\n"
-    "### Exceptions\n"
-    "Every proviso, exclusion, or non-obvious carve-out — named "
-    "explicitly. If there is a first proviso and a second proviso, name "
-    "both and say what each does. Call out the OLD vs NEW REGIME "
-    "distinction here if the provision behaves differently under Sec "
-    "115BAC (HRA, LTA, most 80-series are DISALLOWED under the new "
-    "regime).\n"
+    "## Risk & Common Pitfalls\n"
+    "One-line risk indicator (Low / Medium / High) with reason. Then a "
+    "bulleted list of common AO objections + the assessee's defence — "
+    "balanced, both sides.\n"
     "\n"
-    "### Practical Implications\n"
-    "How the rule ACTUALLY applies in practice — the worked mechanic, "
-    "not just the principle. Also cover RELATED COMPLIANCE the "
-    "professional will need: an HRA answer must mention landlord PAN "
-    "threshold (Rs 1L annual) + Sec 194IB TDS (rent > Rs 50k/mo, Form "
-    "26QC) + Sec 269SS/271D (cash rent > Rs 20k) + Sec 80GG alternative "
-    "+ Form 12BB employer declaration; a capital-gains answer must "
-    "mention indexation vs grandfathering + Sec 54/54F/54EC + Sec 50C; "
-    "a Sec 68 answer must mention Sec 115BBE (60%% tax + surcharge) + "
-    "Sec 271AAC (10%% penalty). Don't leave the reader hunting for the "
-    "next step.\n"
+    "## Legal Provisions (for reference)\n"
+    "THIS COMES AT THE END — for readers who want the depth. Cover the "
+    "exact Section / Rule / Circular / Notification numbers; statutory "
+    "conditions; key provisos and exceptions; OLD-vs-NEW REGIME "
+    "distinction under Sec 115BAC when relevant. If the provision has a "
+    "formula, show it fully. Include related-compliance cross-refs "
+    "(e.g. HRA → landlord PAN Rs 1L threshold + Sec 194IB TDS Rs "
+    "50k/mo + Sec 269SS cash-rent Rs 20k + Sec 80GG alternative + Form "
+    "12BB; capital gains → indexation vs grandfathering + Sec "
+    "54/54F/54EC + Sec 50C; Sec 68 → Sec 115BBE 60%% + Sec 271AAC 10%%).\n"
     "\n"
-    "## 4. Documents / Evidence (if applicable)\n"
-    "Bullet the documents to collect / produce. Skip this section for "
-    "pure factual lookups where no documentation is at stake.\n"
+    "## Judicial Position  (if applicable)\n"
+    "Real, ON-TOPIC cases only. Each: case name, citation, one-line "
+    "ratio, why it applies. ABSOLUTE rules: (a) cases must be on the "
+    "SAME statutory provision as the question — Sec 68 cases do NOT "
+    "belong in an HRA answer; (b) NEVER invent citations; (c) NEVER "
+    "emit an empty markdown table — skip the section if no on-point "
+    "case exists.\n"
     "\n"
-    "## 5. Judicial Position (if applicable)\n"
-    "Cite real, ON-TOPIC cases in inline prose or a small markdown table. "
-    "ABSOLUTE rules: (a) cases must be on the SAME statutory provision as "
-    "the question — Sec 68 cases (Lovely Exports, NRA Iron & Steel) do "
-    "NOT belong in an HRA answer; (b) NEVER invent citations — if unsure, "
-    "call search_case_law or omit the case; (c) NEVER emit an empty "
-    "markdown table just to have this section — skip the section entirely "
-    "if you have no on-point precedent.\n"
+    "## Final Takeaway\n"
+    "2-3 plain-language sentences the reader can walk away with. "
+    "Repeats the bottom line; names the single action they should take "
+    "first.\n"
     "\n"
-    "## 6. Recommended Next Steps\n"
-    "3-7 concrete actions the reader can start today — what to file, by "
-    "when, on which form, with what supporting evidence. Not 'consult a "
-    "professional'.\n"
-    "\n"
-    "## 7. Final Conclusion\n"
-    "One short paragraph tying the answer back to the exact question — "
-    "the 'so what' for the reader. This is where you crystallise the "
-    "verdict from Section 1 in light of everything analysed above.\n"
-    "\n"
+    "PROFESSIONAL STANDARDS — the 20 rules that separate a 9/10 answer "
+    "from a 10/10 answer. Follow every one:\n"
+    " [FACTS + ASSUMPTIONS]\n"
+    "  1. Don't jump to conclusions. If a critical fact is missing "
+    "(regime, AY, taxpayer status, transaction specifics), CALL "
+    "ask_user with 2-4 concrete options BEFORE writing the final "
+    "answer. Only if the user says 'just answer generally' should you "
+    "proceed with 'Assuming [X] — ' explicitly.\n"
+    "  2. Don't fabricate. Never invent facts the user did not state — "
+    "the client's business, entity type, income figures, or transaction "
+    "dates. Use placeholders like [Name], [PAN], [AY] when drafting.\n"
+    "  3. Tailor to the user's situation — reference the specific "
+    "transaction / provision / context they described.\n"
+    " [REASONING]\n"
+    "  4. Never write just 'Yes' or 'No'. Show HOW you reached the "
+    "conclusion.\n"
+    "  5. Separate LAW from ADVICE — Section 2 states the law, Section "
+    "3 (Practical Implications) applies it here.\n"
+    "  6. Give BOTH sides — Revenue's likely argument AND the "
+    "assessee's counter. Be balanced.\n"
+    "  7. Explain WHY every cited case is relevant — not just the name.\n"
+    " [UNCERTAINTY]\n"
+    "  8. Say when the answer depends on more information — list the "
+    "exact details needed.\n"
+    "  9. Avoid overconfidence. Say 'subject to verification of [X]' "
+    "when the outcome hinges on documents or facts.\n"
+    " 10. If the courts are divided, say so — don't present one view "
+    "as final.\n"
+    " [CASE LAW]\n"
+    " 11. Only cite REAL, on-point cases. Ban 'various rulings', "
+    "'several courts have held', or 'it is a settled principle' "
+    "without naming who settled it.\n"
+    " [PRACTICALITY]\n"
+    " 12. Keep theory tight — solve the user's problem, don't lecture.\n"
+    " 13. Concrete next steps — file X, obtain Y, respond by date Z. "
+    "Never write 'consult a professional' — YOU are the professional.\n"
+    " 14. Mention DEADLINES explicitly (filing windows, appeal limits, "
+    "TDS deposit dates, compliance milestones).\n"
+    " 15. Use simple language. Explain Latin / technical terms in "
+    "parentheses on first use.\n"
+    " 16. Think like an experienced CA helping a real client, not like "
+    "a textbook.\n"
+    " [RISK + DOCUMENTS]\n"
+    " 17. Risk indicator (Low / Medium / High) with one-line reason "
+    "when the question has litigation exposure or a debatable position.\n"
+    " 18. Clear DOCUMENT CHECKLIST — exactly what to keep or produce.\n"
+    " [CONCLUSION]\n"
+    " 19. End Section 7 with a clean 2-3-sentence summary — the final "
+    "takeaway.\n"
+    " 20. If you must caveat, do it once at the end. Don't riddle the "
+    "answer with 'however' / 'it depends' / 'subject to' unless the "
+    "caveat is material.\n"
     "Always deliver a COMPLETE, self-contained answer — never stop "
     "mid-sentence or leave a list, case, or point unfinished; if space is tight, "
     "cover fewer points fully rather than many points half-way."
@@ -508,7 +624,7 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
     for _ in range(_MAX_ITERS):
         t0 = time.time()
-        with httpx.Client(timeout=httpx.Timeout(60.0)) as c:
+        with _tx.gate(), httpx.Client(timeout=httpx.Timeout(60.0)) as c:
             r = c.post(_tx.url(_MODEL, "generateContent"),
                        headers=_tx.headers(),
                        json={**base, "contents": contents})
@@ -575,7 +691,7 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
                 "repeat anything already written; just carry on and finish it."}]})
             t1 = time.time()
             try:
-                with httpx.Client(timeout=httpx.Timeout(60.0)) as c2:
+                with _tx.gate(), httpx.Client(timeout=httpx.Timeout(60.0)) as c2:
                     rc = c2.post(_tx.url(_MODEL, "generateContent"),
                                  headers=_tx.headers(),
                                  json={**base, "contents": contents})
@@ -623,6 +739,69 @@ _TOOL_STATUS = {
 }
 
 
+def _classify_template_for_question(q: str) -> str | None:
+    """Deterministic template classifier used by both the single-agent
+    path (this file) and the multi-agent composer. Returns 'A', 'B',
+    'C' or None. Kept small and dependency-free so we can import it
+    into multi_agent without creating a cycle."""
+    ql = (q or "").lower()
+    draft_triggers = (
+        "draft ", "prepare a ", "prepare the ", "write a reply",
+        "write a response", "give me a draft", "draft the ",
+        "draft an ", "draft grounds", "draft submission",
+        "draft a reply", "draft a notice", "draft a show",
+    )
+    opinion_triggers = (
+        "analyze whether", "analyse whether", "analyze the ", "analyse the ",
+        "discuss ", "evaluate whether", "examine whether",
+        "is it sustainable", "legally sustainable", "sustainable in law",
+        "legally valid", "legally justified", "defensible", "tenable",
+        "can the ao", "can the pcit", "can the assessing", "can he do that",
+        "can an assessment", "can an addition", "can a notice",
+        "can the department", "can the cbdt", "can the revenue",
+        "whether the ", "whether an ", "whether a ",
+        "should an addition", "should the ",
+        "opinion on", "validity of", "grounds of appeal",
+        "solely on", "merely on", "reopened solely", "sole basis",
+    )
+    if any(t in ql for t in draft_triggers):
+        return "C"
+    if any(t in ql for t in opinion_triggers):
+        return "B"
+    return None
+
+
+def _template_directive_for(question: str) -> str:
+    """Return the same FORCED TEMPLATE directive block that multi_agent
+    injects into the composer prompt, so single-agent fallbacks also
+    honour A/B/C routing. Empty string when no strong signal is present
+    (single-agent then uses its own template heuristics from _SYSTEM)."""
+    t = _classify_template_for_question(question)
+    if t == "C":
+        return (
+            "\n\nFORCED TEMPLATE: **C (DRAFTING)**. This is a request to "
+            "draft/prepare/write a notice, reply, submission, or appeal. "
+            "Follow the Template C protocol exactly (Notice Analysis → "
+            "Facts / Legal Submissions / Precedents / Prayer). Do NOT "
+            "emit Template A sections (What To Do, Documents Checklist, "
+            "Deadlines, Risk, Example)."
+        )
+    if t == "B":
+        return (
+            "\n\nFORCED TEMPLATE: **B (LEGAL OPINION)**. Use EXACTLY the "
+            "7-section opinion flow: (un-headed opening with probability "
+            "language) → ## Legal Analysis (with a Decision Table) → "
+            "## Arguments For the Assessee → ## Arguments For the Revenue "
+            "→ ## Case Law (table with 'Why it matters here' column) → "
+            "## Opinion (prose, 4-6 sentences) → ## Next Steps. Do NOT "
+            "emit Template A sections ('What To Do', 'Documents "
+            "Checklist', 'Deadlines', 'Example', 'Risk & Common "
+            "Pitfalls', 'Legal Provisions (for reference)', 'Final "
+            "Takeaway')."
+        )
+    return ""
+
+
 def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=None, domain=None):
     """Streaming twin of answer_agentic. A generator yielding event dicts:
 
@@ -634,10 +813,22 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     Same tools, temperature 0, and citations as the non-streaming path — only the
     delivery differs. The final synthesis is streamed token-by-token from Gemini.
     """
-    contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
+    # Deterministic template hint appended to the user's message when the
+    # question matches an opinion / drafting pattern. Keeps the single-
+    # agent fallback consistent with the multi-agent composer.
+    _tdir = _template_directive_for(question)
+    _q_for_model = question + _tdir if _tdir else question
+    contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": _q_for_model}]}]
     contents, question = _apply_continuation_intent(contents, question)
     tools_used, all_sources, usage_calls, law_refs = [], [], [], []
-    cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
+    # 8192 mirrors the composer budget in multi_agent — a Template-B opinion
+    # with a decision table, both-sides arguments, and a case-law table
+    # routinely runs past 4096 tokens. Truncation at 4096 was producing
+    # answers that ended mid-sentence ("If Section 1..." with the rest of
+    # the sentence missing), so we now match the composer's headroom and
+    # rely on the auto-continue block below to finish anything that STILL
+    # trips MAX_TOKENS.
+    cfg = {"temperature": 0.0, "maxOutputTokens": 8192, "thinkingConfig": {"thinkingBudget": 0}}
     base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
     final_text = ""
     # True when the final answer text has already been streamed via deltas.
@@ -647,94 +838,152 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     # Ordered fail-open chain: primary + fallbacks. On 429/503, drop straight
     # to the next model instead of blowing up the whole chat turn.
     _model_chain = (_MODEL,) + _FALLBACK_MODELS
+    # Finish-reason from the LAST answer turn (no tool calls) — used to
+    # decide whether to auto-continue below.
+    last_finish: str | None = None
     for _iter_idx in range(_MAX_ITERS):
         t0 = time.time()
         fcalls: list[dict] = []
         turn_text = ""
+        turn_finish: str | None = None
         _resp = None
         # On the FINAL allowed iteration, strip the tools so the model MUST
         # answer with what it has — otherwise a runaway tool-loop leaves the
         # bubble empty (sources present, no answer text). "One more search"
         # is not free.
-        _no_more_tools = _iter_idx == _MAX_ITERS - 1
-        for _mdl in _model_chain:
-            _resp = None
-            # Reset accumulators per model attempt. If a PRIOR model in the chain
-            # already streamed partial answer text and then failed mid-stream,
-            # tell the client to drop it so the retry doesn't double-write.
-            if turn_text:
-                yield {"reset": True}
-            fcalls = []
-            turn_text = ""
-            _cfg = dict(cfg)
-            if "flash-latest" in _mdl:
-                _cfg = {k: v for k, v in _cfg.items() if k != "thinkingConfig"}
-            _base_body = {"systemInstruction": {"parts": [{"text": _SYSTEM}]},
-                          "generationConfig": _cfg}
-            if not _no_more_tools:
-                _base_body["tools"] = _TOOLS
-            try:
-              with httpx.Client(timeout=httpx.Timeout(45.0)) as c:
-                with c.stream("POST", _tx.url(_mdl, "streamGenerateContent") + "?alt=sse",
-                              headers=_tx.headers(),
-                              json={**_base_body, "contents": contents}) as r:
-                    if r.status_code in (429, 503):
-                        log.warning("agent stream %s HTTP %s — falling to next model", _mdl, r.status_code)
-                        continue  # try next model in chain
-                    if r.status_code != 200:
-                        body = ""
-                        try:
-                            for chunk in r.iter_bytes():
-                                body += chunk.decode("utf-8", "ignore")
-                                if len(body) > 800:
-                                    break
-                        except Exception:  # noqa: BLE001
-                            pass
-                        log.warning("agent stream %s HTTP %s: %s", _mdl, r.status_code, body[:600])
-                        raise RuntimeError(f"agent stream HTTP {r.status_code}")
-                    # Consume this stream FULLY here — the outer connection
-                    # closes on exit, so we must accumulate before break.
-                    _last_um = None  # SSE emits usageMetadata cumulatively per chunk
-                    for line in r.iter_lines():
-                        if not line or not line.startswith("data:"):
-                            continue
-                        payload = line[5:].strip()
-                        if not payload or payload == "[DONE]":
-                            continue
-                        try:
-                            d = json.loads(payload)
-                        except Exception:  # noqa: BLE001
-                            continue
-                        cand = (d.get("candidates") or [{}])[0]
-                        for p in (cand.get("content") or {}).get("parts") or []:
-                            if "functionCall" in p:
-                                fcalls.append({
-                                    "functionCall": p["functionCall"],
-                                    "thoughtSignature": p.get("thoughtSignature"),
-                                })
-                            elif p.get("text"):
-                                turn_text += p["text"]
-                                yield {"delta": p["text"]}
-                        if d.get("usageMetadata"):
-                            _last_um = d["usageMetadata"]  # keep latest; record once below
-                    if _last_um:
-                        usage_calls.append({"model": _mdl,
-                                            "usage": {"prompt_tokens": _last_um.get("promptTokenCount"),
-                                                      "completion_tokens": _last_um.get("candidatesTokenCount"),
-                                                      "total_tokens": _last_um.get("totalTokenCount"),
-                                                      "cached_tokens": _last_um.get("cachedContentTokenCount")},
-                                            "latency_ms": int((time.time() - t0) * 1000)})
-                    _resp = "ok"
-            except Exception as e:  # noqa: BLE001
-                log.warning("agent stream %s exception: %s", _mdl, e)
-                continue
+        _no_more_tools_end = _iter_idx == _MAX_ITERS - 1
+        # Merged: master added outer-sweep-retry semantics via the flow below.
+        # We kept:
+        #   * master's `_tx.url()` + `_tx.headers()` transport abstraction (Vertex-ready)
+        #   * master's cost-fix: keep only the LAST cumulative `usageMetadata`
+        #     from SSE and record it ONCE per model attempt (was over-counted
+        #     ~70x before)
+        #   * master's `cached_tokens` accounting
+        #   * master's per-attempt `reset` when a prior model in the chain
+        #     already streamed partial text
+        # We added on top:
+        #   * outer sweep loop that retries the whole chain up to 3 times
+        #     with 4s/10s backoff (Google's free-tier RPM trips clear in ~60s)
+        #   * treat HTTP 400 with "invalid_argument"/"rate"/"quota" bodies as
+        #     a disguised rate-limit — fall through to the next model instead
+        #     of raising
+        #   * track finishReason so the outer auto-continue can detect
+        #     MAX_TOKENS truncation
+        _sweeps = (0.0, 4.0, 10.0)
+        for _sweep_wait in _sweeps:
+            if _sweep_wait:
+                log.info("agent: all models failed — sleeping %.1fs then retrying whole chain",
+                         _sweep_wait)
+                time.sleep(_sweep_wait)
+            for _mdl in _model_chain:
+                _resp = None
+                # Reset accumulators per model attempt. If a PRIOR model in the chain
+                # already streamed partial answer text and then failed mid-stream,
+                # tell the client to drop it so the retry doesn't double-write.
+                if turn_text:
+                    yield {"reset": True}
+                fcalls = []
+                turn_text = ""
+                turn_finish = None
+                _cfg = dict(cfg)
+                # thinkingBudget=0 is rejected by gemini-2.5-pro (and its
+                # aliases pro-latest / gemini-3.x pro). Drop the config
+                # entirely for any Pro-tier fallback so it can auto-decide.
+                # Also drop for flash-latest which doesn't need it.
+                if "flash-latest" in _mdl or "pro" in _mdl:
+                    _cfg = {k: v for k, v in _cfg.items() if k != "thinkingConfig"}
+                _base_body = {"systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                              "generationConfig": _cfg}
+                if not _no_more_tools_end:
+                    _base_body["tools"] = _TOOLS
+                try:
+                  with _tx.gate(), httpx.Client(timeout=httpx.Timeout(45.0)) as c:
+                    with c.stream("POST", _tx.url(_mdl, "streamGenerateContent") + "?alt=sse",
+                                  headers=_tx.headers(),
+                                  json={**_base_body, "contents": contents}) as r:
+                        if r.status_code in (429, 503):
+                            log.warning("agent stream %s HTTP %s — falling to next model", _mdl, r.status_code)
+                            continue  # try next model in chain
+                        if r.status_code != 200:
+                            body = ""
+                            try:
+                                for chunk in r.iter_bytes():
+                                    body += chunk.decode("utf-8", "ignore")
+                                    if len(body) > 800:
+                                        break
+                            except Exception:  # noqa: BLE001
+                                pass
+                            log.warning("agent stream %s HTTP %s: %s", _mdl, r.status_code, body[:600])
+                            # 400 INVALID_ARGUMENT — Google's disguised
+                            # rate-limit signal. Fall through to the next
+                            # model / sweep instead of failing hard.
+                            if r.status_code == 400 and (
+                                "invalid_argument" in body.lower() or
+                                "invalid argument" in body.lower() or
+                                "rate" in body.lower() or "quota" in body.lower()
+                            ):
+                                continue
+                            raise RuntimeError(f"agent stream HTTP {r.status_code}")
+                        # Consume this stream FULLY here — the outer connection
+                        # closes on exit, so we must accumulate before break.
+                        _last_um = None  # SSE emits usageMetadata cumulatively; keep only the last
+                        for line in r.iter_lines():
+                            if not line or not line.startswith("data:"):
+                                continue
+                            payload = line[5:].strip()
+                            if not payload or payload == "[DONE]":
+                                continue
+                            try:
+                                d = json.loads(payload)
+                            except Exception:  # noqa: BLE001
+                                continue
+                            cand = (d.get("candidates") or [{}])[0]
+                            _fr = cand.get("finishReason")
+                            if _fr:
+                                turn_finish = _fr
+                            for p in (cand.get("content") or {}).get("parts") or []:
+                                if "functionCall" in p:
+                                    fcalls.append({
+                                        "functionCall": p["functionCall"],
+                                        "thoughtSignature": p.get("thoughtSignature"),
+                                    })
+                                elif p.get("text"):
+                                    turn_text += p["text"]
+                                    yield {"delta": p["text"]}
+                            if d.get("usageMetadata"):
+                                _last_um = d["usageMetadata"]
+                        if _last_um:
+                            usage_calls.append({"model": _mdl,
+                                                "usage": {"prompt_tokens": _last_um.get("promptTokenCount"),
+                                                          "completion_tokens": _last_um.get("candidatesTokenCount"),
+                                                          "total_tokens": _last_um.get("totalTokenCount"),
+                                                          "cached_tokens": _last_um.get("cachedContentTokenCount")},
+                                                "latency_ms": int((time.time() - t0) * 1000)})
+                        _resp = "ok"
+                except Exception as e:  # noqa: BLE001
+                    log.warning("agent stream %s exception: %s", _mdl, e)
+                    continue
+                if _resp == "ok":
+                    break  # streamed successfully — exit model-chain loop
             if _resp == "ok":
-                break  # streamed successfully — exit model-chain loop
+                break  # succeeded on this sweep — exit backoff loop
+            # If the model started streaming and produced partial text
+            # before failing, don't retry — we'd double-write. Only
+            # sweep-retry when nothing at all made it out.
+            if turn_text or fcalls:
+                break
         if _resp != "ok":
-            # Every model in the chain returned 429/503. Give up gracefully
-            # so the user sees a real message instead of a spinner.
-            yield {"delta": "The AI service is temporarily busy — please retry in a moment."}
-            final_text = "The AI service is temporarily busy — please retry in a moment."
+            # 3 sweeps of every fallback model exhausted. Yield a
+            # friendlier message and mark it as streamed so the
+            # safety-net doesn't double-emit it.
+            _busy = (
+                "The AI service is under heavy load right now and every "
+                "retry failed. Please wait ~60 seconds and try the same "
+                "question again."
+            )
+            yield {"delta": _busy}
+            final_text = _busy
+            _final_streamed = True
             break
         if fcalls:
             # A clarification request takes priority — pause and ask the user.
@@ -801,7 +1050,91 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
         final_text = turn_text.strip()
         if final_text:
             _final_streamed = True
+        last_finish = turn_finish
         break
+    # ---- Auto-continue when the final answer was truncated -----------
+    # Mirrors the composer's logic in multi_agent: if Gemini stopped
+    # because it hit MAX_TOKENS, or if the tail of the streamed text
+    # looks like an incomplete markdown structure (bare "##" heading,
+    # dangling "**", empty bullet, or the ends-mid-word case the user
+    # reported — "If Section 1"), request a continuation from exactly
+    # where we stopped. Up to 3 rounds. Nothing to do if we never got
+    # a natural answer turn (i.e. hit MAX_ITERS still in the tool loop
+    # — the fallback synthesis block below handles that case).
+    def _looks_truncated_agent(text: str) -> bool:
+        stripped = text.rstrip()
+        if not stripped:
+            return False
+        last_line = stripped.split("\n")[-1].rstrip()
+        if last_line in ("#", "##", "###", "####") or (
+            last_line.startswith(("#", "##", "###", "####"))
+            and last_line.replace("#", "").strip() == ""
+        ):
+            return True
+        if last_line.endswith("**") and last_line.count("**") % 2 != 0:
+            return True
+        if last_line in ("-", "*", "- ", "* "):
+            return True
+        if last_line in ("|", "| ") or (
+            last_line.startswith("|") and last_line.count("|") <= 1
+        ):
+            return True
+        # Ends mid-word / mid-sentence — no terminal punctuation, and
+        # last token is short. Catches "If Section 1" where the sentence
+        # was cut before the closing "(1C) doesn't apply, ...".
+        if stripped[-1] not in ".!?:)]}\"'" and len(stripped) > 200:
+            last_tok = stripped.split()[-1] if stripped.split() else ""
+            if last_tok and len(last_tok) < 30 and not last_tok.endswith(","):
+                return True
+        return False
+
+    _should_continue_agent = final_text and (
+        last_finish == "MAX_TOKENS" or _looks_truncated_agent(final_text)
+    )
+    if _should_continue_agent:
+        log.info("agent: answer looks truncated (finish=%s, tail=%r) — continuing",
+                 last_finish, final_text[-60:])
+        _guard = 0
+        _cont_contents = list(contents)
+        _cont_contents.append({"role": "model", "parts": [{"text": final_text}]})
+        while _guard < 3:
+            _guard += 1
+            _cont_contents.append({"role": "user", "parts": [{"text":
+                "Continue the previous answer from exactly where it "
+                "stopped. Do not repeat anything already written; do "
+                "not re-emit any heading you already used; do not "
+                "restart or recap. Just carry on and finish it."}]})
+            _cfg = dict(cfg)
+            _cfg.pop("thinkingConfig", None)
+            _cont_body = {
+                "systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                "generationConfig": _cfg,
+                "contents": _cont_contents,
+            }
+            try:
+                with httpx.Client(timeout=httpx.Timeout(60.0)) as c:
+                    rc = c.post(f"{_BASE}/{_MODEL}:generateContent",
+                                headers={"x-goog-api-key": _KEY,
+                                         "Content-Type": "application/json"},
+                                json=_cont_body)
+                if rc.status_code != 200:
+                    log.warning("agent continue HTTP %s — stopping", rc.status_code)
+                    break
+                dc = rc.json()
+            except Exception as e:  # noqa: BLE001
+                log.warning("agent continue failed: %s", e)
+                break
+            cc = (dc.get("candidates") or [{}])[0]
+            piece = "".join(pp.get("text", "") for pp in
+                            (cc.get("content") or {}).get("parts") or [])
+            if not piece:
+                break
+            yield {"delta": piece}
+            final_text += piece
+            _cont_contents.append({"role": "model", "parts": [{"text": piece}]})
+            _cont_finish = cc.get("finishReason")
+            if _cont_finish != "MAX_TOKENS" and not _looks_truncated_agent(final_text):
+                break
     seen, srcs = set(), []
     for s in all_sources:
         u = s.get("url")
@@ -832,7 +1165,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                     }]},
                 ],
             }
-            with httpx.Client(timeout=httpx.Timeout(30.0)) as c:
+            with _tx.gate(), httpx.Client(timeout=httpx.Timeout(30.0)) as c:
                 r = c.post(_tx.url(_MODEL, "generateContent"),
                            headers=_tx.headers(),
                            json=_synth_body)
@@ -846,9 +1179,29 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     if not final_text:
         final_text = ("I searched but couldn't put together a complete answer "
                       "just now — please rephrase or ask again.")
+    # Frontend renderer is plain-markdown; strip LaTeX slip-ups so `$$\text{...}$$`
+    # doesn't land as visible source. Mirrors multi_agent._strip_latex; kept
+    # inline to avoid an agent<->multi_agent circular import.
+    final_text = _strip_latex_agent(final_text)
     # Emit as delta ONLY if the streaming path didn't already deliver the
     # answer body — otherwise we'd double-write the text to the UI.
     if not _final_streamed:
         yield {"delta": final_text}
     yield {"done": {"text": final_text, "used": "agent", "tools_used": tools_used,
                     "web_sources": srcs, "law_refs": law_refs, "llm_calls": usage_calls}}
+
+
+def _strip_latex_agent(text: str) -> str:
+    if not text:
+        return text
+    if "$" not in text and "\\text" not in text and "\\frac" not in text:
+        return text
+    out = re.sub(r"\\text\s*\{([^{}]*)\}", r"\1", text)
+    out = re.sub(r"\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", r"(\1 / \2)", out)
+    out = (out.replace(r"\times", "×").replace(r"\div", "÷")
+              .replace(r"\Rightarrow", "→").replace(r"\rightarrow", "→")
+              .replace(r"\approx", "≈").replace(r"\leq", "≤").replace(r"\geq", "≥")
+              .replace(r"\%", "%").replace(r"\$", "$"))
+    out = re.sub(r"\$\$\s*(.*?)\s*\$\$", r"\1", out, flags=re.DOTALL)
+    out = re.sub(r"(?<!\\)\$([^\$\n]{1,200}?)(?<!\\)\$", r"\1", out)
+    return out

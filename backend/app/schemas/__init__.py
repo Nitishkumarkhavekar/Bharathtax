@@ -91,6 +91,18 @@ class AskRequest(BaseModel):
     domain: str | None = None        # module filter (income_tax | gst | ...)
     style: str | None = "explanatory"
     chat_id: int | None = None       # persist this turn into a server-owned chat
+    # Documents attached to THIS turn (uploaded inline via the composer's +
+    # button, paste, or drag-drop). Each id points to a Document row the
+    # caller owns. The agent is instructed to analyze these files together
+    # with the question — their extracted text is prepended to the prompt
+    # so the model doesn't have to guess which docs are in scope.
+    attached_document_ids: list[int] | None = None
+    # Client-side attachment metadata (filename, size, thumbnail data-URL)
+    # for this turn. Persisted onto the user chat message's `meta` so the
+    # attachment chip re-renders after a reload / chat switch. Purely
+    # cosmetic — the model uses `attached_document_ids` to actually see
+    # the file content.
+    attachments_meta: list[dict] | None = None
 
 
 class ImprovePromptRequest(BaseModel):

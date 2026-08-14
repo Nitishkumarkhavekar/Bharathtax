@@ -29,6 +29,18 @@ class Document(Base):
     content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     minio_key: Mapped[str] = mapped_column(String(500))
     status: Mapped[DocumentStatus] = mapped_column(default=DocumentStatus.uploaded)
+    # SHA-256 of the raw uploaded bytes — used as the cache key for the
+    # extraction pipeline. Same hash + same pipeline_version means the
+    # earlier extraction is byte-for-byte reusable; we clone its chunks
+    # instead of re-running OCR / chunking / embedding. Nullable so
+    # legacy rows uploaded before this column existed keep working
+    # (they'll always miss the cache and re-run the pipeline).
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Extraction-pipeline tag. Bumped every time we change something that
+    # affects extraction output (OCR fallback, chunker, mojibake heuristic).
+    # A mismatch between this row's tag and the current tag invalidates
+    # the cache, so an upgraded pipeline never resurfaces stale output.
+    pipeline_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     chunks: Mapped[list["DocumentChunk"]] = relationship(back_populates="document")

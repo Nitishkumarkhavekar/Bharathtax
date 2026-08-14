@@ -13,6 +13,7 @@ import {
   ScrollText,
   Share2,
   Check,
+  X,
 } from "lucide-react";
 import { ApiError, api } from "../api";
 import { toast } from "@/lib/toast";
@@ -27,7 +28,7 @@ import {
 } from "@/lib/chatStore";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatMessages from "@/components/chat/ChatMessages";
-import ChatComposer from "@/components/chat/ChatComposer";
+import ChatComposer, { ComposerAttachment } from "@/components/chat/ChatComposer";
 import LicenseGate from "@/components/chat/LicenseGate";
 import ArchivedDialog from "@/components/chat/ArchivedDialog";
 import { ServerChat } from "../api";
@@ -139,6 +140,29 @@ export default function Chat() {
   // Aborts the in-flight stream when the user hits Stop.
   const abortRef = useRef<AbortController | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  // Prompt queue — while the assistant is generating an answer, a new
+  // Send doesn't try to fire immediately (that would either interrupt
+  // the stream or race the abort logic). Instead we stash the text +
+  // attachments here, show a small banner, and auto-fire when `busy`
+  // flips false. The user can edit or cancel the queued prompt before
+  // it goes out.
+  type QueuedPrompt = { text: string; attachments: ComposerAttachment[] };
+  const [queued, setQueued] = useState<QueuedPrompt | null>(null);
+  const queuedRef = useRef<QueuedPrompt | null>(null);
+  useEffect(() => { queuedRef.current = queued; }, [queued]);
+  // Auto-fire the queued prompt the moment the assistant becomes idle
+  // (busy flips false). We check queuedRef inside a microtask so we
+  // don't race any state updates the streamInto tail is committing.
+  useEffect(() => {
+    if (busy) return;
+    const q = queuedRef.current;
+    if (!q) return;
+    setQueued(null);
+    // Fire on next tick so React commits the "cleared queue" state
+    // before the new turn adds messages.
+    setTimeout(() => { void send(q.text, q.attachments); }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy]);
 
   // A chat restored from the Archived dialog re-enters the active list.
   function onUnarchived(c: ServerChat) {
@@ -213,12 +237,36 @@ export default function Chat() {
   // Re-clicking the "Chat" link from another page (or this page) routes to
   // /ask again. react-router doesn't remount the component when the path is
   // the same, so listen on location.key — every navigation gets a new key.
+  // BUT: when the user just clicked "Continue this chat" from a shared view,
+  // we DON'T want to reset — SharedChat stashes the forked chat id in
+  // sessionStorage and the effect below picks it up. Only reset when there
+  // is no pending chat to open.
   const loc = useLocation();
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem("bt_open_chat_id")) return;
+    } catch { /* */ }
     startNew();
     // We intentionally only respond to navigation events.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loc.key]);
+
+  // If we arrived here via "Continue this chat" on the shared view (or any
+  // other flow that stashed a target chat id in sessionStorage), open that
+  // chat once the server-side chat list has been fetched. The storage key
+  // is consumed exactly once — subsequent navigations behave normally.
+  useEffect(() => {
+    let openId: string | null = null;
+    try {
+      openId = sessionStorage.getItem("bt_open_chat_id");
+    } catch { /* */ }
+    if (!openId) return;
+    const target = threads.find((t) => t.serverId != null && String(t.serverId) === openId);
+    if (!target) return;
+    try { sessionStorage.removeItem("bt_open_chat_id"); } catch { /* */ }
+    void selectThread(target.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threads]);
 
   const active = useMemo(
     () => threads.find((t) => t.id === activeId) ?? null,
@@ -240,14 +288,27 @@ export default function Chat() {
     if (t?.serverId != null && t.messages.length === 0) {
       try {
         const full = await api.chatGet(t.serverId);
-        const msgs: ChatMessage[] = (full.messages || []).map((m) => ({
-          role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
-          content: m.content,
-          citations: m.citations,
-          grounded: (m.meta as { grounded?: boolean })?.grounded,
-          meta: m.meta,
-          ts: Date.parse(m.created_at ?? "") || Date.now(),
-        }));
+        const msgs: ChatMessage[] = (full.messages || []).map((m) => {
+          const meta = (m.meta ?? {}) as {
+            grounded?: boolean;
+            attachments?: import("@/lib/chatStore").ChatAttachment[];
+          };
+          return {
+            role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
+            content: m.content,
+            citations: m.citations,
+            grounded: meta.grounded,
+            // Rehydrate the composer chip on reload: the server stored the
+            // attachment metadata on the user message's meta.attachments
+            // (see /ask persist path). Hoist it back onto the top-level
+            // field the renderer reads.
+            ...(meta.attachments && Array.isArray(meta.attachments) && meta.attachments.length
+              ? { attachments: meta.attachments }
+              : {}),
+            meta: m.meta,
+            ts: Date.parse(m.created_at ?? "") || Date.now(),
+          };
+        });
         setThreads((prev) => prev.map((x) => (x.id === id ? { ...x, messages: msgs } : x)));
       } catch {
         /* keep whatever we have */
@@ -302,6 +363,34 @@ export default function Chat() {
     toast.success("Chat archived");
   }
 
+  // Generate (or re-use) the server-side share token for this chat and
+  // copy the resulting URL to the clipboard. Any signed-in BharathTax
+  // user with the link can then open a read-only view of the chat and
+  // click "Continue this chat" to fork it into their own account.
+  async function shareThread(id: string) {
+    const t = threads.find((x) => x.id === id);
+    if (!t?.serverId) {
+      // Purely local chat with no server row yet — persist it first so
+      // it has a stable id to share.
+      toast.info("Save at least one message before sharing.");
+      return;
+    }
+    try {
+      const { share_id } = await api.chatShare(t.serverId);
+      const url = `${window.location.origin}/shared/${share_id}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied to clipboard.");
+      } catch {
+        // Clipboard blocked (permissions / non-HTTPS) — fall back to
+        // showing the URL so the user can copy it manually.
+        window.prompt("Copy this share link:", url);
+      }
+    } catch (e) {
+      toast.error((e as Error)?.message || "Couldn't create a share link.");
+    }
+  }
+
   // Stream an answer into the assistant message at `asstIdx` of thread `tid`.
   // Shared by send() (a new turn) and regenerate() (re-run in place). When
   // `persist` is false (regenerate) the turn is not written server-side, so a
@@ -312,6 +401,8 @@ export default function Chat() {
     question: string,
     serverId: number | null,
     persist: boolean,
+    attachedDocumentIds?: number[],
+    attachmentsMeta?: Array<Record<string, unknown>>,
   ) {
     const patchAsst = (patch: Partial<ChatMessage>) =>
       setThreads((prev) =>
@@ -330,13 +421,27 @@ export default function Chat() {
     abortRef.current = controller;
     setBusy(true);
     setLiveIdx(asstIdx);
-    setLiveStatus("Thinking");
+    // When the user attached a file, the server does OCR / chunking on
+    // demand (we deferred it from upload-time so upload feels instant).
+    // Tell the user what's happening so a 20-60 s wait on a scanned PDF
+    // doesn't look like the app is hung under a bland "Thinking" label.
+    setLiveStatus(
+      attachedDocumentIds && attachedDocumentIds.length
+        ? "Reading your document…"
+        : "Thinking",
+    );
     const acc = { text: "" };
     const clarifyRef = { clarified: false };
     try {
       await api.askStream(
         question,
-        { domain: module || undefined, style, chatId: persist ? serverId ?? undefined : undefined },
+        {
+          domain: module || undefined,
+          style,
+          chatId: persist ? serverId ?? undefined : undefined,
+          attachedDocumentIds: attachedDocumentIds && attachedDocumentIds.length ? attachedDocumentIds : undefined,
+          attachmentsMeta: attachmentsMeta && attachmentsMeta.length ? attachmentsMeta : undefined,
+        },
         {
           onStatus: (s) => setLiveStatus(s),
           onDelta: (d) => {
@@ -372,7 +477,7 @@ export default function Chat() {
       } else {
         // Streaming failed before completing — fall back to the plain endpoint.
         try {
-          const res = await api.ask(question, module || undefined, style, persist ? serverId ?? undefined : undefined);
+          const res = await api.ask(question, module || undefined, style, persist ? serverId ?? undefined : undefined, attachedDocumentIds, attachmentsMeta);
           patchAsst({ content: res.answer, grounded: res.grounded, citations: res.citations, meta: res.meta });
           api
             .askFollowups(question, res.answer, module || undefined)
@@ -442,9 +547,43 @@ export default function Chat() {
     void streamInto(tid, uidx + 1, v, active.serverId ?? null, false);
   }
 
-  async function send(override?: string) {
-    const text = (typeof override === "string" ? override : input).trim();
-    if (!text || busy) return;
+  async function send(
+    overrideOrAttachments?: string | ComposerAttachment[],
+    attachedFromSuggestion?: ComposerAttachment[],
+  ) {
+    // The composer calls send(attachments) — an array means "use current
+    // input, attach these files". A string means "send this override
+    // text (e.g. from a suggestion chip)".
+    let override: string | undefined;
+    let att: ComposerAttachment[] | undefined;
+    if (Array.isArray(overrideOrAttachments)) {
+      att = overrideOrAttachments;
+    } else {
+      override = overrideOrAttachments;
+      att = attachedFromSuggestion;
+    }
+    const docIds = (att ?? [])
+      .map((a) => a.docId)
+      .filter((n): n is number => typeof n === "number");
+    let text = (typeof override === "string" ? override : input).trim();
+    // Allow send with only attachments (no text) — the agent will
+    // summarise / analyse the attached files.
+    if (!text && docIds.length === 0) return;
+    if (!text && docIds.length) {
+      // No question typed, only files attached — ask for a full analysis.
+      text = docIds.length === 1
+        ? "Please analyse the attached document and give a full summary, key findings, and any Income-tax implications."
+        : "Please analyse the attached documents and give a combined summary, key findings, and any Income-tax implications.";
+    }
+    // If a generation is in flight, don't fire — queue the prompt (and
+    // its attachments) so the user can continue working. The
+    // auto-fire-on-idle effect below will send it as soon as the
+    // current turn finishes.
+    if (busy) {
+      setQueued({ text, attachments: att ?? [] });
+      setInput("");
+      return;
+    }
     setError(null);
     setFollowups([]);
     setClarify(null);
@@ -466,7 +605,22 @@ export default function Chat() {
     // the stream will fill in place. Its index is stable for the rest of send().
     const asstIdx = thread.messages.length + 1;
     const tid = thread.id;
-    const userMsg: ChatMessage = { role: "user", content: text, ts: Date.now() };
+    // Snapshot the attachments onto the user message so the chip renders
+    // in the bubble (and survives a reload from server-side messages —
+    // see the "meta.attachments" round-trip in the persist path).
+    const userAttachments = (att ?? []).map((a) => ({
+      docId: a.docId,
+      filename: a.filename,
+      contentType: a.contentType,
+      size: a.size,
+      previewDataUrl: a.previewDataUrl,
+    }));
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: text,
+      ts: Date.now(),
+      ...(userAttachments.length ? { attachments: userAttachments } : {}),
+    };
     const asstMsg: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
     setThreads((prev) =>
       prev.map((t) =>
@@ -488,7 +642,11 @@ export default function Chat() {
         /* server persistence is best-effort */
       }
     }
-    await streamInto(tid, asstIdx, text, serverId, true);
+    // Same payload we stamp on the local user message — send it to the
+    // server so it can be persisted on the ChatMessage.meta and re-appear
+    // as a chip when the user switches chats and comes back.
+    const attachmentsMetaPayload = userAttachments.length ? userAttachments : undefined;
+    await streamInto(tid, asstIdx, text, serverId, true, docIds, attachmentsMetaPayload);
   }
 
   const empty = !active || active.messages.length === 0;
@@ -507,6 +665,7 @@ export default function Chat() {
           onRename={renameThread}
           onTogglePin={togglePin}
           onArchive={archiveThread}
+          onShare={shareThread}
           onOpenArchived={() => setArchivedOpen(true)}
           collapsed={chatSidebarCollapsed}
           onToggleCollapsed={toggleChatSidebar}
@@ -568,6 +727,13 @@ export default function Chat() {
             }}
             displayName={session?.fullName || session?.username}
             error={error}
+            queued={queued}
+            onEditQueued={() => {
+              if (!queued) return;
+              setInput(queued.text);
+              setQueued(null);
+            }}
+            onCancelQueued={() => setQueued(null)}
           />
         ) : (
           <ActiveChat
@@ -592,6 +758,13 @@ export default function Chat() {
             onEditPrompt={editPrompt}
             onClarify={(txt) => send(txt)}
             clarify={clarify}
+            queued={queued}
+            onEditQueued={() => {
+              if (!queued) return;
+              setInput(queued.text);
+              setQueued(null);
+            }}
+            onCancelQueued={() => setQueued(null)}
           />
         )}
       </div>
@@ -608,7 +781,7 @@ export default function Chat() {
 function EmptyHero(props: {
   input: string;
   onInputChange: (v: string) => void;
-  onSubmit: () => void;
+  onSubmit: (attachments: ComposerAttachment[]) => void;
   busy: boolean;
   module: string;
   onModuleChange: (v: string) => void;
@@ -617,6 +790,9 @@ function EmptyHero(props: {
   onPick: (s: string) => void;
   displayName?: string;
   error: string | null;
+  queued: { text: string; attachments: ComposerAttachment[] } | null;
+  onEditQueued: () => void;
+  onCancelQueued: () => void;
 }) {
   const [cards, setCards] = useState<Suggestion[]>(SUGGESTIONS);
   useEffect(() => {
@@ -666,6 +842,13 @@ function EmptyHero(props: {
 
           {/* Composer */}
           <div className="relative">
+            {props.queued && (
+              <QueuedBanner
+                queued={props.queued}
+                onEdit={props.onEditQueued}
+                onCancel={props.onCancelQueued}
+              />
+            )}
             <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-md">
               <ChatComposer
                 value={props.input}
@@ -844,7 +1027,7 @@ function ActiveChat(props: {
   serverId: number | null;
   input: string;
   onInputChange: (v: string) => void;
-  onSubmit: () => void;
+  onSubmit: (attachments: ComposerAttachment[]) => void;
   busy: boolean;
   module: string;
   onModuleChange: (v: string) => void;
@@ -860,6 +1043,9 @@ function ActiveChat(props: {
   onEditPrompt: (idx: number, content: string) => void;
   onClarify: (text: string) => void;
   clarify: { question: string; options: string[] } | null;
+  queued: { text: string; attachments: ComposerAttachment[] } | null;
+  onEditQueued: () => void;
+  onCancelQueued: () => void;
 }) {
   return (
     <>
@@ -889,6 +1075,13 @@ function ActiveChat(props: {
           )}
           {/* Clarification options render inside the assistant message via
               ChatMessages' ClarifyPanel — no duplicate strip needed here. */}
+          {props.queued && (
+            <QueuedBanner
+              queued={props.queued}
+              onEdit={props.onEditQueued}
+              onCancel={props.onCancelQueued}
+            />
+          )}
           <ChatComposer
             value={props.input}
             onChange={props.onInputChange}
@@ -909,6 +1102,66 @@ function ActiveChat(props: {
     </>
   );
 }
+
+/** Small banner shown ABOVE the composer while a follow-up prompt is
+ *  queued. Displays the queued text (truncated to 2 lines), the count
+ *  of any attached files, and two actions:
+ *    - Edit  : pull the text back into the composer input for changes.
+ *    - Delete: discard the queued prompt entirely.
+ *  The prompt auto-fires when the assistant becomes idle; this banner
+ *  is purely informational + gives the user control before that happens.
+ */
+function QueuedBanner({
+  queued,
+  onEdit,
+  onCancel,
+}: {
+  queued: { text: string; attachments: ComposerAttachment[] };
+  onEdit: () => void;
+  onCancel: () => void;
+}) {
+  const attCount = queued.attachments?.length ?? 0;
+  return (
+    <div className="mb-2 rounded-xl border border-primary/25 bg-primary/[0.06] px-3 py-2 flex items-start gap-3 animate-fade-up">
+      <div className="mt-0.5 size-6 shrink-0 rounded-full bg-primary/15 text-primary flex items-center justify-center">
+        <Sparkles className="size-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11.5px] font-semibold uppercase tracking-wide text-primary/80">
+          Queued · will send after this answer
+          {attCount > 0 && (
+            <span className="ml-1.5 text-slate-500 normal-case tracking-normal font-medium">
+              · {attCount} file{attCount === 1 ? "" : "s"} attached
+            </span>
+          )}
+        </div>
+        <div className="mt-0.5 text-[13px] text-slate-800 line-clamp-2 leading-snug">
+          {queued.text}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={onEdit}
+          title="Edit before sending"
+          className="text-[12px] px-2 py-1 rounded-md text-primary hover:bg-primary/10 font-medium transition-colors"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          title="Discard queued message"
+          aria-label="Cancel queued message"
+          className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 function capitalize(s: string): string {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
