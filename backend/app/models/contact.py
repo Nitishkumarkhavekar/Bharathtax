@@ -17,6 +17,10 @@ class ContactMessage(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(255), index=True)
+    # Mobile is optional in schema (older rows have NULL) but the marketing
+    # form asks for it — the admin Leads table sorts leads by created_at DESC
+    # and mobile is a key channel back to the lead.
+    mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)
     organisation: Mapped[str | None] = mapped_column(String(200), nullable=True)
     topic: Mapped[str | None] = mapped_column(String(60), nullable=True)
     message: Mapped[str] = mapped_column(Text)

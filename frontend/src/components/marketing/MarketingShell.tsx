@@ -1,36 +1,16 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Scale, Mail, ArrowLeft } from "lucide-react";
+import { MarketingNav } from "./MarketingNav";
 
 // Shared header + footer for the public marketing sub-pages (Contact, Terms,
 // Privacy, Docs) so nav + footer stay consistent and every link resolves.
 
+// Header now delegates to MarketingNav — the same rich nav (Products /
+// Solutions / Resources dropdowns + mobile drawer) used by the homepage,
+// so every marketing page has identical navigation.
 export function MarketingHeader() {
-  return (
-    <header className="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-slate-200">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center gap-4">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-primary text-white grid place-items-center ring-1 ring-primary/20">
-            <Scale className="size-4" />
-          </div>
-          <span className="text-[17px] font-semibold tracking-tight text-slate-900">BharatTax</span>
-        </Link>
-        <nav className="hidden sm:flex items-center gap-1 text-[14px] text-slate-700 ml-2">
-          <Link to="/#features" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Features</Link>
-          <Link to="/docs" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Documentation</Link>
-          <Link to="/#pricing" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Pricing</Link>
-          <Link to="/contact" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Contact</Link>
-          <Link to="/releases" className="px-3 py-2 rounded-md hover:bg-slate-900/5">Releases</Link>
-        </nav>
-        <Link
-          to="/login"
-          className="ml-auto inline-flex items-center h-9 px-4 rounded-md bg-slate-900 text-white text-[13.5px] font-semibold hover:bg-slate-800 transition-colors"
-        >
-          Sign in
-        </Link>
-      </div>
-    </header>
-  );
+  return <MarketingNav />;
 }
 
 export function MarketingFooter() {
@@ -90,17 +70,23 @@ export function MarketingShell({
   title,
   intro,
   children,
+  wide = false,
 }: {
   eyebrow?: string;
   title: string;
   intro?: string;
   children: ReactNode;
+  // Default max-w-3xl (768px) is right for prose (Terms, Privacy, Docs).
+  // Set wide=true for pages that host a two-column layout — Contact's form
+  // + channels sidebar — where 768px is too cramped.
+  wide?: boolean;
 }) {
+  const widthCls = wide ? "max-w-5xl" : "max-w-3xl";
   return (
     <div className="min-h-screen bg-[#FBFCFD] text-slate-900 antialiased flex flex-col">
       <MarketingHeader />
       <main className="flex-1">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-6">
+        <div className={`mx-auto ${widthCls} px-4 sm:px-6 pt-12 sm:pt-16 pb-6`}>
           <Link to="/" className="inline-flex items-center gap-1 text-[13px] text-slate-500 hover:text-slate-800 mb-6">
             <ArrowLeft className="size-3.5" /> Back to home
           </Link>
@@ -112,7 +98,7 @@ export function MarketingShell({
           </h1>
           {intro && <p className="mt-4 text-[16px] text-slate-600 leading-relaxed">{intro}</p>}
         </div>
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 pb-20">{children}</div>
+        <div className={`mx-auto ${widthCls} px-4 sm:px-6 pb-20`}>{children}</div>
       </main>
       <MarketingFooter />
     </div>

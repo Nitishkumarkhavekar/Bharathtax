@@ -46,6 +46,11 @@ class PlanIn(BaseModel):
     monthly_token_allowance: int = 0
     is_active: bool = True
     sort_order: int = 0
+    features: list[str] | None = None
+    is_featured: bool = False
+    badge: str | None = None
+    savings_note: str | None = None
+    annual_discount_pct: int = 20
 
 
 class PlanPatch(BaseModel):
@@ -55,6 +60,11 @@ class PlanPatch(BaseModel):
     monthly_token_allowance: int | None = None
     is_active: bool | None = None
     sort_order: int | None = None
+    features: list[str] | None = None
+    is_featured: bool | None = None
+    badge: str | None = None
+    savings_note: str | None = None
+    annual_discount_pct: int | None = None
 
 
 class TokenRateIn(BaseModel):
@@ -99,12 +109,22 @@ class SubscriptionPatch(BaseModel):
 # Helpers
 # --------------------------------------------------------------------------
 def _plan_out(p: SubscriptionPlan) -> dict:
+    monthly = float(p.monthly_price_inr or 0)
+    discount_pct = int(getattr(p, "annual_discount_pct", None) or 0)
+    # Yearly = monthly × 12 × (1 - discount_pct / 100). Rounded to whole rupees.
+    yearly = round(monthly * 12 * (1 - discount_pct / 100.0)) if monthly > 0 else 0
     return {
         "id": p.id, "name": p.name, "description": p.description,
-        "monthly_price_inr": float(p.monthly_price_inr or 0),
+        "monthly_price_inr": monthly,
+        "yearly_price_inr": yearly,
+        "annual_discount_pct": discount_pct,
         "monthly_token_allowance": int(p.monthly_token_allowance or 0),
         "is_active": bool(p.is_active),
         "sort_order": int(p.sort_order or 0),
+        "features": list(getattr(p, "features", None) or []),
+        "is_featured": bool(getattr(p, "is_featured", False)),
+        "badge": getattr(p, "badge", None),
+        "savings_note": getattr(p, "savings_note", None),
         "created_at": p.created_at.isoformat() if p.created_at else None,
         "updated_at": p.updated_at.isoformat() if p.updated_at else None,
     }
@@ -240,6 +260,11 @@ def create_plan(body: PlanIn, admin: User = Depends(_admin),
         monthly_token_allowance=body.monthly_token_allowance,
         is_active=body.is_active,
         sort_order=body.sort_order,
+        features=list(body.features or []),
+        is_featured=body.is_featured,
+        badge=body.badge,
+        savings_note=body.savings_note,
+        annual_discount_pct=body.annual_discount_pct,
     )
     db.add(p); db.commit(); db.refresh(p)
     return _plan_out(p)
@@ -252,7 +277,9 @@ def patch_plan(plan_id: int, body: PlanPatch,
     if not p:
         raise HTTPException(404, "Plan not found")
     for attr in ("name", "description", "monthly_price_inr",
-                 "monthly_token_allowance", "is_active", "sort_order"):
+                 "monthly_token_allowance", "is_active", "sort_order",
+                 "features", "is_featured", "badge", "savings_note",
+                 "annual_discount_pct"):
         val = getattr(body, attr)
         if val is not None:
             setattr(p, attr, val)
@@ -541,6 +568,22 @@ def public_plans(p: Principal = Depends(get_principal),
     rows = db.scalars(
         select(SubscriptionPlan)
         .where(SubscriptionPlan.is_active == True)  # noqa: E712
+        .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
+    ).all()
+    return [_plan_out(pl) for pl in rows]
+
+
+# ==========================================================================
+# UNAUTHENTICATED — the marketing landing page fetches active plans here so
+# any admin edit to price / features / badge propagates without a re-deploy.
+# The auto-granted Free Trial plan is excluded — it's not a purchase decision.
+# ==========================================================================
+@router.get("/public/pricing-plans")
+def public_pricing_plans(db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(
+        select(SubscriptionPlan)
+        .where(SubscriptionPlan.is_active == True)  # noqa: E712
+        .where(SubscriptionPlan.monthly_price_inr > 0)  # skip Free Trial
         .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
     ).all()
     return [_plan_out(pl) for pl in rows]
