@@ -36,6 +36,10 @@ class SubscriptionPlan(Base):
     name: Mapped[str] = mapped_column(String(60), unique=True)          # e.g. "Basic"
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     monthly_price_inr: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    # Explicit yearly price override. NULL = auto-compute from
+    # `monthly_price_inr * 12 * (1 - annual_discount_pct/100)`. Setting a
+    # value here (e.g. a nicer round number the admin wants shown) wins.
+    yearly_price_inr: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     monthly_token_allowance: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Presentation order for the pricing page. 0 = first.

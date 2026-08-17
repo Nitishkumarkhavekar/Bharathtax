@@ -43,6 +43,9 @@ class PlanIn(BaseModel):
     name: str
     description: str | None = None
     monthly_price_inr: float = 0
+    # Optional explicit yearly override. If null / missing, the API
+    # derives it from monthly × 12 × (1 − annual_discount_pct/100).
+    yearly_price_inr: float | None = None
     monthly_token_allowance: int = 0
     is_active: bool = True
     sort_order: int = 0
@@ -57,6 +60,7 @@ class PlanPatch(BaseModel):
     name: str | None = None
     description: str | None = None
     monthly_price_inr: float | None = None
+    yearly_price_inr: float | None = None
     monthly_token_allowance: int | None = None
     is_active: bool | None = None
     sort_order: int | None = None
@@ -111,12 +115,20 @@ class SubscriptionPatch(BaseModel):
 def _plan_out(p: SubscriptionPlan) -> dict:
     monthly = float(p.monthly_price_inr or 0)
     discount_pct = int(getattr(p, "annual_discount_pct", None) or 0)
-    # Yearly = monthly × 12 × (1 - discount_pct / 100). Rounded to whole rupees.
-    yearly = round(monthly * 12 * (1 - discount_pct / 100.0)) if monthly > 0 else 0
+    # Yearly precedence: explicit yearly_price_inr set by admin wins;
+    # otherwise auto-derive from monthly × 12 × (1 − discount_pct/100).
+    explicit_yearly = getattr(p, "yearly_price_inr", None)
+    if explicit_yearly not in (None, 0):
+        yearly = float(explicit_yearly)
+    else:
+        yearly = round(monthly * 12 * (1 - discount_pct / 100.0)) if monthly > 0 else 0
     return {
         "id": p.id, "name": p.name, "description": p.description,
         "monthly_price_inr": monthly,
         "yearly_price_inr": yearly,
+        # Expose whether the yearly is an admin override or an auto-calc,
+        # so the UI can show a "custom" indicator next to the field.
+        "yearly_price_is_override": explicit_yearly not in (None, 0),
         "annual_discount_pct": discount_pct,
         "monthly_token_allowance": int(p.monthly_token_allowance or 0),
         "is_active": bool(p.is_active),
@@ -257,6 +269,7 @@ def create_plan(body: PlanIn, admin: User = Depends(_admin),
         name=body.name.strip(),
         description=(body.description or None),
         monthly_price_inr=body.monthly_price_inr,
+        yearly_price_inr=body.yearly_price_inr,
         monthly_token_allowance=body.monthly_token_allowance,
         is_active=body.is_active,
         sort_order=body.sort_order,
@@ -276,33 +289,64 @@ def patch_plan(plan_id: int, body: PlanPatch,
     p = db.get(SubscriptionPlan, plan_id)
     if not p:
         raise HTTPException(404, "Plan not found")
-    for attr in ("name", "description", "monthly_price_inr",
+    for attr in ("name", "description", "monthly_price_inr", "yearly_price_inr",
                  "monthly_token_allowance", "is_active", "sort_order",
                  "features", "is_featured", "badge", "savings_note",
                  "annual_discount_pct"):
         val = getattr(body, attr)
         if val is not None:
             setattr(p, attr, val)
+    # An explicit 0 sent for yearly_price_inr means "clear the override,
+    # auto-compute again" — PlanPatch declared it as Optional[float] so
+    # the "is not None" gate above ignores it; treat 0 as sentinel here.
+    if body.yearly_price_inr == 0:
+        p.yearly_price_inr = None
     db.commit(); db.refresh(p)
     return _plan_out(p)
 
 
 @router.delete("/admin/billing/plans/{plan_id}", status_code=204)
-def delete_plan(plan_id: int, admin: User = Depends(_admin),
+def delete_plan(plan_id: int, force: bool = False,
+                admin: User = Depends(_admin),
                 db: Session = Depends(get_db)) -> None:
     p = db.get(SubscriptionPlan, plan_id)
     if not p:
         return
-    # Refuse to delete a plan that has active users on it — the admin must
-    # move them first. Soft-toggle `is_active=False` is the usual "retire"
-    # path.
-    holders = db.scalar(
+    # Two kinds of blockers, treated separately for clarity:
+    #   • active_holders — users currently subscribed. Deleting these silently
+    #     would leave live users with no plan. NEVER auto-cascade; require
+    #     the admin to reassign first.
+    #   • historical_holders — expired / cancelled subscriptions. Postgres's
+    #     FK still blocks the delete, but these are just audit records and
+    #     `?force=true` sweeps them out.
+    active_holders = db.scalar(
         select(func.count(UserSubscription.id))
         .where(UserSubscription.plan_id == plan_id,
                UserSubscription.status == "active")
     ) or 0
-    if holders:
-        raise HTTPException(409, f"{holders} active subscription(s) still on this plan")
+    if active_holders:
+        raise HTTPException(
+            409,
+            f"{active_holders} active subscription(s) still on this plan — "
+            f"reassign those users to another plan before deleting.",
+        )
+    total_holders = db.scalar(
+        select(func.count(UserSubscription.id))
+        .where(UserSubscription.plan_id == plan_id)
+    ) or 0
+    if total_holders and not force:
+        raise HTTPException(
+            409,
+            f"{total_holders} historical (expired/cancelled) subscription(s) "
+            f"reference this plan. Re-issue the delete with ?force=true to "
+            f"drop them along with the plan.",
+        )
+    if force and total_holders:
+        db.execute(
+            UserSubscription.__table__.delete().where(
+                UserSubscription.plan_id == plan_id,
+            ),
+        )
     db.delete(p); db.commit()
 
 

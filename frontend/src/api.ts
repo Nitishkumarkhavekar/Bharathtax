@@ -433,9 +433,20 @@ export interface SubscriptionPlan {
   name: string;
   description: string | null;
   monthly_price_inr: number;
+  // Explicit yearly price (admin override). When the backend auto-computes
+  // from monthly × discount, this still comes back populated with the derived
+  // value; `yearly_price_is_override` tells you which case you're in.
+  yearly_price_inr?: number;
+  yearly_price_is_override?: boolean;
   monthly_token_allowance: number;
   is_active: boolean;
   sort_order: number;
+  // Marketing / landing-page controls (all optional so PATCH bodies can omit).
+  features?: string[] | null;
+  is_featured?: boolean;
+  badge?: string | null;
+  savings_note?: string | null;
+  annual_discount_pct?: number;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -1004,8 +1015,8 @@ export const api = {
     req<SubscriptionPlan>("/admin/billing/plans", { method: "POST", body: JSON.stringify(body) }),
   adminBillingPatchPlan: (id: number, body: Partial<SubscriptionPlan>) =>
     req<SubscriptionPlan>(`/admin/billing/plans/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  adminBillingDeletePlan: (id: number) =>
-    req<void>(`/admin/billing/plans/${id}`, { method: "DELETE" }),
+  adminBillingDeletePlan: (id: number, force?: boolean) =>
+    req<void>(`/admin/billing/plans/${id}${force ? "?force=true" : ""}`, { method: "DELETE" }),
   adminBillingRates: () => req<TokenRate[]>("/admin/billing/token-rates"),
   adminBillingCreateRate: (body: Partial<TokenRate>) =>
     req<TokenRate>("/admin/billing/token-rates", { method: "POST", body: JSON.stringify(body) }),

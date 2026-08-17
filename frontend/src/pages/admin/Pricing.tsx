@@ -91,7 +91,32 @@ function PlansTab() {
       await api.adminBillingDeletePlan(p.id);
       refresh();
     } catch (e: any) {
-      toast.error(e?.message ?? "Delete failed");
+      // Backend returns 409 with a message like "N historical (expired/
+      // cancelled) subscription(s) reference this plan. Re-issue the delete
+      // with ?force=true …". Detect that specific shape and offer to cascade.
+      const msg = e?.message ?? "Delete failed";
+      const isHistoricalBlock = /historical\s+.*subscription/i.test(msg);
+      if (isHistoricalBlock) {
+        const cascade = await confirm({
+          title: `Also delete historical subscriptions for "${p.name}"?`,
+          description:
+            msg +
+            "\n\nProceeding will delete the historical subscription rows " +
+            "(expired / cancelled) AND the plan itself. Audit history for " +
+            "those old subscriptions will be lost. This cannot be undone.",
+          tone: "danger",
+          confirmLabel: "Force delete plan + history",
+        });
+        if (!cascade) return;
+        try {
+          await api.adminBillingDeletePlan(p.id, /* force= */ true);
+          refresh();
+        } catch (e2: any) {
+          toast.error(e2?.message ?? "Force delete failed");
+        }
+        return;
+      }
+      toast.error(msg);
     }
   }
 
@@ -124,6 +149,7 @@ function PlansTab() {
                   <th className="text-left px-4 py-2.5 font-medium">Order</th>
                   <th className="text-left px-4 py-2.5 font-medium">Name</th>
                   <th className="text-right px-4 py-2.5 font-medium">₹ / month</th>
+                  <th className="text-right px-4 py-2.5 font-medium">₹ / year</th>
                   <th className="text-right px-4 py-2.5 font-medium">Tokens / month</th>
                   <th className="text-left px-4 py-2.5 font-medium">Status</th>
                   <th className="px-4 py-2.5" />
@@ -143,6 +169,14 @@ function PlansTab() {
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-900">
                       {p.monthly_price_inr.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-900">
+                      {p.yearly_price_inr
+                        ? p.yearly_price_inr.toFixed(2)
+                        : <span className="text-slate-400">—</span>}
+                      {p.yearly_price_is_override && (
+                        <span className="ml-1 text-[9.5px] font-semibold text-primary/70 uppercase">set</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-800">
                       {fmt(p.monthly_token_allowance)}
@@ -206,9 +240,26 @@ function PlanEditor({
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [priceInr, setPriceInr] = useState(String(initial?.monthly_price_inr ?? "0"));
+  // Yearly override — blank means "auto-derive from monthly + discount".
+  const [yearlyInr, setYearlyInr] = useState(
+    initial?.yearly_price_is_override && initial?.yearly_price_inr
+      ? String(initial.yearly_price_inr)
+      : "",
+  );
   const [tokens, setTokens] = useState(String(initial?.monthly_token_allowance ?? "0"));
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? "0"));
+  // Landing-page marketing controls. `features` is a newline-separated
+  // textarea in the UI, converted to a JSONB list on save.
+  const [features, setFeatures] = useState(
+    (initial?.features ?? []).join("\n"),
+  );
+  const [isFeatured, setIsFeatured] = useState(initial?.is_featured ?? false);
+  const [badge, setBadge] = useState(initial?.badge ?? "");
+  const [savingsNote, setSavingsNote] = useState(initial?.savings_note ?? "");
+  const [annualDiscountPct, setAnnualDiscountPct] = useState(
+    String(initial?.annual_discount_pct ?? 20),
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -216,13 +267,26 @@ function PlanEditor({
     e.preventDefault();
     setBusy(true); setErr(null);
     try {
-      const body = {
+      const featuresList = features
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      const body: Record<string, unknown> = {
         name: name.trim(),
         description: description.trim() || null,
         monthly_price_inr: Number(priceInr) || 0,
+        // Empty input → send 0 as the sentinel "clear override" (backend
+        // treats 0 as "unset yearly_price_inr, auto-compute again").
+        // A value → send the number (admin explicitly overrides).
+        yearly_price_inr: yearlyInr.trim() === "" ? 0 : Number(yearlyInr) || 0,
         monthly_token_allowance: Math.max(0, Math.floor(Number(tokens) || 0)),
         is_active: isActive,
         sort_order: Math.floor(Number(sortOrder) || 0),
+        features: featuresList,
+        is_featured: isFeatured,
+        badge: badge.trim() || null,
+        savings_note: savingsNote.trim() || null,
+        annual_discount_pct: Math.max(0, Math.min(90, Math.floor(Number(annualDiscountPct) || 0))),
       };
       if (initial) await api.adminBillingPatchPlan(initial.id, body);
       else await api.adminBillingCreatePlan(body);
@@ -252,6 +316,32 @@ function PlanEditor({
             <input value={tokens} onChange={(e) => setTokens(e.target.value)} type="number" min="0" step="1000" className="input font-mono tabular-nums" required />
           </Field>
         </div>
+        {/* Yearly price — optional override. Blank = auto-derived from monthly. */}
+        <Field
+          label={
+            <span>
+              Yearly price (₹) —{" "}
+              <span className="text-slate-500 font-normal">
+                leave blank to auto-derive{yearlyInr.trim() === "" && Number(priceInr) > 0
+                  ? ` (currently ₹${Math.round(
+                      Number(priceInr) * 12 *
+                      (1 - Math.max(0, Math.min(90, Number(annualDiscountPct) || 0)) / 100),
+                    ).toLocaleString("en-IN")})`
+                  : ""}
+              </span>
+            </span>
+          }
+        >
+          <input
+            value={yearlyInr}
+            onChange={(e) => setYearlyInr(e.target.value)}
+            type="number"
+            min="0"
+            step="1"
+            placeholder="e.g. 28790"
+            className="input font-mono tabular-nums"
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-3 items-end">
           <Field label="Sort order">
             <input value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} type="number" className="input" />
@@ -259,6 +349,61 @@ function PlanEditor({
           <label className="inline-flex items-center gap-2 text-sm h-9">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="size-4 rounded border-slate-300" />
             Active (sellable to users)
+          </label>
+        </div>
+        {/* Landing-page marketing controls. Displayed on the public /pricing
+            page and on the marketing landing hero. */}
+        <div className="pt-3 mt-2 border-t border-slate-200">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
+            Landing-page display
+          </div>
+          <Field label="Features (one per line — bullet on the pricing card)">
+            <textarea
+              value={features}
+              onChange={(e) => setFeatures(e.target.value)}
+              rows={5}
+              placeholder={"400,000 tokens / month\nUp to 50 assessment orders\nEmail + chat support"}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <Field label="Badge (e.g. “Most popular”)">
+              <input
+                value={badge}
+                onChange={(e) => setBadge(e.target.value)}
+                maxLength={60}
+                placeholder="Most popular"
+                className="input"
+              />
+            </Field>
+            <Field label="Annual discount %">
+              <input
+                value={annualDiscountPct}
+                onChange={(e) => setAnnualDiscountPct(e.target.value)}
+                type="number"
+                min="0"
+                max="90"
+                className="input font-mono tabular-nums"
+              />
+            </Field>
+          </div>
+          <Field label="Savings note (small print under the annual price)">
+            <input
+              value={savingsNote}
+              onChange={(e) => setSavingsNote(e.target.value)}
+              maxLength={200}
+              placeholder="Save ₹2,000 with annual billing"
+              className="input"
+            />
+          </Field>
+          <label className="inline-flex items-center gap-2 text-sm mt-2">
+            <input
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              className="size-4 rounded border-slate-300"
+            />
+            Featured — highlight this card on the pricing page
           </label>
         </div>
         {err && (
@@ -457,7 +602,7 @@ function RateEditor({
 
 // ============================================================ shared
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, children }: { label: React.ReactNode; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -472,8 +617,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-up"
          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
+      {/* Cap the card at viewport height and lay it out as a column so a
+          long form (the plan editor now has ~12 fields) scrolls its body
+          instead of overflowing the screen (which chopped the Save button
+          off entirely). Header is sticky so the title/close X stay visible
+          while the user scrolls through the fields. */}
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2 text-[14px] font-semibold text-slate-900">
             <Sparkles className="size-4 text-primary" /> {title}
           </div>
@@ -481,7 +631,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
             <X className="size-4" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   );
