@@ -136,14 +136,13 @@ function HeroPreview() {
           {/* Sidebar — dummy content only */}
           <aside className="hidden md:flex flex-col border-r border-slate-200 bg-slate-50/60">
             <div className="p-3">
-              <div className="flex items-center gap-2 px-1 py-1.5 mb-3">
-                <div className="size-7 rounded-md bg-primary text-white grid place-items-center">
-                  <Scale className="size-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-slate-900 leading-tight truncate">BharatTax</div>
-                  <div className="text-[10.5px] text-slate-500 leading-none mt-0.5">Income-tax research</div>
-                </div>
+              <div className="flex items-center px-1 py-1.5 mb-3">
+                <img
+                  src="/bharattax-logo.png"
+                  alt="BharatTax"
+                  className="h-8 w-auto select-none mix-blend-multiply"
+                  draggable={false}
+                />
               </div>
               <button
                 type="button"
@@ -527,7 +526,6 @@ function Pricing() {
       monthlyEquivalent: "₹2,399 / month effective",
       desc: "For individual CAs, students and taxpayer-side users getting started.",
       features: [
-        "10 million tokens / month",
         "~ 200 cited research questions",
         "Upload any tax document — deeds, notices, orders, contracts, judgments (up to 25 uploads / month)",
         "Cited answers on the Income-tax Act, Rules & CBDT circulars",
@@ -547,7 +545,6 @@ function Pricing() {
       desc: "For practicing CAs, tax counsel and Assessing Officers on daily use.",
       savings: "For the professional running 15+ files a week",
       features: [
-        "30 million tokens / month",
         "~ 600 research questions or 100 in-depth document reads",
         "Upload any tax document — unlimited uploads",
         "Six-module appellate order drafting (.docx export)",
@@ -566,13 +563,12 @@ function Pricing() {
       monthlyEquivalent: "₹5,633 / month effective",
       desc: "For heavy individual users — full-time practitioners, senior counsel and appellate authorities.",
       features: [
-        "100 million tokens / month",
         "~ 2,000 research questions or 350 appellate drafts",
         "Everything in Professional",
         "Upload any tax document — unlimited uploads",
         "Priority queue during peak hours (skips DSQ back-off)",
         "Extended chat & document retention (3 years)",
-        "Single login · dedicated customer engineer",
+        "Single login · priority support",
       ],
       cta: "Talk to sales",
       to: "/contact",
@@ -747,10 +743,12 @@ function Footer() {
     <footer className="border-t border-slate-200 bg-white/70 backdrop-blur">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 grid sm:grid-cols-4 gap-8 text-[13.5px] text-slate-600">
         <div>
-          <div className="flex items-center gap-2 text-slate-900">
-            <div className="size-7 rounded-lg bg-primary grid place-items-center text-white"><Scale className="size-4" /></div>
-            <span className="font-semibold">BharatTax</span>
-          </div>
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-10 w-auto select-none mix-blend-multiply"
+            draggable={false}
+          />
           <p className="mt-3 text-[12.5px] leading-relaxed">Citation-grounded research and drafting for Indian income tax — for CAs, Assessing Officers, CFOs, counsel, founders and students.</p>
         </div>
         <FooterCol title="Product">

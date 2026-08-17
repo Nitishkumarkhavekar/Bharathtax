@@ -16,12 +16,14 @@ export default function AuthShell({
 }) {
   return (
     <div className="min-h-screen w-full bt-marketing-bg text-slate-900 antialiased">
-      <div className="mx-auto max-w-6xl px-6 h-16 flex items-center">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
-            <Scale className="size-4.5" />
-          </div>
-          <span className="text-[17px] font-semibold tracking-tight">BharatTax</span>
+      <div className="mx-auto max-w-6xl px-6 h-28 flex items-center">
+        <Link to="/" className="flex items-center">
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-20 w-auto select-none mix-blend-multiply"
+            draggable={false}
+          />
         </Link>
         <div className="ml-auto text-[13px] text-slate-600">
           <Link to="/" className="hover:text-slate-900">← Back to home</Link>

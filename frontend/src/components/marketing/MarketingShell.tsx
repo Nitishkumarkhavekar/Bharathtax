@@ -18,10 +18,12 @@ export function MarketingFooter() {
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 grid sm:grid-cols-4 gap-8 text-[13.5px] text-slate-600">
         <div>
-          <div className="flex items-center gap-2 text-slate-900">
-            <div className="size-7 rounded-lg bg-primary grid place-items-center text-white"><Scale className="size-4" /></div>
-            <span className="font-semibold">BharatTax</span>
-          </div>
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-10 w-auto select-none mix-blend-multiply"
+            draggable={false}
+          />
           <p className="mt-3 text-[12.5px] leading-relaxed">
             Citation-grounded research and drafting for the Income-tax Department,
             CIT(A) benches and legal counsel.

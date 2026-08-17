@@ -76,14 +76,22 @@ function Rail({
           collapsed ? "justify-center px-0" : "justify-between px-5",
         )}
       >
-        <div className="flex items-center gap-2.5">
-          <div className="size-9 rounded-lg bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center">
-            <Scale className="size-4 text-primary" />
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {/* Sidebar is dark (bg-sidebar) — put the coloured logo on a light
+              pill so its blue / orange text stays readable on both states.
+              White pill = no mix-blend needed here; the PNG's white bg is
+              intended and matches the pill. */}
+          <div className="rounded-lg bg-white ring-1 ring-white/20 shadow-sm px-2 py-1.5 flex items-center justify-center">
+            <img
+              src="/bharattax-logo.png"
+              alt="BharatTax"
+              className={collapsed ? "h-10 w-auto select-none" : "h-12 w-auto select-none"}
+              draggable={false}
+            />
           </div>
           {!collapsed && (
             <div className="leading-tight">
-              <div className="text-[15px] font-semibold tracking-tight text-white">BharatTax</div>
-              <div className="text-[11px] text-sidebar-foreground/80 -mt-0.5">Admin console</div>
+              <div className="text-[11px] text-sidebar-foreground/80">Admin console</div>
             </div>
           )}
         </div>

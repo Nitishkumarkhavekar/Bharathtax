@@ -38,14 +38,14 @@ export function MarketingNav() {
           : "bg-transparent")
       }
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-[64px] sm:h-[68px] flex items-center gap-3 sm:gap-6">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
-            <Scale className="size-4.5" />
-          </div>
-          <span className="text-[17px] sm:text-[18px] font-semibold tracking-tight text-slate-900">
-            BharatTax
-          </span>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-[88px] sm:h-[96px] flex items-center gap-3 sm:gap-6">
+        <Link to="/" className="flex items-center">
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-16 sm:h-20 w-auto select-none mix-blend-multiply"
+            draggable={false}
+          />
         </Link>
         <nav className="hidden lg:flex items-center gap-1 text-[14px] text-slate-700">
           <NavDrop
@@ -104,11 +104,13 @@ export function MarketingNav() {
             onClick={() => setMobileOpen(false)}
           />
           <div className="lg:hidden fixed inset-y-0 right-0 z-50 w-[86%] max-w-sm bg-white shadow-2xl flex flex-col animate-fade-up">
-            <div className="h-[64px] px-5 border-b border-slate-200 flex items-center gap-2.5">
-              <div className="size-7 rounded-md bg-primary text-white grid place-items-center">
-                <Scale className="size-4" />
-              </div>
-              <span className="text-[16px] font-semibold">BharatTax</span>
+            <div className="h-[76px] px-5 border-b border-slate-200 flex items-center gap-2.5">
+              <img
+                src="/bharattax-logo.png"
+                alt="BharatTax"
+                className="h-11 w-auto select-none mix-blend-multiply"
+                draggable={false}
+              />
               <button
                 onClick={() => setMobileOpen(false)}
                 className="ml-auto size-9 rounded-md text-slate-600 hover:bg-slate-100 inline-flex items-center justify-center"

@@ -78,6 +78,13 @@ class Settings(BaseSettings):
     retrieval_rerank_k: int = 8
     retrieval_min_score: float = 0.30
 
+    # eCourts India — third-party court-tracking API (https://ecourtsindia.com).
+    # Complements IndianKanoon: CNR-based case detail + fielded case search
+    # with facets (state, court, judge, decision date, has-judgments, etc.).
+    # Empty key ⇒ integration is disabled and endpoints return 503 gracefully.
+    ecourts_api_key: str = ""
+    ecourts_base_url: str = "https://webapi.ecourtsindia.com"
+
     # auth / licensing
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
