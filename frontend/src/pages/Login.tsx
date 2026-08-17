@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Scale, Loader2, ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { landingPath, useAuth } from "../auth";
 import { ApiError } from "../api";
 import AuthShell from "@/components/auth/AuthShell";
@@ -108,10 +108,14 @@ export default function Login() {
       </form>
 
       <div className="mt-6 pt-4 border-t border-slate-200/70 flex items-center justify-center gap-2 text-[12px] text-slate-500">
-        <div className="size-5 rounded-md bg-primary/10 text-primary grid place-items-center">
-          <Scale className="size-3" />
-        </div>
-        BharatTax · Purpose-built for the Income-tax Department
+        <img
+          src="/bharattax-logo.png"
+          alt=""
+          aria-hidden
+          className="h-5 w-auto select-none mix-blend-multiply"
+          draggable={false}
+        />
+        <span>· Purpose-built for the Income-tax Department</span>
       </div>
     </AuthShell>
   );

@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
-  Scale,
   Plus,
   Search,
   Trash2,
@@ -15,7 +14,6 @@ import {
   UserCircle2,
   MessageSquareText,
   SquarePen,
-  Sparkles,
   Coins,
   ChevronDown,
   PanelLeft,
@@ -141,10 +139,13 @@ export default function ChatSidebar({
     return (
       <aside className="relative w-16 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
         {/* Brand mark + expand toggle */}
-        <div className="relative h-16 flex flex-col items-center justify-center gap-1 border-b border-slate-200/80">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30 shadow-sm">
-            <Scale className="size-4 text-white" strokeWidth={2.2} />
-          </div>
+        <div className="relative h-24 flex flex-col items-center justify-center gap-1 border-b border-slate-200/80">
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-11 w-auto select-none mix-blend-multiply"
+            draggable={false}
+          />
         </div>
         <div className="relative flex flex-col items-center gap-2 p-2">
           <button
@@ -211,19 +212,14 @@ export default function ChatSidebar({
   return (
     <aside className="relative w-full sm:w-72 lg:w-80 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
       {/* Brand */}
-      <div className="relative h-16 flex items-center justify-between gap-2 px-4 border-b border-slate-200/80">
-        <div className="flex items-center gap-2.5">
-          <div className="size-9 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30 shadow-sm">
-            <Scale className="size-4.5 text-white" strokeWidth={2.2} />
-          </div>
-          <div className="leading-tight">
-            <div className="text-[15px] font-semibold tracking-tight text-slate-900">
-              BharatTax
-            </div>
-            <div className="text-[10.5px] text-slate-500 -mt-0.5 flex items-center gap-1">
-              <Sparkles className="size-2.5" /> Income-tax research
-            </div>
-          </div>
+      <div className="relative h-24 flex items-center justify-between gap-2 px-3 border-b border-slate-200/80">
+        <div className="flex items-center min-w-0 flex-1">
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-16 w-auto max-w-full select-none shrink-0 mix-blend-multiply"
+            draggable={false}
+          />
         </div>
         <div className="flex items-center gap-1">
           {onToggleCollapsed && (

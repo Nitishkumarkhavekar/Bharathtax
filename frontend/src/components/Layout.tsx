@@ -6,7 +6,6 @@ import {
   Clock,
   ShieldCheck,
   LogOut,
-  Scale,
   Gavel,
   ScrollText,
   BookOpen,
@@ -154,22 +153,24 @@ function SidebarBody({
           sidebar itself, not from the main content header. */}
       <div
         className={cn(
-          "relative h-16 flex items-center border-b border-slate-200",
-          collapsed ? "px-0 flex-col justify-center gap-1.5 h-[92px]" : "px-4 gap-2.5",
+          "relative h-24 flex items-center border-b border-slate-200",
+          collapsed ? "px-0 flex-col justify-center gap-1.5" : "px-3 gap-2.5",
         )}
       >
-        <div className="size-9 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30 shadow-sm">
-          <Scale className="size-4.5 text-white" strokeWidth={2.2} />
-        </div>
-        {!collapsed && (
-          <div className="leading-tight min-w-0">
-            <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
-              BharatTax
-            </div>
-            <div className="text-[10.5px] text-slate-500 -mt-0.5 truncate">
-              Income-tax research
-            </div>
-          </div>
+        {collapsed ? (
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-11 w-auto select-none mix-blend-multiply"
+            draggable={false}
+          />
+        ) : (
+          <img
+            src="/bharattax-logo.png"
+            alt="BharatTax"
+            className="h-16 w-auto max-w-full select-none mix-blend-multiply"
+            draggable={false}
+          />
         )}
         {onToggleCollapsed && (
           <button

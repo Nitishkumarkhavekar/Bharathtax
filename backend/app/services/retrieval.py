@@ -9,6 +9,7 @@ answer (anti-hallucination).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from sqlalchemy import Float, func, select
 from sqlalchemy.orm import Session
@@ -19,6 +20,27 @@ from app.ingestion.parse.section_cites import extract_sections
 from app.models.corpus import CorpusChunk, CorpusDocument
 from app.models.documents import DocumentChunk
 from app.services import embeddings as emb
+
+
+@lru_cache(maxsize=1024)
+def _embed_query_cached_inner(query_key: str) -> tuple[float, ...]:
+    """LRU-cached query-embedding — key is the normalised query string.
+
+    Query embeddings on the ml-server take ~5 s each (CPU bge-m3). Popular
+    queries (chip clicks like "bogus purchases", "TDS", "section 68") repeat
+    constantly across users, so caching turns the second hit into a memory
+    lookup. Cache is per-process; multi-worker setups pay the first miss
+    per worker, which is still a huge improvement.
+
+    Tuple return so it's hashable and immutable — protects the cached value
+    from accidental mutation by downstream code.
+    """
+    return tuple(emb.embed_one(query_key))
+
+
+def _embed_query_cached(query: str) -> list[float]:
+    key = (query or "").strip().lower()[:512]
+    return list(_embed_query_cached_inner(key))
 
 
 @dataclass
@@ -109,8 +131,24 @@ def _doc_meta(db: Session, chunk: CorpusChunk):
     return doc.source_url, dg, doc.sections_cited
 
 
-def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> RetrievalResult:
-    qvec = emb.embed_one(query)
+def retrieve(
+    db: Session,
+    query: str,
+    *,
+    domain: Domain | None = None,
+    use_rerank: bool = True,
+) -> RetrievalResult:
+    """Hybrid retrieval (dense + sparse + section-aware) with optional
+    cross-encoder rerank.
+
+    Set ``use_rerank=False`` for interactive endpoints where the corpus is
+    small enough that dense-score ordering is already good, and the ~2 s
+    per-pair reranker cost would blow the response-time budget. The
+    reranker is CPU-only bge-m3; on a 20-passage candidate set that means
+    ~40 s. For a UI search box, that's unacceptable. For grounded RAG in
+    the chat pipeline, it's worth the wait.
+    """
+    qvec = _embed_query_cached(query)
     dense = _dense(db, qvec, domain, settings.retrieval_dense_k)
     sparse = _sparse(db, query, domain, settings.retrieval_sparse_k)
     # section-aware channel: if the query names an IT-Act section ("cases on s.68"),
@@ -135,11 +173,18 @@ def retrieve(db: Session, query: str, *, domain: Domain | None = None) -> Retrie
         return RetrievalResult([], grounded=False, meta={"dense": len(dense), "sparse": 0})
 
     chunks = [c for c, _ in cand.values()]
-    reranked = True
-    try:
-        scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
-    except Exception:  # reranker unavailable -> degrade to dense-score ordering
-        reranked = False
+    reranked = False
+    if use_rerank:
+        try:
+            scores = emb.rerank(query, [c.text for c in chunks], top_k=settings.retrieval_rerank_k)
+            reranked = True
+        except Exception:  # reranker unavailable -> degrade to dense-score ordering
+            ranked = sorted(range(len(chunks)), key=lambda i: base[chunks[i].id], reverse=True)
+            scores = [(i, base[chunks[i].id]) for i in ranked[: settings.retrieval_rerank_k]]
+    else:
+        # Fast path: skip the CPU cross-encoder entirely and order by the
+        # max dense/section score we already have. Loses a small amount of
+        # relevance quality on ambiguous queries, wins ~40s of wall-clock.
         ranked = sorted(range(len(chunks)), key=lambda i: base[chunks[i].id], reverse=True)
         scores = [(i, base[chunks[i].id]) for i in ranked[: settings.retrieval_rerank_k]]
 

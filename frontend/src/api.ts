@@ -935,9 +935,184 @@ export const api = {
     }),
 
   // --- rulings (case-law search) ---
-  rulings: (q: string) => req<any>(`/rulings?q=${encodeURIComponent(q)}`),
+  rulings: (q: string) => req<{
+    grounded: boolean;
+    results: Array<{
+      breadcrumb: string;
+      snippet: string;
+      source_url: string | null;
+      score: number;
+      chunk_id: number;
+      digest?: string | null;
+      sections_cited?: string[] | null;
+    }>;
+    meta?: Record<string, unknown>;
+    ecourts: {
+      items: Array<{
+        cnr: string | null;
+        title: string;
+        digest: string | null;
+        source_url: string | null;
+        decision_date: string | null;
+        court: string | null;
+        sections_cited: string[];
+        status?: string;
+      }>;
+      total: number;
+    };
+  }>(`/rulings?q=${encodeURIComponent(q)}`),
   // section hub (#11): statute + circulars + leading cases (with headnotes) for a section
   crossref: (section: string) => req<any>(`/crossref?section=${encodeURIComponent(section)}`),
+  // ITAT bench list (Delhi / Mumbai / Pune / …) — feeds the Browse-tab dropdown.
+  rulingsBenches: () => req<{ benches: string[] }>("/rulings/benches"),
+  // Headline numbers for the four boxes above the Case Law search bar.
+  // `source` says whether the numbers came from live eCourts data or the
+  // local ingested corpus fallback; `corpus` always exposes the fallback
+  // in case the UI wants to show a "of which N in your corpus" line.
+  rulingsStats: () => req<{
+    judgments: number;
+    appeals: number;
+    benches: number;
+    coverage_min_year: number | null;
+    coverage_max_year: number | null;
+    coverage_label: string;
+    source: "ecourts" | "corpus";
+    corpus: {
+      judgments: number;
+      appeals: number;
+      benches: number;
+      coverage_min_year: number | null;
+      coverage_max_year: number | null;
+    };
+  }>("/rulings/stats"),
+  // Trending research topics — real citation frequency when available, else
+  // a curated weekly-rotating fallback so the list looks fresh.
+  rulingsPopularTopics: (limit = 12) => req<{
+    items: {
+      topic: string;
+      section: string | null;
+      q: string;
+      count?: number;
+      source: "corpus" | "curated";
+    }[];
+    source: string;
+    week?: number;
+  }>(`/rulings/popular-topics?limit=${limit}`),
+  // Dates on which judgments were pronounced, newest first, with counts.
+  rulingsRecentDates: (limit = 11) => req<{
+    source: "published_date" | "fetched_at" | "none";
+    items: { date: string | null; count: number }[];
+  }>(`/rulings/recent-dates?limit=${limit}`),
+  // Latest N judgments — pulled from eCourts India when the integration is
+  // wired up, else from the local ingested corpus. `source` says which.
+  rulingsRecent: (limit = 6) => req<{
+    items: {
+      id: number | string;
+      title: string | null;
+      digest: string | null;
+      source_url: string | null;
+      sections_cited: string[];
+      published_date: string | null;
+      status?: string;
+    }[];
+    source: "ecourts" | "corpus";
+  }>(`/rulings/recent?limit=${limit}`),
+
+  // --- eCourts India integration (live court-tracking API) ---
+  // Independent of the IndianKanoon-backed /rulings search — additive only.
+  ecourtsStatus: () => req<{ enabled: boolean; base_url: string | null }>("/rulings/ecourts/status"),
+  ecourtsStates: () => req<{ items: { state: string; stateName: string }[] }>("/rulings/ecourts/states"),
+  ecourtsDistricts: (state: string) => req<{
+    items: { districtCode: string; districtName: string }[];
+  }>(`/rulings/ecourts/states/${encodeURIComponent(state)}/districts`),
+  ecourtsEnums: () => req<{ enums: Record<string, { code: string; description: string }[]> }>(
+    "/rulings/ecourts/enums",
+  ),
+  ecourtsCase: (cnr: string) => req<any>(`/rulings/ecourts/case/${encodeURIComponent(cnr)}`),
+  ecourtsSearch: (opts: {
+    state?: string;
+    district_code?: string;
+    court_level?: "SC" | "HC" | "DC" | "TRIBUNAL";
+    court_code?: string;
+    case_type?: string;
+    case_status?: string;
+    judge_name?: string;
+    party_name?: string;
+    date_from?: string;   // YYYY-MM-DD (decisionDate lower bound)
+    date_to?: string;     // YYYY-MM-DD (decisionDate upper bound)
+    filing_year?: number;
+    decision_year?: number;
+    has_judgments?: boolean;
+    has_orders?: boolean;
+    sort?: string;
+    order?: "asc" | "desc";
+    page?: number;
+    limit?: number;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(opts)) {
+      if (v === undefined || v === null || v === "") continue;
+      qs.set(k, String(v));
+    }
+    return req<{
+      items: Array<{
+        cnr: string;
+        caseType: string;
+        caseStatus: string;
+        courtName: string | null;
+        courtCode: string;
+        stateCode: string | null;
+        districtCode: string | null;
+        filingDate: string | null;
+        decisionDate: string | null;
+        petitioners: string[];
+        respondents: string[];
+        judges: string[];
+        hasJudgments: boolean;
+        hasOrders: boolean;
+        judgmentCount: number;
+        orderCount: number;
+        aiKeywords: string[];
+      }>;
+      page: number;
+      limit: number;
+      total: number;
+      total_pages?: number;
+      facets?: Record<string, unknown>;
+    }>(`/rulings/ecourts/search?${qs.toString()}`);
+  },
+  // Filtered browse of the case-law corpus. Any filter can be null/omitted.
+  rulingsBrowse: (opts: {
+    bench?: string | null;
+    judge?: string | null;
+    date_from?: string | null;   // YYYY-MM-DD
+    date_to?: string | null;     // YYYY-MM-DD
+    page?: number;
+    per_page?: number;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    if (opts.bench && opts.bench !== "All") qs.set("bench", opts.bench);
+    if (opts.judge) qs.set("judge", opts.judge);
+    if (opts.date_from) qs.set("date_from", opts.date_from);
+    if (opts.date_to) qs.set("date_to", opts.date_to);
+    qs.set("page", String(opts.page ?? 1));
+    qs.set("per_page", String(opts.per_page ?? 20));
+    return req<{
+      items: {
+        id: number;
+        title: string | null;
+        digest: string | null;
+        source_url: string | null;
+        sections_cited: string[];
+        published_date: string | null;
+      }[];
+      page: number;
+      per_page: number;
+      total: number;
+      total_pages: number;
+      filters: Record<string, string | null>;
+    }>(`/rulings/browse?${qs.toString()}`);
+  },
 
   // --- admin corpus ---
   corpusStats: () => req<{ chunks: number; by_domain: Record<string, number> }>("/admin/corpus/stats"),

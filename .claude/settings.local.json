@@ -26,7 +26,12 @@
       "Bash(docker-compose -f docker-compose.yml -f docker-compose.web.yml -f docker-compose.frontend-override.yml up -d --force-recreate --no-deps api worker beat frontend)",
       "Bash(docker-compose -f docker-compose.yml -f docker-compose.web.yml -f docker-compose.frontend-override.yml build frontend)",
       "Bash(docker-compose -f docker-compose.yml -f docker-compose.web.yml -f docker-compose.frontend-override.yml build api worker frontend)",
-      "Bash(docker exec bharathtax-web-postgres-1 psql -U taxmedha -d taxmedha -c ' *)"
+      "Bash(docker exec bharathtax-web-postgres-1 psql -U taxmedha -d taxmedha -c ' *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -sS -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://ecourtsindia.com/api/docs)",
+      "Bash(curl -sS -o /tmp/s.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/CauseList/court-structure/states)",
+      "Bash(curl -sS -o /tmp/c.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024)",
+      "Bash(curl -sS -o /tmp/d.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/causelist/available-dates)"
     ]
   }
 }
