@@ -127,7 +127,7 @@ function HeroPreview() {
             <span className="size-3 rounded-full bg-emerald-400/80" />
           </div>
           <div className="ml-4 mx-auto text-[10.5px] sm:text-[11.5px] text-slate-500 bg-white px-2 sm:px-3 py-0.5 rounded-md ring-1 ring-slate-200 max-w-[70%] truncate">
-            app.bharattax.wenvia.global/ask
+            bharattax.wenvia.global/ask
           </div>
         </div>
         {/* Chat interior — sidebar hides on small screens so the composer gets
