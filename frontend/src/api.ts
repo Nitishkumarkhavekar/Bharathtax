@@ -49,11 +49,36 @@ export interface ContactMessage {
   id: number;
   name: string;
   email: string;
+  mobile: string | null;
   organisation: string | null;
   topic: string | null;
   message: string;
   handled: boolean;
   created_at: string | null;
+}
+export interface ContactMessagePage {
+  items: ContactMessage[];
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+}
+// The public/marketing view of a SubscriptionPlan — everything the landing
+// page needs to render a pricing tile driven from the admin panel.
+export interface PublicPricingPlan {
+  id: number;
+  name: string;
+  description: string | null;
+  monthly_price_inr: number;
+  yearly_price_inr: number;
+  annual_discount_pct: number;
+  monthly_token_allowance: number;
+  is_active: boolean;
+  sort_order: number;
+  features: string[];
+  is_featured: boolean;
+  badge: string | null;
+  savings_note: string | null;
 }
 export interface ServerChatMessage {
   id: number;
@@ -822,10 +847,16 @@ export const api = {
     req<{ suggestions: string[] }>("/ask/followups", { method: "POST", body: JSON.stringify({ question, answer, domain }) }),
   translate: (text: string, lang: string) =>
     req<{ translated: string }>("/ask/translate", { method: "POST", body: JSON.stringify({ text, lang }) }).then((r) => r.translated),
-  contact: (b: { name: string; email: string; organisation?: string; topic?: string; message: string }) =>
+  contact: (b: { name: string; email: string; mobile?: string; organisation?: string; topic?: string; message: string }) =>
     req<{ ok: boolean; message: string }>("/contact", { method: "POST", body: JSON.stringify(b) }),
   // admin: contact-form enquiries
-  adminContactList: () => req<ContactMessage[]>("/contact"),
+  adminContactList: (opts: { page?: number; per_page?: number; filter?: "all" | "open" | "handled" } = {}) => {
+    const qs = new URLSearchParams();
+    qs.set("page", String(opts.page ?? 1));
+    qs.set("per_page", String(opts.per_page ?? 20));
+    qs.set("filter", opts.filter ?? "all");
+    return req<ContactMessagePage>(`/contact?${qs.toString()}`);
+  },
   adminContactSetHandled: (id: number, handled: boolean) =>
     req<ContactMessage>(`/contact/${id}`, { method: "PATCH", body: JSON.stringify({ handled }) }),
   adminContactDelete: (id: number) => req<void>(`/contact/${id}`, { method: "DELETE" }),

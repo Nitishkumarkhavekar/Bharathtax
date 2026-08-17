@@ -43,7 +43,7 @@ const NAV: {
   { to: "/admin/billing", label: "User Billing", icon: CreditCard, desc: "Assign plans, watch balances" },
   { to: "/admin/releases", label: "Release Management", icon: Package, desc: "Desktop app releases & auto-update" },
   { to: "/admin/support", label: "Support Tickets", icon: LifeBuoy, desc: "Officer-reported issues" },
-  { to: "/admin/contact", label: "Contact Enquiries", icon: Mail, desc: "Messages from the website contact form" },
+  { to: "/admin/contact", label: "Leads", icon: Mail, desc: "New leads from the website contact form — newest first" },
   { to: "/admin/desktop-logs", label: "Desktop User Logs", icon: MonitorSmartphone, desc: "Who used the desktop app and when" },
   { to: "/admin/server", label: "Model Server", icon: Server, desc: "System health" },
   { to: "/admin/revenue", label: "Revenue Management", icon: IndianRupee, super: true, desc: "Sales ledger" },

@@ -20,7 +20,9 @@
       "Bash(curl -s -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"question\":\"Identify the actual sale consideration and stamp duty/guideline value from the Sale Deed. Is Section 50C applicable?\",\"attached_document_ids\":[126]}' http://127.0.0.1:18000/ask)",
       "Bash(curl -s -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"question\":\"Summarize this case briefly\",\"attached_document_ids\":[147],\"chat_id\":__TRACKED_VAR__,\"attachments_meta\":[{\"docId\":147,\"filename\":\"sample case 1.pdf\",\"contentType\":\"application/pdf\",\"size\":100000}]}' http://127.0.0.1:18000/ask)",
       "Bash(export BT_JWT=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2lkIjoiMTM2MDdkNDE5ZDc3NDQxOWIzN2QxMmQwNzViZTMwOWIiLCJleHAiOjE3ODkyMTY4MTgsImlhdCI6MTc4NjYyNDgxOH0.yvzI_2CsOd808KhDT-Olbgfb8hYMyoIxuqyWY8nBx8w\")",
-      "Bash(curl -s -w '\\\\nhttp=%{http_code}\\\\n' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2lkIjoiMTM2MDdkNDE5ZDc3NDQxOWIzN2QxMmQwNzViZTMwOWIiLCJleHAiOjE3ODkyMTY4MTgsImlhdCI6MTc4NjYyNDgxOH0.yvzI_2CsOd808KhDT-Olbgfb8hYMyoIxuqyWY8nBx8w' http://127.0.0.1:18000/chats -X POST -H 'Content-Type: application/json' -d '{\"title\":\"h\"}')"
+      "Bash(curl -s -w '\\\\nhttp=%{http_code}\\\\n' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2lkIjoiMTM2MDdkNDE5ZDc3NDQxOWIzN2QxMmQwNzViZTMwOWIiLCJleHAiOjE3ODkyMTY4MTgsImlhdCI6MTc4NjYyNDgxOH0.yvzI_2CsOd808KhDT-Olbgfb8hYMyoIxuqyWY8nBx8w' http://127.0.0.1:18000/chats -X POST -H 'Content-Type: application/json' -d '{\"title\":\"h\"}')",
+      "Bash(curl -s http://127.0.0.1:18000/health)",
+      "Bash(python -c \"import sys, json; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d\\)} plans'\\); [print\\(f'  {p[\\\\\"name\\\\\"]}: ₹{p[\\\\\"monthly_price_inr\\\\\"]}/mo → ₹{p[\\\\\"yearly_price_inr\\\\\"]}/yr · {len\\(p[\\\\\"features\\\\\"]\\)} features · featured={p[\\\\\"is_featured\\\\\"]}'\\) for p in d]\")"
     ]
   }
 }
