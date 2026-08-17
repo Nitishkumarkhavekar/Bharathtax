@@ -6,7 +6,6 @@ import {
   Clock,
   ShieldCheck,
   LogOut,
-  Scale,
   Gavel,
   ScrollText,
   BookOpen,

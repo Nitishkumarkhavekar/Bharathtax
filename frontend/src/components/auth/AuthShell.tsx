@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Scale, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 // Shared shell for the public auth pages (login / register / forgot / reset).
 // A soft periwinkle-to-cream gradient on the left with a marketing headline,

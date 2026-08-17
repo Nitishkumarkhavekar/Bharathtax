@@ -203,7 +203,7 @@ export default function Rulings() {
   };
 
   const [q, setQ] = useState("");
-  const [res, setRes] = useState<any>(null);
+  const [res, setRes] = useState<Awaited<ReturnType<typeof api.rulings>> | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 

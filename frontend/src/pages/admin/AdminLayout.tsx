@@ -9,7 +9,6 @@ import {
   IndianRupee,
   KeyRound,
   LogOut,
-  Scale,
   Menu,
   X,
   Coins,

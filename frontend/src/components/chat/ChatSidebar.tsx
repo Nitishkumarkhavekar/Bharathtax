@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
-  Scale,
   Plus,
   Search,
   Trash2,
@@ -15,7 +14,6 @@ import {
   UserCircle2,
   MessageSquareText,
   SquarePen,
-  Sparkles,
   Coins,
   ChevronDown,
   PanelLeft,

@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Scale, Loader2, ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { landingPath, useAuth } from "../auth";
 import { ApiError } from "../api";
 import AuthShell from "@/components/auth/AuthShell";

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Scale, Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 import { MarketingNav } from "./MarketingNav";
 
 // Shared header + footer for the public marketing sub-pages (Contact, Terms,
