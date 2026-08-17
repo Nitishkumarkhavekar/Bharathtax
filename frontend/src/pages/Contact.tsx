@@ -6,7 +6,7 @@ import { api, ApiError } from "../api";
 const TOPICS = ["Sales enquiry", "Book a demo", "Wing / bench licensing", "Technical support", "Partnership", "Other"];
 
 export default function Contact() {
-  const [form, setForm] = useState({ name: "", email: "", organisation: "", topic: TOPICS[0], message: "" });
+  const [form, setForm] = useState({ name: "", email: "", mobile: "", organisation: "", topic: TOPICS[0], message: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -30,11 +30,12 @@ export default function Contact() {
 
   return (
     <MarketingShell
+      wide
       eyebrow="Contact"
       title="Talk to the BharatTax team."
       intro="Sales, a demo for your bench, licensing for a wing, or a support question — tell us what you need and we'll get back within one business day."
     >
-      <div className="grid lg:grid-cols-[1fr_260px] gap-8 items-start">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-8 items-start">
         {/* Form */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-6 sm:p-8">
           {done ? (
@@ -60,16 +61,21 @@ export default function Contact() {
                 </Field>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
+                <Field label="Mobile" required>
+                  <input required type="tel" value={form.mobile} onChange={(e) => set("mobile", e.target.value)}
+                    className={inputCls} placeholder="+91 98765 43210" autoComplete="tel"
+                    pattern="[\d\s()+\-]{6,20}" />
+                </Field>
                 <Field label="Organisation">
                   <input value={form.organisation} onChange={(e) => set("organisation", e.target.value)}
                     className={inputCls} placeholder="Wing / firm / department" />
                 </Field>
-                <Field label="Topic">
-                  <select value={form.topic} onChange={(e) => set("topic", e.target.value)} className={inputCls}>
-                    {TOPICS.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                </Field>
               </div>
+              <Field label="Topic">
+                <select value={form.topic} onChange={(e) => set("topic", e.target.value)} className={inputCls}>
+                  {TOPICS.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </Field>
               <Field label="Message" required>
                 <textarea required rows={5} value={form.message} onChange={(e) => set("message", e.target.value)}
                   className={inputCls + " resize-y"} placeholder="How can we help?" />

@@ -16,14 +16,20 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
 
 
 class SubscriptionPlan(Base):
-    """A named tier the admin sells to users. Free Trial / Basic / Pro / …"""
+    """A named tier the admin sells to users. Free Trial / Basic / Pro / …
+
+    The public landing page pulls active plans from this table via
+    `GET /public/pricing-plans` and renders them dynamically. That means an
+    admin editing a plan (price, features, badge) sees the change on the
+    marketing page immediately without a code deploy.
+    """
     __tablename__ = "subscription_plans"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -34,6 +40,17 @@ class SubscriptionPlan(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Presentation order for the pricing page. 0 = first.
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Marketing fields — surfaced on the public pricing page only.
+    #   features        — bulleted feature list (JSON array of strings)
+    #   is_featured     — highlight this plan as "Most popular"
+    #   badge           — free-text badge text (defaults to "Most popular" when featured)
+    #   savings_note    — small italic line under the price (e.g. "For 15+ files a week")
+    #   annual_discount_pct — % off when paid yearly (default 20)
+    features: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=list)
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    badge: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    savings_note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    annual_discount_pct: Mapped[int] = mapped_column(Integer, default=20)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -11,7 +11,6 @@ import {
   Users,
   Brain,
   Gavel,
-  ChevronDown,
   Plus,
   Minus,
   Mail,
@@ -19,10 +18,9 @@ import {
   Calculator,
   MessageSquareText,
   PenSquare,
-  Menu,
-  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { MarketingNav } from "@/components/marketing/MarketingNav";
 
 // Marketing landing page — calm, near-white ground, a serif display hero with
 // one accent word, twin CTAs, a browser-chromed product preview, then feature
@@ -40,7 +38,7 @@ export default function Landing() {
   }, [hash]);
   return (
     <div className="min-h-screen bt-marketing-bg text-slate-900 antialiased overflow-hidden">
-      <Nav />
+      <MarketingNav />
       <Hero />
       <TrustBar />
       <Features />
@@ -52,184 +50,6 @@ export default function Landing() {
       <FAQ />
       <CTA />
       <Footer />
-    </div>
-  );
-}
-
-// ============================================================== Nav
-function Nav() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  useEffect(() => {
-    // Lock body scroll while the mobile drawer is open.
-    document.documentElement.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.documentElement.style.overflow = ""; };
-  }, [mobileOpen]);
-
-  return (
-    <header
-      className={
-        "sticky top-0 z-40 transition-all " +
-        (scrolled ? "bg-white/85 backdrop-blur border-b border-slate-200" : "bg-transparent")
-      }
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-[64px] sm:h-[68px] flex items-center gap-3 sm:gap-6">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
-            <Scale className="size-4.5" />
-          </div>
-          <span className="text-[17px] sm:text-[18px] font-semibold tracking-tight text-slate-900">BharatTax</span>
-        </Link>
-        <nav className="hidden lg:flex items-center gap-1 text-[14px] text-slate-700">
-          <NavDrop label="Products" items={[
-            ["Ask", "Cited answers on the Income-tax Act, Rules, CBDT circulars & case law", "#features"],
-            ["Documents", "Upload deeds, notices and judgments — extract verbatim facts and flag what's missing", "#features"],
-            ["Appeals", "Six-module drafting pipeline for CIT(A) / NFAC appellate orders", "#features"],
-          ]} />
-          <NavDrop label="Solutions" items={[
-            ["For chartered accountants", "Cited computations, sale-deed reads, client-ready memos", "#use-cases"],
-            ["For CIT(A) & AOs", "Verification points, questionnaires, and fully-cited draft orders", "#use-cases"],
-            ["For CFOs & counsel", "Board briefs, risk ratings, SC / HC / ITAT case-law research", "#use-cases"],
-            ["For founders & students", "Plain-English answers, worked examples, exam-ready explanations", "#use-cases"],
-          ]} />
-          <NavDrop label="Resources" items={[
-            ["Documentation", "Getting started & tool guides", "/docs"],
-            ["Releases", "Latest desktop-app releases", "/releases"],
-            ["Contact", "Talk to sales or support", "/contact"],
-          ]} />
-          <NavLink to="/docs">Documentation</NavLink>
-          <NavLink to="#pricing">Pricing</NavLink>
-          <NavLink to="/releases">Releases</NavLink>
-        </nav>
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/login"
-            className="inline-flex items-center h-9 px-3 sm:px-4 rounded-md bg-slate-900 text-white text-[13.5px] font-semibold hover:bg-slate-800 transition-colors shadow-sm"
-          >
-            Sign in
-          </Link>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="lg:hidden inline-flex items-center justify-center size-9 rounded-md text-slate-700 hover:bg-slate-900/5"
-            aria-label="Open menu"
-          >
-            <Menu className="size-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <>
-          <div
-            className="lg:hidden fixed inset-0 z-40 bg-slate-900/40"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div
-            className="lg:hidden fixed inset-y-0 right-0 z-50 w-[86%] max-w-sm bg-white shadow-2xl flex flex-col animate-fade-up"
-          >
-            <div className="h-[64px] px-5 border-b border-slate-200 flex items-center gap-2.5">
-              <div className="size-7 rounded-md bg-primary text-white grid place-items-center">
-                <Scale className="size-4" />
-              </div>
-              <span className="text-[16px] font-semibold">BharatTax</span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="ml-auto size-9 rounded-md text-slate-600 hover:bg-slate-100 inline-flex items-center justify-center"
-                aria-label="Close menu"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1 text-[15px]">
-              {[
-                ["Features", "#features"],
-                ["How it works", "#how-it-works"],
-                ["Pricing", "#pricing"],
-                ["FAQ", "#faq"],
-              ].map(([l, to]) => (
-                <a
-                  key={l} href={to} onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
-                >
-                  {l}
-                </a>
-              ))}
-              <Link
-                to="/docs" onClick={() => setMobileOpen(false)}
-                className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
-              >
-                Documentation
-              </Link>
-              <Link
-                to="/releases" onClick={() => setMobileOpen(false)}
-                className="block px-3 py-3 rounded-lg text-slate-800 hover:bg-slate-100 font-medium"
-              >
-                Releases
-              </Link>
-            </nav>
-            <div className="p-4 border-t border-slate-200 space-y-2">
-              <Link
-                to="/register" onClick={() => setMobileOpen(false)}
-                className="block w-full text-center h-11 rounded-lg bg-primary text-white font-semibold leading-[44px]"
-              >
-                Start free trial
-              </Link>
-              <Link
-                to="/login" onClick={() => setMobileOpen(false)}
-                className="block w-full text-center h-11 rounded-lg ring-1 ring-slate-200 text-slate-800 font-semibold leading-[44px]"
-              >
-                Sign in
-              </Link>
-            </div>
-          </div>
-        </>
-      )}
-    </header>
-  );
-}
-
-function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
-  const external = to.startsWith("#");
-  const Cmp: any = external ? "a" : Link;
-  const props: any = external ? { href: to } : { to };
-  return (
-    <Cmp {...props} className="px-3 py-2 rounded-md text-slate-700 hover:text-slate-900 hover:bg-slate-900/5">
-      {children}
-    </Cmp>
-  );
-}
-function NavDrop({ label, items }: { label: string; items: [string, string, string][] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button className="px-3 py-2 rounded-md text-slate-700 hover:text-slate-900 hover:bg-slate-900/5 inline-flex items-center gap-1">
-        {label} <ChevronDown className="size-3.5 text-slate-400" />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 pt-2 z-30 min-w-[320px]">
-          <div className="rounded-xl bg-white ring-1 ring-slate-200 shadow-lg p-2 animate-fade-up">
-            {items.map(([t, s, to]) => {
-              const external = to.startsWith("#") || to.startsWith("http");
-              const Cmp: any = external ? "a" : Link;
-              const props: any = external ? { href: to } : { to };
-              return (
-                <Cmp key={t} {...props} className="block px-3 py-2.5 rounded-lg hover:bg-slate-50 group">
-                  <div className="text-[13.5px] font-semibold text-slate-900 group-hover:text-primary">{t}</div>
-                  <div className="text-[12px] text-slate-500 leading-snug mt-0.5">{s}</div>
-                </Cmp>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -689,51 +509,170 @@ function Stats() {
 
 // ============================================================== Pricing
 function Pricing() {
+  // Billing cycle toggle — headline price + subline switch on this.
+  const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
+
+  // BharatTax pricing is metered by TOKENS (matches monthly_token_allowance
+  // in our SubscriptionPlan model). Token math from live 20-case test:
+  //   * Doc-attached question   — ~30K tokens
+  //   * Multi-agent research    — ~60K tokens
+  //   * Six-module appellate    — ~200K tokens
+  // Every plan is SINGLE-LOGIN. Firm differs by capacity + support, not seats.
+  // Yearly totals are 20% off the monthly × 12 sticker (annual pre-pay discount).
   const plans = [
-    { name: "Free trial", price: "₹0", per: "30 days", desc: "For professionals evaluating the platform.", features: ["100,000 tokens included", "Cited research + document Q&A", "Full 6-module drafting pipeline", "Email support"], cta: "Start free trial", to: "/register", featured: false },
-    { name: "Team", price: "Custom", per: "per firm / bench", desc: "Seat-pool licensing for firms and appellate benches.", features: ["Everything in Free", "Seat pools & admin console", "Priority support", "SLA + audit-logged access"], cta: "Talk to sales", to: "mailto:sales@wenvia.global", featured: true },
-    { name: "Enterprise", price: "Contact", per: "for scale", desc: "Custom deployment across departments or regions.", features: ["Everything in Team", "SSO / SAML", "On-prem or private cloud", "Dedicated customer engineer"], cta: "Talk to sales", to: "mailto:sales@wenvia.global", featured: false },
+    {
+      name: "Starter",
+      priceMonthly: "₹2,999",
+      priceYearly: "₹28,788",
+      monthlyEquivalent: "₹2,399 / month effective",
+      desc: "For individual CAs, students and taxpayer-side users getting started.",
+      features: [
+        "10 million tokens / month",
+        "~ 200 cited research questions",
+        "Upload any tax document — deeds, notices, orders, contracts, judgments (up to 25 uploads / month)",
+        "Cited answers on the Income-tax Act, Rules & CBDT circulars",
+        "Live case law from Supreme Court, High Courts & ITAT",
+        "Single login · e-mail support",
+      ],
+      cta: "Talk to sales",
+      to: "/contact",
+      featured: false,
+    },
+    {
+      name: "Professional",
+      priceMonthly: "₹4,125",
+      priceYearly: "₹39,599",
+      monthlyEquivalent: "₹3,300 / month effective",
+      badge: "Most popular",
+      desc: "For practicing CAs, tax counsel and Assessing Officers on daily use.",
+      savings: "For the professional running 15+ files a week",
+      features: [
+        "30 million tokens / month",
+        "~ 600 research questions or 100 in-depth document reads",
+        "Upload any tax document — unlimited uploads",
+        "Six-module appellate order drafting (.docx export)",
+        "Persona-tuned answers (CA, AO, CFO, founder, student)",
+        "Self-audit warnings on every answer",
+        "Single login · priority support",
+      ],
+      cta: "Talk to sales",
+      to: "/contact",
+      featured: true,
+    },
+    {
+      name: "Power",
+      priceMonthly: "₹6,999",
+      priceYearly: "₹67,599",
+      monthlyEquivalent: "₹5,633 / month effective",
+      desc: "For heavy individual users — full-time practitioners, senior counsel and appellate authorities.",
+      features: [
+        "100 million tokens / month",
+        "~ 2,000 research questions or 350 appellate drafts",
+        "Everything in Professional",
+        "Upload any tax document — unlimited uploads",
+        "Priority queue during peak hours (skips DSQ back-off)",
+        "Extended chat & document retention (3 years)",
+        "Single login · dedicated customer engineer",
+      ],
+      cta: "Talk to sales",
+      to: "/contact",
+      featured: false,
+    },
   ];
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
-        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Pick the plan that fits.</h2>
-        <p className="mt-3 text-slate-600">Start free with no card. Team and Enterprise plans scale to your firm, bench or department.</p>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Pay for the tokens you actually use.</h2>
+        <p className="mt-3 text-slate-600">
+          Every plan meters usage in tokens — the same tokens the model consumes when it reads a document, drafts an order or cites a judgment. Every plan includes the full feature set and a single login. Talk to sales to arrange a demo, walkthrough or subscription.
+        </p>
       </div>
-      <div className="mt-10 grid md:grid-cols-3 gap-4">
-        {plans.map((p) => (
-          <div key={p.name} className={
-            "rounded-2xl p-6 flex flex-col " +
-            (p.featured
-              ? "bg-slate-900 text-white ring-1 ring-slate-900 shadow-lg"
-              : "bg-white text-slate-900 ring-1 ring-slate-200")
-          }>
-            <div className={"text-[13px] uppercase tracking-wider font-semibold " + (p.featured ? "text-primary" : "text-primary")}>{p.name}</div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <div className="text-[34px] font-semibold tracking-tight">{p.price}</div>
-              <div className={"text-[13px] " + (p.featured ? "text-white/70" : "text-slate-500")}>· {p.per}</div>
-            </div>
-            <div className={"text-[13.5px] mt-2 " + (p.featured ? "text-white/80" : "text-slate-600")}>{p.desc}</div>
-            <ul className="mt-4 space-y-2 flex-1">
-              {p.features.map((f) => (
-                <li key={f} className={"flex items-start gap-2 text-[13.5px] " + (p.featured ? "text-white/90" : "text-slate-700")}>
-                  <CheckCircle2 className={"size-4 mt-0.5 shrink-0 " + (p.featured ? "text-emerald-300" : "text-emerald-500")} />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            {p.to.startsWith("mailto:") ? (
-              <a href={p.to} className={"mt-6 inline-flex items-center justify-center h-11 rounded-lg font-semibold text-[14px] " + (p.featured ? "bg-primary text-white hover:bg-primary/90" : "bg-slate-900 text-white hover:bg-slate-800")}>
-                {p.cta}
-              </a>
-            ) : (
-              <Link to={p.to} className={"mt-6 inline-flex items-center justify-center h-11 rounded-lg font-semibold text-[14px] " + (p.featured ? "bg-primary text-white hover:bg-primary/90" : "bg-slate-900 text-white hover:bg-slate-800")}>
+      {/* Monthly / Yearly toggle */}
+      <div className="mt-8 flex justify-center">
+        <div className="inline-flex items-center rounded-full bg-slate-100 ring-1 ring-slate-200 p-1 gap-1" role="tablist" aria-label="Billing cycle">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cycle === "monthly"}
+            onClick={() => setCycle("monthly")}
+            className={
+              "px-4 h-9 rounded-full text-[13px] font-semibold transition-colors " +
+              (cycle === "monthly" ? "bg-slate-900 text-white shadow-sm" : "text-slate-600 hover:text-slate-900")
+            }
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cycle === "yearly"}
+            onClick={() => setCycle("yearly")}
+            className={
+              "px-4 h-9 rounded-full text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 " +
+              (cycle === "yearly" ? "bg-slate-900 text-white shadow-sm" : "text-slate-600 hover:text-slate-900")
+            }
+          >
+            Yearly
+            <span className={
+              "text-[10.5px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded " +
+              (cycle === "yearly" ? "bg-emerald-400/25 text-emerald-200" : "bg-emerald-100 text-emerald-700")
+            }>
+              Save 20%
+            </span>
+          </button>
+        </div>
+      </div>
+      <div className="mt-10 grid md:grid-cols-3 gap-4 items-stretch">
+        {plans.map((p) => {
+          const price = cycle === "monthly" ? p.priceMonthly : p.priceYearly;
+          const per = cycle === "monthly" ? "/ month" : "/ year";
+          return (
+            <div key={p.name} className={
+              "rounded-2xl p-6 flex flex-col relative " +
+              (p.featured
+                ? "bg-slate-900 text-white ring-1 ring-slate-900 shadow-lg"
+                : "bg-white text-slate-900 ring-1 ring-slate-200")
+            }>
+              {p.featured && p.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] uppercase tracking-wider font-semibold bg-primary text-white px-2.5 py-1 rounded-full shadow-sm">
+                  {p.badge}
+                </div>
+              )}
+              <div className="text-[13px] uppercase tracking-wider font-semibold text-primary">{p.name}</div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <div className="text-[34px] font-semibold tracking-tight tabular-nums">{price}</div>
+                <div className={"text-[13px] " + (p.featured ? "text-white/70" : "text-slate-500")}>{per}</div>
+              </div>
+              {cycle === "yearly" && p.monthlyEquivalent && (
+                <div className={"text-[11.5px] mt-1 " + (p.featured ? "text-white/60" : "text-slate-500")}>
+                  {p.monthlyEquivalent}
+                </div>
+              )}
+              {p.savings && (
+                <div className={"text-[12px] mt-2 font-medium italic " + (p.featured ? "text-emerald-300" : "text-emerald-600")}>
+                  {p.savings}
+                </div>
+              )}
+              <div className={"text-[13.5px] mt-3 " + (p.featured ? "text-white/80" : "text-slate-600")}>{p.desc}</div>
+              <ul className="mt-4 space-y-2 flex-1">
+                {p.features.map((f) => (
+                  <li key={f} className={"flex items-start gap-2 text-[13.5px] " + (p.featured ? "text-white/90" : "text-slate-700")}>
+                    <CheckCircle2 className={"size-4 mt-0.5 shrink-0 " + (p.featured ? "text-emerald-300" : "text-emerald-500")} />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link to={p.to} className="mt-6 inline-flex items-center justify-center h-11 rounded-lg font-semibold text-[14px] bg-primary text-white hover:bg-primary/90 transition-colors">
                 {p.cta}
               </Link>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-8 text-center text-[12px] text-slate-500 space-y-1">
+        <p>All prices exclude applicable GST. Token usage is metered in real time on your Billing page — you can top up tokens mid-cycle without upgrading the plan.</p>
+        <p>Need more than 100M tokens / month, on-prem deployment, or a custom SLA? <a href="mailto:sales@wenvia.global" className="text-primary hover:underline">Talk to sales</a>.</p>
       </div>
     </section>
   );
