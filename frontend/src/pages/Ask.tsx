@@ -811,10 +811,11 @@ function EmptyHero(props: {
     <div className="relative flex-1 min-h-0 overflow-y-auto chat-scrollbar">
       <div className="min-h-full flex items-center justify-center px-4 py-10 sm:py-16">
         <div className="w-full max-w-3xl space-y-8 animate-fade-up">
-          {/* Logo mark */}
+          {/* Logo mark — the BharatTax "h" mark from /favicon.png. White
+              background lets the logo's own navy/orange/green show cleanly. */}
           <div className="flex justify-center">
-            <div className="size-14 rounded-2xl bg-primary flex items-center justify-center shadow-sm ring-1 ring-primary/20">
-              <Scale className="size-7 text-white" strokeWidth={2.2} />
+            <div className="size-14 rounded-2xl bg-white flex items-center justify-center shadow-sm ring-1 ring-slate-200 overflow-hidden">
+              <img src="/favicon.png" alt="BharatTax" className="size-11 object-contain" draggable={false} />
             </div>
           </div>
 

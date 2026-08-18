@@ -63,7 +63,7 @@ export default function Documents() {
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium truncate">{d.filename}</span>
                   </span>
-                  <Badge variant={d.status === "ready" ? "success" : "secondary"}>{d.status}</Badge>
+                  <Badge variant={d.status === "ready" ? "success" : "warning"}>{d.status}</Badge>
                 </button>
               ))}
               {docs.length === 0 && <div className="p-4 text-sm text-muted-foreground">No documents yet.</div>}

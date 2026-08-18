@@ -20,8 +20,21 @@ export default {
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
         popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
         sidebar: { DEFAULT: "hsl(var(--sidebar))", foreground: "hsl(var(--sidebar-foreground))" },
-        // keep the legacy brand token so existing classes don't break mid-migration
-        brand: { DEFAULT: "#0b5fa5", dark: "#083e6e" },
+        // Secondary brand accents from the BharatTax logo — driven by CSS
+        // vars so a palette change in index.css cascades here too. Use
+        // sparingly (e.g. hero CTAs, "New" ribbons, growth indicators) so
+        // primary navy remains the dominant brand voice.
+        "brand-orange": {
+          DEFAULT: "hsl(var(--brand-orange))",
+          foreground: "hsl(var(--brand-orange-foreground))",
+        },
+        "brand-green": {
+          DEFAULT: "hsl(var(--brand-green))",
+          foreground: "hsl(var(--brand-green-foreground))",
+        },
+        // Legacy brand token — kept so any un-migrated classes still resolve.
+        // Refreshed from the old CTA blue to the logo navy so old + new match.
+        brand: { DEFAULT: "#1E2E5C", dark: "#0F1A3A" },
       },
       borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
       fontFamily: {

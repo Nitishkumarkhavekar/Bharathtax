@@ -12,14 +12,19 @@ const ACCENT: Record<
   Accent,
   { card: string; iconBg: string; iconFg: string; bar: string; ring: string; text: string }
 > = {
+  // "blue" is retuned to the BharatTax logo navy so any legacy StatCard
+  // accent="blue" (dashboards, user-management, revenue, etc.) automatically
+  // becomes on-brand without a per-call-site edit.
   blue: {
     card: "bg-white",
-    iconBg: "bg-sky-100",
-    iconFg: "text-sky-600",
-    bar: "from-sky-400 to-sky-600",
-    ring: "ring-sky-100",
-    text: "text-sky-700",
+    iconBg: "bg-primary/10",
+    iconFg: "text-primary",
+    bar: "from-primary/70 to-primary",
+    ring: "ring-primary/15",
+    text: "text-primary",
   },
+  // "green" — logo emerald. Close enough to the current Tailwind emerald
+  // palette that we keep it — the token names below are AA on white.
   green: {
     card: "bg-white",
     iconBg: "bg-emerald-100",
@@ -28,13 +33,15 @@ const ACCENT: Record<
     ring: "ring-emerald-100",
     text: "text-emerald-700",
   },
+  // "amber" — shifted to the logo's orange accent (#EF8A2E family). Uses
+  // Tailwind orange-* rather than amber-* so the hue matches the brand.
   amber: {
     card: "bg-white",
-    iconBg: "bg-amber-100",
-    iconFg: "text-amber-600",
-    bar: "from-amber-400 to-amber-600",
-    ring: "ring-amber-100",
-    text: "text-amber-700",
+    iconBg: "bg-orange-100",
+    iconFg: "text-orange-600",
+    bar: "from-orange-400 to-orange-600",
+    ring: "ring-orange-100",
+    text: "text-orange-700",
   },
   rose: {
     card: "bg-white",
@@ -203,8 +210,8 @@ export function BarChart({
   accent = "blue",
   maxBarWidth = 56,
   yAxis = true,
-  scrollable = false,
-  minBarSlot = 36,
+  scrollable,
+  minBarSlot = 44,
 }: {
   data: { label: string; value: number }[];
   height?: number;
@@ -212,9 +219,9 @@ export function BarChart({
   accent?: Accent;
   maxBarWidth?: number;
   yAxis?: boolean;
-  /** When true, the bars area scrolls horizontally when there isn't room
-   *  for every bar at `minBarSlot` px each. Useful for a 30-day daily
-   *  series that would otherwise squeeze the bars to 1-2 px wide. */
+  /** When true, force horizontal scrolling. When false, force off. When
+   *  undefined (default), auto-enables once there are more than 10 bars —
+   *  so 30-day daily series get a scrollbar without the caller opting in. */
   scrollable?: boolean;
   /** Minimum per-bar horizontal slot (bar + gap) in the scrollable mode. */
   minBarSlot?: number;
@@ -224,6 +231,9 @@ export function BarChart({
   // counts don't overflow into the next bar's label.
   const fmt = valueFormatter ?? abbrev;
   const a = ACCENT[accent];
+  // Auto-scroll when the series is dense — 10+ bars would squeeze bar
+  // widths below readable. Callers can still explicitly force on/off.
+  const effectiveScrollable = scrollable ?? data.length > 10;
 
   // Pick "nice" Y-axis ticks (0, 25%, 50%, 75%, 100%) of niceMax.
   const niceMax = niceCeil(max);
@@ -242,9 +252,12 @@ export function BarChart({
   // labels. The bar's hover title still shows the value.
   const denseThreshold = data.length > 12 ? 0.08 * niceMax : 0;
 
+  // When the chart scrolls, give the container 12 extra px so the
+  // scrollbar sits below the x-axis labels instead of overlapping them.
+  const outerHeight = effectiveScrollable ? height + 12 : height;
   return (
     <div className="w-full">
-      <div className="flex" style={{ height }}>
+      <div className="flex" style={{ height: outerHeight }}>
         {/* Y-axis labels */}
         {yAxis && (
           <div
@@ -265,18 +278,16 @@ export function BarChart({
         )}
 
         {/* Plot area — wrapped in a horizontally-scrollable container when
-            `scrollable` is on and there are enough bars that per-slot
-            width would drop below `minBarSlot`. The Y-axis on the left
-            stays fixed while only the bars scroll. */}
+            `effectiveScrollable` is true. Y-axis stays fixed while bars scroll. */}
         <div
           className={cn(
             "flex-1 min-w-0 relative",
-            scrollable ? "overflow-x-auto chart-scroll" : "",
+            effectiveScrollable ? "overflow-x-scroll chart-scroll pb-1" : "",
           )}
         >
           <div
             className="relative h-full"
-            style={scrollable ? { minWidth: Math.max(0, data.length * minBarSlot) } : undefined}
+            style={effectiveScrollable ? { minWidth: Math.max(0, data.length * minBarSlot) } : undefined}
           >
           {/* Horizontal grid lines */}
           <div

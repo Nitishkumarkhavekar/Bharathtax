@@ -58,8 +58,8 @@ export default function SharedChat() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="h-14 shrink-0 border-b border-slate-200 bg-white/70 backdrop-blur flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center ring-1 ring-primary/30">
-            <Scale className="size-4 text-white" strokeWidth={2.2} />
+          <div className="size-8 rounded-lg bg-white flex items-center justify-center ring-1 ring-slate-200 overflow-hidden">
+            <img src="/favicon.png" alt="BharatTax" className="size-6 object-contain" draggable={false} />
           </div>
           <div className="leading-tight">
             <div className="text-[14px] font-semibold text-slate-900">BharatTax</div>

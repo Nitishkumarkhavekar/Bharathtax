@@ -1,12 +1,13 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookOpen, Loader2, ArrowUpRight, AlertTriangle, Search, Hash, Scale, FileText, Gavel,
-  Filter, ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, User, Inbox,
+  Filter, ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, User, Inbox, X,
 } from "lucide-react";
 import { api } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/lib/markdown";
 
 const POPULAR = ["68", "14A", "37", "40", "271", "148", "147", "69A", "54", "10", "80IB", "263"];
 
@@ -76,37 +77,78 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function CaseCard({ title, digest, snippet, sourceUrl, sections, status, onPick }: {
+function CaseCard({ title, digest, snippet, sourceUrl, sections, status, cnr, onPick }: {
   title: string; digest?: string | null; snippet?: string | null;
   sourceUrl?: string | null; sections?: string[] | null;
   /** Case status (e.g. "DISPOSED", "DISMISSED", "ALLOWED") — rendered as
    *  a coloured badge next to the title. Optional. */
   status?: string | null;
+  /** eCourts CNR — when present, replaces the external "open source" link
+   *  with an in-app "view details" button that fetches the full case record
+   *  from the partner API (bypasses the public portal captcha wall). */
+  cnr?: string | null;
   onPick: (s: string) => void;
 }) {
+  const [detailOpen, setDetailOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-primary/40 transition-colors">
-      <div className="font-medium text-[13px] text-slate-900 flex items-start gap-1.5">
-        <Gavel className="size-3.5 text-slate-400 shrink-0 mt-0.5" />
-        <span className="min-w-0 flex-1">{title}</span>
-        {status && <StatusBadge status={status} />}
-      </div>
-      {digest && (
-        <div className="mt-2 rounded-lg border-l-2 border-emerald-400 bg-emerald-50/70 px-3 py-1.5 text-[12.5px] text-slate-800">
-          <span className="font-semibold text-emerald-700">Held: </span>{digest}
+    <>
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-primary/40 transition-colors">
+        <div className="font-medium text-[13px] text-slate-900 flex items-start gap-1.5">
+          <Gavel className="size-3.5 text-slate-400 shrink-0 mt-0.5" />
+          <span className="min-w-0 flex-1">{title}</span>
+          {status && <StatusBadge status={status} />}
         </div>
-      )}
-      {snippet && <p className="text-[12px] text-slate-500 mt-2 line-clamp-2">{snippet}</p>}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <SectionChips sections={sections} onPick={onPick} />
-        {sourceUrl && (
-          <a href={sourceUrl} target="_blank" rel="noreferrer"
-            className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] text-primary hover:underline">
-            open source <ArrowUpRight className="size-3" />
-          </a>
+        {digest && (
+          <div className="mt-2 rounded-lg border-l-2 border-emerald-400 bg-emerald-50/70 px-3 py-1.5 text-[12.5px] text-slate-800">
+            <span className="font-semibold text-emerald-700">Held: </span>{digest}
+          </div>
         )}
+        {snippet && <p className="text-[12px] text-slate-500 mt-2 line-clamp-2">{snippet}</p>}
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <SectionChips sections={sections} onPick={onPick} />
+        </div>
+        {/* Source strip — always visible so users know where the record
+            came from without having to click. eCourts items expose the
+            CNR (copy-friendly) and open the in-app detail dialog; local
+            corpus items link out to the original source. */}
+        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-[11.5px]">
+          <div className="min-w-0 truncate text-slate-500">
+            {cnr ? (
+              <>
+                <span className="font-medium text-slate-600">eCourts India</span>
+                <span className="mx-1.5 text-slate-300">·</span>
+                <span className="font-mono text-slate-500">CNR {cnr}</span>
+              </>
+            ) : sourceUrl ? (
+              <>
+                <span className="font-medium text-slate-600">Indexed corpus</span>
+                <span className="mx-1.5 text-slate-300">·</span>
+                <span className="text-slate-500">original source available</span>
+              </>
+            ) : (
+              <span className="text-slate-400">No public source</span>
+            )}
+          </div>
+          {cnr ? (
+            <button
+              type="button"
+              onClick={() => setDetailOpen(true)}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 hover:bg-primary/15 text-primary font-semibold px-2.5 py-1"
+            >
+              View details <ArrowUpRight className="size-3" />
+            </button>
+          ) : sourceUrl && (
+            <a href={sourceUrl} target="_blank" rel="noreferrer"
+              className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 hover:bg-primary/15 text-primary font-semibold px-2.5 py-1">
+              Open source <ArrowUpRight className="size-3" />
+            </a>
+          )}
+        </div>
       </div>
-    </div>
+      {cnr && detailOpen && (
+        <CaseDetailDialog cnr={cnr} title={title} status={status ?? null} onClose={() => setDetailOpen(false)} />
+      )}
+    </>
   );
 }
 
@@ -144,7 +186,7 @@ function SectionHubView({ hub, onPick }: { hub: any; onPick: (s: string) => void
       {hub.circulars?.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-1.5">
-            <FileText className="size-4 text-primary" /> CBDT circulars &amp; notifications ({hub.circulars.length})
+            <FileText className="size-4 text-brand-orange" /> CBDT circulars &amp; notifications ({hub.circulars.length})
           </div>
           <ul className="space-y-1.5">
             {hub.circulars.map((cir: any) => (
@@ -166,7 +208,7 @@ function SectionHubView({ hub, onPick }: { hub: any; onPick: (s: string) => void
       {hub.cases?.length > 0 ? (
         <div>
           <div className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-1.5">
-            <Gavel className="size-4 text-primary" /> Leading judgments
+            <Gavel className="size-4 text-brand-green" /> Leading judgments
             {c.cases_total > c.cases_shown && (
               <span className="text-slate-400 font-normal text-[12px]">(showing {c.cases_shown} of {c.cases_total})</span>
             )}
@@ -318,7 +360,7 @@ export default function Rulings() {
                   key={it.cnr || it.title}
                   title={it.title}
                   digest={it.digest ?? undefined}
-                  sourceUrl={it.source_url}
+                  cnr={it.cnr}
                   sections={it.sections_cited}
                   status={it.status}
                   onPick={loadSection}
@@ -595,7 +637,7 @@ function ByDateView({
                 key={it.cnr}
                 title={_formatEcourtsTitle(it)}
                 digest={_formatEcourtsDigest(it)}
-                sourceUrl={_ecourtsSourceUrl(it.cnr)}
+                cnr={it.cnr}
                 sections={[]}
                 status={_ecourtsStatus(it)}
                 onPick={onPick}
@@ -879,7 +921,7 @@ function BrowseView({
                 key={it.cnr}
                 title={_formatEcourtsTitle(it)}
                 digest={_formatEcourtsDigest(it)}
-                sourceUrl={_ecourtsSourceUrl(it.cnr)}
+                cnr={it.cnr}
                 sections={[]}
                 status={_ecourtsStatus(it)}
                 onPick={onPick}
@@ -942,9 +984,393 @@ function _formatEcourtsDigest(it: EcourtsBrowseData["items"][number]): string | 
 function _ecourtsStatus(it: EcourtsBrowseData["items"][number]): string {
   return it.caseStatus && it.caseStatus !== "UNKNOWN" ? it.caseStatus : "";
 }
-function _ecourtsSourceUrl(cnr: string): string {
-  // Public case page on the eCourts India portal.
-  return `https://ecourtsindia.com/case/${encodeURIComponent(cnr)}`;
+// ─── In-app case detail dialog (eCourts) ───────────────────────────────
+// The public eCourts portal is captcha-protected — direct deep links fail
+// with "Invalid Captcha". This dialog goes through OUR backend, which uses
+// the partner API (bearer-auth, no captcha), and renders the full case
+// record inline.
+
+// Shape of the response from GET /rulings/ecourts/case/{cnr} — matches the
+// eCourts partner-API envelope. The interesting fields live under
+// `courtCaseData`; `descriptions.enumLookup` maps codes → human labels.
+type EcourtsHearing = {
+  judge?: string;
+  hearingDate?: string;
+  businessOnDate?: string;
+  purposeOfListing?: string;
+};
+type EcourtsOrder = {
+  orderDate?: string;
+  orderType?: string;
+  description?: string;
+  orderUrl?: string;
+};
+type EcourtsCourtCaseData = {
+  cnr?: string;
+  cnrCaseNumber?: string;
+  cnrYear?: string | number;
+  caseNumber?: string | number;
+  caseType?: string;
+  caseTypeSub?: string;
+  caseStatus?: string;
+  courtName?: string;
+  courtCode?: string;
+  state?: string;
+  district?: string;
+  filingNumber?: string;
+  filingDate?: string;
+  registrationNumber?: string;
+  registrationDate?: string;
+  firstHearingDate?: string;
+  nextHearingDate?: string;
+  lastHearingDate?: string;
+  decisionDate?: string;
+  disposalType?: string;
+  contestedStatus?: string;
+  caseDurationDays?: number;
+  filingToFirstHearingDays?: number;
+  caseCategoryFacetPath?: string;
+  judges?: string[];
+  petitioners?: string[];
+  petitionerAdvocates?: string[];
+  respondents?: string[];
+  respondentAdvocates?: string[];
+  historyOfCaseHearings?: EcourtsHearing[];
+  judgmentOrders?: EcourtsOrder[];
+  interimOrders?: EcourtsOrder[];
+  actsAndSections?: string[];
+};
+type EcourtsCaseDetail = {
+  courtCaseData?: EcourtsCourtCaseData;
+  descriptions?: {
+    enumLookup?: Record<string, Record<string, string>>;
+  };
+  [k: string]: unknown;
+};
+
+function CaseDetailDialog({ cnr, title, status, onClose }: {
+  cnr: string;
+  title: string;
+  status: string | null;
+  onClose: () => void;
+}) {
+  const [data, setData] = useState<EcourtsCaseDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setBusy(true);
+    api.ecourtsCase(cnr)
+      .then((d) => { if (alive) { setData(d as EcourtsCaseDetail); setBusy(false); } })
+      .catch((e: unknown) => {
+        if (alive) {
+          setError(e instanceof Error ? e.message : "Failed to load case detail");
+          setBusy(false);
+        }
+      });
+    return () => { alive = false; };
+  }, [cnr]);
+
+  // ESC to close + lock page scroll while open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-[14.5px] font-semibold text-slate-900 truncate">{title}</h3>
+              {status && <StatusBadge status={status} />}
+            </div>
+            <div className="mt-0.5 text-[11.5px] text-slate-500 font-mono">CNR: {cnr}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="shrink-0 size-7 rounded-md hover:bg-slate-100 grid place-items-center text-slate-500"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {busy && (
+            <div className="flex items-center gap-2 text-[13px] text-slate-500 py-6 justify-center">
+              <Loader2 className="size-4 animate-spin" /> Fetching case details from eCourts…
+            </div>
+          )}
+          {error && !busy && (
+            <div className="space-y-4">
+              <ErrBox msg={error} />
+              {/* eCourts fetch failed — auto-fire the web-search fallback so
+                  the user still gets a useful summary + sources. */}
+              <WebSearchFallback query={`${title} CNR ${cnr}`} />
+            </div>
+          )}
+          {data && !busy && <CaseDetailBody d={data} title={title} cnr={cnr} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CaseDetailBody({ d, title, cnr }: { d: EcourtsCaseDetail; title: string; cnr: string }) {
+  const cd = d.courtCaseData ?? {};
+  const enums = d.descriptions?.enumLookup ?? {};
+
+  // Enum → human label, else prettify the raw code ("LOK_ADALAT" → "Lok adalat").
+  const label = (field: string, code?: string | null): string => {
+    if (!code) return "";
+    const looked = enums[field]?.[code];
+    if (looked) return looked;
+    return code.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  };
+
+  const caseNumber = cd.filingNumber || cd.registrationNumber
+    || (cd.cnrCaseNumber && cd.cnrYear ? `${cd.cnrCaseNumber} / ${cd.cnrYear}` : cd.caseNumber?.toString());
+
+  const meta: Array<[string, string | null | undefined]> = [
+    ["Court", cd.courtName],
+    ["State", cd.state],
+    ["District", cd.district],
+    ["Case type", label("caseType", cd.caseType) + (cd.caseTypeSub ? ` · ${cd.caseTypeSub}` : "")],
+    ["Case number", caseNumber ?? null],
+    ["Filing date", cd.filingDate],
+    ["Registration date", cd.registrationDate],
+    ["First hearing", cd.firstHearingDate],
+    ["Decision date", cd.decisionDate],
+    ["Disposal", label("disposalType", cd.disposalType)],
+    ["Duration", cd.caseDurationDays != null ? `${cd.caseDurationDays} day${cd.caseDurationDays === 1 ? "" : "s"}` : null],
+    ["Category", cd.caseCategoryFacetPath],
+  ].filter(([, v]) => v != null && String(v).trim().length > 0) as Array<[string, string]>;
+
+  const allOrders: Array<EcourtsOrder & { _kind: string }> = [
+    ...(cd.judgmentOrders ?? []).map((o) => ({ ...o, _kind: "Judgment" })),
+    ...(cd.interimOrders ?? []).map((o) => ({ ...o, _kind: "Interim" })),
+  ];
+
+  const empty = meta.length === 0
+    && !cd.petitioners?.length && !cd.respondents?.length
+    && !cd.judges?.length && !allOrders.length
+    && !cd.historyOfCaseHearings?.length;
+
+  if (empty) {
+    return (
+      <div className="space-y-3">
+        <div className="text-[13px] text-slate-500 py-2">
+          eCourts returned no structured record for this CNR. Fetching a web summary instead…
+        </div>
+        <WebSearchFallback query={`${title} CNR ${cnr}`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 text-[13px] text-slate-800">
+      {meta.length > 0 && (
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+          {meta.map(([k, v]) => (
+            <div key={k} className="flex items-start gap-2">
+              <dt className="text-slate-500 min-w-[120px] shrink-0">{k}</dt>
+              <dd className="text-slate-900 font-medium min-w-0 break-words">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {(cd.petitioners?.length || cd.respondents?.length) ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <PartyList label="Petitioners" items={cd.petitioners} advocates={cd.petitionerAdvocates} />
+          <PartyList label="Respondents" items={cd.respondents} advocates={cd.respondentAdvocates} />
+        </div>
+      ) : null}
+
+      {cd.judges && cd.judges.length > 0 && (
+        <div>
+          <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Judges</div>
+          <div className="text-slate-800">{cd.judges.join(" · ")}</div>
+        </div>
+      )}
+
+      {cd.actsAndSections && cd.actsAndSections.length > 0 && (
+        <div>
+          <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Acts &amp; sections</div>
+          <div className="flex flex-wrap gap-1.5">
+            {cd.actsAndSections.map((a, i) => (
+              <span key={i} className="inline-flex items-center rounded-full bg-primary/10 text-primary text-[11.5px] font-medium px-2.5 py-0.5">
+                {a}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {allOrders.length > 0 && (
+        <div>
+          <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+            Orders ({allOrders.length})
+          </div>
+          <ul className="space-y-2">
+            {allOrders.slice(0, 30).map((o, i) => (
+              <li key={i} className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="text-slate-800 font-medium">
+                    {o.orderDate || "(undated)"}
+                    <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 text-slate-700 text-[10.5px] font-semibold uppercase tracking-wider px-1.5 py-0.5">
+                      {o._kind}
+                    </span>
+                  </div>
+                  {o.orderUrl && (
+                    <span className="text-[11px] text-slate-500 font-mono truncate max-w-[40%]" title={o.orderUrl}>
+                      {o.orderUrl}
+                    </span>
+                  )}
+                </div>
+                {(o.orderType || o.description) && (
+                  <p className="text-[12px] text-slate-600 mt-1">{o.orderType || o.description}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {cd.historyOfCaseHearings && cd.historyOfCaseHearings.length > 0 && (
+        <div>
+          <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+            Hearings ({cd.historyOfCaseHearings.length})
+          </div>
+          <ul className="space-y-1.5">
+            {cd.historyOfCaseHearings.slice(0, 30).map((h, i) => (
+              <li key={i} className="text-[12.5px] text-slate-700">
+                <span className="font-medium text-slate-900">{h.hearingDate || h.businessOnDate || "—"}</span>
+                {h.purposeOfListing && <span className="text-slate-600"> · {h.purposeOfListing}</span>}
+                {h.judge && <span className="text-slate-400"> · {h.judge}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PartyList({ label, items, advocates }: { label: string; items?: string[]; advocates?: string[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div>
+      <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500 mb-1">{label}</div>
+      <ul className="space-y-0.5 text-slate-800">
+        {items.map((p, i) => <li key={i} className="break-words">{p}</li>)}
+      </ul>
+      {advocates && advocates.length > 0 && (
+        <div className="mt-1.5 text-[11.5px] text-slate-500">
+          <span className="font-medium text-slate-600">Advocate{advocates.length === 1 ? "" : "s"}:</span>{" "}
+          {advocates.join(", ")}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Web-search fallback (Gemini + Google Search grounding) ─────────────
+// Fires when the eCourts partner API returns no structured detail for a
+// CNR. The backend proxies to gemini_search.web_answer() which returns
+// grounded text (with {{cite:domain|url}} markers) plus a source list.
+function WebSearchFallback({ query }: { query: string }) {
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<{ text: string; sources: { title: string; url: string }[] } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setBusy(true);
+    setError(null);
+    setData(null);
+    api.rulingsWebsearch(query)
+      .then((d) => { if (alive) { setData(d); setBusy(false); } })
+      .catch((e: unknown) => {
+        if (alive) {
+          setError(e instanceof Error ? e.message : "Web search failed");
+          setBusy(false);
+        }
+      });
+    return () => { alive = false; };
+  }, [query]);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Search className="size-3.5 text-primary" />
+        <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500">
+          Web summary
+        </div>
+        <span className="text-[10.5px] text-slate-400 ml-auto">grounded via Google Search</span>
+      </div>
+      {busy && (
+        <div className="flex items-center gap-2 text-[13px] text-slate-500 py-4 justify-center">
+          <Loader2 className="size-4 animate-spin" /> Searching the web…
+        </div>
+      )}
+      {error && !busy && <ErrBox msg={error} />}
+      {data && !busy && (
+        <>
+          {data.text ? (
+            <div className="text-[13px] leading-relaxed text-slate-800 prose-sm">
+              <Markdown text={data.text} />
+            </div>
+          ) : (
+            <div className="text-[13px] text-slate-500 py-2">
+              No reputable web sources found for this case.
+            </div>
+          )}
+          {data.sources.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-200">
+              <div className="text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+                Sources ({data.sources.length})
+              </div>
+              <ul className="space-y-1">
+                {data.sources.slice(0, 10).map((s, i) => (
+                  <li key={i} className="text-[12px] truncate">
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                      title={s.url}
+                    >
+                      <ArrowUpRight className="size-3 shrink-0" />
+                      <span className="truncate">{s.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 // ─── Landing widgets (Search-tab only) ──────────────────────────────────
@@ -958,25 +1384,41 @@ function StatsRow() {
   // With eCourts wired up, the headline numbers are into the hundreds of
   // millions — abbreviate as "118M", "284M" so the tiles don't wrap into
   // three lines on tablet-sized viewports.
-  const items: [string, string][] = [
-    [abbr(s.judgments), "Judgments"],
-    [abbr(s.appeals), "Cases"],
-    [nfmt(s.benches), "Courts / benches"],
-    [s.coverage_label, "Coverage"],
+  // Each tile carries a distinct icon accent that rotates through the
+  // three logo tones (navy / orange / green / navy) so the strip echoes
+  // the brand palette without any single tone overpowering the numbers.
+  const items: Array<{
+    v: string; label: string; icon: JSX.Element;
+    tone: "primary" | "orange" | "green";
+  }> = [
+    { v: abbr(s.judgments), label: "Judgments", icon: <Gavel className="size-4" />, tone: "primary" },
+    { v: abbr(s.appeals), label: "Cases", icon: <FileText className="size-4" />, tone: "orange" },
+    { v: nfmt(s.benches), label: "Courts / benches", icon: <Scale className="size-4" />, tone: "green" },
+    { v: s.coverage_label, label: "Coverage", icon: <CalendarIcon className="size-4" />, tone: "primary" },
   ];
+  const toneClasses: Record<typeof items[number]["tone"], string> = {
+    primary: "bg-primary/10 text-primary",
+    orange: "bg-[hsl(var(--brand-orange)/0.12)] text-[hsl(var(--brand-orange))]",
+    green: "bg-[hsl(var(--brand-green)/0.12)] text-[hsl(var(--brand-green))]",
+  };
   return (
     <div className="mt-2 space-y-1">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {items.map(([v, label]) => (
+        {items.map(({ v, label, icon, tone }) => (
           <div
             key={label}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm flex items-center gap-3"
           >
-            <div className="text-[22px] sm:text-[26px] font-semibold text-slate-900 tabular-nums leading-none">
-              {v}
+            <div className={cn("shrink-0 size-9 rounded-lg grid place-items-center", toneClasses[tone])}>
+              {icon}
             </div>
-            <div className="text-[11.5px] text-slate-500 mt-1 uppercase tracking-wider">
-              {label}
+            <div className="min-w-0">
+              <div className="text-[22px] sm:text-[26px] font-semibold text-slate-900 tabular-nums leading-none truncate">
+                {v}
+              </div>
+              <div className="text-[11.5px] text-slate-500 mt-1 uppercase tracking-wider truncate">
+                {label}
+              </div>
             </div>
           </div>
         ))}
@@ -1011,7 +1453,7 @@ function RecentJudgments({
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-slate-900 inline-flex items-center gap-1.5">
-          <Gavel className="size-4 text-primary" /> Recent judgments
+          <Gavel className="size-4 text-brand-orange" /> Recent judgments
           {data.source === "ecourts" && (
             <span className="text-[10.5px] font-normal text-slate-400 ml-1">· live from eCourts India</span>
           )}
@@ -1033,7 +1475,11 @@ function RecentJudgments({
               (appendDate && it.published_date ? `  ·  ${it.published_date}` : "")
             }
             digest={it.digest}
-            sourceUrl={it.source_url}
+            // For eCourts feed the widget's `id` IS the CNR — opens the
+            // in-app detail dialog. For corpus items keep the external
+            // source URL (Kanoon judgment page, direct file, etc).
+            cnr={data.source === "ecourts" ? String(it.id) : null}
+            sourceUrl={data.source === "ecourts" ? null : it.source_url}
             sections={it.sections_cited}
             status={it.status}
             onPick={onPick}

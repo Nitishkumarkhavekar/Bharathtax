@@ -153,22 +153,27 @@ function SidebarBody({
           sidebar itself, not from the main content header. */}
       <div
         className={cn(
-          "relative h-24 flex items-center border-b border-slate-200",
-          collapsed ? "px-0 flex-col justify-center gap-1.5" : "px-3 gap-2.5",
+          "relative h-20 flex items-center border-b border-slate-200 overflow-hidden",
+          collapsed ? "px-0 flex-col justify-center gap-1.5" : "px-3 gap-3",
         )}
       >
         {collapsed ? (
+          // Collapsed rail — just the "h" mark from favicon.png (no wordmark).
           <img
-            src="/bharattax-logo.png"
+            src="/favicon.png"
             alt="BharatTax"
-            className="h-11 w-auto select-none mix-blend-multiply"
+            className="h-12 w-12 object-contain select-none"
             draggable={false}
           />
         ) : (
+          // Expanded — transparent-PNG full wordmark. The image ships with
+          // generous transparent padding around the wordmark; we render it
+          // at h-40 inside an h-20 overflow-hidden banner so the padding
+          // gets visually clipped and the wordmark fills the header.
           <img
-            src="/bharattax-logo.png"
+            src="/bharattax-logo-transparent.png"
             alt="BharatTax"
-            className="h-16 w-auto max-w-full select-none mix-blend-multiply"
+            className="h-40 w-auto max-w-[calc(100%-3rem)] object-contain object-left select-none shrink-0"
             draggable={false}
           />
         )}
@@ -179,7 +184,7 @@ function SidebarBody({
             title={collapsed ? "Show sidebar" : "Hide sidebar"}
             className={cn(
               "hidden md:inline-flex items-center justify-center size-8 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors",
-              collapsed ? "" : "ml-auto",
+              collapsed ? "" : "ml-auto shrink-0",
             )}
           >
             <PanelLeft className="size-4.5" />

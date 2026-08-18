@@ -189,8 +189,10 @@ function DraftsSidebar({
                         <div className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-slate-500">
                           <span className={cn(
                             "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold capitalize",
-                            d.status === "draft" ? "bg-amber-100 text-amber-800"
-                              : d.status === "final" ? "bg-emerald-100 text-emerald-800"
+                            // Logo palette: draft = orange (attention),
+                            // final = green (done). Slate for anything else.
+                            d.status === "draft" ? "bg-brand-orange/15 text-brand-orange"
+                              : d.status === "final" ? "bg-brand-green/15 text-brand-green"
                               : "bg-slate-100 text-slate-600"
                           )}>
                             <span className="size-1 rounded-full bg-current" /> {d.status}
