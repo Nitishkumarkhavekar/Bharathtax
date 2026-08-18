@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Scale, Loader2, AlertTriangle, ArrowRight, MessageSquarePlus } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowRight, MessageSquarePlus } from "lucide-react";
 import { api, ServerChatFull } from "../api";
 import ChatMessages from "@/components/chat/ChatMessages";
 import { ChatMessage } from "@/lib/chatStore";

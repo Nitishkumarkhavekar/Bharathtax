@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import {
   Menu,
   Sparkles,
-  Scale,
   BookOpen,
   Calculator,
   Gavel,
