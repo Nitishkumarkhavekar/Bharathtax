@@ -43,9 +43,10 @@ const STATUS_META: Record<
     icon: ClipboardList,
   },
   running: {
+    // Logo-orange = active / attention (the drafting pipeline is spinning).
     label: "Running",
-    dot: "bg-sky-500 shadow-[0_0_0_3px_rgba(14,165,233,0.22)] animate-pulse",
-    chip: "bg-sky-50 text-sky-700 ring-sky-200",
+    dot: "bg-brand-orange shadow-[0_0_0_3px_rgba(239,138,46,0.22)] animate-pulse",
+    chip: "bg-brand-orange/10 text-brand-orange ring-brand-orange/25",
     icon: Loader2,
   },
   ready: {

@@ -10,6 +10,11 @@ const badgeVariants = cva(
         default: "border-transparent bg-primary/10 text-primary",
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         success: "border-transparent bg-success/10 text-success",
+        // Warning / highlight — uses the logo-orange accent. Reserve for
+        // pending states, "new" ribbons, upgrade prompts, etc.
+        warning: "border-transparent bg-brand-orange/15 text-brand-orange",
+        // Growth / brand-green accent — verified, live, positive-trend labels.
+        brand: "border-transparent bg-brand-green/15 text-brand-green",
         destructive: "border-transparent bg-destructive/10 text-destructive",
         outline: "text-foreground",
       },

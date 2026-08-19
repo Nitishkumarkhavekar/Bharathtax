@@ -50,6 +50,24 @@ _SEARCH_ECOURTS_CACHE: dict[str, tuple[float, dict]] = {}
 _SEARCH_ECOURTS_TTL_S = 300.0  # 5 min
 
 
+def _ecourts_case_url(cnr: str | None) -> str | None:
+    """Public URL for a given CNR — intentionally returns None.
+
+    There is no public, captcha-free URL for an individual eCourts case:
+      * ``https://ecourtsindia.com/case/{cnr}`` (third-party wrapper) 404s.
+      * ``https://services.ecourts.gov.in/ecourtindia_v6/?...&cino={cnr}``
+        loads the CNR search page but returns "Invalid Captcha" until the
+        user solves an in-page challenge, so a plain link is misleading.
+
+    The frontend renders case detail INLINE via the partner-API endpoint
+    (``/rulings/ecourts/case/{cnr}``) instead of linking out. We keep this
+    helper so callers stay symmetrical and so future consumers get a
+    single, documented place to change if a real public URL appears.
+    """
+    _ = cnr  # kept for signature stability; see docstring.
+    return None
+
+
 def _ecourts_search_cached(q: str, limit: int = 6) -> dict:
     """Free-text eCourts case search, cached per normalised query.
 
@@ -95,7 +113,7 @@ def _ecourts_search_cached(q: str, limit: int = 6) -> dict:
             "cnr": cnr,
             "title": _format_ecourts_title(it),
             "digest": _format_ecourts_digest(it),
-            "source_url": f"https://ecourtsindia.com/case/{cnr}" if cnr else None,
+            "source_url": _ecourts_case_url(cnr),
             "decision_date": it.get("decisionDate"),
             "court": it.get("courtName") or it.get("courtCode"),
             "sections_cited": list(it.get("actsAndSections") or []),
@@ -735,10 +753,11 @@ def recent_judgments(
                         "id": it.get("cnr"),
                         "title": _format_ecourts_title(it),
                         "digest": _format_ecourts_digest(it),
-                        # Public eCourts case page — mirrors the Browse-tab
-                        # source link so both feeds are clickable the same way.
-                        "source_url": f"https://ecourtsindia.com/case/{it.get('cnr')}"
-                                      if it.get("cnr") else None,
+                        # Deep link to the official eCourts CNR-status portal
+                        # (the third-party ecourtsindia.com wrapper does not
+                        # expose a public per-case page — its /case/{cnr}
+                        # route 404s). See _ecourts_case_url for details.
+                        "source_url": _ecourts_case_url(it.get("cnr")),
                         "sections_cited": list(it.get("actsAndSections") or []),
                         "published_date": it.get("decisionDate"),
                         "status": (it.get("caseStatus") or "") if (it.get("caseStatus") or "") != "UNKNOWN" else "",
@@ -819,6 +838,29 @@ def ecourts_case(cnr: str, p: Principal = Depends(get_principal)) -> dict:
     """Full case detail by CNR (Case Number Record) — the eCourts unique id.
     Returns judges, party names, hearings, orders, filing/decision dates."""
     return _wrap_ecourts(_ecourts.get, f"/api/partner/case/{cnr}")
+
+
+@router.get("/websearch")
+def rulings_websearch(q: str, p: Principal = Depends(get_principal)) -> dict:
+    """Gemini + Google-Search-grounded answer for a free-text case query.
+
+    Used as a FALLBACK on the case-detail dialog: when the eCourts partner
+    API returns no structured data for a CNR (rare — happens for very old,
+    non-migrated, or sealed records), the frontend calls this endpoint with
+    the case title / CNR to fetch a grounded web summary + reputable
+    sources so the user still gets *something* useful.
+
+    Reuses the same rate-limited Gemini path as the Ask-bot's web fallback,
+    so we don't need another provider or key.
+    """
+    from app.services import gemini_search  # heavy import, lazy-load
+    query = (q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="q parameter is required")
+    if not gemini_search.available():
+        raise HTTPException(status_code=503, detail="Web search is not configured")
+    text, sources = gemini_search.web_answer(query)
+    return {"text": text or "", "sources": sources or []}
 
 
 @router.get("/ecourts/search")

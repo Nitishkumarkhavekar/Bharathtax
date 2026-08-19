@@ -68,36 +68,39 @@ function Rail({
 }) {
   return (
     <>
-      {/* Brand */}
+      {/* Brand — top banner of the (now white) sidebar. The logo PNG carries
+          a lot of transparent padding around the wordmark, so we render it
+          at a larger height than the banner and clip with overflow-hidden. */}
       <div
         className={cn(
-          "h-16 flex items-center gap-2.5 border-b border-white/10",
-          collapsed ? "justify-center px-0" : "justify-between px-5",
+          "h-20 flex items-center bg-white border-b border-slate-100 relative z-10 overflow-hidden",
+          collapsed ? "justify-center px-2" : "px-4",
         )}
       >
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          {/* Sidebar is dark (bg-sidebar) — put the coloured logo on a light
-              pill so its blue / orange text stays readable on both states.
-              White pill = no mix-blend needed here; the PNG's white bg is
-              intended and matches the pill. */}
-          <div className="rounded-lg bg-white ring-1 ring-white/20 shadow-sm px-2 py-1.5 flex items-center justify-center">
-            <img
-              src="/bharattax-logo.png"
-              alt="BharatTax"
-              className={collapsed ? "h-10 w-auto select-none" : "h-12 w-auto select-none"}
-              draggable={false}
-            />
-          </div>
-          {!collapsed && (
-            <div className="leading-tight">
-              <div className="text-[11px] text-sidebar-foreground/80">Admin console</div>
-            </div>
-          )}
-        </div>
+        {collapsed ? (
+          // Collapsed rail — just the "h" mark from favicon.png.
+          <img
+            src="/favicon.png"
+            alt="BharatTax"
+            className="h-12 w-12 object-contain select-none"
+            draggable={false}
+          />
+        ) : (
+          // Expanded — full transparent wordmark. h-40 with parent
+          // overflow-hidden clips the PNG's built-in vertical padding, so
+          // the actual logo content fills the banner instead of floating
+          // small in the corner.
+          <img
+            src="/bharattax-logo-transparent.png"
+            alt="BharatTax"
+            className="h-40 w-auto max-w-full object-contain object-left select-none shrink-0"
+            draggable={false}
+          />
+        )}
         {onClose && !collapsed && (
           <button
             onClick={onClose}
-            className="md:hidden p-2 rounded-md text-sidebar-foreground/85 hover:bg-white/10 hover:text-white"
+            className="md:hidden shrink-0 ml-auto p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close menu"
           >
             <X className="size-4" />
@@ -105,7 +108,7 @@ function Rail({
         )}
       </div>
 
-      {/* Role chip */}
+      {/* Role chip — soft rose/amber wash on white, ring for contrast. */}
       {collapsed ? (
         <div className="flex justify-center pt-4 pb-2">
           <div
@@ -113,8 +116,8 @@ function Rail({
             className={cn(
               "size-9 rounded-lg flex items-center justify-center",
               isSuper
-                ? "bg-rose-500/15 text-rose-200 ring-1 ring-rose-500/20"
-                : "bg-amber-500/15 text-amber-200 ring-1 ring-amber-500/20",
+                ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200"
+                : "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
             )}
           >
             <ShieldCheck className="size-4" />
@@ -126,20 +129,21 @@ function Rail({
             className={cn(
               "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium",
               isSuper
-                ? "bg-rose-500/15 text-rose-200 ring-1 ring-rose-500/20"
-                : "bg-amber-500/15 text-amber-200 ring-1 ring-amber-500/20",
+                ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+                : "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
             )}
           >
             <ShieldCheck className="size-3.5" />
             {isSuper ? "Super Admin" : "Wing Admin"}
-            <span className="ml-auto text-[10.5px] text-sidebar-foreground/60">
+            <span className="ml-auto text-[10.5px] text-slate-500">
               @{session?.username}
             </span>
           </div>
         </div>
       )}
 
-      {/* Nav */}
+      {/* Nav — light theme. Active = navy pill with white text; inactive =
+          slate text with a soft primary hover wash. */}
       <nav
         className={cn(
           "flex-1 overflow-y-auto chat-scrollbar space-y-1",
@@ -160,7 +164,7 @@ function Rail({
                   : "items-start gap-3 px-3 py-2.5",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground/95 hover:bg-white/10 hover:text-white",
+                  : "text-slate-700 hover:bg-primary/5 hover:text-primary",
               )
             }
           >
@@ -170,7 +174,7 @@ function Rail({
                   className={cn(
                     "size-4 shrink-0",
                     collapsed ? "" : "mt-0.5",
-                    isActive ? "text-primary-foreground" : "text-sidebar-foreground/90",
+                    isActive ? "text-primary-foreground" : "text-slate-500 group-hover:text-primary",
                   )}
                 />
                 {!collapsed && (
@@ -180,7 +184,7 @@ function Rail({
                       <div
                         className={cn(
                           "text-[11px] mt-0.5 leading-tight",
-                          isActive ? "text-primary-foreground/90" : "text-sidebar-foreground/70",
+                          isActive ? "text-primary-foreground/90" : "text-slate-500",
                         )}
                       >
                         {n.desc}
@@ -197,7 +201,7 @@ function Rail({
       {/* Footer */}
       <div
         className={cn(
-          "border-t border-white/10 py-3 flex items-center",
+          "border-t border-slate-200 py-3 flex items-center",
           collapsed ? "flex-col gap-2 px-2" : "gap-2 px-4",
         )}
       >
@@ -209,8 +213,8 @@ function Rail({
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-white truncate">{session?.username}</div>
-            <div className="text-[11px] text-sidebar-foreground/80 capitalize">
+            <div className="text-sm font-medium text-slate-900 truncate">{session?.username}</div>
+            <div className="text-[11px] text-slate-500 capitalize">
               {session?.role?.replace("_", " ")}
             </div>
           </div>
@@ -218,7 +222,7 @@ function Rail({
         <button
           onClick={logout}
           title="Logout"
-          className="p-2 rounded-md text-sidebar-foreground/85 hover:bg-white/10 hover:text-white"
+          className="p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-primary"
         >
           <LogOut className="size-4" />
         </button>
@@ -252,10 +256,10 @@ export default function AdminLayout() {
 
   return (
     <div className="h-screen w-screen flex bg-slate-50 overflow-hidden">
-      {/* Desktop rail */}
+      {/* Desktop rail — light theme (white sidebar, slate text, primary accents). */}
       <aside
         className={cn(
-          "hidden md:flex shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-white/5 transition-[width] duration-200",
+          "hidden md:flex shrink-0 bg-white text-slate-800 flex-col border-r border-slate-200 transition-[width] duration-200",
           collapsed ? "w-16" : "w-64 lg:w-72",
         )}
       >
@@ -275,7 +279,7 @@ export default function AdminLayout() {
             className="md:hidden fixed inset-0 z-40 bg-black/55"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] bg-sidebar text-sidebar-foreground flex flex-col shadow-2xl border-r border-white/5">
+          <aside className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] bg-white text-slate-800 flex flex-col shadow-2xl border-r border-slate-200">
             <Rail
               isSuper={isSuper}
               items={items}

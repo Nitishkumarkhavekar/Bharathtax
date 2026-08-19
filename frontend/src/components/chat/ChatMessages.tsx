@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Scale, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2, X } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, copyMarkdownRich } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -1166,11 +1166,11 @@ function AssistantAvatar({ pulse }: { pulse?: boolean }) {
   return (
     <div
       className={
-        "size-8 shrink-0 rounded-lg bg-primary/10 ring-1 ring-primary/30 flex items-center justify-center" +
+        "size-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 flex items-center justify-center overflow-hidden" +
         (pulse ? " avatar-pulse" : "")
       }
     >
-      <Scale className="size-4 text-primary" />
+      <img src="/favicon.png" alt="BharatTax" className="size-6 object-contain" draggable={false} />
     </div>
   );
 }

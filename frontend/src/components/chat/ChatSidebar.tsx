@@ -40,18 +40,19 @@ const TOOLS = [
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo" as const },
 ];
 
-/** Icon-tile styling for the light-theme sidebar — soft gradient chip with a
- *  matching-tone ring and slightly-desaturated icon colour. */
-// Single primary tint across every tool tile — the app uses a strict
-// 3-colour palette (slate + primary + emerald + rose), so we lean on
-// iconography rather than hue to differentiate sections.
+/** Icon-tile styling for the light-theme sidebar — soft chip with a
+ *  matching-tone ring and slightly-desaturated icon colour.
+ *  Tiles rotate across the three BharatTax logo tones (navy primary,
+ *  brand-orange, brand-green) so each tool section carries a visual
+ *  anchor from the palette while still respecting the brand. Emerald /
+ *  rose kept for their long-standing semantic meanings. */
 const TONE_TILE: Record<string, string> = {
-  amber: "bg-primary/10 text-primary",
-  teal: "bg-primary/10 text-primary",
+  amber: "bg-brand-orange/15 text-brand-orange",
+  teal: "bg-brand-green/15 text-brand-green",
   violet: "bg-primary/10 text-primary",
   sky: "bg-primary/10 text-primary",
-  emerald: "bg-primary/10 text-primary",
-  rose: "bg-primary/10 text-primary",
+  emerald: "bg-brand-green/15 text-brand-green",
+  rose: "bg-brand-orange/15 text-brand-orange",
   indigo: "bg-primary/10 text-primary",
 };
 
@@ -138,12 +139,13 @@ export default function ChatSidebar({
   if (collapsed) {
     return (
       <aside className="relative w-16 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
-        {/* Brand mark + expand toggle */}
-        <div className="relative h-24 flex flex-col items-center justify-center gap-1 border-b border-slate-200/80">
+        {/* Brand mark + expand toggle — collapsed rail shows the "h" mark
+            only (favicon.png). Full wordmark shows in the expanded state. */}
+        <div className="relative h-20 flex flex-col items-center justify-center gap-1 border-b border-slate-200/80 overflow-hidden">
           <img
-            src="/bharattax-logo.png"
+            src="/favicon.png"
             alt="BharatTax"
-            className="h-11 w-auto select-none mix-blend-multiply"
+            className="h-12 w-12 object-contain select-none"
             draggable={false}
           />
         </div>
@@ -211,17 +213,19 @@ export default function ChatSidebar({
 
   return (
     <aside className="relative w-full sm:w-72 lg:w-80 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
-      {/* Brand */}
-      <div className="relative h-24 flex items-center justify-between gap-2 px-3 border-b border-slate-200/80">
-        <div className="flex items-center min-w-0 flex-1">
+      {/* Brand — h-20 banner with the logo rendered at h-40 + overflow-hidden
+          so the PNG's built-in transparent padding gets clipped and the
+          wordmark visibly fills the header. */}
+      <div className="relative h-20 flex items-center justify-between gap-3 px-3 border-b border-slate-200/80 overflow-hidden">
+        <div className="flex items-center min-w-0 flex-1 pr-2">
           <img
-            src="/bharattax-logo.png"
+            src="/bharattax-logo-transparent.png"
             alt="BharatTax"
-            className="h-16 w-auto max-w-full select-none shrink-0 mix-blend-multiply"
+            className="h-40 w-auto max-w-full object-contain object-left select-none shrink-0"
             draggable={false}
           />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {onToggleCollapsed && (
             <button
               onClick={onToggleCollapsed}

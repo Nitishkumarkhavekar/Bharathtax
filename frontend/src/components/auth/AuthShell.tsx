@@ -44,9 +44,13 @@ export default function AuthShell({
             audit-ready decisions on one intelligent platform.
           </p>
           <ul className="mt-6 space-y-2 text-[13.5px] text-slate-700">
-            {["Answers footnoted to the exact section","Six-module CIT(A) drafting pipeline","Wing-scoped seat licensing and audit logs"].map((t) => (
+            {[
+              { t: "Answers footnoted to the exact section", tone: "bg-primary" },
+              { t: "Six-module CIT(A) drafting pipeline", tone: "bg-brand-orange" },
+              { t: "Wing-scoped seat licensing and audit logs", tone: "bg-brand-green" },
+            ].map(({ t, tone }) => (
               <li key={t} className="flex items-start gap-2">
-                <span className="mt-1.5 size-1.5 rounded-full bg-primary" />
+                <span className={`mt-1.5 size-1.5 rounded-full ${tone}`} />
                 {t}
               </li>
             ))}

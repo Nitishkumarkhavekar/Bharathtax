@@ -1029,6 +1029,13 @@ export const api = {
     "/rulings/ecourts/enums",
   ),
   ecourtsCase: (cnr: string) => req<any>(`/rulings/ecourts/case/${encodeURIComponent(cnr)}`),
+  // Web-search fallback for the case-detail dialog. Fires when the eCourts
+  // partner API returns no structured data — Gemini + Google Search
+  // grounding returns a summary with reputable-source citations.
+  rulingsWebsearch: (q: string) => req<{
+    text: string;
+    sources: { title: string; url: string }[];
+  }>(`/rulings/websearch?q=${encodeURIComponent(q)}`),
   ecourtsSearch: (opts: {
     state?: string;
     district_code?: string;

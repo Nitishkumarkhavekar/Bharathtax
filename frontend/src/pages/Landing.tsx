@@ -177,8 +177,8 @@ function HeroPreview() {
           </aside>
           {/* Main — chat empty state */}
           <div className="p-6 sm:p-8 flex flex-col items-center justify-center text-center bg-bt-marketing-bg">
-            <div className="size-12 rounded-xl bg-primary text-white grid place-items-center shadow-sm ring-1 ring-primary/30">
-              <Scale className="size-6" />
+            <div className="size-12 rounded-xl bg-white grid place-items-center shadow-sm ring-1 ring-slate-200 overflow-hidden">
+              <img src="/favicon.png" alt="BharatTax" className="size-10 object-contain" draggable={false} />
             </div>
             <span className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold ring-1 ring-primary/20">
               <Sparkles className="size-3" /> Citation-grounded · primary Indian tax law
@@ -300,13 +300,24 @@ function Features() {
         <p className="mt-3 text-slate-600">Research, read, reason and draft — with the receipts attached to every claim.</p>
       </div>
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((c) => (
-          <div key={c.title} className="group rounded-2xl bg-white ring-1 ring-slate-200 p-6 hover:ring-primary/30 hover:shadow-lg hover:shadow-primary/10 transition-all">
-            <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center mb-4">{c.icon}</div>
-            <div className="text-[16px] font-semibold text-slate-900">{c.title}</div>
-            <div className="text-[13.5px] text-slate-600 mt-1.5 leading-relaxed">{c.desc}</div>
-          </div>
-        ))}
+        {cards.map((c, i) => {
+          // Rotate each card's icon chip across the three BharatTax logo
+          // tones (navy → orange → green) so the grid mirrors the brand
+          // palette rather than being a wall of navy.
+          const tones = [
+            "bg-primary/10 text-primary",
+            "bg-brand-orange/12 text-brand-orange",
+            "bg-brand-green/12 text-brand-green",
+          ];
+          const tone = tones[i % tones.length];
+          return (
+            <div key={c.title} className="group rounded-2xl bg-white ring-1 ring-slate-200 p-6 hover:ring-primary/30 hover:shadow-lg hover:shadow-primary/10 transition-all">
+              <div className={`size-10 rounded-xl ${tone} grid place-items-center mb-4`}>{c.icon}</div>
+              <div className="text-[16px] font-semibold text-slate-900">{c.title}</div>
+              <div className="text-[13.5px] text-slate-600 mt-1.5 leading-relaxed">{c.desc}</div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -491,15 +502,25 @@ function Stats() {
         <p className="mt-3 text-slate-600">Six live corpora — plus your own paper — searched with citation-preserving retrieval.</p>
       </div>
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {areas.map((a) => (
-          <div key={a.title} className="rounded-2xl bg-white ring-1 ring-slate-200 p-5 hover:ring-primary/30 transition-all">
-            <div className="flex items-center gap-2.5">
-              <div className="size-8 rounded-lg bg-primary/10 text-primary grid place-items-center">{a.icon}</div>
-              <div className="text-[14.5px] font-semibold text-slate-900">{a.title}</div>
+        {areas.map((a, i) => {
+          // Rotate icon chip through navy → orange → green so the corpora
+          // grid mirrors the BharatTax logo palette.
+          const tones = [
+            "bg-primary/10 text-primary",
+            "bg-brand-orange/12 text-brand-orange",
+            "bg-brand-green/12 text-brand-green",
+          ];
+          const tone = tones[i % tones.length];
+          return (
+            <div key={a.title} className="rounded-2xl bg-white ring-1 ring-slate-200 p-5 hover:ring-primary/30 transition-all">
+              <div className="flex items-center gap-2.5">
+                <div className={`size-8 rounded-lg ${tone} grid place-items-center`}>{a.icon}</div>
+                <div className="text-[14.5px] font-semibold text-slate-900">{a.title}</div>
+              </div>
+              <p className="mt-2.5 text-[13px] text-slate-600 leading-relaxed">{a.desc}</p>
             </div>
-            <p className="mt-2.5 text-[13px] text-slate-600 leading-relaxed">{a.desc}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -631,7 +652,7 @@ function Pricing() {
                 : "bg-white text-slate-900 ring-1 ring-slate-200")
             }>
               {p.featured && p.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] uppercase tracking-wider font-semibold bg-primary text-white px-2.5 py-1 rounded-full shadow-sm">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] uppercase tracking-wider font-semibold bg-brand-orange text-white px-2.5 py-1 rounded-full shadow-sm">
                   {p.badge}
                 </div>
               )}

@@ -107,10 +107,12 @@ function CurrentPlanCard({
   groundingCost?: number;
 }) {
   const pct = Math.min(100, sub.pct_used);
+  // Green when comfortable, logo-orange when >70% (heads-up), destructive
+  // when >90% (overage territory). Same 3-stop palette as the logo itself.
   const barTone =
     pct >= 90 ? "bg-destructive" :
-    pct >= 70 ? "bg-amber-500" :
-                "bg-success";
+    pct >= 70 ? "bg-brand-orange" :
+                "bg-brand-green";
   const daysLeft = sub.expires_at
     ? Math.max(0, Math.round((new Date(sub.expires_at).getTime() - Date.now()) / (86400 * 1000)))
     : null;

@@ -4,28 +4,40 @@
 
 @layer base {
   :root {
+    /* ── BharatTax brand palette (from /public/bharattax-logo.png) ──
+       Navy   #1E2E5C  hsl(225 51% 24%)  — "Bharat" wordmark, dominant brand
+       Orange #EF8A2E  hsl( 29 86% 56%)  — the "T" and bar-chart accent
+       Green  #20A957  hsl(144 68% 40%)  — the growth arrow and "ax"
+       Everything below is derived from these three anchors so a single edit
+       here re-skins the whole app. */
     --background: 214 24% 99%;
     --foreground: 217 33% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 225 51% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 222 55% 42%;            /* Ink Blue — evolved from the brand blue, desaturated + deepened */
+    --popover-foreground: 225 51% 14%;
+    --primary: 225 55% 26%;            /* Logo navy — brand core */
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 28% 96%;
-    --secondary-foreground: 217 33% 13%;
-    --muted: 214 28% 96%;
+    --secondary: 225 28% 96%;
+    --secondary-foreground: 225 51% 20%;
+    --muted: 225 28% 96%;
     --muted-foreground: 216 13% 46%;
-    --accent: 222 50% 95%;             /* soft wash for hovers/active tints */
-    --accent-foreground: 222 50% 32%;
+    --accent: 225 45% 95%;             /* pale navy wash for hovers/active tints */
+    --accent-foreground: 225 55% 26%;
     --destructive: 3 58% 46%;          /* muted danger, less alarm-red */
     --destructive-foreground: 0 0% 100%;
-    --success: 152 46% 34%;            /* muted success */
+    --success: 144 68% 36%;            /* Logo green (deepened slightly for AA on white) */
     --success-foreground: 0 0% 100%;
-    --border: 216 22% 92%;
-    --input: 216 22% 92%;
-    --ring: 222 55% 45%;
-    --sidebar: 222 47% 13%;
+    /* Secondary brand tokens — used sparingly as an accent alongside primary
+       (e.g. hero gradient stops, highlight chips, "New" ribbons). */
+    --brand-orange: 29 86% 54%;
+    --brand-orange-foreground: 0 0% 100%;
+    --brand-green: 144 68% 40%;
+    --brand-green-foreground: 0 0% 100%;
+    --border: 225 22% 91%;
+    --input: 225 22% 91%;
+    --ring: 225 55% 32%;
+    --sidebar: 225 55% 15%;            /* Deep navy sidebar — matches logo */
     --sidebar-foreground: 210 40% 96%;
     --radius: 0.55rem;
   }
@@ -82,12 +94,14 @@
   .bt-sidebar-bg {
     background: #ffffff;
   }
-  /* Rich elevated card with a hair-thin gradient border, primary shadow. */
+  /* Rich elevated card with a hair-thin gradient border, primary shadow.
+     Shadow uses the brand navy (rgb from --primary) so hover glow is
+     visibly on-brand instead of a generic mid-blue. */
   .bt-card {
     @apply bg-white rounded-2xl border border-slate-200/70;
     box-shadow:
       0 1px 2px rgba(15, 23, 42, 0.04),
-      0 12px 32px -18px rgba(46, 124, 200, 0.20);
+      0 12px 32px -18px rgba(30, 46, 92, 0.22);
   }
   .bt-card-hoverable {
     transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
@@ -96,8 +110,8 @@
     transform: translateY(-1px);
     box-shadow:
       0 2px 4px rgba(15, 23, 42, 0.05),
-      0 20px 40px -18px rgba(46, 124, 200, 0.32);
-    border-color: rgba(46, 124, 200, 0.28);
+      0 20px 40px -18px rgba(30, 46, 92, 0.34);
+    border-color: rgba(30, 46, 92, 0.30);
   }
   /* Primary button — flat, single-token accent (design system: no gradients). */
   .bt-btn-primary {
@@ -120,9 +134,11 @@
     @apply inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]
            text-slate-500;
   }
-  /* Gradient-text emphasis used in hero titles and admin dashboard KPIs. */
+  /* Gradient-text emphasis used in hero titles and admin dashboard KPIs.
+     Mirrors the logo's navy → orange sweep (Bharat[Tax]) so hero copy is
+     unmistakably brand-forward. */
   .bt-gradient-text {
-    background: linear-gradient(90deg, #1e40af 0%, #2b7cd8 45%, #4c6ef5 100%);
+    background: linear-gradient(90deg, #1E2E5C 0%, #2A4491 45%, #EF8A2E 100%);
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent;
   }
@@ -139,14 +155,25 @@
     background: rgba(15, 23, 42, 0.15); border-radius: 999px;
   }
   .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.28); }
-  /* Compact horizontal scrollbar for the BarChart's scrollable mode.
-     Sits on the bottom of the plot area without blocking bar hover. */
-  .chart-scroll::-webkit-scrollbar { height: 8px; }
-  .chart-scroll::-webkit-scrollbar-track { background: transparent; }
-  .chart-scroll::-webkit-scrollbar-thumb {
-    background: rgba(15, 23, 42, 0.18); border-radius: 999px;
+  /* Horizontal scrollbar for BarChart's scrollable mode — visible on
+     admin panel charts so users know more bars are hidden off-screen.
+     Slightly thicker + brand-navy tinted track/thumb for prominence. */
+  .chart-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--primary) / 0.08);
   }
-  .chart-scroll::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.35); }
+  .chart-scroll::-webkit-scrollbar { height: 10px; }
+  .chart-scroll::-webkit-scrollbar-track {
+    background: hsl(var(--primary) / 0.06);
+    border-radius: 999px;
+  }
+  .chart-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.5);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .chart-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.75); background-clip: padding-box; border: 2px solid transparent; }
 
   /* subtle floating composer */
   .composer-shell {
@@ -155,7 +182,7 @@
   }
   .composer-shell:focus-within {
     @apply border-primary/40;
-    box-shadow: 0 14px 40px -14px rgba(46,124,200,.32), 0 0 0 4px rgba(46,124,200,0.06);
+    box-shadow: 0 14px 40px -14px rgba(30, 46, 92, .34), 0 0 0 4px rgba(30, 46, 92, 0.06);
   }
 
   /* typing dots */
@@ -254,7 +281,7 @@
 
 /* Subtle row hover for tables */
 .admin-table tbody tr { transition: background-color .15s ease; }
-.admin-table tbody tr:hover { background: rgba(46, 124, 200, 0.035); }
+.admin-table tbody tr:hover { background: rgba(30, 46, 92, 0.04); }
 
 /* Markdown default styles used everywhere the <Markdown /> component renders
    (Ask/chat, documents, etc). Ancestor styling (e.g. `.prose-appeal`) can
@@ -347,7 +374,7 @@
   bottom: -1px;
   width: 3rem;
   height: 2px;
-  background: rgb(37 99 235);   /* primary accent under first-few-chars */
+  background: hsl(var(--primary));   /* logo-navy accent under first-few-chars */
   border-radius: 2px;
 }
 .prose-appeal h4:first-child { margin-top: 0; }
@@ -393,16 +420,16 @@
 .prose-appeal ul ul, .prose-appeal ol ol, .prose-appeal ul ol, .prose-appeal ol ul { margin: 0.25em 0 0.35em; }
 
 /* Blockquote — a formal pull-quote block for quoted orders / statutes /
-   submissions. Thick primary left rule, soft blue-tinted card background,
+   submissions. Thick primary left rule, soft navy-tinted card background,
    subtle giant opening quote glyph at the top-left for a legal-report feel. */
 .prose-appeal blockquote {
   position: relative;
-  border-left: 4px solid rgb(37 99 235);      /* primary */
+  border-left: 4px solid hsl(var(--primary));   /* logo navy */
   padding: 0.9em 1.2em 0.9em 1.4em;
   margin: 1.1em 0;
   font-style: italic;
-  color: rgb(30 41 59);                       /* slate-800 */
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.055), rgba(59, 130, 246, 0.02));
+  color: rgb(30 41 59);                         /* slate-800 */
+  background: linear-gradient(180deg, rgba(30, 46, 92, 0.055), rgba(30, 46, 92, 0.02));
   border-radius: 0 8px 8px 0;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   text-align: justify;
@@ -417,7 +444,7 @@
   font-weight: 700;
   font-size: 2.6em;
   line-height: 1;
-  color: rgb(37 99 235);
+  color: hsl(var(--primary));
   opacity: 0.18;
   pointer-events: none;
 }
@@ -466,10 +493,10 @@
 
 /* Links — subtle underline that doesn't fight the body copy. */
 .prose-appeal a {
-  color: rgb(29 78 216);            /* blue-700 */
+  color: hsl(var(--primary));       /* logo navy */
   text-decoration: underline;
   text-underline-offset: 2px;
-  text-decoration-color: rgba(29, 78, 216, 0.35);
+  text-decoration-color: hsl(var(--primary) / 0.35);
 }
 .prose-appeal a:hover { text-decoration-color: currentColor; }
 
