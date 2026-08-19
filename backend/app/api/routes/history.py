@@ -18,6 +18,8 @@ from app.api.deps import Principal, get_principal
 from app.core.db import get_db
 from app.models.activity import AuditLog, Query
 from app.models.appeal import AppealCase, AppealDocument
+from app.models.chat import ChatMessage
+from app.models.documents import Document
 
 router = APIRouter(prefix="/history", tags=["history"])
 
@@ -35,6 +37,12 @@ _APPEAL_ACTIONS = {
     "appeal.doc.delete": "Deleted appeal document",
 }
 _DOC_ACTIONS = {
+    # NOTE: keep both punctuation styles — the audit-log service writes
+    # `doc_upload` (underscore, from documents.py), but older entries in
+    # the DB may have `doc.upload` (dot). Both should count as "document".
+    "doc_upload": "Uploaded a document",
+    "doc_delete": "Deleted a document",
+    "doc_access": "Opened a document",
     "doc.upload": "Uploaded a document",
     "doc.delete": "Deleted a document",
     "doc.access": "Opened a document",
@@ -61,6 +69,12 @@ def _label_of(action: str) -> str:
     )
 
 
+# Document rows are intentionally omitted from the History surface:
+# every chat-attached upload is already visible in the chat message it
+# was attached to (via UserAttachmentChip), so surfacing a second copy
+# in the activity feed is duplicative. The `document` literal stays in
+# the type for backwards compatibility with older clients, but the
+# response excludes those rows and /counts reports 0.
 HistoryKind = Literal["all", "query", "appeal", "document", "session"]
 
 
@@ -89,7 +103,53 @@ def my_history(
             .order_by(Query.created_at.desc())
             .limit(limit)
         ).all()
+        # Batch-resolve each Query to the ChatMessage where it was asked,
+        # so the History row can (a) deep-link back to the exact chat
+        # thread and (b) surface the attachments that were sent with the
+        # turn (stored in ChatMessage.meta.attachments). `Query` has no
+        # chat_id column, so we match on (user_id, role='user',
+        # content == question) and pick the message closest in time.
+        question_texts = {q.question for q in rows if q.question}
+        # (chat_id, attachments) per (question, ts) match.
+        chat_lookup: dict[tuple[str, datetime | None], tuple[int, list[dict]]] = {}
+        if question_texts:
+            msg_rows = db.execute(
+                select(ChatMessage.content, ChatMessage.chat_id, ChatMessage.created_at, ChatMessage.meta)
+                .where(ChatMessage.user_id == p.user.id)
+                .where(ChatMessage.role == "user")
+                .where(ChatMessage.content.in_(question_texts))
+            ).all()
+            by_content: dict[str, list[tuple[int, datetime | None, dict]]] = {}
+            for content, chat_id, ts, meta in msg_rows:
+                by_content.setdefault(content, []).append((chat_id, ts, meta or {}))
+            for q in rows:
+                cands = by_content.get(q.question or "", [])
+                if not cands:
+                    continue
+                if q.created_at:
+                    def _delta(pair: tuple[int, datetime | None, dict]) -> float:
+                        ts = pair[1]
+                        return abs((ts - q.created_at).total_seconds()) if ts else 1e18
+                    cid, _, meta = min(cands, key=_delta)
+                else:
+                    cid, _, meta = cands[0]
+                atts_raw = (meta or {}).get("attachments") or []
+                # Slim the payload to what the History chip actually needs.
+                atts = [
+                    {
+                        "docId": a.get("docId"),
+                        "filename": a.get("filename"),
+                        "contentType": a.get("contentType"),
+                        "size": a.get("size"),
+                    }
+                    for a in atts_raw
+                    if isinstance(a, dict) and a.get("docId") is not None
+                ]
+                chat_lookup[(q.question, q.created_at)] = (cid, atts)
         for q in rows:
+            match = chat_lookup.get((q.question, q.created_at))
+            chat_id = match[0] if match else None
+            attachments = match[1] if match else []
             out.append({
                 "id": f"q-{q.id}",
                 "kind": "query",
@@ -98,6 +158,14 @@ def my_history(
                 "scope": (q.scope.value if hasattr(q.scope, "value") else str(q.scope)),
                 "title": q.question,
                 "detail": q.answer,
+                # When set, the frontend opens THIS chat thread instead of
+                # dropping the user on a blank composer. NULL means the
+                # underlying chat has been deleted or the query was made
+                # in a non-persistent context (rare).
+                "chat_id": chat_id,
+                # Attachments sent with this turn (each with docId + name)
+                # — the row renders a Preview/Download chip per attachment.
+                "attachments": attachments,
                 "created_at": (q.created_at.isoformat() if isinstance(q.created_at, datetime) else q.created_at),
             })
 
@@ -111,9 +179,10 @@ def my_history(
         ).all()
 
         # Batch-resolve resource_id → display name so we can show "Raju case"
-        # instead of "appeal_case #3" in the feed. Deleted cases fall back to
-        # the title we stashed on the audit row's query_text (or a bare id).
+        # or "invoice.pdf" instead of "#3" in the feed. Deleted rows fall
+        # back to the snapshot we stashed on the audit row's query_text.
         case_ids: set[int] = set()
+        appeal_doc_ids: set[int] = set()
         doc_ids: set[int] = set()
         for a in audit_rows:
             if not a.resource_id:
@@ -125,23 +194,38 @@ def my_history(
             if a.resource_type == "appeal_case":
                 case_ids.add(rid)
             elif a.resource_type == "appeal_document":
+                appeal_doc_ids.add(rid)
+            elif a.resource_type == "document":
                 doc_ids.add(rid)
         case_titles: dict[int, str] = {}
+        appeal_doc_names: dict[int, str] = {}
         doc_names: dict[int, str] = {}
         if case_ids:
             for cid, title in db.execute(
                 select(AppealCase.id, AppealCase.title).where(AppealCase.id.in_(case_ids))
             ).all():
                 case_titles[cid] = title
-        if doc_ids:
+        if appeal_doc_ids:
             for did, filename in db.execute(
-                select(AppealDocument.id, AppealDocument.filename).where(AppealDocument.id.in_(doc_ids))
+                select(AppealDocument.id, AppealDocument.filename).where(AppealDocument.id.in_(appeal_doc_ids))
+            ).all():
+                appeal_doc_names[did] = filename
+        if doc_ids:
+            # Chat-attached uploads (Document table) — filename here is
+            # what the History row's Preview / Download buttons need.
+            for did, filename in db.execute(
+                select(Document.id, Document.filename).where(Document.id.in_(doc_ids))
             ).all():
                 doc_names[did] = filename
 
         for a in audit_rows:
             k = _kind_of(a.action)
             if k == "other":
+                continue
+            # Skip document upload/access/delete rows — they're already
+            # visible on the chat message they're attached to. See the
+            # HistoryKind docstring above for the rationale.
+            if k == "document":
                 continue
             if kind != "all" and k != kind:
                 continue
@@ -156,6 +240,8 @@ def my_history(
                     if a.resource_type == "appeal_case":
                         display_name = case_titles.get(rid) or (a.query_text or None)
                     elif a.resource_type == "appeal_document":
+                        display_name = appeal_doc_names.get(rid) or (a.query_text or None)
+                    elif a.resource_type == "document":
                         display_name = doc_names.get(rid) or (a.query_text or None)
 
             # Prefer the human-readable name; NEVER surface the numeric id.
@@ -169,19 +255,28 @@ def my_history(
                 detail = a.query_text
             elif a.resource_type == "appeal_case":
                 detail = "Case no longer available"
-            elif a.resource_type == "appeal_document":
+            elif a.resource_type in ("appeal_document", "document"):
                 detail = "Document no longer available"
             else:
                 detail = None
 
+            # Prefer the resolved name as the visible title (e.g. the
+            # actual filename) so the row reads "invoice.pdf" instead of
+            # "Uploaded a document". The action label moves to `detail`.
+            if display_name:
+                row_title = display_name
+                row_detail = _label_of(a.action)
+            else:
+                row_title = _label_of(a.action)
+                row_detail = detail
             out.append({
                 "id": f"a-{a.id}",
                 "kind": k,
                 "action": a.action,
                 "label": _label_of(a.action),
                 "scope": None,
-                "title": _label_of(a.action),
-                "detail": detail,
+                "title": row_title,
+                "detail": row_detail,
                 "resource_type": a.resource_type,
                 "resource_id": a.resource_id,
                 "created_at": (a.created_at.isoformat() if isinstance(a.created_at, datetime) else a.created_at),
@@ -207,8 +302,14 @@ def counts(p: Principal = Depends(get_principal),
     ).all()
     per_kind = {"query": q_count, "appeal": 0, "document": 0, "session": 0}
     for action, n in a_rows:
-        per_kind[_kind_of(action)] = per_kind.get(_kind_of(action), 0) + n
-    per_kind["all"] = q_count + per_kind["appeal"] + per_kind["document"] + per_kind["session"]
+        k = _kind_of(action)
+        # Documents are shown inline in the chat, not on History — see the
+        # HistoryKind comment. Report 0 so the (now-removed) chip stays
+        # accurate on older clients that still render it.
+        if k == "document":
+            continue
+        per_kind[k] = per_kind.get(k, 0) + n
+    per_kind["all"] = q_count + per_kind["appeal"] + per_kind["session"]
     return per_kind
 
 

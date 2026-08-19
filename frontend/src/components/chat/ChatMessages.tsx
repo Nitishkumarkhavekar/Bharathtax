@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2, X } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, copyMarkdownRich } from "@/lib/markdown";
@@ -8,6 +7,7 @@ import { api } from "@/api";
 import { useAuth } from "@/auth";
 import { toast } from "@/lib/toast";
 import { useSpeech, ttsSupported } from "@/lib/tts";
+import { FilePreviewModal } from "@/components/FilePreviewModal";
 import { cn } from "@/lib/utils";
 
 interface ChatMessagesProps {
@@ -569,7 +569,6 @@ function UserAttachmentChip({ att }: { att: import("@/lib/chatStore").ChatAttach
           url={preview.url}
           kind={preview.kind}
           filename={att.filename}
-          docId={att.docId}
           onClose={closePreview}
         />
       )}
@@ -581,111 +580,6 @@ function UserAttachmentChip({ att }: { att: import("@/lib/chatStore").ChatAttach
  *  <iframe> so the user never leaves the app. Esc / backdrop-click /
  *  close-button all dismiss. Includes a Download button in the header
  *  because you can't right-click-save an <iframe> reliably. */
-function FilePreviewModal({
-  url, kind, filename, docId, onClose,
-}: {
-  url: string;
-  kind: "image" | "pdf";
-  filename: string;
-  docId?: number;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [onClose]);
-
-  async function saveAs() {
-    // The blob URL we already have works for direct save — no need for
-    // a second network round-trip.
-    const a = document.createElement("a");
-    a.href = url; a.download = filename || `document.${kind === "pdf" ? "pdf" : "png"}`;
-    document.body.appendChild(a); a.click(); a.remove();
-    if (typeof docId !== "number") return;
-  }
-
-  const isImage = kind === "image";
-  // Portal into <body> so we escape any ancestor with `transform` /
-  // `filter` / `backdrop-filter` (e.g. the chat message's
-  // `animate-fade-up`), which would otherwise become the containing
-  // block for our `position: fixed` root and force the modal to render
-  // inline inside the chat bubble instead of covering the viewport.
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Preview ${filename}`}
-      onMouseDown={(e) => {
-        // Close only when the backdrop itself (not the inner card) is clicked.
-        if (e.target === e.currentTarget) onClose();
-      }}
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fade-up"
-    >
-      {/* Framed inner card so PDFs get a real container instead of
-          floating in the void — matches the rest of the app's chrome. */}
-      <div
-        onMouseDown={(e) => e.stopPropagation()}
-        className={cn(
-          "relative bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 flex flex-col overflow-hidden",
-          isImage
-            ? "max-w-[92vw] max-h-[92vh]"
-            : "w-[92vw] h-[92vh] max-w-6xl",
-        )}
-      >
-        {/* Header: filename + Download + Close */}
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
-          <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            {isImage ? <ImageIcon className="size-4" /> : <FileText className="size-4" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold text-slate-800 truncate">{filename}</div>
-            <div className="text-[11px] text-slate-500">{isImage ? "Image preview" : "Document preview"}</div>
-          </div>
-          <button
-            type="button"
-            onClick={saveAs}
-            className="inline-flex items-center gap-1 text-[12.5px] font-medium text-slate-700 hover:text-primary hover:bg-primary/10 rounded-md px-2.5 py-1.5 transition-colors"
-            title="Download"
-          >
-            <Download className="size-3.5" /> Download
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close preview"
-            className="size-8 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-200 flex items-center justify-center transition-colors"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        {/* Body: <img> for images (bounded by card), <iframe> for PDFs */}
-        <div className="flex-1 min-h-0 bg-slate-100 flex items-center justify-center overflow-auto">
-          {isImage ? (
-            <img
-              src={url}
-              alt={filename}
-              className="max-w-full max-h-[85vh] object-contain"
-            />
-          ) : (
-            <iframe
-              src={url}
-              title={filename}
-              className="w-full h-full min-h-[70vh] bg-white"
-            />
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 function Message({
   msg,
   question,

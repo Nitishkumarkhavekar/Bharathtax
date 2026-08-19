@@ -130,6 +130,18 @@ export interface HistoryItem {
   detail: string | null;
   resource_type?: string | null;
   resource_id?: string | null;
+  /** For query rows: id of the chat thread this question belongs to
+   *  (resolved by matching content + timestamp to ChatMessage). Null
+   *  when the underlying chat has been deleted. */
+  chat_id?: number | null;
+  /** For query rows: docs the user attached to the turn. Slim shape —
+   *  enough to render a Preview/Download chip via api.documentFile. */
+  attachments?: Array<{
+    docId: number;
+    filename: string | null;
+    contentType?: string | null;
+    size?: number | null;
+  }>;
   created_at: string;
 }
 export type HistoryCounts = Record<HistoryKind, number>;

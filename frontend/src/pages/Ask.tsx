@@ -246,6 +246,13 @@ export default function Chat() {
       if (sessionStorage.getItem("bt_open_chat_id")) return;
     } catch { /* */ }
     startNew();
+    // Pre-fill the composer when the URL carries a ?q= param — used when
+    // the user re-opens a past question from the History page. Runs after
+    // startNew() so the fresh thread is created before we drop text in.
+    try {
+      const q = new URLSearchParams(loc.search).get("q");
+      if (q) setInput(q);
+    } catch { /* URLSearchParams unavailable */ }
     // We intentionally only respond to navigation events.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loc.key]);
