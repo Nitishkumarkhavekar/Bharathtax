@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, copyMarkdownRich } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
