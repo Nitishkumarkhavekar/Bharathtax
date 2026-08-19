@@ -136,17 +136,13 @@ class AnswerResponse(BaseModel):
     latency_ms: int | None = None
 
 
-# ---- documents ----
+# ---- documents (chat attachments only — standalone Documents page removed) ----
 class DocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     filename: str
     status: str
     created_at: datetime
-
-
-class DocAskRequest(BaseModel):
-    question: str
 
 
 # ---- history ----

@@ -892,14 +892,56 @@ export const api = {
     req<{ ok: boolean; stars: number }>("/ratings", { method: "POST", body: JSON.stringify({ ...b, target_id: b.target_id == null ? undefined : String(b.target_id) }) }),
   getRating: (target_type: string, target_id: string | number) =>
     req<{ stars: number | null; comment: string | null }>(`/ratings/${target_type}/${String(target_id)}`),
-  documents: () => req<DocumentOut[]>("/documents"),
-  uploadDocument: (file: File) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    return req<DocumentOut>("/documents", { method: "POST", body: fd });
-  },
-  askDocument: (id: number, question: string) =>
-    req<AnswerResponse>(`/documents/${id}/ask`, { method: "POST", body: JSON.stringify({ question }) }),
+  // Chat composer attachment upload — the standalone Documents page is
+  // gone, but chat messages still support attaching files via the same
+  // /documents endpoint. Returns the created row so the composer can
+  // reference the doc id when the user hits Send.
+  //
+  // Uses XMLHttpRequest instead of fetch() because fetch's Request body
+  // stream does not emit upload-progress events — the composer needs a
+  // real 0–100 progress signal to render the % bar on the chip.
+  uploadDocument: (
+    file: File,
+    onProgress?: (pct: number) => void,
+    signal?: AbortSignal,
+  ) =>
+    new Promise<DocumentOut>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const fd = new FormData();
+      fd.append("file", file);
+      xhr.upload.onprogress = (e) => {
+        if (onProgress && e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText) as DocumentOut);
+          } catch (e) {
+            reject(new ApiError(xhr.status, `Malformed upload response: ${(e as Error).message}`));
+          }
+        } else {
+          // Match the fetch-based req() error shape so callers can rely on ApiError.
+          let msg = xhr.statusText || `Upload failed (HTTP ${xhr.status})`;
+          try {
+            const body = JSON.parse(xhr.responseText);
+            msg = body?.detail || body?.message || msg;
+          } catch { /* non-JSON body */ }
+          reject(new ApiError(xhr.status, msg));
+        }
+      };
+      xhr.onerror = () => reject(new ApiError(0, "Network error"));
+      xhr.onabort = () => reject(new ApiError(0, "Upload aborted"));
+      if (signal) {
+        if (signal.aborted) return reject(new ApiError(0, "Upload aborted"));
+        signal.addEventListener("abort", () => xhr.abort(), { once: true });
+      }
+      xhr.open("POST", `${BASE}/documents`);
+      const t = token();
+      if (t) xhr.setRequestHeader("Authorization", `Bearer ${t}`);
+      xhr.send(fd);
+    }),
   /** Fetch an owned document's raw bytes for download or in-browser
    * preview. Uses the bearer token so the URL itself can't leak. We
    * download into a Blob and mint a local object-URL so the browser

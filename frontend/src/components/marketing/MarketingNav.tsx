@@ -52,7 +52,6 @@ export function MarketingNav() {
             label="Products"
             items={[
               ["Ask", "Cited answers on the Income-tax Act, Rules, CBDT circulars & case law", "/#features"],
-              ["Documents", "Upload deeds, notices and judgments — extract verbatim facts and flag what's missing", "/#features"],
               ["Appeals", "Six-module drafting pipeline for CIT(A) / NFAC appellate orders", "/#features"],
             ]}
           />

@@ -87,6 +87,9 @@ interface Attachment {
   // by the time they've typed and hit Send, indexing is usually done,
   // and if it isn't, the /ask endpoint waits for it before answering.
   status: "uploading" | "ready" | "error";
+  /** 0-100 during "uploading"; 100 once ready. Drives the progress bar
+   *  on the attachment chip. */
+  progress: number;
   docId?: number;
   error?: string;
 }
@@ -98,6 +101,7 @@ function newAttachment(file: File): Attachment {
     file,
     previewUrl: isImage ? URL.createObjectURL(file) : null,
     status: "uploading",
+    progress: 0,
   };
 }
 
@@ -182,10 +186,24 @@ export default function ChatComposer({
   // time the user has typed a prompt, indexing is usually already done.
   const uploadOne = useCallback(async (a: Attachment) => {
     try {
-      const doc: DocumentOut = await api.uploadDocument(a.file);
+      const doc: DocumentOut = await api.uploadDocument(a.file, (pct) => {
+        // Progress callback — fired continuously by XHR as bytes upload.
+        // Cap at 99 while the XHR is in flight so the bar doesn't sit at
+        // 100 % during the server's own processing; the "ready" state
+        // below flips it to 100 explicitly.
+        setAttachments((prev) =>
+          prev.map((x) =>
+            x.clientId === a.clientId
+              ? { ...x, progress: Math.min(99, pct) }
+              : x,
+          ),
+        );
+      });
       setAttachments((prev) =>
         prev.map((x) =>
-          x.clientId === a.clientId ? { ...x, status: "ready", docId: doc.id } : x,
+          x.clientId === a.clientId
+            ? { ...x, status: "ready", docId: doc.id, progress: 100 }
+            : x,
         ),
       );
     } catch (e) {
@@ -403,7 +421,7 @@ export default function ChatComposer({
             <div
               key={a.clientId}
               className={cn(
-                "group relative flex items-center gap-2 rounded-lg border bg-white pl-1.5 pr-2 py-1.5 shadow-sm max-w-[240px]",
+                "group relative flex items-center gap-2 rounded-lg border bg-white pl-1.5 pr-2 py-1.5 shadow-sm max-w-[240px] overflow-hidden",
                 a.status === "error" ? "border-rose-300" : "border-slate-200",
               )}
               title={a.file.name}
@@ -430,7 +448,9 @@ export default function ChatComposer({
                 <div className="text-[11px] text-slate-500 flex items-center gap-1">
                   {a.status === "uploading" && (
                     <>
-                      <Loader2 className="size-3 animate-spin" /> Uploading…
+                      <Loader2 className="size-3 animate-spin text-primary" />
+                      <span className="tabular-nums font-medium text-primary">{a.progress}%</span>
+                      <span className="text-slate-400">· {formatBytes(a.file.size)}</span>
                     </>
                   )}
                   {a.status === "ready" && (
@@ -449,6 +469,19 @@ export default function ChatComposer({
               >
                 <X className="size-3.5" />
               </button>
+              {/* Progress bar — pinned to the bottom edge of the chip so it
+                  doesn't push content around. Only visible while uploading. */}
+              {a.status === "uploading" && (
+                <div
+                  aria-hidden
+                  className="absolute inset-x-0 bottom-0 h-[3px] bg-slate-100"
+                >
+                  <div
+                    className="h-full bg-primary transition-[width] duration-150 ease-out"
+                    style={{ width: `${a.progress}%` }}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

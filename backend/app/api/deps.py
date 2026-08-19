@@ -55,7 +55,7 @@ def require_role(*roles: Role) -> Callable[..., User]:
 
 # The gateable user-facing modules. Adding a new section = add its key here and a
 # require_feature() guard on its router in main.py. (Profile is always available.)
-ALL_FEATURES = ["chat", "appeals", "rulings", "documents", "history"]
+ALL_FEATURES = ["chat", "appeals", "rulings", "history"]
 
 
 def require_feature(feature: str) -> Callable[..., User]:

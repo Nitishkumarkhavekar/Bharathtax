@@ -256,11 +256,13 @@ export default function AdminLayout() {
 
   return (
     <div className="h-screen w-screen flex bg-slate-50 overflow-hidden">
-      {/* Desktop rail — light theme (white sidebar, slate text, primary accents). */}
+      {/* Desktop rail — light theme (white sidebar, slate text, primary accents).
+          Width matches Layout.tsx and ChatSidebar so admin ↔ app navigation
+          doesn't jump. */}
       <aside
         className={cn(
           "hidden md:flex shrink-0 bg-white text-slate-800 flex-col border-r border-slate-200 transition-[width] duration-200",
-          collapsed ? "w-16" : "w-64 lg:w-72",
+          collapsed ? "w-16" : "w-72 lg:w-80",
         )}
       >
         <Rail
