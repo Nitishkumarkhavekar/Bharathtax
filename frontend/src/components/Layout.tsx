@@ -42,15 +42,20 @@ const NAV: {
  *  differentiates action items from body text and from the neutral surface;
  *  we lean on iconography (not hue) to differentiate sections. Admin rows
  *  keep a neutral slate chip so the console reads as "system" area. */
+/** Icon-tile styling for the main app sidebar. Rotates across the three
+ *  BharatTax logo tones (navy primary, brand-orange, brand-green) so each
+ *  workspace section carries a visual anchor from the palette. Mirrors
+ *  the ChatSidebar's TONE_TILE so navigating between /ask and other
+ *  pages keeps the same coloured chips per tool. */
 const NAV_TONE_TILE: Record<NavTone, string> = {
-  primary: "bg-primary/10 text-primary",
-  amber: "bg-primary/10 text-primary",
-  violet: "bg-primary/10 text-primary",
-  sky: "bg-primary/10 text-primary",
-  emerald: "bg-primary/10 text-primary",
-  rose: "bg-primary/10 text-primary",
-  indigo: "bg-primary/10 text-primary",
-  slate: "bg-slate-100 text-slate-600",
+  primary: "bg-primary/10 text-primary",                        // Chat
+  amber: "bg-brand-orange/15 text-brand-orange",                // Appeals
+  violet: "bg-primary/10 text-primary",                         // Rulings
+  sky: "bg-primary/10 text-primary",                            // (legacy)
+  emerald: "bg-brand-green/15 text-brand-green",                // History
+  rose: "bg-brand-green/15 text-brand-green",                   // Drafting
+  indigo: "bg-primary/10 text-primary",                         // Profile
+  slate: "bg-slate-100 text-slate-600",                         // Admin
 };
 
 function SeatWidget() {
@@ -361,9 +366,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 
 function LayoutInner({ children }: { children: ReactNode }) {
-  // A page-injected sidebar panel (e.g. Drafting's "Your drafts") gets its
-  // own wider sidebar so titles / status chips have room to breathe.
-  const slot = useSidebarSlotContent();
   const loc = useLocation();
   const current = NAV.find((n) => loc.pathname.startsWith(n.to));
   const [mobileOpen, setMobileOpen] = useState(false);
