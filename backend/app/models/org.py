@@ -86,7 +86,7 @@ class User(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Per-user module access, e.g. ["chat","appeals","rulings","documents","history"].
+    # Per-user module access, e.g. ["chat","appeals","rulings","history"].
     # NULL == all modules. Admins are never gated. Set by an admin from the console.
     features: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

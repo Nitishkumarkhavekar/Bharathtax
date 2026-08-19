@@ -113,7 +113,11 @@ app.include_router(auth.router)
 # router (belt-and-braces with the sidebar hiding it). Admins bypass.
 app.include_router(ask.router, dependencies=[Depends(require_feature("chat"))])
 app.include_router(chats.router, dependencies=[Depends(require_feature("chat"))])
-app.include_router(documents.router, dependencies=[Depends(require_feature("documents"))])
+# /documents — trimmed to the two endpoints the chat composer needs
+# (upload for message attachments, GET /{id}/file for preview). Gated by
+# "chat" since that's the only surface that consumes it; the standalone
+# Documents page (and its "documents" feature flag) was removed.
+app.include_router(documents.router, dependencies=[Depends(require_feature("chat"))])
 app.include_router(history.router, dependencies=[Depends(require_feature("history"))])
 app.include_router(admin.router)
 app.include_router(appeal.router, dependencies=[Depends(require_feature("appeals"))])

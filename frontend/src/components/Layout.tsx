@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   MessageSquareText,
-  FileText,
   Clock,
   ShieldCheck,
   LogOut,
@@ -34,7 +33,6 @@ const NAV: {
   { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },
   { to: "/drafts", label: "Drafting", icon: ScrollText, tone: "rose", hint: "Notices & orders" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
-  { to: "/documents", label: "Documents", icon: FileText, feature: "documents", tone: "sky", hint: "Upload · summarise" },
   { to: "/history", label: "History", icon: Clock, feature: "history", tone: "emerald", hint: "Past queries" },
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
@@ -44,15 +42,20 @@ const NAV: {
  *  differentiates action items from body text and from the neutral surface;
  *  we lean on iconography (not hue) to differentiate sections. Admin rows
  *  keep a neutral slate chip so the console reads as "system" area. */
+/** Icon-tile styling for the main app sidebar. Rotates across the three
+ *  BharatTax logo tones (navy primary, brand-orange, brand-green) so each
+ *  workspace section carries a visual anchor from the palette. Mirrors
+ *  the ChatSidebar's TONE_TILE so navigating between /ask and other
+ *  pages keeps the same coloured chips per tool. */
 const NAV_TONE_TILE: Record<NavTone, string> = {
-  primary: "bg-primary/10 text-primary",
-  amber: "bg-primary/10 text-primary",
-  violet: "bg-primary/10 text-primary",
-  sky: "bg-primary/10 text-primary",
-  emerald: "bg-primary/10 text-primary",
-  rose: "bg-primary/10 text-primary",
-  indigo: "bg-primary/10 text-primary",
-  slate: "bg-slate-100 text-slate-600",
+  primary: "bg-primary/10 text-primary",                        // Chat
+  amber: "bg-brand-orange/15 text-brand-orange",                // Appeals
+  violet: "bg-primary/10 text-primary",                         // Rulings
+  sky: "bg-primary/10 text-primary",                            // (legacy)
+  emerald: "bg-brand-green/15 text-brand-green",                // History
+  rose: "bg-brand-green/15 text-brand-green",                   // Drafting
+  indigo: "bg-primary/10 text-primary",                         // Profile
+  slate: "bg-slate-100 text-slate-600",                         // Admin
 };
 
 function SeatWidget() {
@@ -363,9 +366,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 
 function LayoutInner({ children }: { children: ReactNode }) {
-  // A page-injected sidebar panel (e.g. Drafting's "Your drafts") gets its
-  // own wider sidebar so titles / status chips have room to breathe.
-  const slot = useSidebarSlotContent();
   const loc = useLocation();
   const current = NAV.find((n) => loc.pathname.startsWith(n.to));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -406,9 +406,14 @@ function LayoutInner({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           "hidden md:flex shrink-0 relative overflow-hidden bt-sidebar-bg text-slate-800 border-r border-slate-200 flex-col transition-[width] duration-200 ease-out",
+          // Uniform width across the whole app: main sidebar, chat sidebar
+          // and admin sidebar all render at `w-72 lg:w-80` when expanded,
+          // `w-16` when collapsed. Keep the two variants at the same width
+          // so navigating between /ask (with slot) and /rulings (no slot)
+          // doesn't shift layout under the user.
           collapsed
             ? "w-16"
-            : (slot ? "w-72 lg:w-[320px]" : "w-60 lg:w-64"),
+            : "w-72 lg:w-80",
         )}
       >
         <SidebarBody collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />

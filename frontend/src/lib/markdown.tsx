@@ -162,6 +162,26 @@ interface Block {
 export function normalizeMarkdown(src: string): string {
   let s = src.replace(/\r\n/g, "\n");
 
+  // ---- 0. Strip internal "Automated review notes" blocks that older
+  //    answers still carry baked into their persisted content. These
+  //    were an internal QA/lint output that briefly leaked into user
+  //    responses; the backend no longer emits them, but historical
+  //    chat_messages rows still contain the text. Remove:
+  //      (a) prepended CRITICAL block:
+  //          "> ⚠️ **Read this first — automated review notes for this answer:**"
+  //          … "### Automated review notes" … "\n\n---\n\n"
+  //      (b) appended block:
+  //          "\n\n---\n\n### Automated review notes\n\n…" through end of string.
+  //    Case-insensitive; tolerant of minor punctuation drift.
+  s = s.replace(
+    /^>\s*⚠️?\s*\*\*Read this first[\s\S]*?### Automated review notes[\s\S]*?\n\n---\n\n/i,
+    "",
+  );
+  s = s.replace(
+    /(?:\n\n)?---\n+###\s*Automated review notes[\s\S]*$/i,
+    "",
+  );
+
   // ---- 1. Inline `•` bullets — promote them to proper markdown bullets.
   //    "foo • bar • baz" -> "foo\n- bar\n- baz"
   //    Also handles a leading "•" at the start of a line.

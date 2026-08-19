@@ -13,7 +13,6 @@ const Landing = lazy(() => import("./pages/Landing"));
 const ReleasesLanding = lazy(() => import("./pages/Releases"));
 const Ask = lazy(() => import("./pages/Ask"));
 const ProfilePage = lazy(() => import("./pages/Profile"));
-const Documents = lazy(() => import("./pages/Documents"));
 const History = lazy(() => import("./pages/History"));
 const Appeals = lazy(() => import("./pages/Appeals"));
 const AppealCase = lazy(() => import("./pages/AppealCase"));
@@ -112,7 +111,6 @@ export default function App() {
       {/* Read-only shared chat — any signed-in user with the link can view. */}
       <Route path="/shared/:shareId" element={<Protected raw><SharedChat /></Protected>} />
       <Route path="/rulings" element={<NonAdminOnly><Rulings /></NonAdminOnly>} />
-      <Route path="/documents" element={<NonAdminOnly><Documents /></NonAdminOnly>} />
       <Route path="/history" element={<NonAdminOnly><History /></NonAdminOnly>} />
       <Route path="/profile" element={<NonAdminOnly><ProfilePage /></NonAdminOnly>} />
       {/* Token Usage + Billing merged into Profile's "Plan & Usage" tab. Keep the

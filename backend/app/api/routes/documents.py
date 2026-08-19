@@ -1,22 +1,26 @@
-"""Document routes: upload a file, list mine, ask questions against one of them.
-Access is owner-scoped; every upload and access is audit-logged."""
+"""Document routes — chat file-attachment support only.
+
+The standalone Documents page (list + Q&A) was removed. What remains is
+the minimum surface the chat composer needs:
+  * POST /documents         — upload a file to attach it to a chat turn
+  * GET  /documents/{id}/file — fetch owned bytes for inline preview / download
+
+All access is owner-scoped and audit-logged.
+"""
 from __future__ import annotations
 
 import logging
 import threading
-import time
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from sqlalchemy import select
+
 from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, client_meta, get_principal
 from app.core.db import SessionLocal, get_db
-from app.core.enums import QueryScope
-from app.models.activity import Query
 from app.models.documents import Document
-from app.schemas import AnswerResponse, CitationOut, DocAskRequest, DocumentOut
-from app.services import audit, documents, rag
+from app.schemas import DocumentOut
+from app.services import audit, documents
 from app.services.quota import require_quota
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -48,8 +52,6 @@ def _index_in_background(doc_id: int, raw: bytes) -> None:
     step completes moments later while the user is still typing their
     question. `_build_attached_context` in ask.py will briefly wait for
     chunks to appear before giving up, so the send flow just works."""
-    # Fresh Session — the request's Session is closed by the time this
-    # runs on the worker thread.
     db = SessionLocal()
     try:
         doc = db.get(Document, doc_id)
@@ -100,38 +102,6 @@ async def upload(request: Request, file: UploadFile = File(...),
     return doc
 
 
-@router.get("", response_model=list[DocumentOut])
-def my_documents(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[Document]:
-    return list(db.scalars(
-        select(Document).where(Document.owner_user_id == p.user.id).order_by(Document.created_at.desc())
-    ))
-
-
-@router.get("/{doc_id}/text")
-def document_raw_text(doc_id: int, p: Principal = Depends(get_principal),
-                      db: Session = Depends(get_db)) -> dict:
-    """Return the fully-extracted text of an owned document by stitching
-    its chunks back together in order. Used by test tooling / debugging
-    UIs to verify OCR quality without going through the LLM. Owner-only
-    so uploaded content never leaks to other users."""
-    from app.models.documents import DocumentChunk
-    doc = _owned(db, doc_id, p.user.id)
-    rows = list(db.scalars(
-        select(DocumentChunk.text)
-        .where(DocumentChunk.document_id == doc.id)
-        .order_by(DocumentChunk.id.asc())
-    ))
-    text = "\n".join((t or "") for t in rows)
-    return {
-        "id": doc.id,
-        "filename": doc.filename,
-        "status": str(getattr(doc, "status", "")).split(".")[-1],
-        "chunk_count": len(rows),
-        "chars": len(text),
-        "text": text,
-    }
-
-
 @router.get("/{doc_id}/file")
 def download_document(doc_id: int, inline: bool = False,
                       p: Principal = Depends(get_principal),
@@ -168,34 +138,3 @@ def download_document(doc_id: int, inline: bool = False,
         "Cache-Control": "private, no-store",
     }
     return Response(content=data, media_type=media, headers=headers)
-
-
-@router.post("/{doc_id}/ask", response_model=AnswerResponse)
-def ask_document(doc_id: int, body: DocAskRequest, request: Request,
-                 p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> AnswerResponse:
-    doc = _owned(db, doc_id, p.user.id)
-    started = time.monotonic()
-    result = rag.answer_document(db, body.question, namespace=doc.namespace)
-    latency = int((time.monotonic() - started) * 1000)
-
-    citations = [
-        CitationOut(n=c.n, chunk_id=c.chunk_id, breadcrumb=c.breadcrumb,
-                    source_url=c.source_url, section_number=c.section_number,
-                    digest=c.digest, sections_cited=c.sections_cited)
-        for c in result.citations
-    ]
-    q = Query(
-        user_id=p.user.id, wing_id=p.user.wing_id, scope=QueryScope.document,
-        document_id=doc.id, question=body.question, answer=result.text,
-        citations=[c.model_dump() for c in citations],
-        retrieval_meta={**result.meta, "grounded": result.grounded}, latency_ms=latency,
-    )
-    db.add(q)
-    db.commit()
-    audit.log_event(db, action="doc_ask", user_id=p.user.id, wing_id=p.user.wing_id,
-                    resource_type="document", resource_id=str(doc.id),
-                    query_text=body.question, **client_meta(request))
-    return AnswerResponse(
-        query_id=q.id, scope=QueryScope.document, grounded=result.grounded,
-        answer=result.text, citations=citations, meta=result.meta, latency_ms=latency,
-    )

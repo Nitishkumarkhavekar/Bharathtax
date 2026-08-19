@@ -3414,11 +3414,15 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
     if _clean_text != final_text:
         log.info("stripped LaTeX escapes from multi-agent composer output")
         final_text = _clean_text
+    # Self-audit findings are for INTERNAL observability only — they are
+    # not shown to the client (product decision: users see the answer and
+    # its citations, not the reviewer's linting notes). We still run the
+    # audit and log it so we can inspect over-claims / reverse-engineered
+    # values / bad citations in post-mortem, but nothing gets prepended
+    # or appended to the answer text.
     _audit = _self_audit(final_text)
     if _audit:
-        final_text = final_text + _audit
-        yield {"delta": _audit}
-        log.info("multi-agent self-audit appended %d chars of review notes",
+        log.info("multi-agent self-audit produced %d chars of review notes (hidden from client)",
                  len(_audit))
 
     yield {"done": {
@@ -3931,11 +3935,12 @@ def answer_native_pdf_stream(db: Session, question: str, *, user_id, doc_ids: li
         )
         return
 
-    # Same self-audit hook as attached_file_fast.
+    # Same self-audit hook as attached_file_fast — internal-only, never
+    # appended to the answer text or streamed to the client.
     _audit = _self_audit(final_text)
     if _audit:
-        final_text += _audit
-        yield {"delta": _audit}
+        log.info("native-pdf self-audit produced %d chars of review notes (hidden from client)",
+                 len(_audit))
 
     yield {"done": {
         "text": final_text,
@@ -4056,30 +4061,14 @@ def answer_attached_file_stream(db: Session, question: str, *, user_id,
     if _clean_text != final_text:
         log.info("stripped LaTeX escapes from composer output")
         final_text = _clean_text
+    # Self-audit is INTERNAL ONLY — no prepend, no append, no streamed
+    # delta. Users see the answer; over-claim / reverse-engineered-value
+    # / bad-citation findings are logged for post-mortem inspection.
     _audit = _self_audit(final_text)
     if _audit:
-        # If the audit contains a CRITICAL warning (🚨), the reader MUST
-        # see it BEFORE the offending section. Prepend rather than
-        # append. For non-critical ⚠ notes, appending at the end is
-        # fine (the answer is trustworthy overall).
         _is_critical = "🚨" in _audit
-        if _is_critical:
-            # Prepend as a delta AFTER the stream — the frontend will
-            # show it stitched at the top of the final message on
-            # re-render. We ALSO append so streaming users see it now.
-            _prepended = (
-                "> ⚠️ **Read this first — automated review notes for this "
-                "answer:**" + _audit + "\n\n---\n\n"
-            )
-            final_text = _prepended + final_text
-            yield {"delta": _audit}  # streaming user gets a live tail warning
-            log.info("attached-file self-audit CRITICAL — prepended %d chars",
-                     len(_prepended))
-        else:
-            final_text = final_text + _audit
-            yield {"delta": _audit}
-            log.info("attached-file self-audit appended %d chars of review notes",
-                     len(_audit))
+        log.info("attached-file self-audit %s— %d chars of review notes (hidden from client)",
+                 "CRITICAL " if _is_critical else "", len(_audit))
 
     yield {"done": {
         "text": final_text,

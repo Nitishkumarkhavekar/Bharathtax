@@ -31,7 +31,8 @@
       "Bash(curl -sS -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://ecourtsindia.com/api/docs)",
       "Bash(curl -sS -o /tmp/s.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/CauseList/court-structure/states)",
       "Bash(curl -sS -o /tmp/c.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024)",
-      "Bash(curl -sS -o /tmp/d.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/causelist/available-dates)"
+      "Bash(curl -sS -o /tmp/d.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/causelist/available-dates)",
+      "Bash(git checkout *)"
     ]
   }
 }
