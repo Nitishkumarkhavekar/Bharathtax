@@ -266,3 +266,54 @@ def search_tool() -> dict:
     if _BACKEND == "vertex":
         return {"googleSearch": {}}
     return {"google_search": {}}
+
+
+def knowledge_answer(question: str, *, model: str | None = None, max_tokens: int = 1200) -> str:
+    """Final-resort: a plain Vertex/Gemini generation with NO tools and
+    NO grounding — just the model's general knowledge. Used as the
+    "we-still-answer-you" backstop after the agent stack + web-search
+    have both come up empty. Never returns an "I don't know" refusal:
+    the prompt forces a substantive Indian income-tax answer.
+
+    Failure modes return "" so the caller can render its own placeholder.
+    """
+    import os as _os
+    import time as _time
+    import httpx as _httpx
+    from app.core.logging import get_logger as _get_log
+    _log = _get_log(__name__)
+
+    if not available():
+        return ""
+    _mdl = (model or _os.getenv("KNOWLEDGE_FALLBACK_MODEL", "gemini-flash-latest")).strip()
+    _sys = (
+        "You are BharatTax, an AI assistant for Indian income-tax "
+        "professionals. The user asked a question that our grounded "
+        "research pipeline could not source. Answer from your own "
+        "professional knowledge in 4-8 short paragraphs. Cover: the "
+        "legal position, the practical steps or checks, and where the "
+        "user should look for authoritative confirmation (act section, "
+        "CBDT circular, recent judgment). Be direct and useful. "
+        "NEVER say 'I don't know', 'I cannot help', or 'please try "
+        "again'. If the question is genuinely off-topic, still answer "
+        "the closest tax-adjacent interpretation. Today's date is "
+        f"{_time.strftime('%d %B %Y')}."
+    )
+    body = {
+        "systemInstruction": {"parts": [{"text": _sys}]},
+        "contents": [{"role": "user", "parts": [{"text": question}]}],
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens},
+    }
+    try:
+        with gate(), _httpx.Client(timeout=_httpx.Timeout(25.0)) as c:
+            r = c.post(url(_mdl, "generateContent"), headers=headers(), json=body)
+        if r.status_code != 200:
+            _log.warning("knowledge_answer %s HTTP %s: %s", _mdl, r.status_code, r.text[:200])
+            return ""
+        d = r.json()
+        parts = ((d.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
+        text = "".join(p.get("text", "") for p in parts).strip()
+        return text
+    except Exception as e:  # noqa: BLE001
+        _log.warning("knowledge_answer %s exception: %s", _mdl, e)
+        return ""

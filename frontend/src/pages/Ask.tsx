@@ -459,13 +459,23 @@ export default function Chat() {
             acc.text = "";
             patchAsst({ content: "" });
           },
+          onClarify: (c) => {
+            // Render option buttons the INSTANT the backend ships them
+            // (before the DB persist + terminal `done`). onDone still
+            // sets the same state as a safety-net for older backends
+            // that only put clarify in done.meta.
+            clarifyRef.clarified = true;
+            setClarify(c);
+          },
           onError: (msg) => setError(msg),
           onDone: ({ grounded, citations, meta }) => {
             const c = (meta as Record<string, unknown> | undefined)?.["clarify"] as
               | { question: string; options: string[] }
               | undefined;
-            clarifyRef.clarified = !!c;
-            setClarify(c ?? null);
+            if (c) {
+              clarifyRef.clarified = true;
+              setClarify(c);
+            }
             patchAsst({ content: acc.text, grounded, citations, meta });
           },
         },

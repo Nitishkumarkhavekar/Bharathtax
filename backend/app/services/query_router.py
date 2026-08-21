@@ -43,27 +43,29 @@ def _flag(name: str, default: str = "1") -> bool:
 # "adverse" and "sc" never fires inside "scheme".
 
 _COMPLEX_WORDS = {
-    # comparison / analysis
+    # comparison / analysis — genuinely need synthesis across multiple sources
     "compare", "comparison", "comparisons", "difference", "differences",
     "differ", "differs", "versus", "vs", "distinguish", "contrast",
-    # drafting / procedure
-    "draft", "drafting", "notice", "reply", "respond", "response", "appeal",
-    "appeals", "submission", "submissions", "grounds", "petition", "letter",
-    "rebuttal", "represent", "representation",
-    # recency / web-search sensitive
-    "latest", "recent", "recently", "current", "currently", "newest",
-    "amendment", "amended", "amendments", "budget", "update", "updated",
-    "2023", "2024", "2025", "2026", "2027",
-    # case law
+    # drafting — actually needs the multi-step composer
+    "draft", "drafting", "rebuttal", "represent", "representation",
+    # recency / web-search sensitive — needs the researcher's web search
+    "latest", "recent", "recently", "amendment", "amended", "amendments",
+    "budget", "update", "updated",
+    # case law — needs the researcher's IndianKanoon tool
     "caselaw", "judgment", "judgement", "judgments", "ruling", "rulings",
-    "precedent", "precedents", "itat", "tribunal", "held", "decided",
-    "verdict", "bench",
-    # reasoning-heavy
-    "whether", "strategy", "implication", "implications", "consequence",
-    "consequences", "taxability", "applicability", "analyse", "analyze",
-    "evaluate", "assess", "assessment", "justify", "justification",
-    # computation
-    "calculate", "compute", "computation", "liability", "workout",
+    "precedent", "precedents", "itat", "tribunal", "verdict", "bench",
+    # reasoning-heavy — needs the planner
+    "strategy", "implication", "implications", "consequence",
+    "consequences", "analyse", "analyze", "evaluate", "justify", "justification",
+    # computation — needs the planner to structure the workings
+    "calculate", "compute", "computation", "workout",
+    # NOTE: intentionally removed high-frequency words that were pushing
+    # everyday chat onto the slow multi-agent path (planner + researcher
+    # + composer = 5-15 s) when a single grounded agent answers just as
+    # well in 2-4 s. Removed: notice, reply, respond, response, appeal,
+    # appeals, submission, submissions, grounds, petition, letter,
+    # current, currently, newest, held, decided, whether, taxability,
+    # applicability, assess, assessment, liability, 2023-2027.
 }
 
 # multi-word complex phrases (checked as substrings, lowercased)

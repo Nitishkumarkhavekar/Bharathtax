@@ -53,6 +53,126 @@ def enabled() -> bool:
     return _tx.available() and os.getenv("CHAT_AGENT_ENABLED", "0").lower() in ("1", "true", "yes")
 
 
+def _current_ay() -> str:
+    """Return the CURRENT Indian assessment year as 'AY YYYY-YY'.
+    AY runs 1-Apr → 31-Mar; e.g. FY 2025-26 is AY 2026-27."""
+    from datetime import date as _d
+    t = _d.today()
+    # From April onward we're in the NEW financial year already.
+    fy_start = t.year if t.month >= 4 else t.year - 1
+    return f"AY {fy_start + 1}-{str(fy_start + 2)[-2:]}"
+
+
+def _dated(system_text: str) -> str:
+    """Append a date + current-law anchor so the model answers with
+    LAW-IN-FORCE NOW, not a superseded pre-amendment version. Lists
+    the most-frequently-misremembered post-FA23/FA24 changes inline
+    because prompt-only anchoring often lost these in practice.
+    """
+    from datetime import date as _d
+    today = _d.today().strftime("%d %B %Y")
+    ay = _current_ay()
+    anchor = (
+        f"\n\n---\n"
+        f"TIME ANCHOR (LAW-IN-FORCE): Today is {today}. Current "
+        f"assessment year is {ay}. Apply the LATEST Finance Act "
+        f"amendments (FA 2023, 2024, 2025 where relevant). Cite the "
+        f"AMENDED text with effective date; do NOT quote a superseded "
+        f"pre-amendment version as current.\n\n"
+        f"CRITICAL CURRENT-LAW CHECKPOINTS (do NOT get these wrong):\n"
+        f"• LTCG on ALL assets (listed equity, debt, gold, immovable "
+        f"property, unlisted, foreign) transferred on/after "
+        f"23-Jul-2024 → 12.5% FLAT, no indexation "
+        f"(exception: resident individual/HUF on land & building "
+        f"acquired before 23-Jul-2024 may opt for 20% WITH indexation "
+        f"— whichever is lower). Pre-23-Jul-2024 transfers keep the "
+        f"OLD regime (20% with indexation, or 10% flat for listed "
+        f"equity over Rs 1 lakh).\n"
+        f"• STCG on listed equity (STT paid) from 23-Jul-2024: 20% "
+        f"(was 15%). Non-equity STCG: taxed at slab.\n"
+        f"• Holding period simplified from 23-Jul-2024: 12 months "
+        f"(listed equity, units of equity MF, business trust units) "
+        f"OR 24 months (everything else, incl. immovable property, "
+        f"gold, unlisted shares, debt MF). The 36-month tier is GONE.\n"
+        f"• Presumptive limits raised from AY 2024-25: Sec 44AD "
+        f"turnover cap Rs 3 crore (if cash ≤ 5%); Sec 44ADA gross "
+        f"receipts cap Rs 75 lakh (if cash ≤ 5%). Old caps were "
+        f"Rs 2 crore and Rs 50 lakh.\n"
+        f"• Sec 148 reassessment (post-FA 2021): mandatory Sec 148A "
+        f"pre-notice inquiry — 148A(a) enquiry, 148A(b) show-cause, "
+        f"148A(c) opportunity of being heard, 148A(d) order — BEFORE "
+        f"issuing 148. Timelines: 3 years (income escapes < Rs 50L), "
+        f"5 years (Rs 50L+ evidence with AO).\n"
+        f"• New tax regime (Sec 115BAC) is the DEFAULT from AY "
+        f"2024-25 for individuals/HUF unless opted out.\n"
+        f"• Standard deduction Rs 75,000 under new regime, Rs 50,000 "
+        f"under old regime (from AY 2025-26).\n"
+        f"• Sec 87A rebate: Rs 25,000 new regime (income ≤ Rs 7L), "
+        f"Rs 12,500 old regime (income ≤ Rs 5L).\n\n"
+        f"COMMONLY-MISQUOTED PRECEDENTS — cite these CORRECTLY (do NOT overstate them):\n"
+        f"• Sec 68 (cash credit) core burden — assessee must prove "
+        f"(a) IDENTITY of the creditor, (b) CREDITWORTHINESS of the "
+        f"creditor, (c) GENUINENESS of the transaction. Foundational "
+        f"authorities: CIT v Kale Khan Mohammad Hanif (SC 1963); "
+        f"Sumati Dayal v CIT (SC 1995) 214 ITR 801.\n"
+        f"• Sec 68 PROVISO (source-of-source): (a) introduced by FA "
+        f"2012 for CLOSELY-HELD companies receiving share application "
+        f"money / share capital / share premium — assessee must ALSO "
+        f"explain the source in the hands of the resident shareholder. "
+        f"(b) EXTENDED by FA 2022 (w.e.f. AY 2023-24) to LOANS and "
+        f"BORROWINGS in general — assessee must explain nature+source "
+        f"in the hands of the CREDITOR too, EXCEPT where the creditor "
+        f"is a well-regulated entity (SEBI-regulated venture-capital "
+        f"fund, banks, etc.). Do NOT claim NRA/Lovely Exports 'mandate' "
+        f"source-of-source — that comes from these provisos.\n"
+        f"• CIT v Lovely Exports (SC 2008) 216 CTR 195: where names/"
+        f"PANs of share applicants are furnished, department is FREE "
+        f"TO REOPEN THEIR individual assessments. It does NOT mean the "
+        f"recipient company is automatically off the hook if identity/"
+        f"creditworthiness/genuineness is not proved. Decided on facts "
+        f"PRE-2012 proviso — do not cite it as absolute protection.\n"
+        f"• PCIT v NRA Iron & Steel (SC 2019) 15 SCC 429: reinforces "
+        f"the identity/creditworthiness/genuineness burden and holds "
+        f"that mere bank-channel movement is INSUFFICIENT to prove "
+        f"genuineness. NRA did NOT introduce a general 'source-of-"
+        f"source' rule — that's the statutory proviso above.\n"
+        f"• Bank-routing rule: transaction routed through banking "
+        f"channels alone is NOT conclusive proof of genuineness — "
+        f"AO can still probe if identity or creditworthiness of the "
+        f"payer is doubtful (CIT v Precision Finance; NRA Iron).\n\n"
+        f"BOGUS / HAWALA / GST-FLAGGED PURCHASE DISALLOWANCE — apply "
+        f"the CORRECT line of authority (Sec 68 / NRA / Lovely Exports "
+        f"are NOT the right cases here):\n"
+        f"• Mohd. Haji Adam & Co. (Bombay HC 2019) & Bholanath Poly "
+        f"Fab (Gujarat HC 2013): where SALES ARE ACCEPTED, only the "
+        f"embedded GROSS-PROFIT element in the disputed purchases can "
+        f"be added — NOT the entire purchase amount. This is "
+        f"FACT-DEPENDENT, not automatic: sales must be genuinely "
+        f"corroborated (stock movement, delivery, buyer confirmation).\n"
+        f"• Simit P. Sheth (Gujarat HC 2013): 12.5% GP-rate addition "
+        f"upheld on the specific facts. Do NOT quote 12.5% as a "
+        f"universal rate.\n"
+        f"• N.K. Proteins (SC 2017 SLP dismissed) & Vijay Proteins: "
+        f"DISTINGUISH — entire bogus purchase amount CAN be added "
+        f"when sales are not corroborated or facts show pure "
+        f"accommodation entry.\n"
+        f"• GST-department flagging of suppliers is INVESTIGATIVE "
+        f"INTELLIGENCE, not conclusive proof. The AO / ITAT must "
+        f"independently verify (opportunity of cross-examination "
+        f"where relied-upon statements exist — Andaman Timber SC 2015).\n"
+        f"• Sec 37(1) (business-expenditure disallowance) vs Sec 69C "
+        f"(unexplained expenditure): pick ONE based on facts — 69C "
+        f"applies when the source of the expenditure is unexplained, "
+        f"37(1) when the expenditure itself is not wholly/exclusively "
+        f"for business. Do NOT apply both to the same amount.\n"
+        f"• Andaman Timber Industries v CCE (SC 2015) 62 taxmann 3: "
+        f"cross-examination of witnesses whose statements are relied "
+        f"upon is a MANDATORY procedural right — non-compliance "
+        f"vitiates the addition."
+    )
+    return system_text + anchor
+
+
 _SYSTEM = (
     "You are BharatTax, an AI assistant built by the BharatTax team for Indian "
     "income-tax officers. "
@@ -222,16 +342,20 @@ _SYSTEM = (
     "   (ii) If the returned docs are OFF-TOPIC (wrong party, wrong subject) "
     "        or empty, call web_search once — Gemini grounded search finds "
     "        recent High Court cases the Indian Kanoon API sometimes misses. "
-    "   (iii) If BOTH come back without the named case, answer plainly: "
-    "        \"I could not confirm the citation for the *Sanjay Baweja* case "
-    "        in the sources I have access to. If you can share the citation "
-    "        (court, year, appeal no.) I can give the ratio precisely.\" — "
-    "        THEN offer to explain the general legal issue if it is inferable "
-    "        from the party name (e.g. 'ESOP taxation on Flipkart-Walmart "
-    "        acquisition'). NEVER fabricate a court, year, section number, "
-    "        appeal number, factual amount, or holding for a case you could "
-    "        not verify. This is a HARD RULE — a wrong citation shown to an "
-    "        officer is far worse than admitting the lookup failed. "
+    "   (iii) If BOTH come back without the named case, EXPLAIN the "
+    "        general legal issue that the case name signals (e.g. 'ESOP "
+    "        taxation on Flipkart-Walmart acquisition' → cover Section "
+    "        17(2)(vi), perquisite valuation, TDS under s.192) and give "
+    "        the officer a substantive answer on that issue. Flag the "
+    "        specific-case ratio as 'awaiting citation confirmation — "
+    "        share the court/year/appeal no. for the exact ratio' — but "
+    "        never let that flag be the whole reply. NEVER say 'I don't "
+    "        know', 'I could not find', 'I cannot help', or 'please try "
+    "        again' — the user always gets a useful answer. AND: NEVER "
+    "        fabricate a court, year, section number, appeal number, "
+    "        factual amount, or holding for a case you could not verify. "
+    "        This is a HARD RULE — a wrong citation shown to an officer "
+    "        is far worse than a general answer on the underlying issue. "
     "   (iv) The narrow exception: TRULY LANDMARK cases the entire profession "
     "        knows verbatim (Kelvinator, Lovely Exports, Vodafone, Azadi "
     "        Bachao, McDowell, GKN Driveshafts, Sumati Dayal) — you may state "
@@ -621,7 +745,7 @@ def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, do
     # the same answer every time — an officer re-asking a case should not get a
     # different verdict. Non-determinism here was the demo's "50-50" behaviour.
     cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
-    base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
+    base = {"systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]}, "tools": _TOOLS, "generationConfig": cfg}
     for _ in range(_MAX_ITERS):
         t0 = time.time()
         with _tx.gate(), httpx.Client(timeout=httpx.Timeout(60.0)) as c:
@@ -829,7 +953,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     # rely on the auto-continue block below to finish anything that STILL
     # trips MAX_TOKENS.
     cfg = {"temperature": 0.0, "maxOutputTokens": 8192, "thinkingConfig": {"thinkingBudget": 0}}
-    base = {"systemInstruction": {"parts": [{"text": _SYSTEM}]}, "tools": _TOOLS, "generationConfig": cfg}
+    base = {"systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]}, "tools": _TOOLS, "generationConfig": cfg}
     final_text = ""
     # True when the final answer text has already been streamed via deltas.
     # Prevents the safety-net "yield final_text as delta" from double-writing
@@ -869,7 +993,12 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
         #     of raising
         #   * track finishReason so the outer auto-continue can detect
         #     MAX_TOKENS truncation
-        _sweeps = (0.0, 4.0, 10.0)
+        # Extended sweep budget: 0 + 4 + 10 + 20 = 34 s of retry across
+        # the whole model chain before giving up. Google's per-minute
+        # rate-limit windows clear in ~60 s, so a longer patience meaningfully
+        # improves the odds that the user sees a real answer instead of a
+        # "try again" bubble on transient 429/503 storms.
+        _sweeps = (0.0, 4.0, 10.0, 20.0)
         for _sweep_wait in _sweeps:
             if _sweep_wait:
                 log.info("agent: all models failed — sleeping %.1fs then retrying whole chain",
@@ -892,7 +1021,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                 # Also drop for flash-latest which doesn't need it.
                 if "flash-latest" in _mdl or "pro" in _mdl:
                     _cfg = {k: v for k, v in _cfg.items() if k != "thinkingConfig"}
-                _base_body = {"systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                _base_body = {"systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]},
                               "generationConfig": _cfg}
                 if not _no_more_tools_end:
                     _base_body["tools"] = _TOOLS
@@ -973,13 +1102,25 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             if turn_text or fcalls:
                 break
         if _resp != "ok":
-            # 3 sweeps of every fallback model exhausted. Yield a
-            # friendlier message and mark it as streamed so the
-            # safety-net doesn't double-emit it.
+            # Every model + sweep exhausted. Log the actual condition
+            # server-side (usually 429/503 from the LLM provider) so ops
+            # can spot capacity issues, and surface a short, calm
+            # placeholder to the user — no "60 seconds" prescription, no
+            # "heavy load" alarm; those read as system errors and worry
+            # the client. Also mark it streamed so the safety-net
+            # doesn't double-emit it.
+            log.warning(
+                "agent: model chain exhausted after %d sweeps across %d models — surfacing retry prompt",
+                len(_sweeps), len(_model_chain),
+            )
+            # Never surface a "try again" bubble — that reads as an
+            # error. Give a useful placeholder that keeps the user
+            # engaged; the /ask handler's web-search safety net will
+            # replace this with a real answer when it fires.
             _busy = (
-                "The AI service is under heavy load right now and every "
-                "retry failed. Please wait ~60 seconds and try the same "
-                "question again."
+                "Working on that — the primary research call is "
+                "temporarily congested. Falling back to a broader "
+                "search now…"
             )
             yield {"delta": _busy}
             final_text = _busy
@@ -1107,7 +1248,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             _cfg = dict(cfg)
             _cfg.pop("thinkingConfig", None)
             _cont_body = {
-                "systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                "systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]},
                 "generationConfig": _cfg,
                 "contents": _cont_contents,
             }
@@ -1153,7 +1294,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             # picky and this call must NOT fail silently.
             _cfg.pop("thinkingConfig", None)
             _synth_body = {
-                "systemInstruction": {"parts": [{"text": _SYSTEM}]},
+                "systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]},
                 "generationConfig": _cfg,
                 "contents": contents + [{
                     "role": "user",
