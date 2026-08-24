@@ -47,7 +47,16 @@ export default function AdminDashboardPage() {
   const lic_total =
     data.licenses_active + data.licenses_expired + data.licenses_deactivated;
   const trend = simpleTrend(sparkValues);
-  const seatPct = data.seats_total ? (data.seats_used / data.seats_total) * 100 : 0;
+  // A wing without an explicit seat cap has `seat_limit = 0`, which the
+  // backend interprets as "unlimited". The old formula divided by 0 and
+  // then floored to 0 %, but the PercentBar / ProgressRing still rendered
+  // a scary maxed-out red bar because `seats_used` was way over
+  // `Math.max(1, 0) = 1`. When there is no cap, treat the pool as fully
+  // available (0 % utilised) and the tiles / labels render "Unlimited".
+  const seatsUnlimited = !data.seats_total || data.seats_total <= 0;
+  const seatPct = seatsUnlimited
+    ? 0
+    : (data.seats_used / data.seats_total) * 100;
 
   return (
     <div className="space-y-6 admin-rise">
@@ -190,31 +199,50 @@ export default function AdminDashboardPage() {
         <Section
           title="Concurrent seats"
           icon={<Armchair className="size-4" />}
-          subtitle="A seat is held while a JWT lease is live"
+          subtitle={seatsUnlimited
+            ? "No per-wing cap set — pool is unlimited"
+            : "A seat is held while a JWT lease is live"}
         >
           <div className="flex items-center gap-5">
             <ProgressRing
               value={seatPct}
-              label={`${seatPct.toFixed(0)}%`}
-              sub={`${data.seats_used}/${data.seats_total}`}
+              // "0 % / 9 in use" is misleading when the cap is unlimited —
+              // show ∞ so the operator understands the ring is at rest,
+              // not maxed out.
+              label={seatsUnlimited ? "∞" : `${seatPct.toFixed(0)}%`}
+              sub={seatsUnlimited ? `${data.seats_used} in use` : `${data.seats_used}/${data.seats_total}`}
               size={88}
               color="#0ea5e9"
             />
             <div className="flex-1 space-y-3">
-              <PercentBar
-                label="In-use across all wings"
-                value={data.seats_used}
-                max={Math.max(1, data.seats_total)}
-                rightLabel={`${data.seats_used}/${data.seats_total}`}
-              />
+              {/* When the pool is unlimited, don't render a full-width
+                  red utilisation bar — it reads as "capacity error".
+                  Show a calm one-liner instead. */}
+              {seatsUnlimited ? (
+                <div className="text-[12.5px] text-slate-600">
+                  <span className="font-medium text-slate-800">{data.seats_used}</span>
+                  {" "}active seat lease{data.seats_used === 1 ? "" : "s"} · no cap in force
+                </div>
+              ) : (
+                <PercentBar
+                  label="In-use across all wings"
+                  value={data.seats_used}
+                  max={Math.max(1, data.seats_total)}
+                  rightLabel={`${data.seats_used}/${data.seats_total}`}
+                />
+              )}
               <div className="grid grid-cols-3 gap-2 text-center">
                 <Tile label="Used" value={data.seats_used} tone="blue" />
                 <Tile
                   label="Free"
-                  value={Math.max(0, data.seats_total - data.seats_used)}
+                  value={seatsUnlimited ? "∞" : Math.max(0, data.seats_total - data.seats_used)}
                   tone="green"
                 />
-                <Tile label="Capacity" value={data.seats_total} tone="slate" />
+                <Tile
+                  label="Capacity"
+                  value={seatsUnlimited ? "∞" : data.seats_total}
+                  tone="slate"
+                />
               </div>
             </div>
           </div>
@@ -327,7 +355,8 @@ function Tile({
   tone,
 }: {
   label: string;
-  value: number;
+  // Accepts a string too so the caller can render "∞" for unlimited seat pools.
+  value: number | string;
   tone: "blue" | "green" | "slate";
 }) {
   const map = {

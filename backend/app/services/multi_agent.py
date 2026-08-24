@@ -497,6 +497,96 @@ def enabled() -> bool:
 # The researcher uses `sub_topics` to focus its tool calls; the composer
 # uses `likely_sections_to_include` to know which of Sections 4/5 to keep.
 # ============================================================================
+
+
+def _current_ay() -> str:
+    """CURRENT Indian assessment year — AY runs 1-Apr → 31-Mar."""
+    from datetime import date as _d
+    t = _d.today()
+    fy_start = t.year if t.month >= 4 else t.year - 1
+    return f"AY {fy_start + 1}-{str(fy_start + 2)[-2:]}"
+
+
+def _dated(system_text: str) -> str:
+    """Append a date + current-law anchor so the model uses the
+    LATEST post-amendment figures (not a superseded pre-amendment
+    version). Inline the most-commonly-misremembered post-FA23/24
+    checkpoints — prompt-only anchoring often lost these in practice.
+    """
+    from datetime import date as _d
+    today = _d.today().strftime("%d %B %Y")
+    return system_text + (
+        f"\n\n---\nTIME ANCHOR (LAW-IN-FORCE): Today is {today}. Current "
+        f"assessment year is {_current_ay()}. Apply the LATEST Finance "
+        f"Act amendments (FA 2023, 2024, 2025 where relevant). Cite "
+        f"the AMENDED text with effective date; do NOT quote a "
+        f"superseded pre-amendment version as current.\n\n"
+        f"CRITICAL CURRENT-LAW CHECKPOINTS (do NOT get these wrong):\n"
+        f"• LTCG on ALL assets transferred on/after 23-Jul-2024 → "
+        f"12.5% FLAT, no indexation (resident indiv/HUF can opt for "
+        f"20% WITH indexation on land/building acquired before "
+        f"23-Jul-2024, whichever is lower).\n"
+        f"• STCG on listed equity (STT paid) from 23-Jul-2024: 20% "
+        f"(was 15%). Non-equity STCG: at slab.\n"
+        f"• Holding period simplified from 23-Jul-2024: 12 months "
+        f"(listed equity/eq-MF/business-trust) OR 24 months (all "
+        f"else). The 36-month tier is REMOVED.\n"
+        f"• Sec 44AD turnover cap Rs 3 crore (cash ≤ 5%); Sec 44ADA "
+        f"receipts cap Rs 75 lakh (cash ≤ 5%) — from AY 2024-25.\n"
+        f"• Sec 148 (post-FA 2021): mandatory Sec 148A(a)-(d) "
+        f"pre-notice procedure BEFORE issuing 148.\n"
+        f"• New tax regime (Sec 115BAC) is DEFAULT from AY 2024-25.\n"
+        f"• Std deduction: Rs 75,000 new regime, Rs 50,000 old regime "
+        f"(AY 2025-26).\n"
+        f"• Sec 87A rebate: Rs 25,000 new regime (≤ Rs 7L), "
+        f"Rs 12,500 old regime (≤ Rs 5L).\n\n"
+        f"COMMONLY-MISQUOTED PRECEDENTS — cite these CORRECTLY (do NOT overstate them):\n"
+        f"• Sec 68 core burden (SC): assessee must prove IDENTITY, "
+        f"CREDITWORTHINESS of creditor, GENUINENESS of transaction "
+        f"(Kale Khan Mohammad Hanif SC 1963; Sumati Dayal SC 1995 "
+        f"214 ITR 801).\n"
+        f"• Sec 68 PROVISO (source-of-source): (a) FA 2012 — for "
+        f"CLOSELY-HELD companies receiving share application money / "
+        f"share capital / share premium; (b) FA 2022 (w.e.f. AY "
+        f"2023-24) EXTENDED to LOANS/BORROWINGS in general — explain "
+        f"nature+source in the CREDITOR's hands (except SEBI-regulated "
+        f"funds, banks). Do NOT attribute source-of-source to NRA or "
+        f"Lovely Exports — it comes from these statutory provisos.\n"
+        f"• Lovely Exports (SC 2008) 216 CTR 195: names/PANs of share "
+        f"applicants furnished → department can reopen THEIR individual "
+        f"assessments. Does NOT mean the recipient company is off the "
+        f"hook if identity/creditworthiness/genuineness fails. It was "
+        f"decided on PRE-2012 facts.\n"
+        f"• NRA Iron & Steel (SC 2019) 15 SCC 429: reinforces "
+        f"identity/creditworthiness/genuineness burden; holds bank-"
+        f"channel movement ALONE is insufficient for genuineness. "
+        f"Did NOT create a general 'source of source' rule.\n"
+        f"• Banking-channel evidence alone is NOT conclusive of "
+        f"genuineness (NRA Iron; CIT v Precision Finance).\n\n"
+        f"BOGUS / HAWALA / GST-FLAGGED PURCHASE DISALLOWANCE — apply "
+        f"the CORRECT line of authority (NRA / Lovely Exports are Sec "
+        f"68 cases, NOT purchase-disallowance authorities):\n"
+        f"• Mohd. Haji Adam & Co. (Bombay HC 2019) & Bholanath Poly "
+        f"Fab (Gujarat HC 2013): where SALES ARE ACCEPTED and "
+        f"stock/delivery corroborated, only the embedded GP-element "
+        f"can be added — NOT the entire purchase amount. FACT-"
+        f"DEPENDENT, not automatic.\n"
+        f"• Simit P. Sheth (Gujarat HC 2013): 12.5% GP rate upheld on "
+        f"facts — do NOT quote 12.5% as universal.\n"
+        f"• N.K. Proteins (SC 2017 SLP dismissed) / Vijay Proteins: "
+        f"DISTINGUISH — where sales are NOT corroborated or facts show "
+        f"pure accommodation, the ENTIRE bogus purchase can be added.\n"
+        f"• GST-flagging = investigative intelligence, NOT conclusive "
+        f"proof. AO/ITAT must independently verify.\n"
+        f"• Sec 37(1) (business expenditure) vs Sec 69C (unexplained "
+        f"expenditure): pick ONE based on facts, never both on the "
+        f"same amount.\n"
+        f"• Andaman Timber Industries (SC 2015) 62 taxmann 3: cross-"
+        f"examination of witnesses whose statements are relied upon "
+        f"is a MANDATORY procedural right; non-compliance vitiates "
+        f"the addition."
+    )
+
 _PLANNER_SYSTEM = (
     "You are BharatTax's PLANNER agent. Given the user's tax question, "
     "produce a compact JSON plan that guides the downstream research + "
@@ -619,7 +709,7 @@ def _run_coverage(question: str) -> dict | None:
     cfg = {"temperature": 0.0, "maxOutputTokens": 512,
            "thinkingConfig": {"thinkingBudget": 0},
            "responseMimeType": "application/json"}
-    base = {"systemInstruction": {"parts": [{"text": _COVERAGE_SYSTEM}]},
+    base = {"systemInstruction": {"parts": [{"text": _dated(_COVERAGE_SYSTEM)}]},
             "generationConfig": cfg}
     contents = [{"role": "user", "parts": [{"text": question}]}]
     try:
@@ -2141,7 +2231,7 @@ def _run_planner(question: str) -> dict | None:
     cfg = {"temperature": 0.0, "maxOutputTokens": 512,
            "thinkingConfig": {"thinkingBudget": 0},
            "responseMimeType": "application/json"}
-    base = {"systemInstruction": {"parts": [{"text": _PLANNER_SYSTEM}]},
+    base = {"systemInstruction": {"parts": [{"text": _dated(_PLANNER_SYSTEM)}]},
             "generationConfig": cfg}
     contents = [{"role": "user", "parts": [{"text": question}]}]
     try:
@@ -2197,7 +2287,7 @@ def _run_researcher(db: Session, question: str, *, user_id, chat_id, plan: dict 
 
     cfg = {"temperature": 0.0, "maxOutputTokens": 1536,
            "thinkingConfig": {"thinkingBudget": 0}}
-    base = {"systemInstruction": {"parts": [{"text": _RESEARCHER_SYSTEM}]},
+    base = {"systemInstruction": {"parts": [{"text": _dated(_RESEARCHER_SYSTEM)}]},
             "tools": _TOOLS, "generationConfig": cfg}
 
     packet_text = ""
@@ -3065,7 +3155,7 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
     log.info("composer persona=%s max_tokens=%d model=%s q=%r",
              persona, persona_max_tokens, persona_model or "default",
              (question or "")[:80])
-    base = {"systemInstruction": {"parts": [{"text": _COMPOSER_SYSTEM}]},
+    base = {"systemInstruction": {"parts": [{"text": _dated(_COMPOSER_SYSTEM)}]},
             "generationConfig": cfg}
 
     # Merged: master added the `_tx` (Vertex-ready) transport + cost-fix
@@ -3345,25 +3435,15 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
     case_primer = _match_case_primer(question)
 
     yield {"status": "Researching primary sources"}
-    # Researcher retry — when Google's per-minute quota trips, the
-    # researcher call typically returns HTTP 400 immediately for the
-    # first Gemini roundtrip and produces an empty packet. Waiting a
-    # few seconds and re-running the researcher usually succeeds
-    # (rate limits reset within ~60s). Two extra tries with 4s / 10s
-    # backoff. This avoids a large fraction of the falls-through to
-    # the single-agent path (which is slower and less structured).
+    # SINGLE-SHOT researcher — no synchronous sleep-and-retry on empty.
+    # The old policy slept 4 s + 10 s = 14 s before giving up, which
+    # was pure user-facing latency on the very-common quota-hit case
+    # (the single-agent fallback below has its own retry with the same
+    # backoff, so we're not losing anything — just avoiding a
+    # double-retry that blocks the whole "Discuss" turn for 14 s).
     packet, tools_used, web_sources, law_refs = _run_researcher(
         db, question, user_id=user_id, chat_id=chat_id, plan=plan,
     )
-    if not (packet or "").strip():
-        for _wait in (4.0, 10.0):
-            log.info("researcher empty — sleeping %.1fs and retrying", _wait)
-            time.sleep(_wait)
-            packet, tools_used, web_sources, law_refs = _run_researcher(
-                db, question, user_id=user_id, chat_id=chat_id, plan=plan,
-            )
-            if (packet or "").strip():
-                break
     # Prepend the landmark-case primer to the packet so the composer sees
     # authoritative material for the specific case the user asked about,
     # not just whatever an off-topic case-law search happened to return.
@@ -3414,6 +3494,16 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
     if _clean_text != final_text:
         log.info("stripped LaTeX escapes from multi-agent composer output")
         final_text = _clean_text
+    # Post-strip safety net — if _strip_latex (or a future post-processor)
+    # ends up wiping the whole answer, don't ship an empty bubble. Fall
+    # back to the single-agent path so the user always gets *something*.
+    if not final_text.strip():
+        log.warning("multi-agent post-strip answer was empty — falling back to single-agent")
+        yield {"status": "Retrying via fallback agent"}
+        yield from _single_agent.answer_agentic_stream(
+            db, question, user_id=user_id, chat_id=chat_id, domain=domain,
+        )
+        return
     # Self-audit findings are for INTERNAL observability only — they are
     # not shown to the client (product decision: users see the answer and
     # its citations, not the reviewer's linting notes). We still run the
@@ -3856,7 +3946,7 @@ def answer_native_pdf_stream(db: Session, question: str, *, user_id, doc_ids: li
     contents = [{"role": "user", "parts": parts}]
 
     body = {
-        "systemInstruction": {"parts": [{"text": _COMPOSER_SYSTEM}]},
+        "systemInstruction": {"parts": [{"text": _dated(_COMPOSER_SYSTEM)}]},
         "contents": contents,
         "generationConfig": {
             "temperature": 0.0,

@@ -1,7 +1,25 @@
 // Typed API client. Token is injected from localStorage; any 401 / expired
 // token clears the local session and bounces the user to /login so they never
 // see a stale "Signature has expired" error in the middle of the app.
-const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+// Base URL resolution:
+//   1. When served through a VS Code / Microsoft dev tunnel
+//      (*.devtunnels.ms), route through the same origin so Vite's
+//      proxy forwards /ask, /rulings, /chats, … to the local backend.
+//      This means a single tunnel URL exposes both the UI and the API
+//      to remote testers — no second tunnel needed.
+//   2. Otherwise honour VITE_API_BASE_URL from build env (production).
+//   3. Fall back to localhost:8000 for direct dev.
+function _resolveApiBase(): string {
+  try {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname || "";
+      if (host.endsWith(".devtunnels.ms")) return window.location.origin;
+    }
+  } catch { /* SSR / non-browser envs */ }
+  return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+}
+const BASE = _resolveApiBase();
 
 const TOKEN_KEY = "bharathtax_token";
 const SESSION_KEY = "bharathtax_session";
@@ -809,6 +827,10 @@ export const api = {
       onStatus?: (s: string) => void;
       onDelta: (d: string) => void;
       onReset?: () => void;
+      /** Fired the INSTANT the backend emits a clarify event — before
+       *  the DB persist and terminal `done`. Lets the option buttons
+       *  render as soon as the question text finishes streaming. */
+      onClarify?: (c: { question: string; options: string[] }) => void;
       onDone: (d: { grounded: boolean; citations: Citation[]; meta: Record<string, unknown> }) => void;
       onError?: (msg: string) => void;
     },
@@ -853,6 +875,10 @@ export const api = {
         if (typeof ev.delta === "string") handlers.onDelta(ev.delta);
         else if (typeof ev.status === "string") handlers.onStatus?.(ev.status);
         else if (ev.reset) handlers.onReset?.();
+        else if (ev.clarify) {
+          const c = ev.clarify as { question: string; options: string[] };
+          handlers.onClarify?.(c);
+        }
         else if (ev.error) handlers.onError?.(String(ev.error));
         else if (ev.done) {
           handlers.onDone({
@@ -1442,9 +1468,10 @@ export const api = {
   // Stream an attachment through the authenticated download endpoint and
   // return a Blob URL that an <img>/<video> tag can render.
   adminSupportAttachmentBlobUrl: async (attId: number, mime: string): Promise<string> => {
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+    // Use the shared BASE resolver so tunnel origins route through the
+    // Vite proxy the same way normal /support/* fetches do.
     const tok = localStorage.getItem("bharathtax_token");
-    const res = await fetch(`${base}/support/attachments/${attId}`, {
+    const res = await fetch(`${BASE}/support/attachments/${attId}`, {
       headers: tok ? { Authorization: `Bearer ${tok}` } : {},
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

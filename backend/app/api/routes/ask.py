@@ -592,21 +592,91 @@ def ask(body: AskRequest, request: Request,
                         db, _question_with_attach, user_id=p.user.id,
                         chat_id=body.chat_id, domain=domain,
                     )
-                result = type("AgentResult", (), {})()
-                # Cite what the agent's search_tax_law tool actually retrieved
-                # (act/section per passage). Fall back to parsing the answer's
-                # "Sources:" footer when the agent answered without that tool.
-                try:
-                    _cites = rag.citations_from_law_refs(db, _am.get("law_refs") or [])
-                    if not _cites:
-                        _cites = rag.parse_source_citations(db, _t)
-                except Exception:  # noqa: BLE001
-                    log.exception("citation parsing failed (agent path)")
-                    _cites = []
-                if _attached:
+                # Final safety net: if every agent path returned empty
+                # (composer error, quota-hit, tool cascade collapse), do
+                # a last-resort Vertex + Google Search grounded answer
+                # via gemini_search.web_answer(). Per product decision,
+                # we do NOT fall back to local RAG here — a web answer
+                # with reputable-source citations beats "I don't know".
+                # Trigger the web-search safety net when either:
+                #  (a) every agent path returned literally empty text, or
+                #  (b) the answer is the single-agent's "chain exhausted"
+                #      placeholder ("Working on that…") — a valid signal
+                #      that all Gemini retries collapsed. Never let that
+                #      placeholder reach the user.
+                _tstr = (_t or "").strip()
+                _is_exhaust_placeholder = _tstr.startswith(
+                    "Working on that — the primary research call is"
+                )
+                if not _tstr or _is_exhaust_placeholder:
+                    log.warning("agent paths returned empty/placeholder answer for q=%r — last-resort web search",
+                                (_question_with_attach or "")[:80])
+                    from app.services import gemini_search as _gs_fb
+                    _ws_text, _ws_sources = _gs_fb.web_answer(body.question)
+                    _t = (_ws_text or "").strip()
+                    if not _t:
+                        # Web-search also came back empty — do one more
+                        # Vertex call WITHOUT search grounding so the
+                        # user still gets a substantive answer from the
+                        # model's general knowledge. We never ship "I
+                        # don't know" or "Please try again" as the final
+                        # bubble; the user asked a question, they get an
+                        # answer (clearly flagged as un-grounded so it
+                        # isn't mistaken for a cited source).
+                        try:
+                            from app.services import gemini_transport as _gt_fb
+                            _t = _gt_fb.knowledge_answer(body.question) or ""
+                        except Exception:  # noqa: BLE001
+                            _t = ""
+                        _t = _t.strip() or (
+                            "Based on general Indian income-tax practice, "
+                            "the applicable position depends on the specific "
+                            "facts. Please share the assessment year, the "
+                            "section(s) involved, and any relevant amounts "
+                            "so I can give you a targeted, sourced answer."
+                        )
                     _am = dict(_am or {})
-                    _am["attached_documents"] = _attached
-                result.text, result.grounded, result.citations, result.meta = _t, True, _cites, _am
+                    _am["fallback"] = "web_search_after_empty"
+                    _am["web_sources"] = _ws_sources or []
+                    # Build lightweight citations from the web sources so
+                    # the UI can render them as source pills, even though
+                    # they aren't statutory chunks.
+                    from app.schemas import CitationOut as _CitOut  # local, avoid top-import churn
+                    _cites = []
+                    for i, s in enumerate((_ws_sources or [])[:8], start=1):
+                        try:
+                            _cites.append(_CitOut(
+                                n=i,
+                                chunk_id=0,
+                                breadcrumb=s.get("title") or s.get("url") or f"source-{i}",
+                                source_url=s.get("url"),
+                                section_number=None,
+                                digest=None,
+                                sections_cited=None,
+                            ))
+                        except Exception:  # noqa: BLE001
+                            continue
+                    result = type("AgentResult", (), {})()
+                    result.text = _t
+                    result.grounded = bool(_ws_text)
+                    result.citations = _cites
+                    result.meta = _am
+                else:
+                    result = type("AgentResult", (), {})()
+                    # Cite what the agent's search_tax_law tool actually retrieved
+                    # (act/section per passage). Fall back to parsing the answer's
+                    # "Sources:" footer when the agent answered without that tool.
+                    try:
+                        _cites = rag.citations_from_law_refs(db, _am.get("law_refs") or [])
+                        if not _cites:
+                            _cites = rag.parse_source_citations(db, _t)
+                    except Exception:  # noqa: BLE001
+                        log.exception("citation parsing failed (agent path)")
+                        _cites = []
+                    if _attached:
+                        _am = dict(_am or {})
+                        _am["attached_documents"] = _attached
+                    result.text, result.grounded, result.citations, result.meta = _t, True, _cites, _am
             except Exception as _ae:  # noqa: BLE001
                 log.warning("agent failed, falling back to RAG: %s", _ae)
                 result = rag.answer_question(db, _question_with_attach, domain=domain, user=p.user)
@@ -868,6 +938,14 @@ def ask_stream(body: AskRequest, request: Request,
                         cq = (clr.get("question") or "").strip()
                         yield _sse({"reset": True})
                         yield _sse({"delta": cq})
+                        # Ship the option buttons IMMEDIATELY as their
+                        # own SSE event, BEFORE the DB persist and the
+                        # terminal `done` event. Old code buried them in
+                        # `done.meta.clarify`, so users saw the question
+                        # stream in and then had to wait for the DB
+                        # write to finish before the option buttons
+                        # appeared — reads as "options are late".
+                        yield _sse({"clarify": clr})
                         _persist(cq, True, {"clarify": clr}, [])
                         yield _sse({"done": True, "grounded": True, "citations": [],
                                     "meta": {"clarify": clr}})
