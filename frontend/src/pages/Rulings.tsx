@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   BookOpen, Loader2, ArrowUpRight, AlertTriangle, Search, Hash, Scale, FileText, Gavel,
   Filter, ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, User, Inbox, X,
@@ -273,6 +274,14 @@ export default function Rulings() {
     setMode("section"); setSec(clean); setHubBusy(true); setHubErr(""); setHub(null);
     try { setHub(await api.crossref(clean)); } catch (e: any) { setHubErr(e.message); } finally { setHubBusy(false); }
   }
+
+  // Seed + run a search from a ?q= param (e.g. a Watchlist "Find rulings" link).
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const qp = (searchParams.get("q") || "").trim();
+    if (qp) { setMode("search"); setQ(qp); runSearch(qp); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const tab = (id: "search" | "section" | "browse" | "bydate", icon: JSX.Element, text: string) => (
     <button

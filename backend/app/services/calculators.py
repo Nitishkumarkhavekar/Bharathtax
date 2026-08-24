@@ -76,9 +76,11 @@ def tax_115bbe(income: float, surcharge_pct: float = 25.0, cess_pct: float = 4.0
 
 
 # --- Sec. 234C: deferment of advance tax (quarterly) -------------------------
-# (percent of tax due by the cut-off, months of interest on the shortfall)
-_234C_SCHEDULE = [("15 Jun", 0.15, 3), ("15 Sep", 0.45, 3),
-                  ("15 Dec", 0.75, 3), ("15 Mar", 1.00, 1)]
+# (cut-off, required %, safe-harbour % that waives interest, months of interest)
+# The proviso waives interest for 15 Jun / 15 Sep if >= 12% / 36% is paid, even
+# though 15% / 45% is the nominal requirement.
+_234C_SCHEDULE = [("15 Jun", 0.15, 0.12, 3), ("15 Sep", 0.45, 0.36, 3),
+                  ("15 Dec", 0.75, 0.75, 3), ("15 Mar", 1.00, 1.00, 1)]
 
 
 def interest_234c(tax_liability: float, cum_paid: list[float]) -> dict:
@@ -86,16 +88,20 @@ def interest_234c(tax_liability: float, cum_paid: list[float]) -> dict:
 
     ``cum_paid`` = advance tax paid CUMULATIVELY by [15 Jun, 15 Sep, 15 Dec,
     15 Mar]. Interest is 1% for 3 months on each of the first three shortfalls
-    and 1% for 1 month on the last. (Standard 15/45/75/100% schedule; the
-    12%/36% safe-harbour for the first two is not applied — verify.)
+    and 1% for 1 month on the last. Applies the 12% / 36% safe-harbour proviso
+    for the first two installments (no interest if the threshold is met).
     """
     tax_liability = max(0.0, round(tax_liability))
     cum_paid = (list(cum_paid) + [0, 0, 0, 0])[:4]
     rows, total = [], 0
-    for i, (label, pct, months) in enumerate(_234C_SCHEDULE):
-        required = tax_liability * pct
+    for i, (label, req_pct, safe_pct, months) in enumerate(_234C_SCHEDULE):
+        required = tax_liability * req_pct
+        safe_amt = tax_liability * safe_pct
         paid = max(0.0, float(cum_paid[i] or 0))
-        shortfall = max(0.0, round(required - paid))
+        if paid >= safe_amt:                       # safe-harbour met → no interest
+            shortfall = 0.0
+        else:
+            shortfall = max(0.0, round(required - paid))
         interest = round(shortfall * 0.01 * months)
         total += interest
         rows.append({"installment": label, "required": round(required), "paid": round(paid),
@@ -120,18 +126,23 @@ def _slab_tax(income: float, slabs: list) -> float:
 
 
 def slab_tax(income: float, regime: str = "new") -> dict:
-    """Income-tax on slab income (FY 2024-25). Includes Sec. 87A rebate and 4%
-    cess; surcharge / marginal relief not modelled — an estimate to verify."""
+    """Income-tax on slab income (FY 2024-25). Includes the Sec. 87A rebate with
+    marginal relief and 4% cess. Surcharge (income > 50L) is NOT modelled — an
+    estimate to verify for high incomes."""
     income = max(0.0, round(income))
     slabs = _NEW_SLABS if regime == "new" else _OLD_SLABS
     base = round(_slab_tax(income, slabs))
     rebate_limit = 700000 if regime == "new" else 500000
-    rebate = base if income <= rebate_limit else 0
-    after = base - rebate
+    if income <= rebate_limit:
+        after = 0                                    # full 87A rebate
+    else:
+        # 87A marginal relief: tax just above the limit can't exceed the excess.
+        after = min(base, income - rebate_limit)
+    reduction = base - after                         # rebate and/or marginal relief
     cess = round(after * 0.04)
     total = after + cess
     return {"income": income, "regime": regime, "tax_before_rebate": base,
-            "rebate_87a": rebate, "cess": cess, "total_tax": total,
+            "rebate_87a": reduction, "cess": cess, "total_tax": total,
             "effective_rate_pct": round(total / income * 100, 2) if income else 0.0}
 
 
