@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Mail, Building2, LifeBuoy, CheckCircle2, Loader2, Send } from "lucide-react";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
 import { api, ApiError } from "../api";
+import { isEmail, isMobile } from "@/lib/validators";
 
 const TOPICS = ["Sales enquiry", "Book a demo", "Wing / bench licensing", "Technical support", "Partnership", "Other"];
 
@@ -16,6 +17,8 @@ export default function Contact() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
+    if (!isEmail(form.email)) { setErr("Please enter a valid email address."); return; }
+    if (!isMobile(form.mobile)) { setErr("Please enter a valid 10-digit mobile number."); return; }
     setErr(null);
     setBusy(true);
     try {

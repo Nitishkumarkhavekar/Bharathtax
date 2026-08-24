@@ -9,9 +9,32 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
+
+_PAN_RE = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
+_AY_RE = re.compile(r"^20\d{2}-\d{2}$")
+
+
+def _validate_pan(v: str | None) -> str | None:
+    if v is None or not v.strip():
+        return v
+    v = v.strip().upper()
+    if not _PAN_RE.match(v):
+        raise ValueError("PAN must be like ABCDE1234E")
+    return v
+
+
+def _validate_ay(v: str | None) -> str | None:
+    if v is None or not v.strip():
+        return v
+    v = v.strip()
+    if not _AY_RE.match(v):
+        raise ValueError("Assessment year must be like 2023-24")
+    return v
 
 from app.api.deps import Principal, get_principal
 from app.core.db import get_db
@@ -31,6 +54,9 @@ class MatterIn(BaseModel):
     status: str | None = None
     notes: str | None = None
 
+    _v_pan = field_validator("pan")(classmethod(lambda cls, v: _validate_pan(v)))
+    _v_ay = field_validator("assessment_year")(classmethod(lambda cls, v: _validate_ay(v)))
+
 
 class MatterPatch(BaseModel):
     title: str | None = None
@@ -40,6 +66,9 @@ class MatterPatch(BaseModel):
     category: str | None = None
     status: str | None = None
     notes: str | None = None
+
+    _v_pan = field_validator("pan")(classmethod(lambda cls, v: _validate_pan(v)))
+    _v_ay = field_validator("assessment_year")(classmethod(lambda cls, v: _validate_ay(v)))
 
 
 class ComputeIn(BaseModel):

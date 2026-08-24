@@ -18,6 +18,9 @@ import {
   Calculator,
   MessageSquareText,
   PenSquare,
+  CalendarClock,
+  Bell,
+  StickyNote,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
@@ -42,6 +45,7 @@ export default function Landing() {
       <Hero />
       <TrustBar />
       <Features />
+      <WorkspaceFeatures />
       <ProductPreview />
       <UseCases />
       <HowItWorks />
@@ -323,6 +327,42 @@ function Features() {
   );
 }
 
+// ============================================================== Daily workspace
+function WorkspaceFeatures() {
+  const cards = [
+    { icon: <CalendarClock className="size-5" />, title: "Limitation calendar", desc: "Enter one trigger date; every statutory deadline — time-barring under §153, appeal windows, the DRP clock — is computed, section-cited and dropped onto your calendar." },
+    { icon: <Bell className="size-5" />, title: "Reminders & notifications", desc: "A notification bell surfaces due reminders the moment they fire, with escalating nudges — so nothing goes time-barred on your watch." },
+    { icon: <StickyNote className="size-5" />, title: "Matters & sticky notes", desc: "Track every case by PAN, AY and appeal number, and pin colour-coded notes to a matter, a section or a citation." },
+    { icon: <Calculator className="size-5" />, title: "Statutory calculators", desc: "Interest u/s 234A/B/C & 220(2), tax u/s 115BBE, slab tax and capital gains — each with the workings shown." },
+    { icon: <Scale className="size-5" />, title: "AIS / 26AS reconciliation", desc: "Match two entry sets — 26AS against AIS or the books — and flag only the genuine mismatches worth a query." },
+    { icon: <Users className="size-5" />, title: "Templates & collaboration", desc: "Reusable notice and order templates, section & assessee watchlists, and share a matter across your wing, circle or firm." },
+  ];
+  return (
+    <section className="bg-slate-50/60 border-y border-slate-100">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Your daily workspace</div>
+          <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Not just a chatbot — your desk.</h2>
+          <p className="mt-3 text-slate-600">BharatTax organises your working life around the dates that matter: matters, deadlines, reminders, notes, calculators and reconciliation — in one place.</p>
+        </div>
+        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {cards.map((c, i) => {
+            const tones = ["bg-primary/10 text-primary", "bg-brand-orange/12 text-brand-orange", "bg-brand-green/12 text-brand-green"];
+            const tone = tones[i % tones.length];
+            return (
+              <div key={c.title} className="group rounded-2xl bg-white ring-1 ring-slate-200 p-6 hover:ring-primary/30 hover:shadow-lg hover:shadow-primary/10 transition-all">
+                <div className={`size-10 rounded-xl ${tone} grid place-items-center mb-4`}>{c.icon}</div>
+                <div className="text-[16px] font-semibold text-slate-900">{c.title}</div>
+                <div className="text-[13.5px] text-slate-600 mt-1.5 leading-relaxed">{c.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ============================================================== Product preview blocks
 function ProductPreview() {
   return (
@@ -530,7 +570,7 @@ function Stats() {
 // ============================================================== Pricing
 function Pricing() {
   // Billing cycle toggle — headline price + subline switch on this.
-  const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
+  const [cycle, setCycle] = useState<"monthly" | "yearly">("yearly");
 
   // BharatTax pricing is metered by TOKENS (matches monthly_token_allowance
   // in our SubscriptionPlan model). Token math from live 20-case test:
@@ -541,68 +581,35 @@ function Pricing() {
   // Yearly totals are 20% off the monthly × 12 sticker (annual pre-pay discount).
   const plans = [
     {
-      name: "Starter",
-      priceMonthly: "₹2,999",
-      priceYearly: "₹28,788",
-      monthlyEquivalent: "₹2,399 / month effective",
-      desc: "For individual CAs, students and taxpayer-side users getting started.",
+      name: "BharatTax Annual License",
+      priceMonthly: "₹3,833",
+      priceYearly: "₹45,999",
+      monthlyEquivalent: "₹3,833 / month effective · billed annually",
+      badge: "Per user / year",
+      desc: "A simple per-seat license for income-tax officers, wings, benches and CAs — every capability included.",
+      savings: "Exclusive of 18% GST",
       features: [
-        "~ 200 cited research questions",
-        "Upload any tax document — deeds, notices, orders, contracts, judgments (up to 25 uploads / month)",
-        "Cited answers on the Income-tax Act, Rules & CBDT circulars",
-        "Live case law from Supreme Court, High Courts & ITAT",
-        "Single login · e-mail support",
-      ],
-      cta: "Talk to sales",
-      to: "/contact",
-      featured: false,
-    },
-    {
-      name: "Professional",
-      priceMonthly: "₹4,125",
-      priceYearly: "₹39,599",
-      monthlyEquivalent: "₹3,300 / month effective",
-      badge: "Most popular",
-      desc: "For practicing CAs, tax counsel and Assessing Officers on daily use.",
-      savings: "For the professional running 15+ files a week",
-      features: [
-        "~ 600 research questions or 100 in-depth document reads",
-        "Upload any tax document — unlimited uploads",
+        "Unlimited cited research on the Act, Rules & CBDT circulars",
+        "Live SC / HC / ITAT case-law lookup",
         "Six-module appellate order drafting (.docx export)",
-        "Persona-tuned answers (CA, AO, CFO, founder, student)",
-        "Self-audit warnings on every answer",
-        "Single login · priority support",
+        "Every notice & order template · Document Q&A",
+        "Limitation calendar, reminders, sticky notes & docket",
+        "Calculators, templates, watchlists & reconciliation",
+        "Role-based access, full audit trail — hosted & secured in India",
+        "30-day free trial · priority support & onboarding",
       ],
       cta: "Talk to sales",
       to: "/contact",
       featured: true,
-    },
-    {
-      name: "Power",
-      priceMonthly: "₹6,999",
-      priceYearly: "₹67,599",
-      monthlyEquivalent: "₹5,633 / month effective",
-      desc: "For heavy individual users — full-time practitioners, senior counsel and appellate authorities.",
-      features: [
-        "~ 2,000 research questions or 350 appellate drafts",
-        "Everything in Professional",
-        "Upload any tax document — unlimited uploads",
-        "Priority queue during peak hours (skips DSQ back-off)",
-        "Extended chat & document retention (3 years)",
-        "Single login · priority support",
-      ],
-      cta: "Talk to sales",
-      to: "/contact",
-      featured: false,
     },
   ];
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
-        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Pay for the tokens you actually use.</h2>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">One license. Everything included.</h2>
         <p className="mt-3 text-slate-600">
-          Every plan meters usage in tokens — the same tokens the model consumes when it reads a document, drafts an order or cites a judgment. Every plan includes the full feature set and a single login. Talk to sales to arrange a demo, walkthrough or subscription.
+          A single per-seat annual license — every capability in the product, no feature gates, no tier maze. Prices exclusive of GST; enterprise, departmental seat plans and on-prem / air-gap available on request. Talk to sales to arrange a demo, walkthrough or subscription.
         </p>
       </div>
       {/* Monthly / Yearly toggle */}
@@ -635,12 +642,12 @@ function Pricing() {
               "text-[10.5px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded " +
               (cycle === "yearly" ? "bg-emerald-400/25 text-emerald-200" : "bg-emerald-100 text-emerald-700")
             }>
-              Save 20%
+              Billed yearly
             </span>
           </button>
         </div>
       </div>
-      <div className="mt-10 grid md:grid-cols-3 gap-4 items-stretch">
+      <div className="mt-10 max-w-md mx-auto">
         {plans.map((p) => {
           const price = cycle === "monthly" ? p.priceMonthly : p.priceYearly;
           const per = cycle === "monthly" ? "/ month" : "/ year";

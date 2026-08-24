@@ -4,6 +4,7 @@ import {
   StickyNote as StickyNoteIcon, Pin, Share2, UserPlus, Users2,
 } from "lucide-react";
 import { api, WsMatter, WsDeadline, WsRuleCatalogue, WsNote, WsShare } from "../api";
+import { formatPan, formatAy, isPan, isAy, optional } from "@/lib/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -218,6 +219,10 @@ export default function Workspace() {
 
   const createMatter = async () => {
     if (!nm.title.trim()) { toast.error("Give the matter a title."); return; }
+    const panErr = optional(nm.pan, isPan, "PAN must look like ABCDE1234E.");
+    if (panErr) { toast.error(panErr); return; }
+    const ayErr = optional(nm.assessment_year, isAy, "Assessment year must be like 2023-24.");
+    if (ayErr) { toast.error(ayErr); return; }
     try {
       const m = await api.wsCreateMatter({
         title: nm.title.trim(),
@@ -325,10 +330,12 @@ export default function Workspace() {
               <Input placeholder="Matter title (e.g. ABC Pvt Ltd — scrutiny)"
                 value={nm.title} onChange={(e) => setNm({ ...nm, title: e.target.value })} />
               <div className="flex gap-2">
-                <Input placeholder="PAN" value={nm.pan}
-                  onChange={(e) => setNm({ ...nm, pan: e.target.value.toUpperCase() })} />
-                <Input placeholder="AY 2023-24" value={nm.assessment_year}
-                  onChange={(e) => setNm({ ...nm, assessment_year: e.target.value })} />
+                <Input placeholder="PAN (ABCDE1234E)" value={nm.pan} maxLength={10}
+                  onChange={(e) => setNm({ ...nm, pan: formatPan(e.target.value) })}
+                  className={cn(nm.pan.length > 0 && !isPan(nm.pan) && "border-rose-300 focus-visible:ring-rose-200")} />
+                <Input placeholder="AY 2023-24" value={nm.assessment_year} maxLength={7}
+                  onChange={(e) => setNm({ ...nm, assessment_year: formatAy(e.target.value) })}
+                  className={cn(nm.assessment_year.length > 0 && !isAy(nm.assessment_year) && "border-rose-300 focus-visible:ring-rose-200")} />
               </div>
               <select
                 className="w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700"
