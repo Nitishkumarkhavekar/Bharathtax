@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { Fragment, ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   MessageSquareText,
@@ -9,6 +9,9 @@ import {
   ScrollText,
   CalendarClock,
   Calculator,
+  FileText,
+  Bookmark,
+  Scale,
   BookOpen,
   Menu,
   X,
@@ -31,14 +34,18 @@ const NAV: {
   feature?: string;   // gateable module key; hidden unless the user is allotted it
   tone: NavTone;
   hint: string;
+  group?: "tools";    // renders under a "Tools" subheader
 }[] = [
   { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
   { to: "/workspace", label: "Calendar", icon: CalendarClock, tone: "primary", hint: "Matters, deadlines & reminders" },
   { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },
   { to: "/drafts", label: "Drafting", icon: ScrollText, tone: "rose", hint: "Notices & orders" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
-  { to: "/calculators", label: "Calculators", icon: Calculator, tone: "primary", hint: "Interest & 115BBE tax" },
   { to: "/history", label: "History", icon: Clock, feature: "history", tone: "emerald", hint: "Past queries" },
+  { to: "/calculators", label: "Calculators", icon: Calculator, tone: "primary", hint: "Interest & tax", group: "tools" },
+  { to: "/templates", label: "Templates", icon: FileText, tone: "amber", hint: "Reusable drafts", group: "tools" },
+  { to: "/watchlists", label: "Watchlists", icon: Bookmark, tone: "emerald", hint: "Track sections & rulings", group: "tools" },
+  { to: "/reconcile", label: "Reconcile", icon: Scale, tone: "primary", hint: "AIS / 26AS matching", group: "tools" },
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
 ];
@@ -258,11 +265,17 @@ function SidebarBody({
                 ),
           )}
         >
-        {nav.map((n) => {
+        {nav.map((n, i) => {
           const active = loc.pathname.startsWith(n.to);
+          const startTools = n.group === "tools" && nav[i - 1]?.group !== "tools";
           return (
+            <Fragment key={n.to}>
+              {startTools && (
+                collapsed
+                  ? <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
+                  : <div className="px-2 pt-3 pb-1 text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400">Tools</div>
+              )}
             <Link
-              key={n.to}
               to={n.to}
               onClick={onNavigate}
               title={collapsed ? n.label : undefined}
@@ -293,6 +306,7 @@ function SidebarBody({
                 <span className="min-w-0 flex-1 truncate">{n.label}</span>
               )}
             </Link>
+            </Fragment>
           );
         })}
         </div>

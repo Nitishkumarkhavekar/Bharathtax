@@ -633,6 +633,8 @@ export interface WsMatter {
   category: string | null;
   status: string;
   notes: string | null;
+  owned?: boolean;
+  shared?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -696,6 +698,51 @@ export interface WsBBEResult {
   total_tax: number;
   effective_rate_pct: number;
   workings: string;
+}
+export interface WsTemplate {
+  id: number;
+  name: string;
+  category: string;
+  body: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export interface WsWatchlist {
+  id: number;
+  label: string;
+  query: string;
+  kind: string;
+  created_at: string | null;
+}
+export interface WsShare {
+  id: number;
+  email: string | null;
+  name: string | null;
+  permission: string;
+}
+export interface WsReconResult {
+  matched: { key: string; name: string; amount_a: number; amount_b: number; diff: number }[];
+  amount_mismatch: { key: string; name: string; amount_a: number; amount_b: number; diff: number }[];
+  only_in_a: { key: string; name: string; amount: number }[];
+  only_in_b: { key: string; name: string; amount: number }[];
+  summary: {
+    total_a: number; total_b: number; matched_count: number;
+    mismatch_count: number; only_a_count: number; only_b_count: number;
+  };
+}
+export interface Ws234CResult {
+  section: string;
+  tax_liability: number;
+  installments: { installment: string; required: number; paid: number; shortfall: number; months: number; interest: number }[];
+  interest: number;
+}
+export interface WsSlabResult {
+  income: number; regime: string; tax_before_rebate: number;
+  rebate_87a: number; cess: number; total_tax: number; effective_rate_pct: number;
+}
+export interface WsCapGainsResult {
+  kind: string; label: string; gain: number; exemption: number;
+  taxable: number; rate_pct: number; tax: number; cess: number; total_tax: number;
 }
 
 function token(): string | null {
@@ -1116,6 +1163,32 @@ export const api = {
     req<WsInterestResult>("/workspace/calc/interest", { method: "POST", body: JSON.stringify(body) }),
   wsCalc115bbe: (income: number) =>
     req<WsBBEResult>("/workspace/calc/115bbe", { method: "POST", body: JSON.stringify({ income }) }),
+  wsCalc234c: (tax_liability: number, cum_paid: number[]) =>
+    req<Ws234CResult>("/workspace/calc/234c", { method: "POST", body: JSON.stringify({ tax_liability, cum_paid }) }),
+  wsCalcSlab: (income: number, regime: string) =>
+    req<WsSlabResult>("/workspace/calc/slab", { method: "POST", body: JSON.stringify({ income, regime }) }),
+  wsCalcCapitalGains: (amount: number, kind: string) =>
+    req<WsCapGainsResult>("/workspace/calc/capital-gains", { method: "POST", body: JSON.stringify({ amount, kind }) }),
+  // templates
+  wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
+  wsCreateTemplate: (body: { name: string; body: string; category?: string }) =>
+    req<WsTemplate>("/workspace/templates", { method: "POST", body: JSON.stringify(body) }),
+  wsUpdateTemplate: (id: number, body: { name?: string; body?: string; category?: string }) =>
+    req<WsTemplate>(`/workspace/templates/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  wsDeleteTemplate: (id: number) => req<void>(`/workspace/templates/${id}`, { method: "DELETE" }),
+  // watchlists
+  wsWatchlists: () => req<WsWatchlist[]>("/workspace/watchlists"),
+  wsCreateWatchlist: (body: { label: string; query: string; kind?: string }) =>
+    req<WsWatchlist>("/workspace/watchlists", { method: "POST", body: JSON.stringify(body) }),
+  wsDeleteWatchlist: (id: number) => req<void>(`/workspace/watchlists/${id}`, { method: "DELETE" }),
+  // collaboration
+  wsShares: (matterId: number) => req<WsShare[]>(`/workspace/matters/${matterId}/shares`),
+  wsAddShare: (matterId: number, email: string) =>
+    req<WsShare>(`/workspace/matters/${matterId}/shares`, { method: "POST", body: JSON.stringify({ email }) }),
+  wsRemoveShare: (shareId: number) => req<void>(`/workspace/shares/${shareId}`, { method: "DELETE" }),
+  // reconciliation
+  wsReconcile: (rows_a: { key: string; name?: string; amount: number }[], rows_b: { key: string; name?: string; amount: number }[], tolerance?: number) =>
+    req<WsReconResult>("/workspace/reconcile", { method: "POST", body: JSON.stringify({ rows_a, rows_b, tolerance }) }),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
   adminCreateWing: (body: { name: string; code?: string; seat_limit?: number }) =>
     req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {

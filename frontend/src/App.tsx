@@ -20,6 +20,9 @@ const Rulings = lazy(() => import("./pages/Rulings"));
 const Drafting = lazy(() => import("./pages/Drafting"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const Calculators = lazy(() => import("./pages/Calculators"));
+const Templates = lazy(() => import("./pages/Templates"));
+const Watchlists = lazy(() => import("./pages/Watchlists"));
+const Reconcile = lazy(() => import("./pages/Reconcile"));
 const SharedChat = lazy(() => import("./pages/SharedChat"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -112,6 +115,9 @@ export default function App() {
       <Route path="/drafts" element={<NonAdminOnly><Drafting /></NonAdminOnly>} />
       <Route path="/workspace" element={<NonAdminOnly><Workspace /></NonAdminOnly>} />
       <Route path="/calculators" element={<NonAdminOnly><Calculators /></NonAdminOnly>} />
+      <Route path="/templates" element={<NonAdminOnly><Templates /></NonAdminOnly>} />
+      <Route path="/watchlists" element={<NonAdminOnly><Watchlists /></NonAdminOnly>} />
+      <Route path="/reconcile" element={<NonAdminOnly><Reconcile /></NonAdminOnly>} />
       {/* Read-only shared chat — any signed-in user with the link can view. */}
       <Route path="/shared/:shareId" element={<Protected raw><SharedChat /></Protected>} />
       <Route path="/rulings" element={<NonAdminOnly><Rulings /></NonAdminOnly>} />
