@@ -1,0 +1,75 @@
+"""Tests for the statutory limitation-date engine (app.services.limitation).
+
+Pure function, no DB — asserts the computed due dates and governing sections
+for each trigger the daily-workspace calendar relies on.
+"""
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from app.services import limitation
+
+
+def _one(trigger, d):
+    out = limitation.compute_deadlines(trigger, d)
+    assert len(out) == 1, out
+    return out[0]
+
+
+def test_appeal_cita_is_30_days_sec_249():
+    r = _one("order_served", date(2026, 8, 1))
+    assert r["rule_id"] == "appeal_cita"
+    assert r["section"] == "Sec. 249"
+    assert r["due_date"] == date(2026, 8, 31)
+
+
+def test_itat_is_60_days_sec_253():
+    r = _one("cita_order_served", date(2026, 1, 1))
+    assert r["section"] == "Sec. 253"
+    assert r["due_date"] == date(2026, 1, 1) + timedelta(days=60)
+
+
+def test_high_court_is_120_days_sec_260a():
+    r = _one("itat_order_served", date(2026, 1, 1))
+    assert r["section"] == "Sec. 260A"
+    assert r["due_date"] == date(2026, 1, 1) + timedelta(days=120)
+
+
+def test_drp_produces_two_deadlines():
+    out = limitation.compute_deadlines("draft_order_144c", date(2026, 4, 15))
+    by_id = {o["rule_id"]: o for o in out}
+    assert set(by_id) == {"drp_objection", "drp_directions"}
+    assert by_id["drp_objection"]["due_date"] == date(2026, 5, 15)          # +30 days
+    # end of month (Apr 2026) + 9 months, snapped to month-end -> 31 Jan 2027
+    assert by_id["drp_directions"]["due_date"] == date(2027, 1, 31)
+
+
+def test_time_barring_153_twelve_months():
+    # end_of_ay for AY 2023-24 is 31 Mar 2024; +12 months
+    r = _one("end_of_ay", date(2024, 3, 31))
+    assert r["section"] == "Sec. 153(1)"
+    assert r["due_date"] == date(2025, 3, 31)
+
+
+def test_rectification_four_years_from_fy_end():
+    # order passed 10 Aug 2026 -> FY ends 31 Mar 2027 -> +4 years
+    r = _one("order_passed", date(2026, 8, 10))
+    assert r["section"] == "Sec. 154"
+    assert r["due_date"] == date(2031, 3, 31)
+
+
+def test_143_2_window_three_months_from_fy_end():
+    # return filed 20 Jul 2026 -> FY ends 31 Mar 2027 -> +3 months
+    r = _one("return_filed", date(2026, 7, 20))
+    assert r["section"] == "Sec. 143(2)"
+    assert r["due_date"] == date(2027, 6, 30)
+
+
+def test_unknown_trigger_returns_empty():
+    assert limitation.compute_deadlines("does_not_exist", date(2026, 1, 1)) == []
+
+
+def test_rule_catalogue_shape():
+    cat = limitation.rule_catalogue()
+    assert {t["id"] for t in cat["triggers"]} >= {"order_served", "draft_order_144c"}
+    assert any(r["id"] == "appeal_cita" for r in cat["rules"])

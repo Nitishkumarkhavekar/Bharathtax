@@ -7,6 +7,7 @@ import {
   LogOut,
   Gavel,
   ScrollText,
+  CalendarClock,
   BookOpen,
   Menu,
   X,
@@ -30,6 +31,7 @@ const NAV: {
   hint: string;
 }[] = [
   { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
+  { to: "/workspace", label: "Calendar", icon: CalendarClock, tone: "primary", hint: "Matters, deadlines & reminders" },
   { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },
   { to: "/drafts", label: "Drafting", icon: ScrollText, tone: "rose", hint: "Notices & orders" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
@@ -407,13 +409,13 @@ function LayoutInner({ children }: { children: ReactNode }) {
         className={cn(
           "hidden md:flex shrink-0 relative overflow-hidden bt-sidebar-bg text-slate-800 border-r border-slate-200 flex-col transition-[width] duration-200 ease-out",
           // Uniform width across the whole app: main sidebar, chat sidebar
-          // and admin sidebar all render at `w-72 lg:w-80` when expanded,
+          // and admin sidebar all render at `w-60 lg:w-64` when expanded,
           // `w-16` when collapsed. Keep the two variants at the same width
           // so navigating between /ask (with slot) and /rulings (no slot)
           // doesn't shift layout under the user.
           collapsed
             ? "w-16"
-            : "w-72 lg:w-80",
+            : "w-60 lg:w-64",
         )}
       >
         <SidebarBody collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />

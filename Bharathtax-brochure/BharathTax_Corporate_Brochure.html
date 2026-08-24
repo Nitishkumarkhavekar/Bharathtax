@@ -121,7 +121,7 @@
     object-fit: contain;
     display: block;
     /* Knock out the white PNG background on every page */
-    mix-blend-mode: multiply;
+    mix-blend-mode: normal;
   }
   /* Wordmark text hidden — full logo image is self-branded */
   .logo-text { display: none; }
@@ -289,7 +289,7 @@
   .cover .logo-mark img {
     max-width: 440px;
     /* Knock out the white PNG background so only the coloured logo shows */
-    mix-blend-mode: multiply;
+    mix-blend-mode: normal;
     filter: none;
   }
   .cover .logo-mark svg { width: 28px; height: 28px; }
@@ -437,7 +437,7 @@
   /* ============================================================ */
   .page-inner {
     position: absolute; inset: 0;
-    padding: 45mm 22mm 30mm;
+    padding: 35mm 22mm 26mm;
     z-index: 3;
     display: flex; flex-direction: column;
   }
@@ -907,7 +907,7 @@
   /* PRICING PAGE                                                  */
   /* ============================================================ */
   /* Tighter page padding + smaller title so 3 tall cards fit A4 */
-  .page-pricing .page-inner { padding: 38mm 18mm 26mm; }
+  .page-pricing .page-inner { padding: 30mm 18mm 24mm; }
   .page-pricing .page-title { font-size: 44px; line-height: 1; margin-bottom: 8px; }
   .page-pricing .page-subtitle { font-size: 12.5px; margin-bottom: 14px; max-width: 165mm; line-height: 1.45; }
 
@@ -1197,85 +1197,45 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 2 — TABLE OF CONTENTS                                    -->
+<!-- PAGE 02 - ABOUT + FOUNDATION                                 -->
 <!-- ============================================================ -->
-<section class="page page-toc">
+<section class="page">
   <div class="decor-top-right"></div>
-  <div class="decor-bottom-left"></div>
+  <div class="decor-bottom-right"></div>
   <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
+    <div class="logo-mark"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
     <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">Contents</span>
-    <h1 class="page-title">TABLE OF <span>CONTENTS</span></h1>
-    <p class="page-subtitle">A guided tour of what Wenvia BharatTax is, who it serves, and how it delivers citation-grounded research, rulings and drafting for every Indian tax professional.</p>
+    <span class="eyebrow-tag">01 &middot; About Us</span>
+    <h1 class="page-title">ABOUT <span>WENVIA BHARAT TAX</span></h1>
+    <p class="page-subtitle">India's first citation-grounded, sovereign AI assistant for tax research, rulings and drafting &mdash; a Wenvia Global product.</p>
 
-    <ul class="toc-list">
-      <li class="toc-item">
-        <div class="toc-num">01</div>
-        <div class="toc-title">About Wenvia BharatTax<small>Who we are and what we stand for</small></div>
-        <div class="toc-page">03</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">02</div>
-        <div class="toc-title">Vision, Mission &amp; Values<small>The principles that shape everything we build</small></div>
-        <div class="toc-page">04</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">03</div>
-        <div class="toc-title">The Challenge We Solve<small>Why generic AI fails Indian tax law</small></div>
-        <div class="toc-page">05</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">04</div>
-        <div class="toc-title">Our Solution<small>Citation-grounded, sovereign, refuses to guess</small></div>
-        <div class="toc-page">06</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">05</div>
-        <div class="toc-title">Core Features<small>Six things you'll notice on day one</small></div>
-        <div class="toc-page">07</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">06</div>
-        <div class="toc-title">Ask Bot &amp; Draft Bot<small>Research and appellate drafting</small></div>
-        <div class="toc-page">08</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">07</div>
-        <div class="toc-title">Rulings &amp; Drafting Suite<small>Case-law search and notice / order drafting to DOCX</small></div>
-        <div class="toc-page">10</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">08</div>
-        <div class="toc-title">Who We Serve<small>Departments, benches, firms, counsel</small></div>
-        <div class="toc-page">13</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">09</div>
-        <div class="toc-title">Real-World Use Cases<small>A day of work with Wenvia BharatTax</small></div>
-        <div class="toc-page">14</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">10</div>
-        <div class="toc-title">Trust &amp; Security<small>Built for regulated professions</small></div>
-        <div class="toc-page">15</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">11</div>
-        <div class="toc-title">Pricing &amp; Plans<small>Starter, Professional, Power &mdash; annually billed</small></div>
-        <div class="toc-page">16</div>
-      </li>
-      <li class="toc-item">
-        <div class="toc-num">12</div>
-        <div class="toc-title">Get In Touch<small>Book a demo, start a pilot</small></div>
-        <div class="toc-page">17</div>
-      </li>
-    </ul>
+    <p class="body-copy"><strong>Wenvia BharatTax</strong> is the tax-research copilot built exclusively for India's income-tax professionals &mdash; officers, CIT(A) benches, chartered accountants and legal counsel. It answers tax questions with citations that trace back to the exact section, proviso or CBDT circular they came from &mdash; and when the evidence isn't there, it refuses to answer rather than invent one. In a profession where every position must survive an audit or a bench, that refusal is the foundation, not a footnote.</p>
+
+    <div class="grid-3" style="margin-top: 6px;">
+      <div class="vm-card">
+        <div class="vm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></div>
+        <h3>VISION</h3>
+        <p>Make every Indian tax professional twice as effective &mdash; with an assistant that is <strong>always cited</strong>, <strong>always trustworthy</strong>, and <strong>always inside their walls.</strong></p>
+      </div>
+      <div class="vm-card">
+        <div class="vm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>MISSION</h3>
+        <p>Build the sovereign AI layer for Indian tax law &mdash; <strong>grounded in primary sources</strong>, refusing to guess, deployable in India, and priced for every wing of every department.</p>
+      </div>
+      <div class="vm-card">
+        <div class="vm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <h3>VALUES</h3>
+        <p><strong>Citations before eloquence.</strong> Honest refusal over confident invention. India-first design, always.</p>
+      </div>
+    </div>
+
+    <div class="highlight-block" style="margin-top: 16px;">
+      <h3>Why we exist.</h3>
+      <p>Generic AI tools were not built for Indian tax law. They hallucinate sections, cite circulars that don't exist, and send sensitive data to foreign clouds. Wenvia BharatTax was built to fix all three &mdash; for the professionals who cannot afford to be wrong.</p>
+    </div>
   </div>
 
   <div class="page-num">
@@ -1294,54 +1254,31 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 3 — ABOUT US                                             -->
+<!-- PAGE 03 - CHALLENGE + SOLUTION                               -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
-  <div class="decor-bottom-right"></div>
+  <div class="decor-bottom-left"></div>
   <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
+    <div class="logo-mark"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
     <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">01 · About Us</span>
-    <h1 class="page-title">ABOUT <span>WENVIA BHARAT TAX</span></h1>
-    <p class="page-subtitle">India's first citation-grounded, sovereign AI assistant for tax research, rulings and drafting &mdash; a Wenvia Global product.</p>
+    <span class="eyebrow-tag">02 &middot; The Problem We Solve</span>
+    <h1 class="page-title">THE CHALLENGE.<br/><span>THE ANSWER.</span></h1>
+    <p class="page-subtitle">Tax work moves fast and generic AI can't keep up &mdash; and the cost of getting it wrong falls on the professional, not the tool.</p>
 
-    <p class="body-copy">
-      <strong>Wenvia BharatTax</strong> is the tax-research copilot built exclusively for India's income-tax
-      professionals — officers, CIT(A) benches, chartered accountants, and legal counsel. We do one
-      thing, and we do it precisely: answer tax questions with citations that trace back to the exact
-      section, sub-section, proviso, or CBDT circular they came from.
-    </p>
-    <p class="body-copy">
-      Every claim Wenvia BharatTax makes is anchored in primary Indian tax law. If the evidence isn't in the
-      corpus, the assistant refuses to answer — plainly and honestly. This isn't a feature. It's the
-      foundation. In a regulated profession where every position must survive an audit or a bench, an
-      AI that confidently invents section numbers is worse than no AI at all.
-    </p>
-
-    <div class="highlight-block">
-      <h3>Why we exist.</h3>
-      <p>Generic AI tools were not built for Indian tax law. They hallucinate sections. They cite circulars that don't exist. They send sensitive client data to foreign clouds. Wenvia BharatTax was built to fix all three, at once, for the professionals who cannot afford to be wrong.</p>
+    <div class="grid-2" style="gap: 12px;">
+      <div class="number-card"><div class="number-mark">01</div><div><h4>Hours lost per opinion</h4><p>Cross-checking one position across Act, Rules and circulars can burn an afternoon before drafting even starts.</p></div></div>
+      <div class="number-card"><div class="number-mark">02</div><div><h4>Generic AI hallucinates</h4><p>Off-the-shelf chatbots invent section numbers and cite circulars that don't exist.</p></div></div>
+      <div class="number-card"><div class="number-mark">03</div><div><h4>Sensitive data at risk</h4><p>Uploading client PANs and notices to foreign cloud chatbots is a compliance risk no wing can carry.</p></div></div>
+      <div class="number-card"><div class="number-mark">04</div><div><h4>Untraceable answers</h4><p>If a response can't be traced to the exact section, it can't survive an audit &mdash; let alone a bench.</p></div></div>
     </div>
 
-    <div class="grid-3" style="margin-top: 18px;">
-      <div class="info-card">
-        <h4>Act · Rules · Circulars</h4>
-        <p>Full Income Tax Act, Rules 1962 and CBDT circulars indexed &mdash; searchable to the exact provision.</p>
-      </div>
-      <div class="info-card">
-        <h4>SC · HC · ITAT</h4>
-        <p>Curated Supreme Court and High Court corpus plus live tribunal rulings on demand.</p>
-      </div>
-      <div class="info-card">
-        <h4>ITBA-Ready DOCX</h4>
-        <p>Appellate orders, notices and assessment orders drafted straight to signature-ready DOCX.</p>
-      </div>
+    <div class="highlight-block" style="margin-top: 14px;">
+      <h3>One copilot. Every claim cited.</h3>
+      <p>Every answer links to the section, proviso, circular or judgment it came from. It refuses to guess. It reaches live SC / HC / ITAT rulings. It drafts notices and orders to ITBA-ready DOCX. And it deploys in India &mdash; web or a departmental desktop app.</p>
     </div>
   </div>
 
@@ -1361,50 +1298,58 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 4 — VISION, MISSION, VALUES                              -->
+<!-- PAGE 04 - RESEARCH & RULINGS                                 -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
   <div class="decor-bottom-left"></div>
   <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
+    <div class="logo-mark"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
     <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">02 · Our Foundation</span>
-    <h1 class="page-title">VISION,<br/><span>MISSION</span> &amp; VALUES</h1>
-    <p class="page-subtitle">The principles that shape every product decision, every feature roadmap, and every line of law we index.</p>
+    <span class="eyebrow-tag">03 &middot; Research &amp; Rulings</span>
+    <h1 class="page-title">RESEARCH THAT<br/><span>ALWAYS SHOWS ITS WORK.</span></h1>
+    <p class="page-subtitle">Ask a natural-language question and get a streamed, cited answer &mdash; from your statute corpus or live SC / HC / ITAT rulings, always with the paragraph in hand.</p>
 
-    <div class="grid-3" style="margin-top: 8px;">
-      <div class="vm-card">
-        <div class="vm-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
-        </div>
-        <h3>VISION</h3>
-        <p>To make every Indian tax professional twice as effective by giving them a research and drafting assistant that is <strong>always cited</strong>, <strong>always trustworthy</strong>, and <strong>always inside their walls.</strong></p>
+    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
+      <div>
+        <p class="body-copy">Search by issue, section, party, bench, year or citation. The assistant reaches for the right source, shows its working inline, and links every claim back to the exact provision or judgment.</p>
+        <ul class="check-list" style="margin-top: 12px;">
+          <li><span><strong>Streamed, cited answers</strong> &mdash; reasoning arrives with inline footnotes.</span></li>
+          <li><span><strong>Live case-law reach</strong> &mdash; SC, HC and ITAT rulings on demand, paragraph-level.</span></li>
+          <li><span><strong>Section-mapped</strong> &mdash; every ruling tagged to the provisions it turns on.</span></li>
+          <li><span><strong>Per-user memory</strong> &mdash; remembers your working context across sessions.</span></li>
+          <li><span><strong>Module &amp; source filters</strong> &mdash; scope to Act, Rules, circulars, case law or the web.</span></li>
+        </ul>
       </div>
-      <div class="vm-card">
-        <div class="vm-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+
+      <div class="chat-mock">
+        <div class="chat-header">
+          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
+          <div class="chat-title">Wenvia BharatTax &middot; Rulings</div>
         </div>
-        <h3>MISSION</h3>
-        <p>Build the sovereign AI layer for Indian tax law — <strong>grounded in primary sources</strong>, refusing to guess, deployable on-premise, and priced for every wing of every department.</p>
-      </div>
-      <div class="vm-card">
-        <div class="vm-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <div class="user-bubble">Any SC/HC ruling on Sec. 14A disallowance where no exempt income earned in the year?</div>
+        <div class="bot-row">
+          <div class="bot-avatar"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
+          <div class="bot-msg">
+            The Supreme Court in <em>PCIT v. Era Infrastructure (2022)</em> upheld that
+            <span class="cite-chip">Sec. 14A</span> disallowance cannot exceed exempt income &mdash; and does
+            not apply where none is earned in the year. <span class="cite-num">1</span> Delhi HC in
+            <em>Cheminvest v. CIT (2015)</em> is the leading precedent. <span class="cite-num">2</span>
+          </div>
         </div>
-        <h3>VALUES</h3>
-        <p><strong>Citations before eloquence.</strong> Honest refusal over confident invention. Sovereign data over cloud convenience. India-first design, always.</p>
+        <div class="source-cards">
+          <div class="src-card"><div class="src-title">Supreme Court &middot; 2022</div><div class="src-ref">PCIT v. Era Infrastructure &mdash; &para;12</div></div>
+          <div class="src-card"><div class="src-title">Delhi High Court &middot; 2015</div><div class="src-ref">Cheminvest v. CIT &mdash; &para;23</div></div>
+        </div>
       </div>
     </div>
 
-    <div class="quote-block" style="margin-top: 26px;">
-      <p>"We would rather refuse a hundred queries than fabricate one section number. That is the professional standard we hold ourselves to — the same one our users are held to every day."</p>
-      <cite>— The Wenvia BharatTax Team</cite>
+    <div class="quote-block" style="margin-top: 18px;">
+      <p>"Finally, a research tool that shows me the section number &mdash; and the paragraph &mdash; every single time."</p>
+      <cite>&mdash; The Wenvia BharatTax Promise</cite>
     </div>
   </div>
 
@@ -1424,48 +1369,34 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 5 — THE CHALLENGE                                        -->
+<!-- PAGE 05 - DRAFTING                                           -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
   <div class="decor-bottom-right"></div>
   <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
+    <div class="logo-mark"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
     <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">03 · The Problem</span>
-    <h1 class="page-title">THE <span>CHALLENGE</span> WE SOLVE</h1>
-    <p class="page-subtitle">Tax work moves fast. Generic AI doesn't keep up — and the cost of getting it wrong falls on the professional, not the tool.</p>
+    <span class="eyebrow-tag">04 &middot; Drafting</span>
+    <h1 class="page-title">DRAFTING<br/><span>EVERY NOTICE &amp; ORDER.</span></h1>
+    <p class="page-subtitle">A guided workspace for the notices and orders an officer prepares every day &mdash; grounded in the file, cited to the statute, exported ready for ITBA. Appellate orders build issue-by-issue in six auditable modules, and you can upload any notice or order to ask it questions directly.</p>
 
-    <div class="grid-2" style="gap: 12px;">
-      <div class="number-card">
-        <div class="number-mark">01</div>
-        <div><h4>Hours lost per opinion</h4><p>Cross-checking one position across Act, Rules and circulars can burn an entire afternoon before drafting even starts.</p></div>
-      </div>
-      <div class="number-card">
-        <div class="number-mark">02</div>
-        <div><h4>Generic AI hallucinates</h4><p>Off-the-shelf chatbots invent section numbers, cite circulars that don't exist, and cannot tell you which provision applies.</p></div>
-      </div>
-      <div class="number-card">
-        <div class="number-mark">03</div>
-        <div><h4>Sensitive data in wrong hands</h4><p>Uploading client PANs, notices and appellate submissions to foreign cloud chatbots is a compliance risk no wing can carry.</p></div>
-      </div>
-      <div class="number-card">
-        <div class="number-mark">04</div>
-        <div><h4>Untraceable answers</h4><p>If a response can't be traced back to the exact section, it can't survive an audit — let alone a bench of appeals.</p></div>
-      </div>
-      <div class="number-card">
-        <div class="number-mark">05</div>
-        <div><h4>Onboarding new officers</h4><p>Every new joiner needs weeks to internalise the corpus. Institutional knowledge stays trapped in individual heads.</p></div>
-      </div>
-      <div class="number-card">
-        <div class="number-mark">06</div>
-        <div><h4>Drafting orders manually</h4><p>An appellate order goes through the same six sections every time. Doing it by hand, on every file, is not scalable.</p></div>
-      </div>
+    <div class="grid-4">
+      <div class="info-card"><h4>Sec. 142(1)</h4><p>Enquiry notice &mdash; particulars, response window and statutory language, pre-filled from the file.</p></div>
+      <div class="info-card"><h4>Sec. 143(2)</h4><p>Scrutiny notice &mdash; correct limitation calendar, jurisdictional recital and assessee particulars.</p></div>
+      <div class="info-card"><h4>Sec. 148 / 148A</h4><p>Reassessment &mdash; the 148A(b) show-cause, recorded reasons and reopening notice.</p></div>
+      <div class="info-card"><h4>Sec. 156</h4><p>Notice of demand &mdash; the computed liability with the statutory payment window.</p></div>
+      <div class="info-card"><h4>Sec. 131 / 133(6)</h4><p>Summons and calls for information &mdash; issued with the statutory basis recited.</p></div>
+      <div class="info-card"><h4>Sec. 274 / 271</h4><p>Penalty show-cause and orders &mdash; concealment, non-compliance and default.</p></div>
+      <div class="info-card"><h4>Show-Cause</h4><p>Reasoned SCNs &mdash; the precise provision invoked, the material found, the points enumerated.</p></div>
+      <div class="info-card"><h4>Sec. 154</h4><p>Rectification order &mdash; drafted against the mistake, with the amended computation.</p></div>
+      <div class="info-card"><h4>Assessment Orders</h4><p>Sec. 143(3), 144, 147 and 144C &mdash; facts, findings and computation, every conclusion cited.</p></div>
+      <div class="info-card"><h4>Penalty Orders</h4><p>The 270A / 271-series orders &mdash; the default, the quantum and the governing provision on record.</p></div>
+      <div class="info-card"><h4>CIT(A) / NFAC Orders</h4><p>First-cut appellate orders &mdash; ground-by-ground, cited end-to-end via the six-module pipeline.</p></div>
+      <div class="info-card"><h4>ITBA-Ready DOCX</h4><p>One-click export to signature-ready DOCX &mdash; formatting, citations and issue numbering preserved.</p></div>
     </div>
   </div>
 
@@ -1485,7 +1416,7 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 6 — OUR SOLUTION                                         -->
+<!-- PAGE 06 - DAILY WORKSPACE (Limitation Calendar + Reminders)   -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
@@ -1498,22 +1429,80 @@
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">04 · The Solution</span>
-    <h1 class="page-title">ONE COPILOT.<br/><span>EVERY CLAIM</span> CITED.</h1>
-    <p class="page-subtitle">Wenvia BharatTax is the first research, rulings and drafting assistant purpose-built for Indian income-tax work &mdash; from a thirty-second query to a fully-formatted appellate order or ITBA-ready notice.</p>
+    <span class="eyebrow-tag">05 · Your Daily Workspace</span>
+    <h1 class="page-title">YOUR DESK,<br/>NOT JUST A <span>CHATBOT.</span></h1>
+    <p class="page-subtitle">Wenvia BharatTax organises your working life around the dates that matter. Every matter, every statutory deadline, every note &mdash; in one place, and every date computed from the section itself.</p>
 
-    <ul class="check-list">
-      <li><span><strong>Grounded answers.</strong> Every claim links directly to the section, proviso, CBDT circular or landmark judgment it came from &mdash; no exceptions.</span></li>
-      <li><span><strong>Refuses to guess.</strong> If the evidence isn't there, Wenvia BharatTax says so. Plainly. No confident fabrications, ever.</span></li>
-      <li><span><strong>Live case-law reach.</strong> SC, HC and ITAT rulings surfaced on demand &mdash; not scraped once and forgotten.</span></li>
-      <li><span><strong>Drafting to DOCX.</strong> Appellate orders, § 142(1) / § 143(2) notices, show-cause and § 154 orders exported ITBA-ready.</span></li>
-      <li><span><strong>Deployed inside your walls.</strong> Web, on-premise or a native departmental desktop app &mdash; data stays with you.</span></li>
-      <li><span><strong>Multi-domain ready.</strong> Income Tax today. GST, Customs and beyond tomorrow &mdash; added by configuration, not code.</span></li>
-    </ul>
+    <div class="grid-2" style="grid-template-columns: 1fr 1.05fr; gap: 22px; align-items: start;">
+      <div>
+        <ul class="check-list">
+          <li><span><strong>My Matters</strong> &mdash; every case by PAN, AY and appeal number, with its full history in one place.</span></li>
+          <li><span><strong>Limitation Calendar</strong> &mdash; statutory dates computed and section-cited, never guessed.</span></li>
+          <li><span><strong>Smart Reminders</strong> &mdash; escalating nudges at T&minus;30, T&minus;7 and T&minus;1, in-app and by email.</span></li>
+          <li><span><strong>Sticky Notes</strong> &mdash; pin your reasoning to a case, a section, a citation or a file.</span></li>
+          <li><span><strong>Personal Templates</strong> &mdash; your orders, notices and appeal grounds, one click away.</span></li>
+        </ul>
+      </div>
 
-    <div class="highlight-block" style="margin-top: 20px;">
-      <h3>The Wenvia BharatTax Guarantee.</h3>
-      <p>Every answer you show a client, a bench, or a senior officer will be traceable to primary law. That's not aspiration — that's the product.</p>
+      <div class="chat-mock">
+        <div class="chat-header">
+          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
+          <div class="chat-title">Wenvia BharatTax · Limitation Calendar</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);">
+          <div style="flex-shrink:0;width:46px;height:46px;border-radius:10px;background:var(--orange-tint);color:var(--orange);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;">
+            <span style="font-family:'Anton',sans-serif;font-size:17px;">06</span>
+            <span style="font-size:7.5px;font-weight:800;letter-spacing:.1em;">DAYS</span>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:800;color:var(--navy);">Appeal to CIT(A)</div>
+            <div style="font-size:11px;color:var(--muted);">Sec. 249 &middot; ABC Pvt Ltd &middot; AY 2022&ndash;23</div>
+          </div>
+          <span style="font-size:8.5px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:.1em;">Urgent</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);">
+          <div style="flex-shrink:0;width:46px;height:46px;border-radius:10px;background:var(--orange-tint);color:var(--orange);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;">
+            <span style="font-family:'Anton',sans-serif;font-size:17px;">12</span>
+            <span style="font-size:7.5px;font-weight:800;letter-spacing:.1em;">DAYS</span>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:800;color:var(--navy);">Assessment time-barring</div>
+            <div style="font-size:11px;color:var(--muted);">Sec. 153(1) &middot; XYZ Traders &middot; AY 2023&ndash;24</div>
+          </div>
+          <span style="font-size:8.5px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:.1em;">Urgent</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);">
+          <div style="flex-shrink:0;width:46px;height:46px;border-radius:10px;background:var(--blue-tint);color:var(--blue);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;">
+            <span style="font-family:'Anton',sans-serif;font-size:15px;">31</span>
+            <span style="font-size:7.5px;font-weight:800;letter-spacing:.1em;">AUG</span>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:800;color:var(--navy);">Reply to Sec. 142(1) notice</div>
+            <div style="font-size:11px;color:var(--muted);">Rao &amp; Co &middot; Notice.pdf attached</div>
+          </div>
+          <span style="font-size:8.5px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;">Due</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;">
+          <div style="flex-shrink:0;width:46px;height:46px;border-radius:10px;background:var(--green-tint);color:var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;">
+            <span style="font-family:'Anton',sans-serif;font-size:16px;">90</span>
+            <span style="font-size:7.5px;font-weight:800;letter-spacing:.1em;">DAYS</span>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:800;color:var(--navy);">DRP directions due</div>
+            <div style="font-size:11px;color:var(--muted);">Sec. 144C &middot; TP objection &middot; 9-month clock</div>
+          </div>
+          <span style="font-size:8.5px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.1em;">Tracked</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-block" style="margin-top: 16px;">
+      <h3>Deadlines it computes for you.</h3>
+      <p>Time-barring (Sec. 153), reopening (Sec. 149 / 148A), the DRP clock (Sec. 144C), appeals to CIT(A), ITAT &amp; HC (Sec. 249 / 253 / 260A), penalty (Sec. 275) and rectification (Sec. 154) &mdash; all computed, section-cited and on your calendar from a single trigger date.</p>
     </div>
   </div>
 
@@ -1533,7 +1522,7 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 7 — CORE FEATURES                                        -->
+<!-- PAGE 07 - PERSONALISATION & TOOLS (role dashboards + suite)   -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
@@ -1546,52 +1535,63 @@
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">05 · Core Features</span>
-    <h1 class="page-title">SIX THINGS<br/>YOU'LL <span>NOTICE ON DAY ONE.</span></h1>
-    <p class="page-subtitle">Built from the ground up for how Indian tax professionals actually work &mdash; grounded, cited, and honest.</p>
+    <span class="eyebrow-tag">06 · Personalisation</span>
+    <h1 class="page-title">ONE PRODUCT,<br/><span>EVERY ROLE.</span></h1>
+    <p class="page-subtitle">Tell Wenvia BharatTax how you work, and the whole surface adapts &mdash; dashboard, templates, calendar and default sources. Then a suite of built-in tools does the heavy lifting.</p>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--blue-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">Income-Tax Officer</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--orange-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">I&amp;CI</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--green-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">Investigation</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--blue-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">CIT(A) / NFAC</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--orange-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">DRP</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--green-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">TDS / Exemptions</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--blue-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">CA / Advocate</span>
+      <span style="display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:var(--orange-tint);color:var(--navy);font-size:11px;font-weight:700;border:1px solid var(--line);">Taxpayer</span>
+    </div>
 
     <div class="grid-3">
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="18"/><line x1="12" y1="14" x2="16" y2="14"/></svg>
         </div>
-        <h3>Every Answer Cited</h3>
-        <p>Streamed responses that link back to the exact section, proviso, circular or judgment. Nothing invented, nothing paraphrased blindly.</p>
+        <h3>Statutory Calculators</h3>
+        <p>Interest u/s 234A/B/C &amp; 220(2), tax u/s 115BBE, surcharge &amp; cess &mdash; in a side panel that never loses your chat.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
         </div>
-        <h3>Never Guesses</h3>
-        <p>When the law doesn't cover it, Wenvia BharatTax refuses &mdash; plainly. No confident-sounding fiction. Ever.</p>
+        <h3>AIS / 26AS Reconciliation</h3>
+        <p>Upload AIS, 26AS, ITR &amp; Form 16 &mdash; auto-match and flag only the genuine mismatches worth a query.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10l6-6V5a2 2 0 0 0-2-2z"/><path d="M15 21v-6h6"/></svg>
         </div>
-        <h3>Understands the Statute</h3>
-        <p>Reads law the way a lawyer reads law. Provisos and Explanations respected, never chopped apart.</p>
+        <h3>Sticky Notes</h3>
+        <p>Pin your reasoning to a case, section, citation or file &mdash; auto-stamped with the source, matter and date.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14l2 2 4-4"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </div>
-        <h3>Live Case-Law Reach</h3>
-        <p>Search a curated SC / HC judgment corpus and pull ITAT and higher-bench rulings on demand &mdash; with paragraph-level citations.</p>
+        <h3>Personal Templates</h3>
+        <p>Your show-cause, Sec. 143(3), Sec. 142(1)/143(2)/148, penalty and appeal drafts &mdash; pre-filled from the matter, one click away.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </div>
-        <h3>Drafts to ITBA-Ready DOCX</h3>
-        <p>Appellate orders, § 142(1) / § 143(2) notices, show-cause and § 154 orders exported signature-ready with citations preserved.</p>
+        <h3>Watchlists &amp; Digest</h3>
+        <p>Get alerted when a fresh ITAT / HC ruling touches your sections or your assessee &mdash; delivered as a daily digest.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <h3>Built for Teams</h3>
-        <p>Wings, seats, roles, and audit logs. Web or native desktop app &mdash; for departments and firms with concurrent-user access rules.</p>
+        <h3>Team Collaboration</h3>
+        <p>Share a matter &mdash; its notes, deadlines and drafts &mdash; across a range, a circle or a firm, with role-based access.</p>
       </div>
     </div>
   </div>
@@ -1612,11 +1612,11 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 8 — ASK BOT (with chat mockup)                          -->
+<!-- PAGE 08 - WHY BHARATTAX WINS (comparison)                     -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
-  <div class="decor-bottom-left"></div>
+  <div class="decor-bottom-right"></div>
   <div class="logo-slot">
     <div class="logo-mark">
       <img src="logo.png" alt="Wenvia BharatTax logo" />
@@ -1625,52 +1625,67 @@
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">06 · Feature Deep Dive</span>
-    <h1 class="page-title">ASK BOT<br/><span>ALWAYS SHOWS ITS WORK.</span></h1>
-    <p class="page-subtitle">Ask a natural-language tax question. Get a precise, streamed answer &mdash; cited to the exact provision, the leading judgment, or the current circular.</p>
+    <span class="eyebrow-tag">07 · The Difference</span>
+    <h1 class="page-title">WHY <span>BHARAT TAX</span> WINS.</h1>
+    <p class="page-subtitle">Generic chatbots guess. Legacy libraries make you dig. Wenvia BharatTax is grounded in primary law, refreshed every day, and personal to your own docket.</p>
 
-    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
-      <div>
-        <p class="body-copy">
-          Type a question. The assistant intelligently reaches for the right source &mdash;
-          your statute corpus, live SC / HC / ITAT rulings or authoritative web sources for
-          the latest circulars &mdash; and shows its working inline.
-        </p>
-        <ul class="check-list" style="margin-top: 12px;">
-          <li><span><strong>Streamed, cited answers</strong> &mdash; reasoning arrives token-by-token with inline footnotes.</span></li>
-          <li><span><strong>Live case-law lookup</strong> &mdash; SC, HC and ITAT rulings surfaced on demand.</span></li>
-          <li><span><strong>Per-user memory</strong> &mdash; remembers your working context across sessions.</span></li>
-          <li><span><strong>Improve-prompt helper</strong> &mdash; one click turns a rough query into a precise, professional one.</span></li>
-          <li><span><strong>Module &amp; source filters</strong> &mdash; scope to Act, Rules, circulars, case law or the web.</span></li>
-        </ul>
-      </div>
+    <table style="width:100%;border-collapse:separate;border-spacing:0;font-size:11.5px;margin-top:6px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:11px 12px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--line);">Capability</th>
+          <th style="padding:11px 10px;background:var(--navy);color:var(--white);border-top-left-radius:10px;border-top-right-radius:10px;font-size:12px;font-weight:800;">Wenvia BharatTax</th>
+          <th style="padding:11px 8px;font-size:11px;font-weight:700;color:var(--navy);border-bottom:2px solid var(--line);">Generic AI<br/><span style="font-weight:500;color:var(--muted);font-size:9.5px;">ChatGPT, Gemini</span></th>
+          <th style="padding:11px 8px;font-size:11px;font-weight:700;color:var(--navy);border-bottom:2px solid var(--line);">Legacy tax tools<br/><span style="font-weight:500;color:var(--muted);font-size:9.5px;">Taxmann, Taxsutra</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);">Every answer cited to primary law</td>
+          <td style="text-align:center;padding:10px;background:var(--blue-tint);border-bottom:1px solid var(--white);color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+          <td style="text-align:center;padding:10px;color:var(--orange);font-weight:700;font-size:10px;border-bottom:1px solid var(--line);">Partial</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);">Indian income-tax corpus (Act, Rules, circulars)</td>
+          <td style="text-align:center;padding:10px;background:var(--blue-tint);border-bottom:1px solid var(--white);color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+          <td style="text-align:center;padding:10px;color:var(--green-bright);font-weight:900;border-bottom:1px solid var(--line);">&#10003;</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);">Fresh ITAT / HC rulings ingested daily</td>
+          <td style="text-align:center;padding:10px;background:var(--blue-tint);border-bottom:1px solid var(--white);color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+          <td style="text-align:center;padding:10px;color:var(--orange);font-weight:700;font-size:10px;border-bottom:1px solid var(--line);">Partial</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);">Knows your matters &amp; statutory deadlines</td>
+          <td style="text-align:center;padding:10px;background:var(--blue-tint);border-bottom:1px solid var(--white);color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);">Drafts orders, notices &amp; appeals to DOCX</td>
+          <td style="text-align:center;padding:10px;background:var(--blue-tint);border-bottom:1px solid var(--white);color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--orange);font-weight:700;font-size:10px;border-bottom:1px solid var(--line);">Partial</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);">Original synthesis &mdash; no copied commentary</td>
+          <td style="text-align:center;padding:10px;background:var(--blue-tint);border-bottom:1px solid var(--white);color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--orange);font-weight:700;font-size:10px;border-bottom:1px solid var(--line);">Partial</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;border-bottom:1px solid var(--line);">&times;</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-weight:600;color:var(--ink);">Hosted &amp; secured in India, role-based access</td>
+          <td style="text-align:center;padding:10px 10px 12px;background:var(--blue-tint);border-bottom-left-radius:10px;border-bottom-right-radius:10px;color:var(--green-bright);font-weight:900;">&#10003;</td>
+          <td style="text-align:center;padding:10px;color:var(--muted);font-weight:800;">&times;</td>
+          <td style="text-align:center;padding:10px;color:var(--orange);font-weight:700;font-size:10px;">Partial</td>
+        </tr>
+      </tbody>
+    </table>
 
-      <div class="chat-mock">
-        <div class="chat-header">
-          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
-          <div class="chat-title">Wenvia BharatTax · Ask Bot</div>
-        </div>
-        <div class="user-bubble">Is the ₹1.5L limit under 80C shared with 80CCC and 80CCD(1)?</div>
-        <div class="bot-row">
-          <div class="bot-avatar">
-            <img src="logo.png" alt="Wenvia BharatTax logo" />
-          </div>
-          <div class="bot-msg">
-            Yes. Under <span class="cite-chip">§80CCE</span>, the aggregate of deductions
-            under <span class="cite-chip">§80C</span>, <span class="cite-chip">§80CCC</span>
-            and <span class="cite-chip">§80CCD(1)</span> cannot exceed
-            <strong>₹1,50,000</strong>. <span class="cite-num">1</span>
-          </div>
-        </div>
-        <div class="source-cards">
-          <div class="src-card"><div class="src-title">Income Tax Act, 1961</div><div class="src-ref">§80CCE — aggregate cap</div></div>
-          <div class="src-card"><div class="src-title">Income Tax Act, 1961</div><div class="src-ref">§80C, §80CCC, §80CCD(1)</div></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="quote-block" style="margin-top: 20px;">
-      <p>"Finally, a research tool that shows me the section number, every single time. Nothing invented. Nothing hidden."</p>
+    <div class="quote-block" style="margin-top: 18px;">
+      <p>"A generic model can sound confident. Only a grounded one can be trusted &mdash; and only a personal one can run your desk."</p>
       <cite>— The Wenvia BharatTax Promise</cite>
     </div>
   </div>
@@ -1691,31 +1706,48 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 9 — DRAFT BOT / 6-MODULE PIPELINE                        -->
+<!-- PAGE 09 - TRUST & WHO WE SERVE                               -->
 <!-- ============================================================ -->
 <section class="page">
   <div class="decor-top-right"></div>
   <div class="decor-bottom-right"></div>
   <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
+    <div class="logo-mark"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
     <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">06 · Feature Deep Dive</span>
-    <h1 class="page-title">DRAFT BOT<br/>SIX <span>AUDITABLE</span> MODULES.</h1>
-    <p class="page-subtitle">Give Wenvia BharatTax the case. It structures the file, produces a first-cut CIT(A) / NFAC order &mdash; issue-by-issue, cited end-to-end &mdash; and hands it back in an in-app editor and a signature-ready DOCX. Runs inside the departmental desktop app for the strictest data-security postures.</p>
+    <span class="eyebrow-tag">08 &middot; Trust &amp; Who We Serve</span>
+    <h1 class="page-title">BUILT FOR<br/><span>REGULATED</span> PROFESSIONS.</h1>
+    <p class="page-subtitle">Used across the Indian tax profession &mdash; wherever citations matter and audit trails are non-negotiable &mdash; and engineered for audit-first governance.</p>
 
-    <div class="pipeline">
-      <div class="pipeline-list">
-        <div class="pipeline-step"><span class="n">1</span><div class="t">Case Ingest<small>Read appeal memorandum, assessment order, and grounds of appeal. Extract assessee, AY, sections invoked, quantum in dispute.</small></div></div>
-        <div class="pipeline-step"><span class="n">2</span><div class="t">Facts &amp; Timeline<small>Assemble the facts of the case, order flow, and material dates — sourced from the file itself, with page-level citations.</small></div></div>
-        <div class="pipeline-step"><span class="n">3</span><div class="t">Grounds of Appeal<small>Restate each ground, map it to the section it turns on, and identify the point of law at stake.</small></div></div>
-        <div class="pipeline-step"><span class="n">4</span><div class="t">Legal Analysis<small>Retrieve applicable provisions, provisos and CBDT circulars. Cross-check against the assessment order's reasoning.</small></div></div>
-        <div class="pipeline-step"><span class="n">5</span><div class="t">Findings &amp; Decision<small>Draft the findings on each ground and the operative decision — every conclusion anchored to a cited provision.</small></div></div>
-        <div class="pipeline-step"><span class="n">6</span><div class="t">Edit, Export &amp; Audit<small>Refine per-issue in an in-app DOCX editor, then export a signature-ready order with every citation preserved and every session audit-logged.</small></div></div>
+    <div class="grid-4">
+      <div class="info-card"><h4>Income-Tax Officers</h4><p>Faster research, cleaner notices, pre-drafted orders &mdash; every claim cited.</p></div>
+      <div class="info-card"><h4>CIT(A) / NFAC</h4><p>Six-module appellate drafting from case ingest to signature-ready order.</p></div>
+      <div class="info-card"><h4>Chartered Accountants</h4><p>Opinions, notice responses and appeals &mdash; cited end-to-end.</p></div>
+      <div class="info-card"><h4>Legal Counsel</h4><p>Tribunal, HC and SC teams building citation-perfect briefs.</p></div>
+    </div>
+
+    <div class="grid-4" style="margin-top: 12px;">
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Role-Based Access</h3>
+        <p>Super admin, wing admin, officer, auditor &mdash; clear permissions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <h3>Full Audit Trail</h3>
+        <p>Every login and query recorded. Compliant by default.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"/></svg></div>
+        <h3>Hosted &amp; Secured in India</h3>
+        <p>Encrypted in transit and at rest; air-gap / on-prem on requirement.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+        <h3>Refusal Guarantee</h3>
+        <p>No hallucinations. When evidence is absent, the assistant refuses.</p>
       </div>
     </div>
   </div>
@@ -1736,66 +1768,55 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 10 — RULINGS / CASE-LAW SEARCH                           -->
+<!-- PAGE 10 - PRICING & PLANS                                    -->
 <!-- ============================================================ -->
-<section class="page">
+<section class="page page-pricing">
   <div class="decor-top-right"></div>
-  <div class="decor-bottom-left"></div>
+  <div class="decor-bottom-right"></div>
   <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
+    <div class="logo-mark"><img src="logo.png" alt="Wenvia BharatTax logo" /></div>
     <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
   </div>
 
   <div class="page-inner">
-    <span class="eyebrow-tag">07 · Feature Deep Dive</span>
-    <h1 class="page-title">RULINGS<br/><span>THE RIGHT PRECEDENT.</span> EVERY TIME.</h1>
-    <p class="page-subtitle">Search a curated Supreme Court and High Court judgment corpus &mdash; and pull live Tribunal and higher-bench rulings on demand, without leaving the app.</p>
+    <span class="eyebrow-tag">09 &middot; Pricing &amp; Plans</span>
+    <h1 class="page-title">ONE LICENSE.<br/><span>EVERYTHING</span> INCLUDED.</h1>
+    <p class="page-subtitle">A simple per-seat annual license for income-tax officers, wings, benches and CAs &mdash; every capability in the product, no feature gates, no tier maze.</p>
 
-    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
-      <div>
-        <p class="body-copy">
-          Search by issue, section, party, bench, year or citation. Get judgment excerpts
-          with the paragraph number, the operative finding and a direct link back to the
-          source &mdash; ready to drop into your order or opinion.
-        </p>
-        <ul class="check-list" style="margin-top: 12px;">
-          <li><span><strong>SC &amp; HC corpus</strong> &mdash; curated library, paragraph-level citations.</span></li>
-          <li><span><strong>Live tribunal lookup</strong> &mdash; ITAT and current apex-bench rulings on demand.</span></li>
-          <li><span><strong>Section-mapped</strong> &mdash; every ruling tagged to the provisions it turns on.</span></li>
-          <li><span><strong>Precedent chaining</strong> &mdash; jump to relied-on or distinguished judgments.</span></li>
+    <div style="display:grid; grid-template-columns: 0.92fr 1.18fr; gap: 18px; margin-top: 6mm; align-items: stretch;">
+
+      <div class="price-card price-card-featured" style="transform:none; justify-content:center; padding: 26px 22px;">
+        <div class="price-tier">BharatTax &middot; Annual License</div>
+        <div class="price-amount" style="font-size:46px; margin-top:4px;">&#8377;45,999</div>
+        <div class="price-unit" style="display:block; font-size:12px; margin: 2px 0 0;">+ 18% GST &middot; per user / year</div>
+        <div class="price-monthly" style="margin-top:6px;">&asymp; &#8377;54,279 all-inclusive &middot; &#8377;3,833 / month effective</div>
+        <div class="price-callout" style="color: var(--green-light); margin-top:10px;">30-day free trial &middot; web or departmental desktop app</div>
+        <div class="price-desc" style="margin-top:10px;">One seat = one concurrent user. Volume &amp; departmental seat plans on request.</div>
+      </div>
+
+      <div class="price-card" style="padding: 22px 22px 20px;">
+        <div class="price-tier" style="color: var(--blue);">Everything included</div>
+        <ul class="price-features" style="border-top:none; padding-top:6px; margin-top:4px;">
+          <li>Unlimited cited research on the Income-tax Act, Rules &amp; CBDT circulars</li>
+          <li>Live SC / HC / ITAT case-law lookup, paragraph-level</li>
+          <li>Six-module appellate order drafting to ITBA-ready DOCX</li>
+          <li>Every notice &amp; order template &mdash; 142(1), 143(2), 148, 156, 271 / 274, 154</li>
+          <li>Document Q&amp;A &mdash; upload notices &amp; orders, ask scoped questions</li>
+          <li>Limitation calendar, reminders, sticky notes &amp; your docket</li>
+          <li>Personalisation, watchlists &amp; statutory calculators</li>
+          <li>Role-based access, full audit trail &mdash; hosted &amp; secured in India</li>
+          <li>Priority support &amp; onboarding for your wing or firm</li>
         </ul>
       </div>
-
-      <div class="chat-mock">
-        <div class="chat-header">
-          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
-          <div class="chat-title">Wenvia BharatTax · Rulings</div>
-        </div>
-        <div class="user-bubble">Any SC/HC ruling on §14A disallowance where no exempt income earned in the year?</div>
-        <div class="bot-row">
-          <div class="bot-avatar">
-            <img src="logo.png" alt="Wenvia BharatTax logo" />
-          </div>
-          <div class="bot-msg">
-            The Supreme Court in <em>PCIT v. Era Infrastructure (2022)</em> upheld the position that
-            <span class="cite-chip">§14A</span> disallowance cannot exceed exempt income &mdash; and does
-            not apply where none is earned in the year. <span class="cite-num">1</span> Delhi HC in
-            <em>Cheminvest v. CIT (2015)</em> is the leading precedent. <span class="cite-num">2</span>
-          </div>
-        </div>
-        <div class="source-cards">
-          <div class="src-card"><div class="src-title">Supreme Court · 2022</div><div class="src-ref">PCIT v. Era Infrastructure &mdash; ¶12</div></div>
-          <div class="src-card"><div class="src-title">Delhi High Court · 2015</div><div class="src-ref">Cheminvest v. CIT &mdash; ¶23</div></div>
-        </div>
-      </div>
     </div>
 
-    <div class="quote-block" style="margin-top: 20px;">
-      <p>"Search precedent the way an officer actually needs to: by issue, by bench, by year &mdash; and always with the paragraph in hand."</p>
-      <cite>&mdash; The Wenvia BharatTax Rulings Workspace</cite>
+    <div class="grid-3" style="margin-top: 18px;">
+      <div class="info-card"><h4>30-Day Free Trial</h4><p>Full access before you commit &mdash; evaluate on your own files, no card required.</p></div>
+      <div class="info-card"><h4>Per-Seat Licensing</h4><p>One concurrent user per seat. Add seats as your wing, circle or firm grows.</p></div>
+      <div class="info-card"><h4>Deploy Your Way</h4><p>Cloud hosted in India, a departmental desktop app, or on-prem / air-gap on request.</p></div>
     </div>
+
+    <p class="pricing-note"><strong>Price per user, per year &mdash; exclusive of 18% GST.</strong> Enterprise &amp; departmental seat plans, on-premise and air-gapped deployment available on request &mdash; talk to sales.</p>
   </div>
 
   <div class="page-num">
@@ -1814,490 +1835,7 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- PAGE 11 — DRAFTING SUITE (notices & orders)                   -->
-<!-- ============================================================ -->
-<section class="page">
-  <div class="decor-top-right"></div>
-  <div class="decor-bottom-right"></div>
-  <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
-    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
-  </div>
-
-  <div class="page-inner">
-    <span class="eyebrow-tag">07 · Feature Deep Dive</span>
-    <h1 class="page-title">DRAFTING SUITE<br/><span>NOTICES &amp; ORDERS</span> TO ITBA.</h1>
-    <p class="page-subtitle">A guided drafting workspace for the notices and orders an officer prepares every day &mdash; grounded in the file, cited to the statute, exported ready for ITBA.</p>
-
-    <div class="grid-3">
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-        </div>
-        <h3>§ 142(1) Notices</h3>
-        <p>Enquiry notices with the right particulars, response window and statutory language &mdash; pre-filled from the case context.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
-        </div>
-        <h3>§ 143(2) Notices</h3>
-        <p>Scrutiny notices with the correct limitation calendar, jurisdictional recital and assessee particulars.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <h3>Show-Cause Notices</h3>
-        <p>Reasoned show-cause notices with the precise provision invoked, the material found and the response points enumerated.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
-        </div>
-        <h3>§ 154 Rectification</h3>
-        <p>Rectification orders drafted against the mistake identified, with the amended computation and the statutory ground on record.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v4H4zM4 12h16v4H4zM4 20h10"/></svg>
-        </div>
-        <h3>Assessment &amp; Penalty Orders</h3>
-        <p>Structured templates with facts, discussion, findings and computation &mdash; every conclusion anchored to a cited provision.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </div>
-        <h3>ITBA-Ready DOCX</h3>
-        <p>One-click export to signature-ready DOCX preserving formatting, citations and issue numbering &mdash; slot it straight into ITBA.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="page-num">
-    <span class="label">Page</span>
-    <span class="num">11</span>
-    <span class="page-num-dot">B</span>
-  </div>
-  <div class="page-footer-brand">
-    <span class="pfb-dot"></span>
-    <span class="pfb-text">
-      <span class="pfb-title">Wenvia BharatTax</span>
-      <span class="pfb-tag">by</span>
-      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
-    </span>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PAGE 12 — DOCUMENT Q&A                                        -->
-<!-- ============================================================ -->
-<section class="page">
-  <div class="decor-top-right"></div>
-  <div class="decor-bottom-left"></div>
-  <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
-    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
-  </div>
-
-  <div class="page-inner">
-    <span class="eyebrow-tag">06 · Feature Deep Dive</span>
-    <h1 class="page-title">DOCUMENT Q&amp;A<br/><span>ASK YOUR OWN FILES.</span></h1>
-    <p class="page-subtitle">Upload a notice, an assessment order, a show-cause, or a client's submissions. Ask questions scoped to that file, get answers cited to both the document and the underlying law.</p>
-
-    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
-      <div>
-        <ul class="check-list" style="margin-top: 4px;">
-          <li><span><strong>Notices &amp; orders</strong> — PDF, image, or scanned copies.</span></li>
-          <li><span><strong>Session-scoped</strong> — files stay in your workspace.</span></li>
-          <li><span><strong>Cross-cited</strong> — answers reference both file and law.</span></li>
-          <li><span><strong>Deadlines surfaced</strong> — response windows extracted automatically.</span></li>
-          <li><span><strong>Audit-logged</strong> — every upload and query recorded.</span></li>
-        </ul>
-      </div>
-
-      <div class="chat-mock">
-        <div class="chat-header">
-          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
-          <div class="chat-title">Wenvia BharatTax · Document Q&amp;A</div>
-        </div>
-        <div style="background: var(--blue-tint); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display:flex; align-items:center; gap:10px;">
-          <div style="width:30px; height:30px; border-radius:8px; background: var(--white); color: var(--navy); display:flex; align-items:center; justify-content:center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div>
-            <div style="font-weight:700; color: var(--navy); font-size:11px;">Notice_143(2)_AY2023-24.pdf</div>
-            <div style="color: var(--muted); font-size:10px;">Uploaded · 3 pages</div>
-          </div>
-        </div>
-        <div class="user-bubble">What is the response deadline, and which section is invoked?</div>
-        <div class="bot-row">
-          <div class="bot-avatar">
-            <img src="logo.png" alt="Wenvia BharatTax logo" />
-          </div>
-          <div class="bot-msg">
-            The notice is issued under <span class="cite-chip">§143(2)</span> requiring
-            the assessee to attend on <strong>15 May 2025</strong>. Statutory limitation
-            is in the proviso to that section. <span class="cite-num">1</span>
-          </div>
-        </div>
-        <div class="source-cards">
-          <div class="src-card"><div class="src-title">Notice_143(2)…pdf</div><div class="src-ref">Page 1, para 2</div></div>
-          <div class="src-card"><div class="src-title">Income Tax Act, 1961</div><div class="src-ref">§143(2) — proviso</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="page-num">
-    <span class="label">Page</span>
-    <span class="num">12</span>
-    <span class="page-num-dot">B</span>
-  </div>
-  <div class="page-footer-brand">
-    <span class="pfb-dot"></span>
-    <span class="pfb-text">
-      <span class="pfb-title">Wenvia BharatTax</span>
-      <span class="pfb-tag">by</span>
-      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
-    </span>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PAGE 11 — WHO WE SERVE                                        -->
-<!-- ============================================================ -->
-<section class="page">
-  <div class="decor-top-right"></div>
-  <div class="decor-bottom-right"></div>
-  <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
-    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
-  </div>
-
-  <div class="page-inner">
-    <span class="eyebrow-tag">08 · Who We Serve</span>
-    <h1 class="page-title">PROFESSIONALS<br/>WHO CAN'T <span>AFFORD TO BE WRONG.</span></h1>
-    <p class="page-subtitle">Used across the Indian tax profession — wherever citations matter and audit trails are non-negotiable.</p>
-
-    <div class="grid-4">
-      <div class="info-card">
-        <h4>Income-Tax Officers</h4>
-        <p>Faster research, cleaner notices, pre-drafted orders — every claim cited.</p>
-      </div>
-      <div class="info-card">
-        <h4>CIT(A) Benches</h4>
-        <p>Six-module appellate drafting from case ingest to signature-ready order.</p>
-      </div>
-      <div class="info-card">
-        <h4>Chartered Accountants</h4>
-        <p>Opinion drafting, notice response, appeal preparation — cited end-to-end.</p>
-      </div>
-      <div class="info-card">
-        <h4>Legal Counsel</h4>
-        <p>Tribunal, HC and SC practice teams building citation-perfect briefs.</p>
-      </div>
-      <div class="info-card">
-        <h4>Corporate Tax Teams</h4>
-        <p>In-house counsel and controllers of large Indian enterprises.</p>
-      </div>
-      <div class="info-card">
-        <h4>PSUs &amp; Regulators</h4>
-        <p>Where data residency and traceable answers are absolute requirements.</p>
-      </div>
-      <div class="info-card">
-        <h4>Academia &amp; Training</h4>
-        <p>Onboarding new officers and articled assistants with a cited-first tool.</p>
-      </div>
-      <div class="info-card">
-        <h4>Legal Publishers</h4>
-        <p>A citation-first research layer for their platforms — no vendor lock-in.</p>
-      </div>
-    </div>
-
-    <div class="highlight-block" style="margin-top: 18px;">
-      <h3>Serving the full spectrum.</h3>
-      <p>From a boutique CA practice to a wing of the Income-tax Department — Wenvia BharatTax scales to fit, with wings, seats, and role-based access built in from day one.</p>
-    </div>
-  </div>
-
-  <div class="page-num">
-    <span class="label">Page</span>
-    <span class="num">13</span>
-    <span class="page-num-dot">B</span>
-  </div>
-  <div class="page-footer-brand">
-    <span class="pfb-dot"></span>
-    <span class="pfb-text">
-      <span class="pfb-title">Wenvia BharatTax</span>
-      <span class="pfb-tag">by</span>
-      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
-    </span>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PAGE 12 — USE CASES                                           -->
-<!-- ============================================================ -->
-<section class="page">
-  <div class="decor-top-right"></div>
-  <div class="decor-bottom-left"></div>
-  <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
-    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
-  </div>
-
-  <div class="page-inner">
-    <span class="eyebrow-tag">09 · Real Work</span>
-    <h1 class="page-title">A DAY WITH<br/><span>BHARAT TAX.</span></h1>
-    <p class="page-subtitle">Six ways professionals use Wenvia BharatTax every day — real questions, real citations, real time saved.</p>
-
-    <div class="grid-2">
-      <div class="usecase-card">
-        <span class="usecase-tag">Research</span>
-        <h4>Answer a technical query in seconds</h4>
-        <p>Instead of hunting through a 900-page Act, ask Wenvia BharatTax and get a footnoted answer instantly.</p>
-        <div class="prompt">"What is the maximum deduction under §80C for a HUF assessee?"</div>
-      </div>
-      <div class="usecase-card">
-        <span class="usecase-tag">Notice Response</span>
-        <h4>Turn a Section 143(2) notice into a plan</h4>
-        <p>Upload the notice. Get the deadline, applicable section, and response points — all cited.</p>
-        <div class="prompt">"Draft the response outline for this notice."</div>
-      </div>
-      <div class="usecase-card">
-        <span class="usecase-tag">Appellate Order</span>
-        <h4>Draft a CIT(A) order in six modules</h4>
-        <p>Upload the appeal file. Get a first-cut order across facts, grounds, analysis, findings, decision.</p>
-        <div class="prompt">"Draft the order for this appeal against §271(1)(c) penalty."</div>
-      </div>
-      <div class="usecase-card">
-        <span class="usecase-tag">Case-Law Lookup</span>
-        <h4>Pull the leading precedent, live</h4>
-        <p>Search the SC / HC corpus and fetch current Tribunal rulings on the point &mdash; with paragraph-level citations.</p>
-        <div class="prompt">"Latest ITAT ruling on §68 addition where source is explained but creditworthiness is disputed."</div>
-      </div>
-      <div class="usecase-card">
-        <span class="usecase-tag">Notice Drafting</span>
-        <h4>Generate a § 142(1) notice in minutes</h4>
-        <p>Pre-fill the enquiry particulars, response window and statutory recital &mdash; export straight to an ITBA-ready DOCX.</p>
-        <div class="prompt">"Draft a § 142(1) notice for verification of cash deposits in AY 2023-24."</div>
-      </div>
-      <div class="usecase-card">
-        <span class="usecase-tag">Onboarding</span>
-        <h4>Ramp up new officers faster</h4>
-        <p>Junior officers get authoritative, cited answers — without a senior spending an hour explaining.</p>
-        <div class="prompt">"Explain §68 — cash credits — in plain terms with the leading provisos."</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="page-num">
-    <span class="label">Page</span>
-    <span class="num">14</span>
-    <span class="page-num-dot">B</span>
-  </div>
-  <div class="page-footer-brand">
-    <span class="pfb-dot"></span>
-    <span class="pfb-text">
-      <span class="pfb-title">Wenvia BharatTax</span>
-      <span class="pfb-tag">by</span>
-      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
-    </span>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PAGE 13 — TRUST & SECURITY                                    -->
-<!-- ============================================================ -->
-<section class="page">
-  <div class="decor-top-right"></div>
-  <div class="decor-bottom-right"></div>
-  <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
-    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
-  </div>
-
-  <div class="page-inner">
-    <span class="eyebrow-tag">10 · Trust &amp; Security</span>
-    <h1 class="page-title">BUILT FOR<br/><span>REGULATED</span> PROFESSIONS.</h1>
-    <p class="page-subtitle">Every design decision was made with sensitive tax work and audit-first governance in mind.</p>
-
-    <div class="grid-4">
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </div>
-        <h3>Stays In-House</h3>
-        <p>Runs inside your infrastructure. Nothing leaves the department.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <h3>Role-Based Access</h3>
-        <p>Super admin, wing admin, officer, auditor — clear permissions.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </div>
-        <h3>Full Audit Trail</h3>
-        <p>Every login and every query recorded. Compliant by default.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"/></svg>
-        </div>
-        <h3>Made In India</h3>
-        <p>For Indian law, data-residency norms, and tax teams.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4-8-11a8 8 0 0 1 16 0c0 7-8 11-8 11z"/><circle cx="12" cy="11" r="3"/></svg>
-        </div>
-        <h3>Data Residency</h3>
-        <p>Your data lives where you deploy — nothing shipped to third-party clouds.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-        </div>
-        <h3>Refusal Guarantee</h3>
-        <p>No hallucinations. When evidence is absent, the assistant refuses.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="18" x2="12" y2="20"/></svg>
-        </div>
-        <h3>Departmental Desktop App</h3>
-        <p>A native desktop client for the strictest postures &mdash; drafting stays on the officer's own machine.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H4zM8 20h8M12 16v4"/><path d="M8 10l3 3 5-5"/></svg>
-        </div>
-        <h3>Sovereign LLM Option</h3>
-        <p>Run the answering model on your own GPU box &mdash; no third-party API calls at inference time.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="page-num">
-    <span class="label">Page</span>
-    <span class="num">15</span>
-    <span class="page-num-dot">B</span>
-  </div>
-  <div class="page-footer-brand">
-    <span class="pfb-dot"></span>
-    <span class="pfb-text">
-      <span class="pfb-title">Wenvia BharatTax</span>
-      <span class="pfb-tag">by</span>
-      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
-    </span>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PAGE 16 — PRICING & PLANS                                     -->
-<!-- ============================================================ -->
-<section class="page page-pricing">
-  <div class="decor-top-right"></div>
-  <div class="decor-bottom-right"></div>
-  <div class="logo-slot">
-    <div class="logo-mark">
-      <img src="logo.png" alt="Wenvia BharatTax logo" />
-    </div>
-    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
-  </div>
-
-  <div class="page-inner">
-    <span class="eyebrow-tag">11 · Pricing &amp; Plans</span>
-    <h1 class="page-title">PLANS THAT<br/><span>SCALE WITH</span> YOUR PRACTICE.</h1>
-    <p class="page-subtitle">Transparent, annual-billed plans for individual practitioners, professional firms and heavy-use appellate teams &mdash; every tier ships with cited answers, refusal guarantee, seat licensing and full audit trail.</p>
-
-    <div class="pricing-grid">
-      <!-- STARTER -->
-      <div class="price-card">
-        <div class="price-tier">STARTER</div>
-        <div class="price-amount">₹28,788<span class="price-unit"> / year</span></div>
-        <div class="price-monthly">₹2,399 / month effective</div>
-        <p class="price-desc">For individual CAs, students and taxpayer-side users getting started.</p>
-        <ul class="price-features">
-          <li>~ 200 cited research questions</li>
-          <li>Upload notices, orders, deeds &amp; judgments &mdash; up to 25 / month</li>
-          <li>Cited answers on IT Act, Rules &amp; CBDT circulars</li>
-          <li>Live SC / HC / ITAT case-law lookup</li>
-          <li>Single login &middot; e-mail support</li>
-        </ul>
-      </div>
-
-      <!-- PROFESSIONAL (featured) -->
-      <div class="price-card price-card-featured">
-        <div class="price-badge">MOST POPULAR</div>
-        <div class="price-tier">PROFESSIONAL</div>
-        <div class="price-amount">₹39,599<span class="price-unit"> / year</span></div>
-        <div class="price-monthly">₹3,300 / month effective</div>
-        <p class="price-callout">For the professional running 15+ files a week</p>
-        <p class="price-desc">For practising CAs, tax counsel and Assessing Officers on daily use.</p>
-        <ul class="price-features">
-          <li>~ 600 questions or 100 in-depth doc reads</li>
-          <li>Unlimited document uploads</li>
-          <li>Six-module appellate order drafting (.docx)</li>
-          <li>Persona-tuned answers (CA, AO, CFO, founder)</li>
-          <li>Self-audit warnings on every answer</li>
-          <li>Single login &middot; priority support</li>
-        </ul>
-      </div>
-
-      <!-- POWER -->
-      <div class="price-card">
-        <div class="price-tier">POWER</div>
-        <div class="price-amount">₹67,599<span class="price-unit"> / year</span></div>
-        <div class="price-monthly">₹5,633 / month effective</div>
-        <p class="price-desc">For full-time practitioners, senior counsel and appellate authorities.</p>
-        <ul class="price-features">
-          <li>~ 2,000 questions or 350 appellate drafts</li>
-          <li>Everything in Professional</li>
-          <li>Unlimited document uploads</li>
-          <li>Priority queue during peak hours</li>
-          <li>Extended chat &amp; doc retention (3 years)</li>
-          <li>Single login &middot; priority support</li>
-        </ul>
-      </div>
-    </div>
-
-    <p class="pricing-note">All plans billed annually &middot; prices in INR, <strong>exclusive of GST</strong> &middot; <strong>Enterprise &amp; departmental seat plans</strong> available on request &mdash; talk to sales.</p>
-  </div>
-
-  <div class="page-num">
-    <span class="label">Page</span>
-    <span class="num">16</span>
-    <span class="page-num-dot">B</span>
-  </div>
-  <div class="page-footer-brand">
-    <span class="pfb-dot"></span>
-    <span class="pfb-text">
-      <span class="pfb-title">Wenvia BharatTax</span>
-      <span class="pfb-tag">by</span>
-      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
-    </span>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- PAGE 17 — BACK COVER / CONTACT                                -->
+<!-- PAGE 11 - BACK COVER / CONTACT                                -->
 <!-- ============================================================ -->
 <section class="page back-cover">
   <div class="decor-back-tr"></div>
@@ -2314,7 +1852,7 @@
   </div>
 
   <div class="page-inner" style="justify-content: center;">
-    <span class="eyebrow-tag" style="color: var(--blue-light);">12 · Get In Touch</span>
+    <span class="eyebrow-tag" style="color: var(--blue-light);">10 · Get In Touch</span>
     <h1 class="page-title">GIVE YOUR TEAM A<br/><span>RESEARCH SUPERPOWER.</span></h1>
     <p class="page-subtitle">Book a live walkthrough. See Wenvia BharatTax answer real tax questions — with real citations — and draft a real appellate order in under thirty minutes.</p>
 

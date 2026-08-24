@@ -262,7 +262,7 @@ export default function AdminLayout() {
       <aside
         className={cn(
           "hidden md:flex shrink-0 bg-white text-slate-800 flex-col border-r border-slate-200 transition-[width] duration-200",
-          collapsed ? "w-16" : "w-72 lg:w-80",
+          collapsed ? "w-16" : "w-60 lg:w-64",
         )}
       >
         <Rail

@@ -623,6 +623,47 @@ export interface AdminServer {
   llm_endpoint_latency_ms: number | null;
 }
 
+// --- Daily workspace: matters, limitation calendar, reminders ---------------
+export interface WsMatter {
+  id: number;
+  title: string;
+  pan: string | null;
+  assessment_year: string | null;
+  appeal_no: string | null;
+  category: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export interface WsDeadline {
+  id: number;
+  matter_id: number;
+  kind: string;
+  label: string;
+  section_ref: string | null;
+  trigger_event: string | null;
+  trigger_date: string | null;
+  due_date: string;
+  is_auto: boolean;
+  status: string;
+  notes: string | null;
+}
+export interface WsReminder {
+  id: number;
+  matter_id: number | null;
+  deadline_id: number | null;
+  title: string;
+  due_at: string | null;
+  channels: string[];
+  status: string;
+  notes: string | null;
+}
+export interface WsRuleCatalogue {
+  triggers: { id: string; label: string }[];
+  rules: { id: string; trigger: string; label: string; section: string }[];
+}
+
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -1000,6 +1041,32 @@ export const api = {
   historyClear: (kind: HistoryKind = "all") =>
     req<void>(`/history?kind=${kind}`, { method: "DELETE" }),
   seatUsage: (wingId: number) => req<SeatUsage>(`/admin/wings/${wingId}/seats`),
+
+  // --- Daily workspace ------------------------------------------------------
+  wsLimitationRules: () => req<WsRuleCatalogue>("/workspace/limitation-rules"),
+  wsMatters: () => req<WsMatter[]>("/workspace/matters"),
+  wsMatter: (id: number) => req<WsMatter & { deadlines: WsDeadline[] }>(`/workspace/matters/${id}`),
+  wsCreateMatter: (body: Partial<WsMatter>) =>
+    req<WsMatter>("/workspace/matters", { method: "POST", body: JSON.stringify(body) }),
+  wsUpdateMatter: (id: number, body: Partial<WsMatter>) =>
+    req<WsMatter>(`/workspace/matters/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  wsDeleteMatter: (id: number) =>
+    req<void>(`/workspace/matters/${id}`, { method: "DELETE" }),
+  wsComputeDeadlines: (id: number, trigger_event: string, trigger_date: string) =>
+    req<{ created: WsDeadline[] }>(`/workspace/matters/${id}/deadlines/compute`, {
+      method: "POST",
+      body: JSON.stringify({ trigger_event, trigger_date }),
+    }),
+  wsAddDeadline: (id: number, body: { label: string; due_date: string; section_ref?: string; notes?: string }) =>
+    req<WsDeadline>(`/workspace/matters/${id}/deadlines`, { method: "POST", body: JSON.stringify(body) }),
+  wsUpdateDeadline: (id: number, body: { status?: string; label?: string; due_date?: string; notes?: string }) =>
+    req<WsDeadline>(`/workspace/deadlines/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  wsDeleteDeadline: (id: number) =>
+    req<void>(`/workspace/deadlines/${id}`, { method: "DELETE" }),
+  wsCalendar: (start: string, end: string, includeDone = false) =>
+    req<WsDeadline[]>(`/workspace/calendar?start=${start}&end=${end}&include_done=${includeDone}`),
+  wsReminders: (pendingOnly = true) =>
+    req<WsReminder[]>(`/workspace/reminders?pending_only=${pendingOnly}`),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
   adminCreateWing: (body: { name: string; code?: string; seat_limit?: number }) =>
     req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {

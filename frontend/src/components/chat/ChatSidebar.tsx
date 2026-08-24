@@ -210,7 +210,7 @@ export default function ChatSidebar({
   }
 
   return (
-    <aside className="relative w-full sm:w-72 lg:w-80 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
+    <aside className="relative w-full sm:w-60 lg:w-64 shrink-0 h-full flex flex-col bt-sidebar-bg text-slate-800 border-r border-slate-200 overflow-hidden">
       {/* Brand — h-20 banner with the logo rendered at h-40 + overflow-hidden
           so the PNG's built-in transparent padding gets clipped and the
           wordmark visibly fills the header. */}
