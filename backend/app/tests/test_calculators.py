@@ -40,3 +40,31 @@ def test_115bbe_zero_income():
     r = calc.tax_115bbe(0)
     assert r["total_tax"] == 0
     assert r["effective_rate_pct"] == 0.0
+
+
+def test_234c_all_unpaid():
+    r = calc.interest_234c(100_000, [0, 0, 0, 0])
+    # 450 + 1350 + 2250 + 1000
+    assert r["interest"] == 5_050
+
+
+def test_234c_fully_paid():
+    r = calc.interest_234c(100_000, [15_000, 45_000, 75_000, 100_000])
+    assert r["interest"] == 0
+
+
+def test_slab_new_regime_rebate_nil():
+    assert calc.slab_tax(700_000, "new")["total_tax"] == 0
+
+
+def test_slab_new_regime_above_rebate():
+    r = calc.slab_tax(1_000_000, "new")
+    assert r["tax_before_rebate"] == 50_000
+    assert r["total_tax"] == 52_000        # + 4% cess
+
+
+def test_capital_gains_ltcg_equity_exemption():
+    r = calc.capital_gains(225_000, "ltcg_equity")
+    assert r["taxable"] == 100_000         # after 1.25L exemption
+    assert r["tax"] == 12_500              # 12.5%
+    assert r["total_tax"] == 13_000        # + 4% cess

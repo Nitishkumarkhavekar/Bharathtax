@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -143,8 +143,135 @@ function Bbe115Calc() {
   );
 }
 
+function Calc234C() {
+  const [tax, setTax] = useState("");
+  const [paid, setPaid] = useState(["", "", "", ""]);
+  const [res, setRes] = useState<Ws234CResult | null>(null);
+  const labels = ["Paid by 15 Jun", "Paid by 15 Sep", "Paid by 15 Dec", "Paid by 15 Mar"];
+  const run = async () => {
+    const t = parseFloat(tax);
+    if (!t || t <= 0) { toast.error("Enter the tax liability."); return; }
+    try { setRes(await api.wsCalc234c(t, paid.map((p) => parseFloat(p) || 0))); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Total tax liability"><Input type="number" placeholder="e.g. 100000" value={tax} onChange={(e) => setTax(e.target.value)} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          {labels.map((l, i) => (
+            <Field key={i} label={l}>
+              <Input type="number" placeholder="cumulative" value={paid[i]}
+                onChange={(e) => setPaid(paid.map((v, j) => (j === i ? e.target.value : v)))} />
+            </Field>
+          ))}
+        </div>
+        <Button className="w-full" onClick={run}>Compute 234C interest</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />Enter advance tax paid cumulatively by each due date. 15/45/75/100% schedule.</p>
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-2">234C interest</div>
+            {res.installments.map((r) => (
+              <div key={r.installment} className="flex items-center justify-between py-1 text-[12.5px]">
+                <span className="text-slate-600">{r.installment}{r.shortfall > 0 ? ` · short ${inr(r.shortfall)}` : ""}</span>
+                <span className="tabular-nums font-semibold text-slate-800">{inr(r.interest)}</span>
+              </div>
+            ))}
+            <ResultRow label="Total interest" value={inr(res.interest)} strong />
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter values and compute.</div>}
+      </div>
+    </div>
+  );
+}
+
+function SlabCalc() {
+  const [income, setIncome] = useState("");
+  const [regime, setRegime] = useState("new");
+  const [res, setRes] = useState<WsSlabResult | null>(null);
+  const run = async () => {
+    const v = parseFloat(income);
+    if (!v || v <= 0) { toast.error("Enter the total income."); return; }
+    try { setRes(await api.wsCalcSlab(v, regime)); } catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Total income"><Input type="number" placeholder="e.g. 1200000" value={income} onChange={(e) => setIncome(e.target.value)} /></Field>
+        <Field label="Regime">
+          <div className="inline-flex rounded-lg bg-slate-100 p-1">
+            {[["new", "New"], ["old", "Old"]].map(([k, l]) => (
+              <button key={k} onClick={() => setRegime(k)}
+                className={cn("px-4 py-1.5 rounded-md text-[13px] font-semibold", regime === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>{l}</button>
+            ))}
+          </div>
+        </Field>
+        <Button className="w-full" onClick={run}>Compute tax</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />FY 2024-25 slabs incl. 87A rebate + 4% cess. Surcharge not modelled.</p>
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1 capitalize">{res.regime} regime tax</div>
+            <ResultRow label="Tax before rebate" value={inr(res.tax_before_rebate)} />
+            {res.rebate_87a > 0 && <ResultRow label="Rebate u/s 87A" value={`− ${inr(res.rebate_87a)}`} />}
+            <ResultRow label="Cess @ 4%" value={inr(res.cess)} />
+            <ResultRow label="Total tax" value={inr(res.total_tax)} strong />
+            <div className="mt-2 text-[12px] font-semibold text-slate-600">Effective rate: {res.effective_rate_pct}%</div>
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter income and compute.</div>}
+      </div>
+    </div>
+  );
+}
+
+const CG_KINDS = [
+  { v: "ltcg_equity", l: "LTCG — listed equity (112A)" },
+  { v: "stcg_equity", l: "STCG — listed equity (111A)" },
+  { v: "ltcg_other", l: "LTCG — other (112)" },
+];
+function CapGainsCalc() {
+  const [amount, setAmount] = useState("");
+  const [kind, setKind] = useState("ltcg_equity");
+  const [res, setRes] = useState<WsCapGainsResult | null>(null);
+  const run = async () => {
+    const v = parseFloat(amount);
+    if (!v || v <= 0) { toast.error("Enter the gain amount."); return; }
+    try { setRes(await api.wsCalcCapitalGains(v, kind)); } catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Type of gain">
+          <select value={kind} onChange={(e) => setKind(e.target.value)}
+            className="w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700">
+            {CG_KINDS.map((k) => <option key={k.v} value={k.v}>{k.l}</option>)}
+          </select>
+        </Field>
+        <Field label="Gain amount"><Input type="number" placeholder="e.g. 300000" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+        <Button className="w-full" onClick={run}>Compute tax</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />Rates effective 23 Jul 2024. LTCG-equity has a ₹1.25L exemption.</p>
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1">{res.label}</div>
+            <ResultRow label="Gain" value={inr(res.gain)} />
+            {res.exemption > 0 && <ResultRow label="Exemption" value={`− ${inr(res.exemption)}`} />}
+            <ResultRow label={`Taxable @ ${res.rate_pct}%`} value={inr(res.taxable)} />
+            <ResultRow label="Cess @ 4%" value={inr(res.cess)} />
+            <ResultRow label="Total tax" value={inr(res.total_tax)} strong />
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter the gain and compute.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -157,8 +284,8 @@ export default function Calculators() {
         </div>
       </div>
 
-      <div className="inline-flex rounded-lg bg-slate-100 p-1">
-        {([["interest", "Interest"], ["bbe", "Tax u/s 115BBE"]] as const).map(([k, l]) => (
+      <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
+        {([["interest", "Interest"], ["234c", "234C"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -168,7 +295,11 @@ export default function Calculators() {
       </div>
 
       <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
-        {tab === "interest" ? <InterestCalc /> : <Bbe115Calc />}
+        {tab === "interest" ? <InterestCalc />
+          : tab === "234c" ? <Calc234C />
+          : tab === "bbe" ? <Bbe115Calc />
+          : tab === "slab" ? <SlabCalc />
+          : <CapGainsCalc />}
       </div>
 
       <p className="flex items-start gap-1.5 text-[11.5px] text-slate-400">

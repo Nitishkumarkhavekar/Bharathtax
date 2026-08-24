@@ -130,3 +130,63 @@ class StickyNote(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class WorkspaceTemplate(Base):
+    """A user's reusable drafting template (notice / order / appeal boilerplate)
+    with {{PAN}} / {{AY}} / {{ASSESSEE}} placeholders filled from a matter."""
+    __tablename__ = "workspace_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(120))
+    category: Mapped[str] = mapped_column(String(32), default="other")   # notice/order/appeal/other
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Watchlist(Base):
+    """A saved watch — a section, topic or assessee to track for new rulings."""
+    __tablename__ = "watchlists"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    label: Mapped[str] = mapped_column(String(120))
+    query: Mapped[str] = mapped_column(String(300))          # search terms
+    kind: Mapped[str] = mapped_column(String(16), default="topic")   # section/topic/assessee
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class MatterShare(Base):
+    """Shares a matter with another user (view-only in v1) — the collaboration
+    primitive for ranges / circles / firms."""
+    __tablename__ = "matter_shares"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    matter_id: Mapped[int] = mapped_column(
+        ForeignKey("matters.id", ondelete="CASCADE"), index=True
+    )
+    owner_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    shared_with_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    permission: Mapped[str] = mapped_column(String(8), default="view")   # view | edit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

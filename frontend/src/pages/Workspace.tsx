@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock, Plus, Trash2, Check, AlarmClock, X, RefreshCw, FolderOpen, Info,
-  StickyNote as StickyNoteIcon, Pin,
+  StickyNote as StickyNoteIcon, Pin, Share2, UserPlus, Users2,
 } from "lucide-react";
-import { api, WsMatter, WsDeadline, WsRuleCatalogue, WsNote } from "../api";
+import { api, WsMatter, WsDeadline, WsRuleCatalogue, WsNote, WsShare } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -144,6 +144,10 @@ export default function Workspace() {
   const [noteBody, setNoteBody] = useState("");
   const [noteColor, setNoteColor] = useState("yellow");
 
+  // sharing
+  const [shares, setShares] = useState<WsShare[]>([]);
+  const [shareEmail, setShareEmail] = useState("");
+
   const refreshUpcoming = async () => {
     const start = todayISO();
     const end = new Date(Date.now() + 120 * 86_400_000).toISOString().slice(0, 10);
@@ -169,8 +173,27 @@ export default function Workspace() {
 
   const select = async (id: number) => {
     setSelectedId(id);
-    setNotes([]);
-    try { await Promise.all([loadDetail(id), api.wsNotes(id).then(setNotes)]); } catch { /* */ }
+    setNotes([]); setShares([]); setShareEmail("");
+    try {
+      const [d] = await Promise.all([api.wsMatter(id), api.wsNotes(id).then(setNotes)]);
+      setDetail(d);
+      if (d.owned) { try { setShares(await api.wsShares(id)); } catch { setShares([]); } }
+    } catch { /* */ }
+  };
+
+  const addShare = async () => {
+    if (!selectedId || !shareEmail.trim()) return;
+    try {
+      await api.wsAddShare(selectedId, shareEmail.trim());
+      setShareEmail("");
+      setShares(await api.wsShares(selectedId));
+      toast.success("Matter shared.");
+    } catch (e: any) { toast.error(e?.message || "Could not share the matter."); }
+  };
+  const removeShare = async (s: WsShare) => {
+    setShares((xs) => xs.filter((x) => x.id !== s.id));
+    try { await api.wsRemoveShare(s.id); }
+    catch (e: any) { toast.error(e?.message || "Could not remove."); if (selectedId) setShares(await api.wsShares(selectedId)); }
   };
 
   const addNote = async () => {
@@ -336,6 +359,9 @@ export default function Workspace() {
                 <div className="flex items-center gap-2">
                   <FolderOpen className={cn("size-4 shrink-0", selectedId === m.id ? "text-primary" : "text-slate-400")} />
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-slate-800">{m.title}</span>
+                  {m.owned === false && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase text-primary bg-primary/10 px-1.5 py-0.5 rounded">Shared</span>
+                  )}
                 </div>
                 <div className="mt-0.5 pl-6 text-[11px] text-slate-500 truncate">
                   {[m.pan, m.assessment_year, CATEGORIES.find((c) => c.v === m.category)?.l]
@@ -387,13 +413,20 @@ export default function Workspace() {
                       .filter(Boolean).join(" · ") || "—"}
                   </p>
                 </div>
-                <button onClick={() => removeMatter(detail)} title="Delete matter"
-                  className="ml-auto p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                  <Trash2 className="size-4" />
-                </button>
+                {detail.owned === false ? (
+                  <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-md">
+                    <Users2 className="size-3.5" /> Shared · read-only
+                  </span>
+                ) : (
+                  <button onClick={() => removeMatter(detail)} title="Delete matter"
+                    className="ml-auto p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
               </div>
 
-              {/* Compute deadlines from a trigger */}
+              {/* Compute deadlines from a trigger (owner only) */}
+              {detail.owned !== false && (
               <div className="p-3 rounded-xl bg-primary/5 ring-1 ring-primary/15 mb-4">
                 <div className="flex items-center gap-1.5 mb-2 text-[12px] font-semibold text-primary">
                   <CalendarClock className="size-4" /> Compute statutory deadlines
@@ -414,6 +447,7 @@ export default function Workspace() {
                   Enter one trigger date; every downstream deadline is computed, section-cited and added below.
                 </p>
               </div>
+              )}
 
               {/* This matter's deadlines */}
               {detail.deadlines.length === 0 ? (
@@ -487,6 +521,35 @@ export default function Workspace() {
                   </div>
                 )}
               </div>
+
+              {/* Collaboration — share the matter (owner only) */}
+              {detail.owned !== false && (
+                <div className="mt-5 pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5 mb-2.5 text-[12px] font-semibold text-slate-500 uppercase tracking-[0.1em]">
+                    <Share2 className="size-4" /> Shared with
+                  </div>
+                  <div className="flex gap-2 mb-2">
+                    <Input placeholder="colleague@email — a BharatTax user" value={shareEmail}
+                      onChange={(e) => setShareEmail(e.target.value)} />
+                    <Button className="shrink-0 h-9" onClick={addShare}><UserPlus className="size-4 mr-1" /> Share</Button>
+                  </div>
+                  {shares.length === 0 ? (
+                    <p className="text-[12px] text-slate-400">Not shared with anyone yet.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {shares.map((s) => (
+                        <div key={s.id} className="flex items-center gap-2 text-[12.5px] py-1">
+                          <Users2 className="size-3.5 text-slate-400 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate text-slate-700">{s.name || s.email}</span>
+                          <span className="text-[10px] uppercase text-slate-400">{s.permission}</span>
+                          <button onClick={() => removeShare(s)} title="Unshare"
+                            className="p-1 rounded text-slate-400 hover:text-rose-600"><X className="size-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-[13px] text-slate-400">

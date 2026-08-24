@@ -103,13 +103,81 @@ class TaxBBEIn(BaseModel):
     income: float
 
 
+class TemplateIn(BaseModel):
+    name: str
+    body: str
+    category: str | None = None
+
+
+class TemplatePatch(BaseModel):
+    name: str | None = None
+    body: str | None = None
+    category: str | None = None
+
+
+class WatchlistIn(BaseModel):
+    label: str
+    query: str
+    kind: str | None = None
+
+
+class WatchlistPatch(BaseModel):
+    label: str | None = None
+    query: str | None = None
+    kind: str | None = None
+
+
+class ShareIn(BaseModel):
+    email: str
+    permission: str | None = None
+
+
+class ReconRow(BaseModel):
+    key: str
+    name: str | None = None
+    amount: float = 0
+
+
+class ReconcileIn(BaseModel):
+    rows_a: list[ReconRow]
+    rows_b: list[ReconRow]
+    tolerance: float | None = None
+
+
+class Interest234CIn(BaseModel):
+    tax_liability: float
+    cum_paid: list[float]
+
+
+class SlabTaxIn(BaseModel):
+    income: float
+    regime: str | None = None
+
+
+class CapitalGainsIn(BaseModel):
+    amount: float
+    kind: str | None = None
+
+
 # ------------------------------------------------------------------ serializers
-def _matter_out(m) -> dict:
+def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
             "assessment_year": m.assessment_year, "appeal_no": m.appeal_no,
             "category": m.category, "status": m.status, "notes": m.notes,
+            "owned": owned, "shared": not owned,
             "created_at": m.created_at.isoformat() if m.created_at else None,
             "updated_at": m.updated_at.isoformat() if m.updated_at else None}
+
+
+def _template_out(t) -> dict:
+    return {"id": t.id, "name": t.name, "category": t.category, "body": t.body,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "updated_at": t.updated_at.isoformat() if t.updated_at else None}
+
+
+def _watchlist_out(w) -> dict:
+    return {"id": w.id, "label": w.label, "query": w.query, "kind": w.kind,
+            "created_at": w.created_at.isoformat() if w.created_at else None}
 
 
 def _deadline_out(d) -> dict:
@@ -143,7 +211,8 @@ def limitation_rules() -> dict:
 # ------------------------------------------------------------------ matters
 @router.get("/matters")
 def list_matters(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
-    return [_matter_out(m) for m in svc.list_matters(db, p.user.id)]
+    uid = p.user.id
+    return [_matter_out(m, owned=(m.user_id == uid)) for m in svc.list_matters(db, uid)]
 
 
 @router.post("/matters", status_code=201)
@@ -158,11 +227,11 @@ def create_matter(body: MatterIn, p: Principal = Depends(get_principal),
 @router.get("/matters/{matter_id}")
 def get_matter(matter_id: int, p: Principal = Depends(get_principal),
                db: Session = Depends(get_db)) -> dict:
-    m = svc.get_matter(db, matter_id, p.user.id)
+    m = svc.readable_matter(db, matter_id, p.user.id)
     if not m:
         raise HTTPException(404, "Not found")
-    out = _matter_out(m)
-    out["deadlines"] = [_deadline_out(d) for d in svc.list_deadlines(db, matter_id, p.user.id)]
+    out = _matter_out(m, owned=(m.user_id == p.user.id))
+    out["deadlines"] = [_deadline_out(d) for d in svc.list_deadlines(db, matter_id)]
     return out
 
 
@@ -319,3 +388,132 @@ def calc_115bbe(body: TaxBBEIn, p: Principal = Depends(get_principal)) -> dict:
     """Tax on unexplained income u/s 115BBE (60% + 25% surcharge + 4% cess)."""
     from app.services import calculators
     return calculators.tax_115bbe(body.income)
+
+
+# ------------------------------------------------------------------ templates
+@router.get("/templates")
+def list_templates(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
+    return [_template_out(t) for t in svc.list_templates(db, p.user.id)]
+
+
+@router.post("/templates", status_code=201)
+def add_template(body: TemplateIn, p: Principal = Depends(get_principal),
+                 db: Session = Depends(get_db)) -> dict:
+    if not (body.name or "").strip() or not (body.body or "").strip():
+        raise HTTPException(400, "name and body are required")
+    t = svc.create_template(db, p.user.id, name=body.name.strip(), body=body.body,
+                            category=body.category or "other")
+    return _template_out(t)
+
+
+@router.patch("/templates/{template_id}")
+def edit_template(template_id: int, body: TemplatePatch,
+                  p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> dict:
+    t = svc.update_template(db, template_id, p.user.id, **body.model_dump(exclude_none=True))
+    if not t:
+        raise HTTPException(404, "Not found")
+    return _template_out(t)
+
+
+@router.delete("/templates/{template_id}", status_code=204)
+def remove_template(template_id: int, p: Principal = Depends(get_principal),
+                    db: Session = Depends(get_db)) -> None:
+    if not svc.delete_template(db, template_id, p.user.id):
+        raise HTTPException(404, "Not found")
+
+
+# ------------------------------------------------------------------ watchlists
+@router.get("/watchlists")
+def list_watchlists(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
+    return [_watchlist_out(w) for w in svc.list_watchlists(db, p.user.id)]
+
+
+@router.post("/watchlists", status_code=201)
+def add_watchlist(body: WatchlistIn, p: Principal = Depends(get_principal),
+                  db: Session = Depends(get_db)) -> dict:
+    if not (body.label or "").strip() or not (body.query or "").strip():
+        raise HTTPException(400, "label and query are required")
+    w = svc.create_watchlist(db, p.user.id, label=body.label.strip(),
+                             query=body.query.strip(), kind=body.kind or "topic")
+    return _watchlist_out(w)
+
+
+@router.patch("/watchlists/{wl_id}")
+def edit_watchlist(wl_id: int, body: WatchlistPatch,
+                   p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> dict:
+    w = svc.update_watchlist(db, wl_id, p.user.id, **body.model_dump(exclude_none=True))
+    if not w:
+        raise HTTPException(404, "Not found")
+    return _watchlist_out(w)
+
+
+@router.delete("/watchlists/{wl_id}", status_code=204)
+def remove_watchlist(wl_id: int, p: Principal = Depends(get_principal),
+                     db: Session = Depends(get_db)) -> None:
+    if not svc.delete_watchlist(db, wl_id, p.user.id):
+        raise HTTPException(404, "Not found")
+
+
+# ------------------------------------------------------------------ collaboration
+@router.get("/matters/{matter_id}/shares")
+def list_shares(matter_id: int, p: Principal = Depends(get_principal),
+                db: Session = Depends(get_db)) -> list[dict]:
+    rows = svc.list_shares(db, matter_id, p.user.id)
+    if rows is None:
+        raise HTTPException(404, "Matter not found")
+    return rows
+
+
+@router.post("/matters/{matter_id}/shares", status_code=201)
+def add_share(matter_id: int, body: ShareIn, p: Principal = Depends(get_principal),
+              db: Session = Depends(get_db)) -> dict:
+    if not (body.email or "").strip():
+        raise HTTPException(400, "email is required")
+    status_, share = svc.share_matter(db, matter_id, p.user.id, body.email,
+                                       permission=body.permission or "view")
+    if status_ == "no_matter":
+        raise HTTPException(404, "Matter not found")
+    if status_ == "no_user":
+        raise HTTPException(404, "No BharatTax user with that email")
+    if status_ == "self":
+        raise HTTPException(400, "You already own this matter")
+    if status_ == "exists":
+        raise HTTPException(409, "Already shared with that user")
+    return share
+
+
+@router.delete("/shares/{share_id}", status_code=204)
+def remove_share(share_id: int, p: Principal = Depends(get_principal),
+                 db: Session = Depends(get_db)) -> None:
+    if not svc.unshare(db, share_id, p.user.id):
+        raise HTTPException(404, "Not found")
+
+
+# ------------------------------------------------------------------ reconciliation
+@router.post("/reconcile")
+def do_reconcile(body: ReconcileIn, p: Principal = Depends(get_principal)) -> dict:
+    """AIS / 26AS-style reconciliation of two entry sets."""
+    from app.services import reconcile as rec
+    rows_a = [r.model_dump() for r in body.rows_a]
+    rows_b = [r.model_dump() for r in body.rows_b]
+    tol = body.tolerance if body.tolerance is not None else 1.0
+    return rec.reconcile(rows_a, rows_b, tolerance=tol)
+
+
+# ------------------------------------------------------------------ more calculators
+@router.post("/calc/234c")
+def calc_234c(body: Interest234CIn, p: Principal = Depends(get_principal)) -> dict:
+    from app.services import calculators
+    return calculators.interest_234c(body.tax_liability, body.cum_paid)
+
+
+@router.post("/calc/slab")
+def calc_slab(body: SlabTaxIn, p: Principal = Depends(get_principal)) -> dict:
+    from app.services import calculators
+    return calculators.slab_tax(body.income, regime=body.regime or "new")
+
+
+@router.post("/calc/capital-gains")
+def calc_capital_gains(body: CapitalGainsIn, p: Principal = Depends(get_principal)) -> dict:
+    from app.services import calculators
+    return calculators.capital_gains(body.amount, kind=body.kind or "ltcg_equity")

@@ -73,3 +73,80 @@ def tax_115bbe(income: float, surcharge_pct: float = 25.0, cess_pct: float = 4.0
         "workings": (f"60% = {base:,.0f}; +{surcharge_pct:g}% surcharge = {surcharge:,.0f}; "
                      f"+{cess_pct:g}% cess = {cess:,.0f}; total = {total:,.0f}"),
     }
+
+
+# --- Sec. 234C: deferment of advance tax (quarterly) -------------------------
+# (percent of tax due by the cut-off, months of interest on the shortfall)
+_234C_SCHEDULE = [("15 Jun", 0.15, 3), ("15 Sep", 0.45, 3),
+                  ("15 Dec", 0.75, 3), ("15 Mar", 1.00, 1)]
+
+
+def interest_234c(tax_liability: float, cum_paid: list[float]) -> dict:
+    """Interest u/s 234C on advance-tax installment shortfalls.
+
+    ``cum_paid`` = advance tax paid CUMULATIVELY by [15 Jun, 15 Sep, 15 Dec,
+    15 Mar]. Interest is 1% for 3 months on each of the first three shortfalls
+    and 1% for 1 month on the last. (Standard 15/45/75/100% schedule; the
+    12%/36% safe-harbour for the first two is not applied — verify.)
+    """
+    tax_liability = max(0.0, round(tax_liability))
+    cum_paid = (list(cum_paid) + [0, 0, 0, 0])[:4]
+    rows, total = [], 0
+    for i, (label, pct, months) in enumerate(_234C_SCHEDULE):
+        required = tax_liability * pct
+        paid = max(0.0, float(cum_paid[i] or 0))
+        shortfall = max(0.0, round(required - paid))
+        interest = round(shortfall * 0.01 * months)
+        total += interest
+        rows.append({"installment": label, "required": round(required), "paid": round(paid),
+                     "shortfall": shortfall, "months": months, "interest": interest})
+    return {"section": "234C", "tax_liability": tax_liability, "installments": rows, "interest": total}
+
+
+# --- slab tax (FY 2024-25 / AY 2025-26) --------------------------------------
+_NEW_SLABS = [(300000, 0), (700000, 5), (1000000, 10), (1200000, 15), (1500000, 20), (float("inf"), 30)]
+_OLD_SLABS = [(250000, 0), (500000, 5), (1000000, 20), (float("inf"), 30)]
+
+
+def _slab_tax(income: float, slabs: list) -> float:
+    tax, lower = 0.0, 0.0
+    for upper, rate in slabs:
+        if income <= lower:
+            break
+        taxable = min(income, upper) - lower
+        tax += taxable * rate / 100.0
+        lower = upper
+    return tax
+
+
+def slab_tax(income: float, regime: str = "new") -> dict:
+    """Income-tax on slab income (FY 2024-25). Includes Sec. 87A rebate and 4%
+    cess; surcharge / marginal relief not modelled — an estimate to verify."""
+    income = max(0.0, round(income))
+    slabs = _NEW_SLABS if regime == "new" else _OLD_SLABS
+    base = round(_slab_tax(income, slabs))
+    rebate_limit = 700000 if regime == "new" else 500000
+    rebate = base if income <= rebate_limit else 0
+    after = base - rebate
+    cess = round(after * 0.04)
+    total = after + cess
+    return {"income": income, "regime": regime, "tax_before_rebate": base,
+            "rebate_87a": rebate, "cess": cess, "total_tax": total,
+            "effective_rate_pct": round(total / income * 100, 2) if income else 0.0}
+
+
+# --- capital gains (post 23-Jul-2024 rates) ----------------------------------
+def capital_gains(amount: float, kind: str = "ltcg_equity") -> dict:
+    """Tax on capital gains (rates effective 23 Jul 2024). Estimate — verify."""
+    amount = max(0.0, round(amount))
+    if kind == "ltcg_equity":            # Sec. 112A
+        exemption, taxable, rate, label = 125000, max(0.0, amount - 125000), 12.5, "LTCG on listed equity (Sec. 112A)"
+    elif kind == "stcg_equity":          # Sec. 111A
+        exemption, taxable, rate, label = 0, amount, 20.0, "STCG on listed equity (Sec. 111A)"
+    else:                                # Sec. 112 (other LTCG)
+        exemption, taxable, rate, label = 0, amount, 12.5, "LTCG (Sec. 112)"
+    tax = round(taxable * rate / 100.0)
+    cess = round(tax * 0.04)
+    return {"kind": kind, "label": label, "gain": amount, "exemption": exemption,
+            "taxable": round(taxable), "rate_pct": rate, "tax": tax, "cess": cess,
+            "total_tax": tax + cess}

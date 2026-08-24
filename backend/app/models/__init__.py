@@ -18,7 +18,9 @@ from app.models.enums import (
 from app.models.org import Department, Office, SeatLease, User, Wing
 from app.models.personalization import UserMemory, UserSettings
 from app.models.token_usage import TokenUsage
-from app.models.workspace import Deadline, Matter, Reminder, StickyNote
+from app.models.workspace import (
+    Deadline, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
+)
 
 __all__ = [
     "AuditLog", "Query",
@@ -31,6 +33,7 @@ __all__ = [
     "UserMemory", "UserSettings",
     "TokenUsage",
     "Matter", "Deadline", "Reminder", "StickyNote",
+    "WorkspaceTemplate", "Watchlist", "MatterShare",
     "SubscriptionPlan", "TokenPrice", "UserSubscription",
     "DesktopRelease",
     "SupportAttachment", "SupportMessage", "SupportTicket",
