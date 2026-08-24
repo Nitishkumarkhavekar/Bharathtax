@@ -663,6 +663,17 @@ export interface WsRuleCatalogue {
   triggers: { id: string; label: string }[];
   rules: { id: string; trigger: string; label: string; section: string }[];
 }
+export interface WsNote {
+  id: number;
+  matter_id: number | null;
+  body: string;
+  color: string;
+  section_ref: string | null;
+  source: string | null;
+  pinned: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1070,6 +1081,14 @@ export const api = {
   wsDueReminders: () => req<WsReminder[]>("/workspace/reminders/due"),
   wsUpdateReminder: (id: number, body: { status?: string; title?: string; due_at?: string; notes?: string }) =>
     req<WsReminder>(`/workspace/reminders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  wsNotes: (matterId?: number) =>
+    req<WsNote[]>(`/workspace/notes${matterId != null ? `?matter_id=${matterId}` : ""}`),
+  wsCreateNote: (body: { body: string; matter_id?: number | null; color?: string; section_ref?: string; source?: string }) =>
+    req<WsNote>("/workspace/notes", { method: "POST", body: JSON.stringify(body) }),
+  wsUpdateNote: (id: number, body: { body?: string; color?: string; pinned?: boolean; section_ref?: string }) =>
+    req<WsNote>(`/workspace/notes/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  wsDeleteNote: (id: number) =>
+    req<void>(`/workspace/notes/${id}`, { method: "DELETE" }),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
   adminCreateWing: (body: { name: string; code?: string; seat_limit?: number }) =>
     req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {

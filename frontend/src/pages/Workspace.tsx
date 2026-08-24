@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock, Plus, Trash2, Check, AlarmClock, X, RefreshCw, FolderOpen, Info,
+  StickyNote as StickyNoteIcon, Pin,
 } from "lucide-react";
-import { api, WsMatter, WsDeadline, WsRuleCatalogue } from "../api";
+import { api, WsMatter, WsDeadline, WsRuleCatalogue, WsNote } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -21,6 +22,19 @@ const CATEGORIES = [
   { v: "ca", l: "CA / Advocate" },
   { v: "other", l: "Other" },
 ];
+
+const NOTE_PALETTE = ["yellow", "blue", "green", "pink", "slate"];
+const NOTE_COLORS: Record<string, string> = {
+  yellow: "bg-amber-50 ring-amber-200",
+  blue: "bg-blue-50 ring-blue-200",
+  green: "bg-emerald-50 ring-emerald-200",
+  pink: "bg-pink-50 ring-pink-200",
+  slate: "bg-slate-50 ring-slate-200",
+};
+const NOTE_SWATCH: Record<string, string> = {
+  yellow: "bg-amber-300", blue: "bg-blue-300", green: "bg-emerald-300",
+  pink: "bg-pink-300", slate: "bg-slate-300",
+};
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -125,6 +139,11 @@ export default function Workspace() {
   const [trigger, setTrigger] = useState("");
   const [triggerDate, setTriggerDate] = useState(todayISO());
 
+  // notes
+  const [notes, setNotes] = useState<WsNote[]>([]);
+  const [noteBody, setNoteBody] = useState("");
+  const [noteColor, setNoteColor] = useState("yellow");
+
   const refreshUpcoming = async () => {
     const start = todayISO();
     const end = new Date(Date.now() + 120 * 86_400_000).toISOString().slice(0, 10);
@@ -150,7 +169,28 @@ export default function Workspace() {
 
   const select = async (id: number) => {
     setSelectedId(id);
-    try { await loadDetail(id); } catch { /* */ }
+    setNotes([]);
+    try { await Promise.all([loadDetail(id), api.wsNotes(id).then(setNotes)]); } catch { /* */ }
+  };
+
+  const addNote = async () => {
+    if (!selectedId || !noteBody.trim()) return;
+    try {
+      await api.wsCreateNote({ body: noteBody.trim(), matter_id: selectedId, color: noteColor });
+      setNoteBody("");
+      setNotes(await api.wsNotes(selectedId));
+    } catch (e: any) { toast.error(e?.message || "Could not add the note."); }
+  };
+  const togglePinNote = async (n: WsNote) => {
+    try {
+      await api.wsUpdateNote(n.id, { pinned: !n.pinned });
+      if (selectedId) setNotes(await api.wsNotes(selectedId));
+    } catch (e: any) { toast.error(e?.message || "Could not update the note."); }
+  };
+  const removeNote = async (n: WsNote) => {
+    setNotes((xs) => xs.filter((x) => x.id !== n.id));
+    try { await api.wsDeleteNote(n.id); }
+    catch (e: any) { toast.error(e?.message || "Could not delete the note."); if (selectedId) setNotes(await api.wsNotes(selectedId)); }
   };
 
   const createMatter = async () => {
@@ -388,6 +428,65 @@ export default function Workspace() {
                   ))}
                 </div>
               )}
+
+              {/* Sticky notes for this matter */}
+              <div className="mt-5 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 mb-2.5 text-[12px] font-semibold text-slate-500 uppercase tracking-[0.1em]">
+                  <StickyNoteIcon className="size-4" /> Notes
+                </div>
+
+                <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2.5 mb-3">
+                  <textarea
+                    value={noteBody} onChange={(e) => setNoteBody(e.target.value)}
+                    placeholder="Pin a note to this matter — reasoning, a section, a to-check…" rows={2}
+                    className="w-full resize-none bg-transparent text-[13px] text-slate-800 placeholder:text-slate-400 outline-none"
+                  />
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center gap-1">
+                      {NOTE_PALETTE.map((c) => (
+                        <button
+                          key={c} onClick={() => setNoteColor(c)} title={c} aria-label={`Colour ${c}`}
+                          className={cn("size-5 rounded-full ring-2 transition", NOTE_SWATCH[c],
+                            noteColor === c ? "ring-slate-500" : "ring-transparent hover:ring-slate-300")}
+                        />
+                      ))}
+                    </div>
+                    <Button className="ml-auto h-8 px-3 text-xs" onClick={addNote} disabled={!noteBody.trim()}>
+                      <Plus className="size-3.5 mr-1" /> Add note
+                    </Button>
+                  </div>
+                </div>
+
+                {notes.length === 0 ? (
+                  <p className="text-[12.5px] text-slate-400 text-center py-2">No notes yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {notes.map((n) => (
+                      <div key={n.id}
+                        className={cn("relative rounded-xl ring-1 p-3 pr-9", NOTE_COLORS[n.color] || NOTE_COLORS.yellow)}>
+                        <p className="text-[13px] text-slate-800 whitespace-pre-wrap break-words">{n.body}</p>
+                        {n.section_ref && (
+                          <span className="mt-1.5 inline-block text-[10.5px] font-semibold text-slate-500">{n.section_ref}</span>
+                        )}
+                        <div className="absolute top-1.5 right-1.5 flex flex-col gap-0.5">
+                          <button
+                            onClick={() => togglePinNote(n)} title={n.pinned ? "Unpin" : "Pin"}
+                            className={cn("p-1 rounded", n.pinned ? "text-primary" : "text-slate-400 hover:text-slate-700")}
+                          >
+                            <Pin className={cn("size-3.5", n.pinned && "fill-current")} />
+                          </button>
+                          <button
+                            onClick={() => removeNote(n)} title="Delete note"
+                            className="p-1 rounded text-slate-400 hover:text-rose-600"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-[13px] text-slate-400">
