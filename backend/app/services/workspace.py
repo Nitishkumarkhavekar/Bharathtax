@@ -19,14 +19,20 @@ from app.services import limitation
 
 # How far ahead of a statutory deadline to seed the auto-reminder.
 _AUTO_REMINDER_LEAD_DAYS = 7
+# India Standard Time — reminders fire at 09:00 IST, not 09:00 UTC.
+_IST = timezone(timedelta(hours=5, minutes=30))
+# Bound unpaginated list queries so a heavy account can't load unbounded rows.
+_LIST_CAP = 500
 
 
 # --- matters -----------------------------------------------------------------
 def list_matters(db: Session, user_id: int) -> list[Matter]:
     """Matters the user owns, plus matters shared with them."""
-    owned = list(db.scalars(select(Matter).where(Matter.user_id == user_id)))
+    owned = list(db.scalars(
+        select(Matter).where(Matter.user_id == user_id)
+        .order_by(Matter.updated_at.desc()).limit(_LIST_CAP)))
     shared_ids = [s.matter_id for s in db.scalars(
-        select(MatterShare).where(MatterShare.shared_with_user_id == user_id))]
+        select(MatterShare).where(MatterShare.shared_with_user_id == user_id).limit(_LIST_CAP))]
     shared = list(db.scalars(select(Matter).where(Matter.id.in_(shared_ids)))) if shared_ids else []
     everything = owned + shared
     everything.sort(key=lambda m: m.updated_at or m.created_at, reverse=True)
@@ -93,8 +99,8 @@ def list_deadlines(db: Session, matter_id: int) -> list[Deadline]:
 
 def _seed_reminder(db: Session, dl: Deadline) -> None:
     lead = dl.due_date - timedelta(days=_AUTO_REMINDER_LEAD_DAYS)
-    when = max(lead, date.today())
-    due_at = datetime.combine(when, time(9, 0), tzinfo=timezone.utc)
+    when = max(lead, datetime.now(_IST).date())
+    due_at = datetime.combine(when, time(9, 0), tzinfo=_IST)   # 09:00 IST
     db.add(Reminder(
         user_id=dl.user_id, matter_id=dl.matter_id, deadline_id=dl.id,
         title=dl.label, due_at=due_at, channels=["in_app"], status="pending",
@@ -181,7 +187,7 @@ def list_reminders(db: Session, user_id: int, pending_only: bool = True) -> list
     stmt = select(Reminder).where(Reminder.user_id == user_id)
     if pending_only:
         stmt = stmt.where(Reminder.status == "pending")
-    return list(db.scalars(stmt.order_by(Reminder.due_at)))
+    return list(db.scalars(stmt.order_by(Reminder.due_at).limit(_LIST_CAP)))
 
 
 def due_reminders(db: Session, user_id: int, now: datetime | None = None) -> list[Reminder]:
@@ -235,7 +241,7 @@ def list_notes(db: Session, user_id: int, matter_id: int | None = None) -> list[
     if matter_id is not None:
         stmt = stmt.where(StickyNote.matter_id == matter_id)
     return list(db.scalars(
-        stmt.order_by(StickyNote.pinned.desc(), StickyNote.updated_at.desc())
+        stmt.order_by(StickyNote.pinned.desc(), StickyNote.updated_at.desc()).limit(_LIST_CAP)
     ))
 
 
@@ -277,7 +283,7 @@ def delete_note(db: Session, note_id: int, user_id: int) -> bool:
 def list_templates(db: Session, user_id: int) -> list[WorkspaceTemplate]:
     return list(db.scalars(
         select(WorkspaceTemplate).where(WorkspaceTemplate.user_id == user_id)
-        .order_by(WorkspaceTemplate.updated_at.desc())
+        .order_by(WorkspaceTemplate.updated_at.desc()).limit(_LIST_CAP)
     ))
 
 
@@ -317,7 +323,7 @@ def delete_template(db: Session, template_id: int, user_id: int) -> bool:
 def list_watchlists(db: Session, user_id: int) -> list[Watchlist]:
     return list(db.scalars(
         select(Watchlist).where(Watchlist.user_id == user_id)
-        .order_by(Watchlist.updated_at.desc())
+        .order_by(Watchlist.updated_at.desc()).limit(_LIST_CAP)
     ))
 
 

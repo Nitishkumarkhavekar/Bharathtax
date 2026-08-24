@@ -216,7 +216,8 @@ function SlabCalc() {
           <>
             <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1 capitalize">{res.regime} regime tax</div>
             <ResultRow label="Tax before rebate" value={inr(res.tax_before_rebate)} />
-            {res.rebate_87a > 0 && <ResultRow label="Rebate u/s 87A" value={`− ${inr(res.rebate_87a)}`} />}
+            {res.rebate_87a > 0 && <ResultRow label="Rebate / relief u/s 87A" value={`− ${inr(res.rebate_87a)}`} />}
+            {res.surcharge > 0 && <ResultRow label={`Surcharge @ ${res.surcharge_pct}%`} value={inr(res.surcharge)} />}
             <ResultRow label="Cess @ 4%" value={inr(res.cess)} />
             <ResultRow label="Total tax" value={inr(res.total_tax)} strong />
             <div className="mt-2 text-[12px] font-semibold text-slate-600">Effective rate: {res.effective_rate_pct}%</div>

@@ -125,10 +125,24 @@ def _slab_tax(income: float, slabs: list) -> float:
     return tax
 
 
+def _surcharge_rate(income: float, regime: str) -> float:
+    """Surcharge % on the income-tax for individuals (FY 2024-25)."""
+    if income <= 5_000_000:
+        return 0.0
+    if income <= 10_000_000:
+        return 10.0
+    if income <= 20_000_000:
+        return 15.0
+    if income <= 50_000_000:
+        return 25.0
+    return 25.0 if regime == "new" else 37.0        # new regime caps surcharge at 25%
+
+
 def slab_tax(income: float, regime: str = "new") -> dict:
-    """Income-tax on slab income (FY 2024-25). Includes the Sec. 87A rebate with
-    marginal relief and 4% cess. Surcharge (income > 50L) is NOT modelled — an
-    estimate to verify for high incomes."""
+    """Income-tax on slab income (FY 2024-25): slab tax + Sec. 87A rebate (with
+    marginal relief) + surcharge for income > 50L + 4% cess. Surcharge marginal
+    relief at the 50L/1cr/2cr/5cr thresholds is NOT modelled — verify near a
+    threshold."""
     income = max(0.0, round(income))
     slabs = _NEW_SLABS if regime == "new" else _OLD_SLABS
     base = round(_slab_tax(income, slabs))
@@ -139,10 +153,13 @@ def slab_tax(income: float, regime: str = "new") -> dict:
         # 87A marginal relief: tax just above the limit can't exceed the excess.
         after = min(base, income - rebate_limit)
     reduction = base - after                         # rebate and/or marginal relief
-    cess = round(after * 0.04)
-    total = after + cess
+    sur_rate = _surcharge_rate(income, regime)
+    surcharge = round(after * sur_rate / 100.0)
+    cess = round((after + surcharge) * 0.04)
+    total = after + surcharge + cess
     return {"income": income, "regime": regime, "tax_before_rebate": base,
-            "rebate_87a": reduction, "cess": cess, "total_tax": total,
+            "rebate_87a": reduction, "surcharge_pct": sur_rate, "surcharge": surcharge,
+            "cess": cess, "total_tax": total,
             "effective_rate_pct": round(total / income * 100, 2) if income else 0.0}
 
 

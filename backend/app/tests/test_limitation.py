@@ -51,6 +51,13 @@ def test_time_barring_153_twelve_months():
     assert r["due_date"] == date(2025, 3, 31)
 
 
+def test_time_barring_153_ay_aware_periods():
+    # AY 2016-17 (ends 31 Mar 2017) → 21 months
+    assert _one("end_of_ay", date(2017, 3, 31))["due_date"] == date(2018, 12, 31)
+    # AY 2018-19 (ends 31 Mar 2019) → 18 months
+    assert _one("end_of_ay", date(2019, 3, 31))["due_date"] == date(2020, 9, 30)
+
+
 def test_rectification_four_years_from_fy_end():
     # order passed 10 Aug 2026 -> FY ends 31 Mar 2027 -> +4 years
     r = _one("order_passed", date(2026, 8, 10))

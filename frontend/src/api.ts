@@ -738,7 +738,8 @@ export interface Ws234CResult {
 }
 export interface WsSlabResult {
   income: number; regime: string; tax_before_rebate: number;
-  rebate_87a: number; cess: number; total_tax: number; effective_rate_pct: number;
+  rebate_87a: number; surcharge_pct: number; surcharge: number;
+  cess: number; total_tax: number; effective_rate_pct: number;
 }
 export interface WsCapGainsResult {
   kind: string; label: string; gain: number; exemption: number;

@@ -76,6 +76,13 @@ def test_slab_87a_marginal_relief():
     assert r["total_tax"] == 5_200         # after=5000 (=705000-700000) + 4% cess
 
 
+def test_slab_surcharge_over_50l():
+    r = calc.slab_tax(6_000_000, "new")
+    assert r["tax_before_rebate"] == 1_490_000
+    assert r["surcharge_pct"] == 10.0      # 50L–1cr band
+    assert r["surcharge"] == 149_000
+
+
 def test_capital_gains_ltcg_equity_exemption():
     r = calc.capital_gains(225_000, "ltcg_equity")
     assert r["taxable"] == 100_000         # after 1.25L exemption
