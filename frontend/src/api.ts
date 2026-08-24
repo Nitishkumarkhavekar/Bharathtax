@@ -1067,6 +1067,9 @@ export const api = {
     req<WsDeadline[]>(`/workspace/calendar?start=${start}&end=${end}&include_done=${includeDone}`),
   wsReminders: (pendingOnly = true) =>
     req<WsReminder[]>(`/workspace/reminders?pending_only=${pendingOnly}`),
+  wsDueReminders: () => req<WsReminder[]>("/workspace/reminders/due"),
+  wsUpdateReminder: (id: number, body: { status?: string; title?: string; due_at?: string; notes?: string }) =>
+    req<WsReminder>(`/workspace/reminders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
   adminCreateWing: (body: { name: string; code?: string; seat_limit?: number }) =>
     req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {
