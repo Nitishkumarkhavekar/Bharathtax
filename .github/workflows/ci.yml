@@ -55,6 +55,25 @@ jobs:
             echo "::error::A Google API key pattern is committed"; exit 1; fi
           echo "OK no tracked secrets"
 
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend
+        run: pip install ./backend
+      - name: Pytest (pure logic + DB-integration on SQLite)
+        working-directory: backend
+        run: |
+          python -m pytest -q \
+            app/tests/test_limitation.py \
+            app/tests/test_calculators.py \
+            app/tests/test_reconcile.py \
+            app/tests/test_workspace_integration.py \
+            app/tests/test_chunker.py
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:

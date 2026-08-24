@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -92,8 +92,9 @@ class Reminder(Base):
     )
     title: Mapped[str] = mapped_column(String(200))
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    # Delivery channels, e.g. ["in_app", "email"].
-    channels: Mapped[list] = mapped_column(JSONB, default=list)
+    # Delivery channels, e.g. ["in_app", "email"]. JSONB on Postgres; plain JSON
+    # on other dialects (SQLite) so the models are testable without Postgres.
+    channels: Mapped[list] = mapped_column(JSON().with_variant(JSONB, "postgresql"), default=list)
     # pending | sent | done | dismissed
     status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

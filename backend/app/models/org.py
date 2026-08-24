@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -88,7 +88,8 @@ class User(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Per-user module access, e.g. ["chat","appeals","rulings","history"].
     # NULL == all modules. Admins are never gated. Set by an admin from the console.
-    features: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    features: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String).with_variant(JSON, "sqlite"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     wing: Mapped[Wing] = relationship(back_populates="users")
