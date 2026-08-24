@@ -10,14 +10,19 @@ const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.ro
 
 function parseRows(text: string): { key: string; name?: string; amount: number }[] {
   const rows: { key: string; name?: string; amount: number }[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    const parts = line.split(",").map((s) => s.trim());
-    if (parts.length < 2 || !parts[0]) continue;
-    const key = parts[0];
-    const name = parts.length >= 3 ? parts[1] : "";
-    const amt = parseFloat((parts[parts.length >= 3 ? 2 : 1] || "").replace(/[^0-9.\-]/g, ""));
-    if (isNaN(amt)) continue;
-    rows.push({ key, name, amount: amt });
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    // Amount is the trailing number — may carry thousands separators / decimals
+    // ("45,000.50"). Parse it from the right so commas inside it don't split.
+    const m = line.match(/(-?[\d,]*\.?\d+)\s*$/);
+    if (!m || m.index === undefined) continue;
+    const amount = parseFloat(m[1].replace(/,/g, ""));
+    if (isNaN(amount)) continue;
+    const rest = line.slice(0, m.index).replace(/[,\s]+$/, "");
+    const restParts = rest.split(",").map((s) => s.trim()).filter(Boolean);
+    if (restParts.length === 0) continue;                 // need at least a key
+    rows.push({ key: restParts[0], name: restParts.slice(1).join(", "), amount });
   }
   return rows;
 }

@@ -9,9 +9,41 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+import re
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
+
+# Constrained enums — invalid values are rejected with a 422 rather than stored.
+MatterCategory = Literal["officer", "cita", "drp", "investigation", "ici", "tds", "ca", "other"]
+MatterStatus = Literal["open", "in_progress", "awaiting_order", "closed"]
+DeadlineStatus = Literal["open", "done", "dismissed"]
+NoteColor = Literal["yellow", "blue", "green", "pink", "slate"]
+WatchKind = Literal["section", "topic", "assessee"]
+ReminderStatus = Literal["pending", "sent", "done", "dismissed"]
+
+_PAN_RE = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
+_AY_RE = re.compile(r"^20\d{2}-\d{2}$")
+
+
+def _validate_pan(v: str | None) -> str | None:
+    if v is None or not v.strip():
+        return v
+    v = v.strip().upper()
+    if not _PAN_RE.match(v):
+        raise ValueError("PAN must be like ABCDE1234E")
+    return v
+
+
+def _validate_ay(v: str | None) -> str | None:
+    if v is None or not v.strip():
+        return v
+    v = v.strip()
+    if not _AY_RE.match(v):
+        raise ValueError("Assessment year must be like 2023-24")
+    return v
 
 from app.api.deps import Principal, get_principal
 from app.core.db import get_db
@@ -27,9 +59,12 @@ class MatterIn(BaseModel):
     pan: str | None = None
     assessment_year: str | None = None
     appeal_no: str | None = None
-    category: str | None = None
-    status: str | None = None
+    category: MatterCategory | None = None
+    status: MatterStatus | None = None
     notes: str | None = None
+
+    _v_pan = field_validator("pan")(classmethod(lambda cls, v: _validate_pan(v)))
+    _v_ay = field_validator("assessment_year")(classmethod(lambda cls, v: _validate_ay(v)))
 
 
 class MatterPatch(BaseModel):
@@ -37,9 +72,12 @@ class MatterPatch(BaseModel):
     pan: str | None = None
     assessment_year: str | None = None
     appeal_no: str | None = None
-    category: str | None = None
-    status: str | None = None
+    category: MatterCategory | None = None
+    status: MatterStatus | None = None
     notes: str | None = None
+
+    _v_pan = field_validator("pan")(classmethod(lambda cls, v: _validate_pan(v)))
+    _v_ay = field_validator("assessment_year")(classmethod(lambda cls, v: _validate_ay(v)))
 
 
 class ComputeIn(BaseModel):
@@ -58,7 +96,7 @@ class DeadlineIn(BaseModel):
 class DeadlinePatch(BaseModel):
     label: str | None = None
     due_date: date | None = None
-    status: str | None = None            # open | done | dismissed
+    status: DeadlineStatus | None = None  # open | done | dismissed
     notes: str | None = None
 
 
@@ -73,21 +111,21 @@ class ReminderIn(BaseModel):
 class ReminderPatch(BaseModel):
     title: str | None = None
     due_at: datetime | None = None
-    status: str | None = None            # pending | sent | done | dismissed
+    status: ReminderStatus | None = None  # pending | sent | done | dismissed
     notes: str | None = None
 
 
 class NoteIn(BaseModel):
     body: str
     matter_id: int | None = None
-    color: str | None = None             # yellow | blue | green | pink | slate
+    color: NoteColor | None = None        # yellow | blue | green | pink | slate
     section_ref: str | None = None
     source: str | None = None
 
 
 class NotePatch(BaseModel):
     body: str | None = None
-    color: str | None = None
+    color: NoteColor | None = None
     pinned: bool | None = None
     section_ref: str | None = None
 
@@ -118,13 +156,13 @@ class TemplatePatch(BaseModel):
 class WatchlistIn(BaseModel):
     label: str
     query: str
-    kind: str | None = None
+    kind: WatchKind | None = None
 
 
 class WatchlistPatch(BaseModel):
     label: str | None = None
     query: str | None = None
-    kind: str | None = None
+    kind: WatchKind | None = None
 
 
 class ShareIn(BaseModel):
@@ -351,6 +389,8 @@ def add_note(body: NoteIn, p: Principal = Depends(get_principal),
     text = (body.body or "").strip()
     if not text:
         raise HTTPException(400, "body is required")
+    if body.matter_id is not None and not svc.readable_matter(db, body.matter_id, p.user.id):
+        raise HTTPException(404, "Matter not found")
     n = svc.create_note(db, p.user.id, body=text, matter_id=body.matter_id,
                         color=body.color or "yellow", section_ref=body.section_ref,
                         source=body.source)

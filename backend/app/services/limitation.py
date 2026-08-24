@@ -110,6 +110,17 @@ def _apply(trigger_date: date, offset: dict) -> date:
     return d
 
 
+# Sec. 153(1) time-barring has varied across Finance Acts. trigger_date is the
+# 31 March ending the AY, so AY-start = year - 1.
+def _months_153(trigger_date: date) -> int:
+    ay_start = trigger_date.year - 1
+    if ay_start <= 2017:      # up to AY 2017-18
+        return 21
+    if ay_start == 2018:      # AY 2018-19
+        return 18
+    return 12                 # AY 2019-20 onwards
+
+
 # --- public API --------------------------------------------------------------
 def compute_deadlines(trigger: str, trigger_date: date) -> list[dict]:
     """Return the deadlines a trigger produces.
@@ -119,11 +130,15 @@ def compute_deadlines(trigger: str, trigger_date: date) -> list[dict]:
     """
     out: list[dict] = []
     for r in _RULES_BY_TRIGGER.get(trigger, []):
+        if r["id"] == "time_barring_153":
+            due = _add_months(trigger_date, _months_153(trigger_date))
+        else:
+            due = _apply(trigger_date, r["offset"])
         out.append({
             "rule_id": r["id"],
             "label": r["label"],
             "section": r["section"],
-            "due_date": _apply(trigger_date, r["offset"]),
+            "due_date": due,
         })
     return out
 

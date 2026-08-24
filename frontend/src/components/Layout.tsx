@@ -15,6 +15,7 @@ import {
   BookOpen,
   Menu,
   X,
+  HelpCircle,
   UserCircle2,
   ChevronDown,
   PanelLeft,
@@ -24,6 +25,7 @@ import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
 import NotificationBell from "./NotificationBell";
+import AppTour from "./AppTour";
 
 type NavTone = "primary" | "amber" | "violet" | "sky" | "emerald" | "rose" | "indigo" | "slate";
 const NAV: {
@@ -414,6 +416,21 @@ function LayoutInner({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [loc.pathname]);
 
+  // First-visit welcome tour — shown once, re-openable from the header help button.
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("bt_tour_seen_v1") !== "1") {
+        const t = setTimeout(() => setTourOpen(true), 600);
+        return () => clearTimeout(t);
+      }
+    } catch { /* */ }
+  }, []);
+  const closeTour = () => {
+    setTourOpen(false);
+    try { localStorage.setItem("bt_tour_seen_v1", "1"); } catch { /* */ }
+  };
+
   return (
     // h-screen + overflow-hidden pins the shell to the viewport so the sidebar and
     // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
@@ -480,6 +497,13 @@ function LayoutInner({ children }: { children: ReactNode }) {
               <span className="inline-block size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.20)]" />
               Citation-grounded · primary Indian tax law
             </div>
+            <button
+              onClick={() => setTourOpen(true)}
+              title="Take the tour" aria-label="Take the tour"
+              className="inline-flex items-center justify-center size-9 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+            >
+              <HelpCircle className="size-[18px]" />
+            </button>
             <NotificationBell />
           </div>
         </header>
@@ -489,6 +513,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+      <AppTour open={tourOpen} onClose={closeTour} />
     </div>
   );
 }

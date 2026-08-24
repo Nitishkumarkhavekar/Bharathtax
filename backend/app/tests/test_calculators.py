@@ -53,6 +53,12 @@ def test_234c_fully_paid():
     assert r["interest"] == 0
 
 
+def test_234c_safe_harbour_12_36():
+    # Paying 12% by 15 Jun and 36% by 15 Sep meets the safe-harbour → no interest.
+    r = calc.interest_234c(100_000, [12_000, 36_000, 75_000, 100_000])
+    assert r["interest"] == 0
+
+
 def test_slab_new_regime_rebate_nil():
     assert calc.slab_tax(700_000, "new")["total_tax"] == 0
 
@@ -61,6 +67,20 @@ def test_slab_new_regime_above_rebate():
     r = calc.slab_tax(1_000_000, "new")
     assert r["tax_before_rebate"] == 50_000
     assert r["total_tax"] == 52_000        # + 4% cess
+
+
+def test_slab_87a_marginal_relief():
+    # Income just over 7L: tax must not exceed the excess over 7L (marginal relief).
+    r = calc.slab_tax(705_000, "new")
+    assert r["tax_before_rebate"] == 20_500
+    assert r["total_tax"] == 5_200         # after=5000 (=705000-700000) + 4% cess
+
+
+def test_slab_surcharge_over_50l():
+    r = calc.slab_tax(6_000_000, "new")
+    assert r["tax_before_rebate"] == 1_490_000
+    assert r["surcharge_pct"] == 10.0      # 50L–1cr band
+    assert r["surcharge"] == 149_000
 
 
 def test_capital_gains_ltcg_equity_exemption():
