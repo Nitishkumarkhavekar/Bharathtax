@@ -1,0 +1,2376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wenvia BharatTax — Corporate Brochure 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --navy: #0A2E5F;
+    --navy-dark: #061E42;
+    --navy-mid: #4b586d;
+    --blue: #1E7BFF;
+    --blue-bright: #2E86FF;
+    --blue-light: #66A8FF;
+    --blue-tint: #EFF5FF;
+    --blue-tint-2: #E4EEFF;
+    /* Logo tricolor accents — orange + green from the BharatTax mark */
+    --orange: #F57C00;
+    --orange-bright: #FF8C1A;
+    --orange-light: #FFB74D;
+    --orange-tint: #FFF3E0;
+    --green: #2E9E3E;
+    --green-bright: #43A047;
+    --green-light: #81C784;
+    --green-tint: #E8F5E9;
+    --ink: #1A1F2E;
+    --muted: #5D6A80;
+    --line: #D9E3F2;
+    --white: #FFFFFF;
+    --cream: #FBFCFF;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #E8ECF3;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ FLOATING DOWNLOAD BUTTON ============ */
+  .pdf-fab-wrap {
+    position: fixed; bottom: 28px; right: 28px; z-index: 100;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  }
+  .pdf-fab {
+    background: var(--navy); color: var(--white);
+    padding: 14px 22px; border-radius: 999px; border: none;
+    font-family: inherit; font-weight: 600; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 12px 30px rgba(10, 46, 95, 0.35);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .pdf-fab:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(10, 46, 95, 0.45); }
+  .pdf-fab svg { width: 18px; height: 18px; }
+  .pdf-hint {
+    background: var(--white); color: var(--ink);
+    padding: 10px 14px; border-radius: 10px;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(10, 46, 95, 0.1);
+    max-width: 270px; line-height: 1.45;
+  }
+  .pdf-hint strong { color: var(--blue); }
+
+  /* ============ PAGE FRAME (every page is A4) ============ */
+  .page {
+    width: 210mm;
+    height: 297mm;
+    background: var(--white);
+    margin: 20px auto;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    box-shadow: 0 20px 60px rgba(10, 46, 95, 0.15);
+  }
+  .page:last-of-type { page-break-after: auto; }
+
+  /* ============ RECURRING DECOR (used on every page) ============ */
+  /* Top-right small blue banner containing logo */
+  .decor-top-right {
+    position: absolute; top: 0; right: 0;
+    width: 105mm; height: 42mm;
+    z-index: 2; pointer-events: none;
+    display: none; /* removed blue banner — logo now sits on white background */
+  }
+  .decor-top-right::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--blue-bright) 0%, var(--navy-mid) 100%);
+    clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 0);
+  }
+  .decor-top-right::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--blue-light) 0%, var(--blue) 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 60%, 45% 0);
+    opacity: 0.5;
+  }
+  .logo-slot {
+    position: absolute; top: 12mm; right: 15mm;
+    z-index: 3;
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--white);
+  }
+  .logo-mark {
+    height: 82px; width: auto;
+    background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--navy);
+    overflow: visible;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-mark img {
+    height: 100%; width: auto;
+    max-width: 320px;
+    object-fit: contain;
+    display: block;
+    /* Knock out the white PNG background on every page */
+    mix-blend-mode: multiply;
+  }
+  /* Wordmark text hidden — full logo image is self-branded */
+  .logo-text { display: none; }
+
+  /* Bottom-left large blue wedge */
+  .decor-bottom-left {
+    position: absolute; bottom: 0; left: 0;
+    width: 130mm; height: 110mm;
+    z-index: 1; pointer-events: none;
+  }
+  .decor-bottom-left::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(160deg, var(--blue) 0%, var(--navy) 100%);
+    clip-path: polygon(0 45%, 100% 100%, 0 100%);
+  }
+  .decor-bottom-left::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(160deg, var(--blue-light) 0%, var(--blue) 100%);
+    clip-path: polygon(0 65%, 70% 100%, 0 100%);
+    opacity: 0.55;
+  }
+
+  /* Small bottom-right blue accent (inner pages) */
+  .decor-bottom-right {
+    position: absolute; bottom: 0; right: 0;
+    width: 70mm; height: 30mm;
+    z-index: 1; pointer-events: none;
+  }
+  .decor-bottom-right::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(45deg, var(--navy) 0%, var(--blue) 100%);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+
+  /* Professional footer brand block — single-line pill, bottom-left, mirror of page-num */
+  .page-footer-brand {
+    position: absolute; bottom: 10mm; left: 14mm;
+    z-index: 6;
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color: var(--white);
+    padding: 8px 18px 8px 14px;
+    border-radius: 999px;
+    box-shadow: 0 6px 16px rgba(10, 46, 95, 0.3);
+    white-space: nowrap;
+    border: 1px solid rgba(102, 168, 255, 0.15);
+  }
+  .page-footer-brand .pfb-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--blue-light);
+    box-shadow: 0 0 8px rgba(102, 168, 255, 0.7);
+    flex-shrink: 0;
+  }
+  .page-footer-brand .pfb-text {
+    display: inline-flex; align-items: center; gap: 9px;
+    line-height: 1;
+  }
+  .page-footer-brand .pfb-title {
+    font-size: 9px; font-weight: 900;
+    color: var(--white);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+  .page-footer-brand .pfb-sub {
+    font-size: 8px; font-weight: 800;
+    color: var(--blue-light);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .page-footer-brand .pfb-tag {
+    font-size: 8.5px; font-weight: 500;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.03em;
+    text-transform: none;
+    font-style: italic;
+  }
+  .page-footer-brand .pfb-sep {
+    font-size: 9px; font-weight: 800;
+    color: var(--blue-light);
+    opacity: 0.55;
+  }
+
+  /* Cover title prefix (WENVIA above BHARAT TAX) */
+  .cover-title .cover-prefix {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.32em;
+    font-weight: 800;
+    color: var(--blue);
+    letter-spacing: 0.22em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Page number footer badge — dark pill, always readable */
+  .page-num {
+    position: absolute; bottom: 10mm; right: 14mm;
+    z-index: 6;
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color: var(--white);
+    padding: 8px 8px 8px 18px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    box-shadow: 0 6px 16px rgba(10, 46, 95, 0.3);
+  }
+  .page-num .label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    opacity: 0.7;
+    text-transform: uppercase;
+  }
+  .page-num .num {
+    font-family: 'Anton', sans-serif;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--white);
+    letter-spacing: 0;
+  }
+  .page-num-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--blue); color: var(--white);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800;
+    box-shadow: 0 2px 6px rgba(30, 123, 255, 0.4);
+  }
+
+  /* Section eyebrow tag (blue vertical line + label) */
+  .eyebrow-tag {
+    display: inline-flex; align-items: center; gap: 12px;
+    color: var(--blue); font-weight: 700; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    margin-bottom: 14px;
+  }
+  .eyebrow-tag::before {
+    content: ''; width: 36px; height: 3px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--orange) 50%, var(--green) 100%);
+    border-radius: 2px;
+  }
+
+  /* ============================================================ */
+  /* COVER PAGE                                                    */
+  /* ============================================================ */
+  .cover .decor-top-right { width: 130mm; height: 65mm; }
+  .cover .decor-top-right::before {
+    clip-path: polygon(35% 0, 100% 0, 100% 100%, 0 0);
+  }
+  .cover .decor-top-right::after {
+    clip-path: polygon(15% 0, 100% 0, 100% 55%, 55% 0);
+    opacity: 0.5;
+  }
+  .cover .logo-slot {
+    top: 18mm; right: 18mm;
+  }
+  .cover .logo-mark {
+    height: 120px;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+  }
+  .cover .logo-mark img {
+    max-width: 440px;
+    /* Knock out the white PNG background so only the coloured logo shows */
+    mix-blend-mode: multiply;
+    filter: none;
+  }
+  .cover .logo-mark svg { width: 28px; height: 28px; }
+
+  /* Back cover: keep the white card (needed on dark navy bg), but rounded and bigger */
+  .back-cover .logo-mark {
+    height: 68px;
+    background: var(--white);
+    border-radius: 16px;
+    padding: 8px 20px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(216, 230, 250, 0.4);
+  }
+  .back-cover .logo-mark img {
+    max-width: 240px;
+    mix-blend-mode: normal; /* keep the logo readable on the white card */
+    filter: none;
+  }
+
+  .cover .decor-bottom-left {
+    width: 155mm; height: 135mm;
+  }
+  .cover .decor-bottom-left::before {
+    clip-path: polygon(0 30%, 100% 100%, 0 100%);
+  }
+  .cover .decor-bottom-left::after {
+    clip-path: polygon(0 55%, 70% 100%, 0 100%);
+  }
+
+  .cover-inner {
+    position: absolute; inset: 0;
+    padding: 28mm 22mm 20mm;
+    display: flex; flex-direction: column;
+    z-index: 3;
+  }
+  .cover-title {
+    font-family: 'Anton', 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 78px;
+    line-height: 0.98;
+    color: var(--navy);
+    letter-spacing: 0.01em;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+  .cover-title span { display: block; }
+  .cover-tagline {
+    font-size: 17px;
+    color: var(--navy);
+    font-weight: 700;
+    max-width: 320px;
+    line-height: 1.4;
+    margin-bottom: 30px;
+  }
+  .cover-tagline em {
+    font-style: normal;
+    color: var(--blue);
+  }
+
+  /* Central circle with SVG cityscape */
+  .cover-circle-wrap {
+    position: relative;
+    margin: 0 auto;
+    width: 138mm; height: 138mm;
+    z-index: 3;
+  }
+  .cover-circle {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 6px solid var(--white);
+    background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+    /* Tricolor concentric rings — navy → orange → green */
+    box-shadow: 0 0 0 3px var(--blue), 0 0 0 8px var(--white), 0 0 0 11px var(--orange), 0 0 0 14px var(--white), 0 0 0 17px var(--green), 20px 30px 50px rgba(10, 46, 95, 0.3);
+  }
+  .cover-circle svg { width: 100%; height: 100%; display: block; }
+
+  /* Year badge */
+  .year-badge {
+    position: absolute;
+    top: 82mm; right: 8mm;
+    width: 32mm; height: 32mm;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange-bright) 0%, var(--orange) 100%);
+    color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif;
+    font-size: 32px; line-height: 0.95;
+    text-align: center;
+    z-index: 4;
+    border: 3px solid var(--white);
+    box-shadow: 0 8px 20px rgba(245, 124, 0, 0.35);
+  }
+  .year-badge span { display: block; }
+
+  /* Bottom contact strip on cover */
+  .cover-contact {
+    position: absolute;
+    bottom: 14mm; right: 18mm;
+    z-index: 5;
+    display: flex; flex-direction: column; gap: 10px;
+    align-items: flex-end;
+  }
+  .cover-contact-row {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--white);
+    padding: 8px 8px 8px 18px;
+    border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(10, 46, 95, 0.18);
+    border: 1px solid var(--line);
+    text-decoration: none;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .cover-contact-row:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(10, 46, 95, 0.25); }
+  .cover-contact-text {
+    display: flex; flex-direction: column; line-height: 1;
+    text-align: right;
+  }
+  .cover-contact-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .cover-contact-value {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--navy);
+    letter-spacing: -0.005em;
+  }
+  .cover-contact-icon {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue) 0%, var(--navy) 100%);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(30, 123, 255, 0.35);
+  }
+  .cover-contact-icon svg { width: 15px; height: 15px; }
+
+  /* ============================================================ */
+  /* INNER PAGE — SHARED                                          */
+  /* ============================================================ */
+  .page-inner {
+    position: absolute; inset: 0;
+    padding: 45mm 22mm 30mm;
+    z-index: 3;
+    display: flex; flex-direction: column;
+  }
+  .page-title {
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: 62px;
+    line-height: 0.95;
+    color: var(--navy);
+    letter-spacing: 0.005em;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .page-title span { color: var(--blue); }
+  .page-title .thin { color: var(--blue); }
+
+  .page-subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 500;
+    max-width: 155mm;
+    line-height: 1.5;
+    margin-bottom: 26px;
+  }
+
+  .body-copy {
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.7;
+    margin-bottom: 14px;
+    text-align: justify;
+    text-align-last: left;
+    hyphens: auto;
+  }
+  .body-copy strong { color: var(--navy); font-weight: 700; }
+
+  /* Info cards / feature grids */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+  .info-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--blue);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  /* Tricolor rhythm for info cards */
+  .grid-3 > .info-card:nth-of-type(3n+2) { border-left-color: var(--orange); }
+  .grid-3 > .info-card:nth-of-type(3n+3) { border-left-color: var(--green); }
+  .grid-4 > .info-card:nth-of-type(4n+2) { border-left-color: var(--orange); }
+  .grid-4 > .info-card:nth-of-type(4n+3) { border-left-color: var(--green); }
+  .grid-4 > .info-card:nth-of-type(4n+4) { border-left-color: var(--navy); }
+  .info-card h4 {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px; font-weight: 800;
+    color: var(--navy); margin-bottom: 6px;
+    letter-spacing: -0.005em;
+  }
+  .info-card p { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+  .feature-card {
+    background: var(--blue-tint);
+    border-radius: 12px;
+    padding: 20px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::before {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 30mm; height: 30mm;
+    background: linear-gradient(135deg, var(--blue) 0%, var(--navy) 100%);
+    clip-path: polygon(50% 0, 100% 0, 100% 100%);
+    opacity: 0.08;
+  }
+  .feature-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--blue) 0%, var(--navy) 100%);
+    color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+    box-shadow: 0 6px 16px rgba(30, 123, 255, 0.3);
+  }
+  .feature-icon svg { width: 22px; height: 22px; }
+  /* Tricolor rhythm across grids of feature cards */
+  .grid-3 > .feature-card:nth-of-type(3n+2) .feature-icon,
+  .grid-4 > .feature-card:nth-of-type(4n+2) .feature-icon {
+    background: linear-gradient(135deg, var(--orange-bright) 0%, var(--orange) 100%);
+    box-shadow: 0 6px 16px rgba(245, 124, 0, 0.32);
+  }
+  .grid-3 > .feature-card:nth-of-type(3n+3) .feature-icon,
+  .grid-4 > .feature-card:nth-of-type(4n+3) .feature-icon {
+    background: linear-gradient(135deg, var(--green-bright) 0%, var(--green) 100%);
+    box-shadow: 0 6px 16px rgba(46, 158, 62, 0.32);
+  }
+  .grid-4 > .feature-card:nth-of-type(4n+4) .feature-icon {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+    box-shadow: 0 6px 16px rgba(10, 46, 95, 0.35);
+  }
+  .feature-card h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px; font-weight: 800;
+    color: var(--navy); margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .feature-card p { font-size: 12.5px; color: var(--ink); line-height: 1.55; }
+
+  /* Number-style card (for problem/mission list) */
+  .number-card {
+    display: flex; gap: 16px;
+    padding: 16px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .number-mark {
+    flex-shrink: 0;
+    width: 42px; height: 42px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--blue) 0%, var(--navy) 100%);
+    color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif;
+    font-size: 22px;
+  }
+  /* Tricolor rhythm across problem-cards grid */
+  .grid-2 > .number-card:nth-of-type(3n+2) .number-mark {
+    background: linear-gradient(135deg, var(--orange-bright) 0%, var(--orange) 100%);
+  }
+  .grid-2 > .number-card:nth-of-type(3n+3) .number-mark {
+    background: linear-gradient(135deg, var(--green-bright) 0%, var(--green) 100%);
+  }
+  .number-card h4 { font-size: 14px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+  .number-card p { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  /* Highlight block */
+  .highlight-block {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color: var(--white);
+    padding: 28px 26px 24px;
+    border-radius: 14px;
+    margin: 14px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .highlight-block::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--orange) 50%, var(--green) 100%);
+  }
+  .highlight-block::after {
+    content: ''; position: absolute; top: -30%; right: -20%;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(245, 124, 0, 0.28), transparent 70%);
+    pointer-events: none;
+  }
+  .highlight-block h3 {
+    font-family: 'Anton', sans-serif;
+    font-size: 28px; line-height: 1;
+    color: var(--white); margin-bottom: 10px;
+    position: relative;
+  }
+  .highlight-block p {
+    font-size: 13.5px; color: rgba(255,255,255,0.9);
+    line-height: 1.6; position: relative;
+    max-width: 130mm;
+  }
+
+  /* Quote block */
+  .quote-block {
+    background: var(--blue-tint);
+    border-left: 5px solid var(--blue);
+    padding: 20px 24px;
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+  .quote-block p {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px; font-style: italic;
+    color: var(--navy); line-height: 1.5;
+  }
+  .quote-block cite {
+    display: block; margin-top: 10px;
+    font-size: 12px; font-style: normal;
+    color: var(--muted); font-weight: 600;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* Bullet check list */
+  .check-list { list-style: none; }
+  .check-list li {
+    display: flex; gap: 12px; padding: 8px 0;
+    font-size: 13px; color: var(--ink); line-height: 1.5;
+  }
+  .check-list li::before {
+    content: ''; flex-shrink: 0;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--blue) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center/12px no-repeat;
+    margin-top: 2px;
+  }
+  .check-list li strong { color: var(--navy); font-weight: 700; }
+
+  /* Stat pill */
+  .stat-pill {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    background: var(--blue-tint);
+    font-weight: 700; color: var(--navy);
+  }
+  .stat-pill strong { color: var(--blue); font-size: 15px; }
+  .stat-pill span { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+  /* Table of contents */
+  .toc-list { list-style: none; margin-top: 10px; position: relative; z-index: 4; }
+  .toc-item {
+    display: flex; align-items: center; gap: 18px;
+    padding: 11px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  /* TOC page: hide the bottom-left wedge so the last entries stay readable */
+  .page-toc .decor-bottom-left { display: none; }
+  .page-toc .toc-list { padding-right: 8mm; }
+  .toc-num {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--blue-tint);
+    color: var(--navy);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .toc-title {
+    flex: 1; font-size: 14px; font-weight: 700;
+    color: var(--navy);
+  }
+  .toc-title small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .toc-page {
+    font-family: 'Anton', sans-serif;
+    font-size: 22px; color: var(--blue);
+  }
+
+  /* Chat mockup (for Ask Bot / Doc Q&A pages) */
+  .chat-mock {
+    background: var(--white);
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    padding: 16px;
+    box-shadow: 0 12px 30px rgba(10, 46, 95, 0.08);
+  }
+  .chat-header {
+    display: flex; align-items: center; gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 14px;
+  }
+  .win-dots { display: flex; gap: 5px; }
+  .win-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .win-dot.r { background: #FF5F57; }
+  .win-dot.y { background: #FEBC2E; }
+  .win-dot.g { background: #28C840; }
+  .chat-title { font-weight: 700; color: var(--navy); font-size: 12px; }
+
+  .user-bubble {
+    background: var(--navy);
+    color: var(--white);
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 12px; font-weight: 500; line-height: 1.5;
+    max-width: 85%;
+    display: block; width: fit-content;
+    margin-left: auto; margin-bottom: 14px;
+    text-align: left;
+  }
+  .bot-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .bot-avatar {
+    flex-shrink: 0;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--blue-tint);
+    color: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .bot-avatar svg { width: 14px; height: 14px; }
+  .bot-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .bot-msg { font-size: 12px; color: var(--ink); line-height: 1.55; flex: 1; }
+  .cite-chip {
+    display: inline-flex; align-items: center;
+    background: var(--blue-tint);
+    color: var(--blue);
+    padding: 1px 6px; border-radius: 5px;
+    font-size: 11px; font-weight: 700;
+    margin: 0 1px;
+  }
+  .cite-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--blue-tint); color: var(--blue);
+    font-size: 9px; font-weight: 700;
+    margin: 0 1px;
+  }
+  .source-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 12px 38px; }
+  .src-card { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--white); }
+  .src-title { font-weight: 700; color: var(--navy); font-size: 11px; }
+  .src-ref { color: var(--muted); font-size: 10px; margin-top: 1px; }
+
+  /* Pipeline visual */
+  .pipeline {
+    background: var(--blue-tint);
+    border-radius: 14px;
+    padding: 22px 20px;
+  }
+  .pipeline-list { display: flex; flex-direction: column; gap: 10px; }
+  .pipeline-step {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px;
+    background: var(--white);
+    border-radius: 10px;
+  }
+  .pipeline-step .n {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--blue) 0%, var(--navy) 100%);
+    color: var(--white);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif; font-size: 16px;
+    flex-shrink: 0;
+  }
+  /* Tricolor step rhythm for the 6-module pipeline */
+  .pipeline-step:nth-of-type(3n+2) .n { background: linear-gradient(135deg, var(--orange-bright) 0%, var(--orange) 100%); }
+  .pipeline-step:nth-of-type(3n+3) .n { background: linear-gradient(135deg, var(--green-bright) 0%, var(--green) 100%); }
+  .pipeline-step .t { font-size: 13px; font-weight: 700; color: var(--navy); }
+  .pipeline-step .t small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; margin-top: 1px; }
+
+  /* Use case cards with prompt */
+  .usecase-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    position: relative;
+  }
+  .usecase-tag {
+    display: inline-block;
+    background: var(--navy); color: var(--white);
+    padding: 3px 10px; border-radius: 6px;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  /* Rotate use-case tag colors across the grid */
+  .grid-2 > .usecase-card:nth-of-type(3n+2) .usecase-tag { background: var(--orange); }
+  .grid-2 > .usecase-card:nth-of-type(3n+3) .usecase-tag { background: var(--green); }
+  .grid-2 > .usecase-card:nth-of-type(3n+2) .prompt { border-left-color: var(--orange); background: var(--orange-tint); }
+  .grid-2 > .usecase-card:nth-of-type(3n+3) .prompt { border-left-color: var(--green); background: var(--green-tint); }
+  .usecase-tag { margin-bottom: 10px; }
+  .usecase-card h4 { font-size: 14px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+  .usecase-card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .usecase-card .prompt {
+    background: var(--blue-tint);
+    border-left: 3px solid var(--blue);
+    padding: 8px 12px;
+    margin-top: 10px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    color: var(--navy);
+    font-style: italic;
+  }
+
+  /* Big vision/mission cards */
+  .vm-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .vm-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--orange) 50%, var(--green) 100%);
+  }
+  /* Rotate individual vm-card icon tints (VISION / MISSION / VALUES) */
+  .vm-card:nth-of-type(2) .vm-icon { background: var(--orange-tint); color: var(--orange); }
+  .vm-card:nth-of-type(3) .vm-icon { background: var(--green-tint); color: var(--green); }
+  .vm-icon {
+    width: 54px; height: 54px; border-radius: 14px;
+    background: var(--blue-tint);
+    color: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .vm-icon svg { width: 26px; height: 26px; }
+  .vm-card h3 {
+    font-family: 'Anton', sans-serif;
+    font-size: 26px; color: var(--navy); margin-bottom: 8px;
+  }
+  .vm-card p { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+  /* Contact page (back cover) */
+  .back-cover {
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);
+  }
+  .back-cover .page-inner {
+    padding: 40mm 22mm 30mm;
+    justify-content: center;
+  }
+  .back-cover .page-title { color: var(--white); font-size: 68px; }
+  .back-cover .page-title span, .back-cover .page-title .thin { color: var(--blue-light); }
+  .back-cover .page-subtitle { color: rgba(255,255,255,0.75); font-size: 16px; max-width: 150mm; }
+
+  .back-contact-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-top: 30px;
+  }
+  .back-contact-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 20px 22px;
+    color: var(--white);
+    text-decoration: none;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .back-contact-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+  }
+  .back-contact-icon svg { width: 24px; height: 24px; }
+  .back-contact-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.65); font-weight: 700; margin-bottom: 4px;
+  }
+  .back-contact-value {
+    font-size: 16px; font-weight: 700; color: var(--white);
+    letter-spacing: -0.005em;
+  }
+  .back-cover .decor-top-right, .back-cover .decor-bottom-left { display: none; }
+  .back-cover .decor-back-bl {
+    position: absolute; bottom: -50px; left: -50px;
+    width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(30,123,255,0.25), transparent 70%);
+    z-index: 1;
+  }
+  .back-cover .decor-back-tr {
+    position: absolute; top: -80px; right: -80px;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(102,168,255,0.2), transparent 70%);
+    z-index: 1;
+  }
+  .back-brand-strip {
+    position: absolute; top: 22mm; left: 22mm; right: 22mm;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 5;
+  }
+  .back-brand-strip .logo-slot { position: static; }
+
+  .brand-footer-inline {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    display: flex; align-items: center; gap: 16px;
+    color: rgba(255,255,255,0.75); font-size: 12px;
+  }
+
+  /* ============================================================ */
+  /* PRICING PAGE                                                  */
+  /* ============================================================ */
+  /* Tighter page padding + smaller title so 3 tall cards fit A4 */
+  .page-pricing .page-inner { padding: 38mm 18mm 26mm; }
+  .page-pricing .page-title { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+  .page-pricing .page-subtitle { font-size: 12.5px; margin-bottom: 14px; max-width: 165mm; line-height: 1.45; }
+
+  .pricing-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; margin-top: 7mm;
+    align-items: stretch;
+  }
+  .price-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 14px 18px;
+    display: flex; flex-direction: column;
+    position: relative;
+    box-shadow: 0 4px 14px rgba(10, 46, 95, 0.05);
+  }
+  .price-card-featured {
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color: var(--white);
+    border: none;
+    box-shadow: 0 14px 34px rgba(10, 46, 95, 0.26);
+    transform: translateY(-3px);
+    padding-top: 22px;
+  }
+  .price-card-featured::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--orange) 50%, var(--green) 100%);
+    border-top-left-radius: 12px; border-top-right-radius: 12px;
+  }
+  .price-badge {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--orange-bright) 0%, var(--orange) 100%);
+    color: var(--white);
+    padding: 4px 12px; border-radius: 999px;
+    font-size: 8.5px; font-weight: 900; letter-spacing: 0.16em;
+    box-shadow: 0 5px 14px rgba(245, 124, 0, 0.4);
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .price-tier {
+    font-size: 10px; font-weight: 800; color: var(--blue);
+    letter-spacing: 0.20em;
+    margin-bottom: 6px;
+  }
+  .price-card-featured .price-tier { color: var(--blue-light); }
+  .price-amount {
+    font-family: 'Anton', sans-serif;
+    font-size: 26px; color: var(--navy); line-height: 1;
+    margin-bottom: 2px;
+    letter-spacing: 0.005em;
+  }
+  .price-card-featured .price-amount { color: var(--white); }
+  .price-unit {
+    font-family: 'Inter', sans-serif;
+    font-size: 10.5px; font-weight: 500; color: var(--muted);
+    letter-spacing: 0;
+    margin-left: 2px;
+  }
+  .price-card-featured .price-unit { color: rgba(255,255,255,0.55); }
+  .price-monthly {
+    font-size: 10px; color: var(--muted); font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .price-card-featured .price-monthly { color: rgba(255,255,255,0.55); }
+  .price-callout {
+    font-size: 10.5px; color: var(--green-bright);
+    font-weight: 700; font-style: italic;
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  .price-desc {
+    font-size: 11px; color: var(--ink); line-height: 1.4;
+    margin-bottom: 10px;
+  }
+  .price-card-featured .price-desc { color: rgba(255,255,255,0.9); }
+  .price-features {
+    list-style: none; padding: 0; margin: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+    flex: 1;
+  }
+  .price-card-featured .price-features { border-top-color: rgba(255,255,255,0.15); }
+  .price-features li {
+    display: flex; gap: 6px; padding: 3px 0;
+    font-size: 10.5px; line-height: 1.35; color: var(--ink);
+  }
+  .price-card-featured .price-features li { color: rgba(255,255,255,0.9); }
+  .price-features li::before {
+    content: '';
+    flex-shrink: 0; margin-top: 2px;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--green) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center/8px no-repeat;
+  }
+  .pricing-note {
+    margin-top: 10px;
+    font-size: 9.5px; color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+  .pricing-note strong { color: var(--navy); font-weight: 700; }
+
+  /* Certifications strip on back cover */
+  .certifications {
+    margin-top: 34px;
+    padding: 20px 22px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 22px;
+    position: relative; z-index: 2;
+  }
+  .cert-label {
+    font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    writing-mode: horizontal-tb;
+    padding-right: 20px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    min-width: 92px;
+    line-height: 1.4;
+  }
+  .cert-label span { display: block; color: var(--blue-light); font-weight: 800; margin-top: 2px; }
+  .cert-badges {
+    display: flex; align-items: center; gap: 18px;
+    flex: 1;
+  }
+  .cert-badge {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 12px;
+    flex: 1;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+  }
+  .cert-badge img {
+    height: 42px; width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  .cert-badge-text {
+    display: flex; flex-direction: column;
+    line-height: 1.25;
+  }
+  .cert-badge-title {
+    font-size: 12px; font-weight: 800; color: var(--navy);
+    letter-spacing: -0.005em;
+  }
+  .cert-badge-sub {
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  @media print {
+    /* Force colours + backgrounds to print (including pseudo-elements & SVGs) */
+    *, *::before, *::after {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #FFFFFF !important;
+      width: 210mm !important;
+    }
+
+    /* Hide UI-only elements */
+    .pdf-fab-wrap, .pdf-fab, .pdf-hint { display: none !important; }
+
+    /* Each .page becomes exactly one A4 sheet */
+    .page {
+      width: 210mm !important;
+      height: 297mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      page-break-after: always !important;
+      break-after: page !important;
+      position: relative !important;
+      overflow: hidden !important;
+      display: block !important;
+      background: #FFFFFF !important;
+    }
+    .page:last-of-type {
+      page-break-after: auto !important;
+      break-after: auto !important;
+    }
+    /* Make sure absolutely-positioned children render inside the page during print */
+    .page > * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Back cover keeps its dark gradient */
+    .back-cover { background: linear-gradient(160deg, #0A2E5F 0%, #061E42 100%) !important; }
+  }
+
+  /* Screen scaling (make it feel more brochure-like on screen) */
+  @media (max-width: 900px) {
+    .page {
+      width: 100%;
+      min-height: auto;
+      height: auto;
+      transform: scale(1);
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==== FLOATING PDF DOWNLOAD ==== -->
+<div class="pdf-fab-wrap">
+  <div class="pdf-hint">
+    Tip: choose <strong>Save as PDF</strong>, set Margins to <strong>None</strong> and turn off <strong>Headers and footers</strong> for the cleanest brochure.
+  </div>
+  <button class="pdf-fab" onclick="window.print()" aria-label="Download as PDF">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download as PDF
+  </button>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE 1 — COVER                                                -->
+<!-- ============================================================ -->
+<section class="page cover">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="cover-inner">
+    <h1 class="cover-title">
+      <span class="cover-prefix">Wenvia</span>
+      <span>BHARAT</span>
+      <span>TAX</span>
+    </h1>
+    <p class="cover-tagline">Innovating Tax Research for <em>Every Indian Professional.</em><br/><span style="display:inline-block; margin-top:8px; font-size:12px; font-weight:600; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase;">A Wenvia Global Product</span></p>
+
+    <div class="cover-circle-wrap">
+      <div class="cover-circle">
+        <img src="brochure-image.png" alt="Corporate professional using Wenvia BharatTax on laptop" style="width:100%;height:100%;object-fit:cover;display:block;" />
+      </div>
+    </div>
+
+    <!-- Year badge -->
+    <div class="year-badge">
+      <span>20<br/>26</span>
+    </div>
+  </div>
+
+  <!-- Contact strip -->
+  <div class="cover-contact">
+    <a href="tel:+919972463579" class="cover-contact-row">
+      <span class="cover-contact-text">
+        <span class="cover-contact-label">Call Us</span>
+        <span class="cover-contact-value">+91 99724 63579</span>
+      </span>
+      <span class="cover-contact-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+      </span>
+    </a>
+    <a href="mailto:wenviatech@gmail.com" class="cover-contact-row">
+      <span class="cover-contact-text">
+        <span class="cover-contact-label">Email Us</span>
+        <span class="cover-contact-value">wenviatech@gmail.com</span>
+      </span>
+      <span class="cover-contact-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </span>
+    </a>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 2 — TABLE OF CONTENTS                                    -->
+<!-- ============================================================ -->
+<section class="page page-toc">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">Contents</span>
+    <h1 class="page-title">TABLE OF <span>CONTENTS</span></h1>
+    <p class="page-subtitle">A guided tour of what Wenvia BharatTax is, who it serves, and how it delivers citation-grounded research, rulings and drafting for every Indian tax professional.</p>
+
+    <ul class="toc-list">
+      <li class="toc-item">
+        <div class="toc-num">01</div>
+        <div class="toc-title">About Wenvia BharatTax<small>Who we are and what we stand for</small></div>
+        <div class="toc-page">03</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">02</div>
+        <div class="toc-title">Vision, Mission &amp; Values<small>The principles that shape everything we build</small></div>
+        <div class="toc-page">04</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">03</div>
+        <div class="toc-title">The Challenge We Solve<small>Why generic AI fails Indian tax law</small></div>
+        <div class="toc-page">05</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">04</div>
+        <div class="toc-title">Our Solution<small>Citation-grounded, sovereign, refuses to guess</small></div>
+        <div class="toc-page">06</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">05</div>
+        <div class="toc-title">Core Features<small>Six things you'll notice on day one</small></div>
+        <div class="toc-page">07</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">06</div>
+        <div class="toc-title">Ask Bot &amp; Draft Bot<small>Research and appellate drafting</small></div>
+        <div class="toc-page">08</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">07</div>
+        <div class="toc-title">Rulings &amp; Drafting Suite<small>Case-law search and notice / order drafting to DOCX</small></div>
+        <div class="toc-page">10</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">08</div>
+        <div class="toc-title">Who We Serve<small>Departments, benches, firms, counsel</small></div>
+        <div class="toc-page">13</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">09</div>
+        <div class="toc-title">Real-World Use Cases<small>A day of work with Wenvia BharatTax</small></div>
+        <div class="toc-page">14</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">10</div>
+        <div class="toc-title">Trust &amp; Security<small>Built for regulated professions</small></div>
+        <div class="toc-page">15</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">11</div>
+        <div class="toc-title">Pricing &amp; Plans<small>Starter, Professional, Power &mdash; annually billed</small></div>
+        <div class="toc-page">16</div>
+      </li>
+      <li class="toc-item">
+        <div class="toc-num">12</div>
+        <div class="toc-title">Get In Touch<small>Book a demo, start a pilot</small></div>
+        <div class="toc-page">17</div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">02</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 3 — ABOUT US                                             -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">01 · About Us</span>
+    <h1 class="page-title">ABOUT <span>WENVIA BHARAT TAX</span></h1>
+    <p class="page-subtitle">India's first citation-grounded, sovereign AI assistant for tax research, rulings and drafting &mdash; a Wenvia Global product.</p>
+
+    <p class="body-copy">
+      <strong>Wenvia BharatTax</strong> is the tax-research copilot built exclusively for India's income-tax
+      professionals — officers, CIT(A) benches, chartered accountants, and legal counsel. We do one
+      thing, and we do it precisely: answer tax questions with citations that trace back to the exact
+      section, sub-section, proviso, or CBDT circular they came from.
+    </p>
+    <p class="body-copy">
+      Every claim Wenvia BharatTax makes is anchored in primary Indian tax law. If the evidence isn't in the
+      corpus, the assistant refuses to answer — plainly and honestly. This isn't a feature. It's the
+      foundation. In a regulated profession where every position must survive an audit or a bench, an
+      AI that confidently invents section numbers is worse than no AI at all.
+    </p>
+
+    <div class="highlight-block">
+      <h3>Why we exist.</h3>
+      <p>Generic AI tools were not built for Indian tax law. They hallucinate sections. They cite circulars that don't exist. They send sensitive client data to foreign clouds. Wenvia BharatTax was built to fix all three, at once, for the professionals who cannot afford to be wrong.</p>
+    </div>
+
+    <div class="grid-3" style="margin-top: 18px;">
+      <div class="info-card">
+        <h4>Act · Rules · Circulars</h4>
+        <p>Full Income Tax Act, Rules 1962 and CBDT circulars indexed &mdash; searchable to the exact provision.</p>
+      </div>
+      <div class="info-card">
+        <h4>SC · HC · ITAT</h4>
+        <p>Curated Supreme Court and High Court corpus plus live tribunal rulings on demand.</p>
+      </div>
+      <div class="info-card">
+        <h4>ITBA-Ready DOCX</h4>
+        <p>Appellate orders, notices and assessment orders drafted straight to signature-ready DOCX.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">03</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 4 — VISION, MISSION, VALUES                              -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">02 · Our Foundation</span>
+    <h1 class="page-title">VISION,<br/><span>MISSION</span> &amp; VALUES</h1>
+    <p class="page-subtitle">The principles that shape every product decision, every feature roadmap, and every line of law we index.</p>
+
+    <div class="grid-3" style="margin-top: 8px;">
+      <div class="vm-card">
+        <div class="vm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        </div>
+        <h3>VISION</h3>
+        <p>To make every Indian tax professional twice as effective by giving them a research and drafting assistant that is <strong>always cited</strong>, <strong>always trustworthy</strong>, and <strong>always inside their walls.</strong></p>
+      </div>
+      <div class="vm-card">
+        <div class="vm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>MISSION</h3>
+        <p>Build the sovereign AI layer for Indian tax law — <strong>grounded in primary sources</strong>, refusing to guess, deployable on-premise, and priced for every wing of every department.</p>
+      </div>
+      <div class="vm-card">
+        <div class="vm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <h3>VALUES</h3>
+        <p><strong>Citations before eloquence.</strong> Honest refusal over confident invention. Sovereign data over cloud convenience. India-first design, always.</p>
+      </div>
+    </div>
+
+    <div class="quote-block" style="margin-top: 26px;">
+      <p>"We would rather refuse a hundred queries than fabricate one section number. That is the professional standard we hold ourselves to — the same one our users are held to every day."</p>
+      <cite>— The Wenvia BharatTax Team</cite>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">04</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 5 — THE CHALLENGE                                        -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">03 · The Problem</span>
+    <h1 class="page-title">THE <span>CHALLENGE</span> WE SOLVE</h1>
+    <p class="page-subtitle">Tax work moves fast. Generic AI doesn't keep up — and the cost of getting it wrong falls on the professional, not the tool.</p>
+
+    <div class="grid-2" style="gap: 12px;">
+      <div class="number-card">
+        <div class="number-mark">01</div>
+        <div><h4>Hours lost per opinion</h4><p>Cross-checking one position across Act, Rules and circulars can burn an entire afternoon before drafting even starts.</p></div>
+      </div>
+      <div class="number-card">
+        <div class="number-mark">02</div>
+        <div><h4>Generic AI hallucinates</h4><p>Off-the-shelf chatbots invent section numbers, cite circulars that don't exist, and cannot tell you which provision applies.</p></div>
+      </div>
+      <div class="number-card">
+        <div class="number-mark">03</div>
+        <div><h4>Sensitive data in wrong hands</h4><p>Uploading client PANs, notices and appellate submissions to foreign cloud chatbots is a compliance risk no wing can carry.</p></div>
+      </div>
+      <div class="number-card">
+        <div class="number-mark">04</div>
+        <div><h4>Untraceable answers</h4><p>If a response can't be traced back to the exact section, it can't survive an audit — let alone a bench of appeals.</p></div>
+      </div>
+      <div class="number-card">
+        <div class="number-mark">05</div>
+        <div><h4>Onboarding new officers</h4><p>Every new joiner needs weeks to internalise the corpus. Institutional knowledge stays trapped in individual heads.</p></div>
+      </div>
+      <div class="number-card">
+        <div class="number-mark">06</div>
+        <div><h4>Drafting orders manually</h4><p>An appellate order goes through the same six sections every time. Doing it by hand, on every file, is not scalable.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">05</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 6 — OUR SOLUTION                                         -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">04 · The Solution</span>
+    <h1 class="page-title">ONE COPILOT.<br/><span>EVERY CLAIM</span> CITED.</h1>
+    <p class="page-subtitle">Wenvia BharatTax is the first research, rulings and drafting assistant purpose-built for Indian income-tax work &mdash; from a thirty-second query to a fully-formatted appellate order or ITBA-ready notice.</p>
+
+    <ul class="check-list">
+      <li><span><strong>Grounded answers.</strong> Every claim links directly to the section, proviso, CBDT circular or landmark judgment it came from &mdash; no exceptions.</span></li>
+      <li><span><strong>Refuses to guess.</strong> If the evidence isn't there, Wenvia BharatTax says so. Plainly. No confident fabrications, ever.</span></li>
+      <li><span><strong>Live case-law reach.</strong> SC, HC and ITAT rulings surfaced on demand &mdash; not scraped once and forgotten.</span></li>
+      <li><span><strong>Drafting to DOCX.</strong> Appellate orders, § 142(1) / § 143(2) notices, show-cause and § 154 orders exported ITBA-ready.</span></li>
+      <li><span><strong>Deployed inside your walls.</strong> Web, on-premise or a native departmental desktop app &mdash; data stays with you.</span></li>
+      <li><span><strong>Multi-domain ready.</strong> Income Tax today. GST, Customs and beyond tomorrow &mdash; added by configuration, not code.</span></li>
+    </ul>
+
+    <div class="highlight-block" style="margin-top: 20px;">
+      <h3>The Wenvia BharatTax Guarantee.</h3>
+      <p>Every answer you show a client, a bench, or a senior officer will be traceable to primary law. That's not aspiration — that's the product.</p>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">06</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 7 — CORE FEATURES                                        -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">05 · Core Features</span>
+    <h1 class="page-title">SIX THINGS<br/>YOU'LL <span>NOTICE ON DAY ONE.</span></h1>
+    <p class="page-subtitle">Built from the ground up for how Indian tax professionals actually work &mdash; grounded, cited, and honest.</p>
+
+    <div class="grid-3">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+        <h3>Every Answer Cited</h3>
+        <p>Streamed responses that link back to the exact section, proviso, circular or judgment. Nothing invented, nothing paraphrased blindly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Never Guesses</h3>
+        <p>When the law doesn't cover it, Wenvia BharatTax refuses &mdash; plainly. No confident-sounding fiction. Ever.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <h3>Understands the Statute</h3>
+        <p>Reads law the way a lawyer reads law. Provisos and Explanations respected, never chopped apart.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14l2 2 4-4"/></svg>
+        </div>
+        <h3>Live Case-Law Reach</h3>
+        <p>Search a curated SC / HC judgment corpus and pull ITAT and higher-bench rulings on demand &mdash; with paragraph-level citations.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <h3>Drafts to ITBA-Ready DOCX</h3>
+        <p>Appellate orders, § 142(1) / § 143(2) notices, show-cause and § 154 orders exported signature-ready with citations preserved.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>Built for Teams</h3>
+        <p>Wings, seats, roles, and audit logs. Web or native desktop app &mdash; for departments and firms with concurrent-user access rules.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">07</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 8 — ASK BOT (with chat mockup)                          -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">06 · Feature Deep Dive</span>
+    <h1 class="page-title">ASK BOT<br/><span>ALWAYS SHOWS ITS WORK.</span></h1>
+    <p class="page-subtitle">Ask a natural-language tax question. Get a precise, streamed answer &mdash; cited to the exact provision, the leading judgment, or the current circular.</p>
+
+    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
+      <div>
+        <p class="body-copy">
+          Type a question. The assistant intelligently reaches for the right source &mdash;
+          your statute corpus, live SC / HC / ITAT rulings or authoritative web sources for
+          the latest circulars &mdash; and shows its working inline.
+        </p>
+        <ul class="check-list" style="margin-top: 12px;">
+          <li><span><strong>Streamed, cited answers</strong> &mdash; reasoning arrives token-by-token with inline footnotes.</span></li>
+          <li><span><strong>Live case-law lookup</strong> &mdash; SC, HC and ITAT rulings surfaced on demand.</span></li>
+          <li><span><strong>Per-user memory</strong> &mdash; remembers your working context across sessions.</span></li>
+          <li><span><strong>Improve-prompt helper</strong> &mdash; one click turns a rough query into a precise, professional one.</span></li>
+          <li><span><strong>Module &amp; source filters</strong> &mdash; scope to Act, Rules, circulars, case law or the web.</span></li>
+        </ul>
+      </div>
+
+      <div class="chat-mock">
+        <div class="chat-header">
+          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
+          <div class="chat-title">Wenvia BharatTax · Ask Bot</div>
+        </div>
+        <div class="user-bubble">Is the ₹1.5L limit under 80C shared with 80CCC and 80CCD(1)?</div>
+        <div class="bot-row">
+          <div class="bot-avatar">
+            <img src="logo.png" alt="Wenvia BharatTax logo" />
+          </div>
+          <div class="bot-msg">
+            Yes. Under <span class="cite-chip">§80CCE</span>, the aggregate of deductions
+            under <span class="cite-chip">§80C</span>, <span class="cite-chip">§80CCC</span>
+            and <span class="cite-chip">§80CCD(1)</span> cannot exceed
+            <strong>₹1,50,000</strong>. <span class="cite-num">1</span>
+          </div>
+        </div>
+        <div class="source-cards">
+          <div class="src-card"><div class="src-title">Income Tax Act, 1961</div><div class="src-ref">§80CCE — aggregate cap</div></div>
+          <div class="src-card"><div class="src-title">Income Tax Act, 1961</div><div class="src-ref">§80C, §80CCC, §80CCD(1)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote-block" style="margin-top: 20px;">
+      <p>"Finally, a research tool that shows me the section number, every single time. Nothing invented. Nothing hidden."</p>
+      <cite>— The Wenvia BharatTax Promise</cite>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">08</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 9 — DRAFT BOT / 6-MODULE PIPELINE                        -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">06 · Feature Deep Dive</span>
+    <h1 class="page-title">DRAFT BOT<br/>SIX <span>AUDITABLE</span> MODULES.</h1>
+    <p class="page-subtitle">Give Wenvia BharatTax the case. It structures the file, produces a first-cut CIT(A) / NFAC order &mdash; issue-by-issue, cited end-to-end &mdash; and hands it back in an in-app editor and a signature-ready DOCX. Runs inside the departmental desktop app for the strictest data-security postures.</p>
+
+    <div class="pipeline">
+      <div class="pipeline-list">
+        <div class="pipeline-step"><span class="n">1</span><div class="t">Case Ingest<small>Read appeal memorandum, assessment order, and grounds of appeal. Extract assessee, AY, sections invoked, quantum in dispute.</small></div></div>
+        <div class="pipeline-step"><span class="n">2</span><div class="t">Facts &amp; Timeline<small>Assemble the facts of the case, order flow, and material dates — sourced from the file itself, with page-level citations.</small></div></div>
+        <div class="pipeline-step"><span class="n">3</span><div class="t">Grounds of Appeal<small>Restate each ground, map it to the section it turns on, and identify the point of law at stake.</small></div></div>
+        <div class="pipeline-step"><span class="n">4</span><div class="t">Legal Analysis<small>Retrieve applicable provisions, provisos and CBDT circulars. Cross-check against the assessment order's reasoning.</small></div></div>
+        <div class="pipeline-step"><span class="n">5</span><div class="t">Findings &amp; Decision<small>Draft the findings on each ground and the operative decision — every conclusion anchored to a cited provision.</small></div></div>
+        <div class="pipeline-step"><span class="n">6</span><div class="t">Edit, Export &amp; Audit<small>Refine per-issue in an in-app DOCX editor, then export a signature-ready order with every citation preserved and every session audit-logged.</small></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">09</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 10 — RULINGS / CASE-LAW SEARCH                           -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">07 · Feature Deep Dive</span>
+    <h1 class="page-title">RULINGS<br/><span>THE RIGHT PRECEDENT.</span> EVERY TIME.</h1>
+    <p class="page-subtitle">Search a curated Supreme Court and High Court judgment corpus &mdash; and pull live Tribunal and higher-bench rulings on demand, without leaving the app.</p>
+
+    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
+      <div>
+        <p class="body-copy">
+          Search by issue, section, party, bench, year or citation. Get judgment excerpts
+          with the paragraph number, the operative finding and a direct link back to the
+          source &mdash; ready to drop into your order or opinion.
+        </p>
+        <ul class="check-list" style="margin-top: 12px;">
+          <li><span><strong>SC &amp; HC corpus</strong> &mdash; curated library, paragraph-level citations.</span></li>
+          <li><span><strong>Live tribunal lookup</strong> &mdash; ITAT and current apex-bench rulings on demand.</span></li>
+          <li><span><strong>Section-mapped</strong> &mdash; every ruling tagged to the provisions it turns on.</span></li>
+          <li><span><strong>Precedent chaining</strong> &mdash; jump to relied-on or distinguished judgments.</span></li>
+        </ul>
+      </div>
+
+      <div class="chat-mock">
+        <div class="chat-header">
+          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
+          <div class="chat-title">Wenvia BharatTax · Rulings</div>
+        </div>
+        <div class="user-bubble">Any SC/HC ruling on §14A disallowance where no exempt income earned in the year?</div>
+        <div class="bot-row">
+          <div class="bot-avatar">
+            <img src="logo.png" alt="Wenvia BharatTax logo" />
+          </div>
+          <div class="bot-msg">
+            The Supreme Court in <em>PCIT v. Era Infrastructure (2022)</em> upheld the position that
+            <span class="cite-chip">§14A</span> disallowance cannot exceed exempt income &mdash; and does
+            not apply where none is earned in the year. <span class="cite-num">1</span> Delhi HC in
+            <em>Cheminvest v. CIT (2015)</em> is the leading precedent. <span class="cite-num">2</span>
+          </div>
+        </div>
+        <div class="source-cards">
+          <div class="src-card"><div class="src-title">Supreme Court · 2022</div><div class="src-ref">PCIT v. Era Infrastructure &mdash; ¶12</div></div>
+          <div class="src-card"><div class="src-title">Delhi High Court · 2015</div><div class="src-ref">Cheminvest v. CIT &mdash; ¶23</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote-block" style="margin-top: 20px;">
+      <p>"Search precedent the way an officer actually needs to: by issue, by bench, by year &mdash; and always with the paragraph in hand."</p>
+      <cite>&mdash; The Wenvia BharatTax Rulings Workspace</cite>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">10</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 11 — DRAFTING SUITE (notices & orders)                   -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">07 · Feature Deep Dive</span>
+    <h1 class="page-title">DRAFTING SUITE<br/><span>NOTICES &amp; ORDERS</span> TO ITBA.</h1>
+    <p class="page-subtitle">A guided drafting workspace for the notices and orders an officer prepares every day &mdash; grounded in the file, cited to the statute, exported ready for ITBA.</p>
+
+    <div class="grid-3">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        </div>
+        <h3>§ 142(1) Notices</h3>
+        <p>Enquiry notices with the right particulars, response window and statutory language &mdash; pre-filled from the case context.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
+        </div>
+        <h3>§ 143(2) Notices</h3>
+        <p>Scrutiny notices with the correct limitation calendar, jurisdictional recital and assessee particulars.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3>Show-Cause Notices</h3>
+        <p>Reasoned show-cause notices with the precise provision invoked, the material found and the response points enumerated.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+        </div>
+        <h3>§ 154 Rectification</h3>
+        <p>Rectification orders drafted against the mistake identified, with the amended computation and the statutory ground on record.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v4H4zM4 12h16v4H4zM4 20h10"/></svg>
+        </div>
+        <h3>Assessment &amp; Penalty Orders</h3>
+        <p>Structured templates with facts, discussion, findings and computation &mdash; every conclusion anchored to a cited provision.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <h3>ITBA-Ready DOCX</h3>
+        <p>One-click export to signature-ready DOCX preserving formatting, citations and issue numbering &mdash; slot it straight into ITBA.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">11</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 12 — DOCUMENT Q&A                                        -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">06 · Feature Deep Dive</span>
+    <h1 class="page-title">DOCUMENT Q&amp;A<br/><span>ASK YOUR OWN FILES.</span></h1>
+    <p class="page-subtitle">Upload a notice, an assessment order, a show-cause, or a client's submissions. Ask questions scoped to that file, get answers cited to both the document and the underlying law.</p>
+
+    <div class="grid-2" style="grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start;">
+      <div>
+        <ul class="check-list" style="margin-top: 4px;">
+          <li><span><strong>Notices &amp; orders</strong> — PDF, image, or scanned copies.</span></li>
+          <li><span><strong>Session-scoped</strong> — files stay in your workspace.</span></li>
+          <li><span><strong>Cross-cited</strong> — answers reference both file and law.</span></li>
+          <li><span><strong>Deadlines surfaced</strong> — response windows extracted automatically.</span></li>
+          <li><span><strong>Audit-logged</strong> — every upload and query recorded.</span></li>
+        </ul>
+      </div>
+
+      <div class="chat-mock">
+        <div class="chat-header">
+          <div class="win-dots"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span></div>
+          <div class="chat-title">Wenvia BharatTax · Document Q&amp;A</div>
+        </div>
+        <div style="background: var(--blue-tint); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display:flex; align-items:center; gap:10px;">
+          <div style="width:30px; height:30px; border-radius:8px; background: var(--white); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:700; color: var(--navy); font-size:11px;">Notice_143(2)_AY2023-24.pdf</div>
+            <div style="color: var(--muted); font-size:10px;">Uploaded · 3 pages</div>
+          </div>
+        </div>
+        <div class="user-bubble">What is the response deadline, and which section is invoked?</div>
+        <div class="bot-row">
+          <div class="bot-avatar">
+            <img src="logo.png" alt="Wenvia BharatTax logo" />
+          </div>
+          <div class="bot-msg">
+            The notice is issued under <span class="cite-chip">§143(2)</span> requiring
+            the assessee to attend on <strong>15 May 2025</strong>. Statutory limitation
+            is in the proviso to that section. <span class="cite-num">1</span>
+          </div>
+        </div>
+        <div class="source-cards">
+          <div class="src-card"><div class="src-title">Notice_143(2)…pdf</div><div class="src-ref">Page 1, para 2</div></div>
+          <div class="src-card"><div class="src-title">Income Tax Act, 1961</div><div class="src-ref">§143(2) — proviso</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">12</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 11 — WHO WE SERVE                                        -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">08 · Who We Serve</span>
+    <h1 class="page-title">PROFESSIONALS<br/>WHO CAN'T <span>AFFORD TO BE WRONG.</span></h1>
+    <p class="page-subtitle">Used across the Indian tax profession — wherever citations matter and audit trails are non-negotiable.</p>
+
+    <div class="grid-4">
+      <div class="info-card">
+        <h4>Income-Tax Officers</h4>
+        <p>Faster research, cleaner notices, pre-drafted orders — every claim cited.</p>
+      </div>
+      <div class="info-card">
+        <h4>CIT(A) Benches</h4>
+        <p>Six-module appellate drafting from case ingest to signature-ready order.</p>
+      </div>
+      <div class="info-card">
+        <h4>Chartered Accountants</h4>
+        <p>Opinion drafting, notice response, appeal preparation — cited end-to-end.</p>
+      </div>
+      <div class="info-card">
+        <h4>Legal Counsel</h4>
+        <p>Tribunal, HC and SC practice teams building citation-perfect briefs.</p>
+      </div>
+      <div class="info-card">
+        <h4>Corporate Tax Teams</h4>
+        <p>In-house counsel and controllers of large Indian enterprises.</p>
+      </div>
+      <div class="info-card">
+        <h4>PSUs &amp; Regulators</h4>
+        <p>Where data residency and traceable answers are absolute requirements.</p>
+      </div>
+      <div class="info-card">
+        <h4>Academia &amp; Training</h4>
+        <p>Onboarding new officers and articled assistants with a cited-first tool.</p>
+      </div>
+      <div class="info-card">
+        <h4>Legal Publishers</h4>
+        <p>A citation-first research layer for their platforms — no vendor lock-in.</p>
+      </div>
+    </div>
+
+    <div class="highlight-block" style="margin-top: 18px;">
+      <h3>Serving the full spectrum.</h3>
+      <p>From a boutique CA practice to a wing of the Income-tax Department — Wenvia BharatTax scales to fit, with wings, seats, and role-based access built in from day one.</p>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">13</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 12 — USE CASES                                           -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-left"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">09 · Real Work</span>
+    <h1 class="page-title">A DAY WITH<br/><span>BHARAT TAX.</span></h1>
+    <p class="page-subtitle">Six ways professionals use Wenvia BharatTax every day — real questions, real citations, real time saved.</p>
+
+    <div class="grid-2">
+      <div class="usecase-card">
+        <span class="usecase-tag">Research</span>
+        <h4>Answer a technical query in seconds</h4>
+        <p>Instead of hunting through a 900-page Act, ask Wenvia BharatTax and get a footnoted answer instantly.</p>
+        <div class="prompt">"What is the maximum deduction under §80C for a HUF assessee?"</div>
+      </div>
+      <div class="usecase-card">
+        <span class="usecase-tag">Notice Response</span>
+        <h4>Turn a Section 143(2) notice into a plan</h4>
+        <p>Upload the notice. Get the deadline, applicable section, and response points — all cited.</p>
+        <div class="prompt">"Draft the response outline for this notice."</div>
+      </div>
+      <div class="usecase-card">
+        <span class="usecase-tag">Appellate Order</span>
+        <h4>Draft a CIT(A) order in six modules</h4>
+        <p>Upload the appeal file. Get a first-cut order across facts, grounds, analysis, findings, decision.</p>
+        <div class="prompt">"Draft the order for this appeal against §271(1)(c) penalty."</div>
+      </div>
+      <div class="usecase-card">
+        <span class="usecase-tag">Case-Law Lookup</span>
+        <h4>Pull the leading precedent, live</h4>
+        <p>Search the SC / HC corpus and fetch current Tribunal rulings on the point &mdash; with paragraph-level citations.</p>
+        <div class="prompt">"Latest ITAT ruling on §68 addition where source is explained but creditworthiness is disputed."</div>
+      </div>
+      <div class="usecase-card">
+        <span class="usecase-tag">Notice Drafting</span>
+        <h4>Generate a § 142(1) notice in minutes</h4>
+        <p>Pre-fill the enquiry particulars, response window and statutory recital &mdash; export straight to an ITBA-ready DOCX.</p>
+        <div class="prompt">"Draft a § 142(1) notice for verification of cash deposits in AY 2023-24."</div>
+      </div>
+      <div class="usecase-card">
+        <span class="usecase-tag">Onboarding</span>
+        <h4>Ramp up new officers faster</h4>
+        <p>Junior officers get authoritative, cited answers — without a senior spending an hour explaining.</p>
+        <div class="prompt">"Explain §68 — cash credits — in plain terms with the leading provisos."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">14</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 13 — TRUST & SECURITY                                    -->
+<!-- ============================================================ -->
+<section class="page">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">10 · Trust &amp; Security</span>
+    <h1 class="page-title">BUILT FOR<br/><span>REGULATED</span> PROFESSIONS.</h1>
+    <p class="page-subtitle">Every design decision was made with sensitive tax work and audit-first governance in mind.</p>
+
+    <div class="grid-4">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Stays In-House</h3>
+        <p>Runs inside your infrastructure. Nothing leaves the department.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3>Role-Based Access</h3>
+        <p>Super admin, wing admin, officer, auditor — clear permissions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <h3>Full Audit Trail</h3>
+        <p>Every login and every query recorded. Compliant by default.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+        </div>
+        <h3>Made In India</h3>
+        <p>For Indian law, data-residency norms, and tax teams.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4-8-11a8 8 0 0 1 16 0c0 7-8 11-8 11z"/><circle cx="12" cy="11" r="3"/></svg>
+        </div>
+        <h3>Data Residency</h3>
+        <p>Your data lives where you deploy — nothing shipped to third-party clouds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+        <h3>Refusal Guarantee</h3>
+        <p>No hallucinations. When evidence is absent, the assistant refuses.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="18" x2="12" y2="20"/></svg>
+        </div>
+        <h3>Departmental Desktop App</h3>
+        <p>A native desktop client for the strictest postures &mdash; drafting stays on the officer's own machine.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H4zM8 20h8M12 16v4"/><path d="M8 10l3 3 5-5"/></svg>
+        </div>
+        <h3>Sovereign LLM Option</h3>
+        <p>Run the answering model on your own GPU box &mdash; no third-party API calls at inference time.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">15</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 16 — PRICING & PLANS                                     -->
+<!-- ============================================================ -->
+<section class="page page-pricing">
+  <div class="decor-top-right"></div>
+  <div class="decor-bottom-right"></div>
+  <div class="logo-slot">
+    <div class="logo-mark">
+      <img src="logo.png" alt="Wenvia BharatTax logo" />
+    </div>
+    <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+  </div>
+
+  <div class="page-inner">
+    <span class="eyebrow-tag">11 · Pricing &amp; Plans</span>
+    <h1 class="page-title">PLANS THAT<br/><span>SCALE WITH</span> YOUR PRACTICE.</h1>
+    <p class="page-subtitle">Transparent, annual-billed plans for individual practitioners, professional firms and heavy-use appellate teams &mdash; every tier ships with cited answers, refusal guarantee, seat licensing and full audit trail.</p>
+
+    <div class="pricing-grid">
+      <!-- STARTER -->
+      <div class="price-card">
+        <div class="price-tier">STARTER</div>
+        <div class="price-amount">₹28,788<span class="price-unit"> / year</span></div>
+        <div class="price-monthly">₹2,399 / month effective</div>
+        <p class="price-desc">For individual CAs, students and taxpayer-side users getting started.</p>
+        <ul class="price-features">
+          <li>~ 200 cited research questions</li>
+          <li>Upload notices, orders, deeds &amp; judgments &mdash; up to 25 / month</li>
+          <li>Cited answers on IT Act, Rules &amp; CBDT circulars</li>
+          <li>Live SC / HC / ITAT case-law lookup</li>
+          <li>Single login &middot; e-mail support</li>
+        </ul>
+      </div>
+
+      <!-- PROFESSIONAL (featured) -->
+      <div class="price-card price-card-featured">
+        <div class="price-badge">MOST POPULAR</div>
+        <div class="price-tier">PROFESSIONAL</div>
+        <div class="price-amount">₹39,599<span class="price-unit"> / year</span></div>
+        <div class="price-monthly">₹3,300 / month effective</div>
+        <p class="price-callout">For the professional running 15+ files a week</p>
+        <p class="price-desc">For practising CAs, tax counsel and Assessing Officers on daily use.</p>
+        <ul class="price-features">
+          <li>~ 600 questions or 100 in-depth doc reads</li>
+          <li>Unlimited document uploads</li>
+          <li>Six-module appellate order drafting (.docx)</li>
+          <li>Persona-tuned answers (CA, AO, CFO, founder)</li>
+          <li>Self-audit warnings on every answer</li>
+          <li>Single login &middot; priority support</li>
+        </ul>
+      </div>
+
+      <!-- POWER -->
+      <div class="price-card">
+        <div class="price-tier">POWER</div>
+        <div class="price-amount">₹67,599<span class="price-unit"> / year</span></div>
+        <div class="price-monthly">₹5,633 / month effective</div>
+        <p class="price-desc">For full-time practitioners, senior counsel and appellate authorities.</p>
+        <ul class="price-features">
+          <li>~ 2,000 questions or 350 appellate drafts</li>
+          <li>Everything in Professional</li>
+          <li>Unlimited document uploads</li>
+          <li>Priority queue during peak hours</li>
+          <li>Extended chat &amp; doc retention (3 years)</li>
+          <li>Single login &middot; priority support</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="pricing-note">All plans billed annually &middot; prices in INR, <strong>exclusive of GST</strong> &middot; <strong>Enterprise &amp; departmental seat plans</strong> available on request &mdash; talk to sales.</p>
+  </div>
+
+  <div class="page-num">
+    <span class="label">Page</span>
+    <span class="num">16</span>
+    <span class="page-num-dot">B</span>
+  </div>
+  <div class="page-footer-brand">
+    <span class="pfb-dot"></span>
+    <span class="pfb-text">
+      <span class="pfb-title">Wenvia BharatTax</span>
+      <span class="pfb-tag">by</span>
+      <span class="pfb-sub">Wenvia Global Solutions Pvt Ltd</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 17 — BACK COVER / CONTACT                                -->
+<!-- ============================================================ -->
+<section class="page back-cover">
+  <div class="decor-back-tr"></div>
+  <div class="decor-back-bl"></div>
+
+  <div class="back-brand-strip">
+    <div class="logo-slot" style="color: var(--white);">
+      <div class="logo-mark">
+        <img src="logo.png" alt="Wenvia BharatTax logo" />
+      </div>
+      <div class="logo-text">WENVIA<br/><small>BHARAT TAX</small></div>
+    </div>
+    <div style="color: rgba(255,255,255,0.6); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;">2026 · Corporate Brochure</div>
+  </div>
+
+  <div class="page-inner" style="justify-content: center;">
+    <span class="eyebrow-tag" style="color: var(--blue-light);">12 · Get In Touch</span>
+    <h1 class="page-title">GIVE YOUR TEAM A<br/><span>RESEARCH SUPERPOWER.</span></h1>
+    <p class="page-subtitle">Book a live walkthrough. See Wenvia BharatTax answer real tax questions — with real citations — and draft a real appellate order in under thirty minutes.</p>
+
+    <div class="back-contact-grid">
+      <a href="tel:+919972463579" class="back-contact-card">
+        <span class="back-contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+        </span>
+        <span>
+          <span class="back-contact-label">Call Us</span><br>
+          <span class="back-contact-value">+91 99724 63579</span>
+        </span>
+      </a>
+      <a href="mailto:wenviatech@gmail.com" class="back-contact-card">
+        <span class="back-contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </span>
+        <span>
+          <span class="back-contact-label">Email Us</span>
+          <span class="back-contact-value">wenviatech@gmail.com</span>
+        </span>
+      </a>
+    </div>
+
+    <div class="certifications">
+      <div class="cert-label">Recognised<span>By</span></div>
+      <div class="cert-badges">
+        <div class="cert-badge">
+          <img src="dpiit.png" alt="DPIIT Recognised Startup" />
+          <div class="cert-badge-text">
+            <span class="cert-badge-title">DPIIT Recognised</span>
+            <span class="cert-badge-sub">Startup India · Govt. of India</span>
+          </div>
+        </div>
+        <div class="cert-badge">
+          <img src="msme.png" alt="MSME Registered" />
+          <div class="cert-badge-text">
+            <span class="cert-badge-title">MSME Registered</span>
+            <span class="cert-badge-sub">Ministry of MSME · Govt. of India</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-footer-inline">
+      <div style="flex:1;">
+        <div style="font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 800; color: var(--blue-light); line-height: 1; letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 6px;">Wenvia Global</div>
+        <div style="font-family: 'Anton', sans-serif; font-size: 26px; color: var(--white); line-height: 1;">BHARAT TAX</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px;">Sovereign AI for Indian Tax Professionals &mdash; by Wenvia Global Solutions Pvt Ltd</div>
+      </div>
+      <div style="font-size: 11px; color: rgba(255,255,255,0.55); text-align: right;">
+        &copy; 2026 Wenvia Global Solutions Pvt Ltd<br/>All rights reserved
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
