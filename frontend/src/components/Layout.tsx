@@ -19,6 +19,7 @@ import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
+import NotificationBell from "./NotificationBell";
 
 type NavTone = "primary" | "amber" | "violet" | "sky" | "emerald" | "rose" | "indigo" | "slate";
 const NAV: {
@@ -458,9 +459,12 @@ function LayoutInner({ children }: { children: ReactNode }) {
           <h1 className="text-base font-semibold text-foreground truncate">
             {current?.label ?? "BharatTax"}
           </h1>
-          <div className="ml-auto hidden sm:flex items-center gap-2 text-xs text-slate-500">
-            <span className="inline-block size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.20)]" />
-            Citation-grounded · primary Indian tax law
+          <div className="ml-auto flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+              <span className="inline-block size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.20)]" />
+              Citation-grounded · primary Indian tax law
+            </div>
+            <NotificationBell />
           </div>
         </header>
         <main className="flex-1 min-h-0 overflow-auto bt-app-bg">
