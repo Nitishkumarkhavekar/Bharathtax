@@ -103,3 +103,30 @@ class Reminder(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class StickyNote(Base):
+    """A colour-coded note pinned to a matter (and optionally a section or a
+    source such as a chat answer or uploaded document)."""
+    __tablename__ = "sticky_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    matter_id: Mapped[int | None] = mapped_column(
+        ForeignKey("matters.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    body: Mapped[str] = mapped_column(Text)
+    # Sticky colour key: yellow | blue | green | pink | slate.
+    color: Mapped[str] = mapped_column(String(16), default="yellow")
+    section_ref: Mapped[str | None] = mapped_column(String(40), nullable=True)   # "Sec. 68"
+    # Free-form provenance, e.g. "chat:123", "doc:45", or a citation string.
+    source: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

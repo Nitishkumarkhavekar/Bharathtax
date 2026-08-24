@@ -77,6 +77,21 @@ class ReminderPatch(BaseModel):
     notes: str | None = None
 
 
+class NoteIn(BaseModel):
+    body: str
+    matter_id: int | None = None
+    color: str | None = None             # yellow | blue | green | pink | slate
+    section_ref: str | None = None
+    source: str | None = None
+
+
+class NotePatch(BaseModel):
+    body: str | None = None
+    color: str | None = None
+    pinned: bool | None = None
+    section_ref: str | None = None
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -98,6 +113,13 @@ def _reminder_out(r) -> dict:
     return {"id": r.id, "matter_id": r.matter_id, "deadline_id": r.deadline_id,
             "title": r.title, "due_at": r.due_at.isoformat() if r.due_at else None,
             "channels": r.channels or [], "status": r.status, "notes": r.notes}
+
+
+def _note_out(n) -> dict:
+    return {"id": n.id, "matter_id": n.matter_id, "body": n.body, "color": n.color,
+            "section_ref": n.section_ref, "source": n.source, "pinned": n.pinned,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "updated_at": n.updated_at.isoformat() if n.updated_at else None}
 
 
 # ------------------------------------------------------------------ catalogue
@@ -233,4 +255,39 @@ def update_reminder(reminder_id: int, body: ReminderPatch,
 def delete_reminder(reminder_id: int, p: Principal = Depends(get_principal),
                     db: Session = Depends(get_db)) -> None:
     if not svc.delete_reminder(db, reminder_id, p.user.id):
+        raise HTTPException(404, "Not found")
+
+
+# ------------------------------------------------------------------ sticky notes
+@router.get("/notes")
+def list_notes(matter_id: int | None = None,
+               p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
+    return [_note_out(n) for n in svc.list_notes(db, p.user.id, matter_id)]
+
+
+@router.post("/notes", status_code=201)
+def add_note(body: NoteIn, p: Principal = Depends(get_principal),
+             db: Session = Depends(get_db)) -> dict:
+    text = (body.body or "").strip()
+    if not text:
+        raise HTTPException(400, "body is required")
+    n = svc.create_note(db, p.user.id, body=text, matter_id=body.matter_id,
+                        color=body.color or "yellow", section_ref=body.section_ref,
+                        source=body.source)
+    return _note_out(n)
+
+
+@router.patch("/notes/{note_id}")
+def edit_note(note_id: int, body: NotePatch, p: Principal = Depends(get_principal),
+              db: Session = Depends(get_db)) -> dict:
+    n = svc.update_note(db, note_id, p.user.id, **body.model_dump(exclude_none=True))
+    if not n:
+        raise HTTPException(404, "Not found")
+    return _note_out(n)
+
+
+@router.delete("/notes/{note_id}", status_code=204)
+def remove_note(note_id: int, p: Principal = Depends(get_principal),
+                db: Session = Depends(get_db)) -> None:
+    if not svc.delete_note(db, note_id, p.user.id):
         raise HTTPException(404, "Not found")

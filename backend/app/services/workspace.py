@@ -12,7 +12,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from app.models.workspace import Deadline, Matter, Reminder
+from app.models.workspace import Deadline, Matter, Reminder, StickyNote
 from app.services import limitation
 
 # How far ahead of a statutory deadline to seed the auto-reminder.
@@ -204,5 +204,49 @@ def delete_reminder(db: Session, reminder_id: int, user_id: int) -> bool:
     if not r:
         return False
     db.delete(r)
+    db.commit()
+    return True
+
+
+# --- sticky notes ------------------------------------------------------------
+def list_notes(db: Session, user_id: int, matter_id: int | None = None) -> list[StickyNote]:
+    stmt = select(StickyNote).where(StickyNote.user_id == user_id)
+    if matter_id is not None:
+        stmt = stmt.where(StickyNote.matter_id == matter_id)
+    return list(db.scalars(
+        stmt.order_by(StickyNote.pinned.desc(), StickyNote.updated_at.desc())
+    ))
+
+
+def create_note(db: Session, user_id: int, body: str, matter_id: int | None = None,
+                color: str = "yellow", section_ref: str | None = None,
+                source: str | None = None) -> StickyNote:
+    n = StickyNote(user_id=user_id, body=body, matter_id=matter_id, color=color,
+                   section_ref=section_ref, source=source)
+    db.add(n)
+    db.commit()
+    db.refresh(n)
+    return n
+
+
+def update_note(db: Session, note_id: int, user_id: int, **fields) -> StickyNote | None:
+    n = db.scalar(select(StickyNote).where(
+        StickyNote.id == note_id, StickyNote.user_id == user_id))
+    if not n:
+        return None
+    for k, v in fields.items():
+        if v is not None:
+            setattr(n, k, v)
+    db.commit()
+    db.refresh(n)
+    return n
+
+
+def delete_note(db: Session, note_id: int, user_id: int) -> bool:
+    n = db.scalar(select(StickyNote).where(
+        StickyNote.id == note_id, StickyNote.user_id == user_id))
+    if not n:
+        return False
+    db.delete(n)
     db.commit()
     return True
