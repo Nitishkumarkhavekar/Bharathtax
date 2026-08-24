@@ -92,6 +92,17 @@ class NotePatch(BaseModel):
     section_ref: str | None = None
 
 
+class InterestIn(BaseModel):
+    section: str = "234A"                 # 234A | 234B | 220(2)
+    principal: float
+    from_date: date
+    to_date: date
+
+
+class TaxBBEIn(BaseModel):
+    income: float
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -291,3 +302,20 @@ def remove_note(note_id: int, p: Principal = Depends(get_principal),
                 db: Session = Depends(get_db)) -> None:
     if not svc.delete_note(db, note_id, p.user.id):
         raise HTTPException(404, "Not found")
+
+
+# ------------------------------------------------------------------ calculators
+@router.post("/calc/interest")
+def calc_interest(body: InterestIn, p: Principal = Depends(get_principal)) -> dict:
+    """1%-per-month statutory interest (Sec. 234A / 234B / 220(2))."""
+    from app.services import calculators
+    if body.to_date < body.from_date:
+        raise HTTPException(400, "to_date must be on or after from_date")
+    return calculators.simple_interest(body.section, body.principal, body.from_date, body.to_date)
+
+
+@router.post("/calc/115bbe")
+def calc_115bbe(body: TaxBBEIn, p: Principal = Depends(get_principal)) -> dict:
+    """Tax on unexplained income u/s 115BBE (60% + 25% surcharge + 4% cess)."""
+    from app.services import calculators
+    return calculators.tax_115bbe(body.income)

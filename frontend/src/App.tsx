@@ -19,6 +19,7 @@ const AppealCase = lazy(() => import("./pages/AppealCase"));
 const Rulings = lazy(() => import("./pages/Rulings"));
 const Drafting = lazy(() => import("./pages/Drafting"));
 const Workspace = lazy(() => import("./pages/Workspace"));
+const Calculators = lazy(() => import("./pages/Calculators"));
 const SharedChat = lazy(() => import("./pages/SharedChat"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -110,6 +111,7 @@ export default function App() {
       <Route path="/appeals/:id" element={<NonAdminOnly><AppealCase /></NonAdminOnly>} />
       <Route path="/drafts" element={<NonAdminOnly><Drafting /></NonAdminOnly>} />
       <Route path="/workspace" element={<NonAdminOnly><Workspace /></NonAdminOnly>} />
+      <Route path="/calculators" element={<NonAdminOnly><Calculators /></NonAdminOnly>} />
       {/* Read-only shared chat — any signed-in user with the link can view. */}
       <Route path="/shared/:shareId" element={<Protected raw><SharedChat /></Protected>} />
       <Route path="/rulings" element={<NonAdminOnly><Rulings /></NonAdminOnly>} />

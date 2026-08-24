@@ -674,6 +674,29 @@ export interface WsNote {
   created_at: string | null;
   updated_at: string | null;
 }
+export interface WsInterestResult {
+  section: string;
+  principal: number;
+  from_date: string;
+  to_date: string;
+  rate_pct_per_month: number;
+  months: number;
+  interest: number;
+  total_payable: number;
+  workings: string;
+}
+export interface WsBBEResult {
+  income: number;
+  base_rate_pct: number;
+  base_tax: number;
+  surcharge_pct: number;
+  surcharge: number;
+  cess_pct: number;
+  cess: number;
+  total_tax: number;
+  effective_rate_pct: number;
+  workings: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1089,6 +1112,10 @@ export const api = {
     req<WsNote>(`/workspace/notes/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   wsDeleteNote: (id: number) =>
     req<void>(`/workspace/notes/${id}`, { method: "DELETE" }),
+  wsCalcInterest: (body: { section: string; principal: number; from_date: string; to_date: string }) =>
+    req<WsInterestResult>("/workspace/calc/interest", { method: "POST", body: JSON.stringify(body) }),
+  wsCalc115bbe: (income: number) =>
+    req<WsBBEResult>("/workspace/calc/115bbe", { method: "POST", body: JSON.stringify({ income }) }),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
   adminCreateWing: (body: { name: string; code?: string; seat_limit?: number }) =>
     req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {
