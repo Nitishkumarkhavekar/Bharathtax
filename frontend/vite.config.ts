@@ -8,7 +8,7 @@ import { fileURLToPath, URL } from "node:url";
 const _API_PREFIXES = [
   "ask", "rulings", "documents", "chats", "history", "appeal", "crossref",
   "billing", "admin", "assist", "ratings", "auth", "personalization",
-  "drafting", "contact", "support", "health", "public",
+  "workspace", "drafting", "contact", "support", "health", "public",
   "desktop-update", "desktop-admin", "desktop-session", "password-reset",
 ];
 const _API_PROXY_RE = `^/(${_API_PREFIXES.join("|")})(/|$)`;

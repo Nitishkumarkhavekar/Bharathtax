@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin, personalization, drafting, contact
+from app.api.routes import workspace
 from app.api.routes import support as support_routes
 from app.api.routes import desktop_session as ds_routes
 from app.api.routes import password_reset as pw_reset_routes
@@ -128,6 +129,9 @@ app.include_router(assist.router)
 app.include_router(ratings.router)
 app.include_router(billing.router)
 app.include_router(personalization.router)
+# Daily workspace: matters, limitation calendar, reminders. Available to any
+# authenticated user (no feature gate yet — can be added to require_feature later).
+app.include_router(workspace.router)
 # Officer drafting suite (notices/orders). Authenticated; a dedicated "drafting"
 # entitlement can be added to require_feature later.
 app.include_router(drafting.router)
