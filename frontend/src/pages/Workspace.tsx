@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   CalendarClock, Plus, Trash2, Check, AlarmClock, X, RefreshCw, FolderOpen, Info,
   StickyNote as StickyNoteIcon, Pin, Share2, UserPlus, Users2,
@@ -181,6 +182,14 @@ export default function Workspace() {
       if (d.owned) { try { setShares(await api.wsShares(id)); } catch { setShares([]); } }
     } catch { /* */ }
   };
+
+  // Open a matter passed via ?matter=<id> (e.g. from the Dashboard).
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const mid = searchParams.get("matter");
+    if (mid && /^\d+$/.test(mid)) select(Number(mid));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addShare = async () => {
     if (!selectedId || !shareEmail.trim()) return;

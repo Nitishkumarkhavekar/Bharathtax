@@ -665,6 +665,17 @@ export interface WsRuleCatalogue {
   triggers: { id: string; label: string }[];
   rules: { id: string; trigger: string; label: string; section: string }[];
 }
+export interface WsWorkloadRow {
+  id: number; title: string; pan: string | null; assessment_year: string | null;
+  category: string | null; status: string; owned: boolean;
+  open_count: number; overdue_count: number; urgent_count: number;
+  next_due_date: string | null; next_label: string | null; next_section: string | null;
+  updated_at: string | null;
+}
+export interface WsWorkload {
+  summary: { total_matters: number; open_deadlines: number; overdue: number; due_7: number; due_30: number };
+  matters: WsWorkloadRow[];
+}
 export interface WsNote {
   id: number;
   matter_id: number | null;
@@ -1149,6 +1160,7 @@ export const api = {
     req<WsDeadline[]>(`/workspace/calendar?start=${start}&end=${end}&include_done=${includeDone}`),
   wsReminders: (pendingOnly = true) =>
     req<WsReminder[]>(`/workspace/reminders?pending_only=${pendingOnly}`),
+  wsWorkload: () => req<WsWorkload>("/workspace/workload"),
   wsDueReminders: () => req<WsReminder[]>("/workspace/reminders/due"),
   wsUpdateReminder: (id: number, body: { status?: string; title?: string; due_at?: string; notes?: string }) =>
     req<WsReminder>(`/workspace/reminders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),

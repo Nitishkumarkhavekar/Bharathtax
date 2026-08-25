@@ -182,6 +182,51 @@ def calendar(db: Session, user_id: int, start: date, end: date,
     ))
 
 
+# --- workload / portfolio ----------------------------------------------------
+def workload(db: Session, user_id: int, today: date | None = None) -> dict:
+    """A portfolio view: every matter (owned + shared) enriched with its next
+    open statutory deadline and per-matter counts, plus caseload-wide totals."""
+    today = today or datetime.now(_IST).date()
+    matters = list_matters(db, user_id)
+    mids = [m.id for m in matters]
+    deadlines: list[Deadline] = []
+    if mids:
+        deadlines = list(db.scalars(
+            select(Deadline).where(Deadline.matter_id.in_(mids), Deadline.status == "open")))
+
+    by_matter: dict[int, list[Deadline]] = {}
+    for d in deadlines:
+        by_matter.setdefault(d.matter_id, []).append(d)
+
+    summary = {"total_matters": len(matters), "open_deadlines": len(deadlines),
+               "overdue": 0, "due_7": 0, "due_30": 0}
+    for d in deadlines:
+        diff = (d.due_date - today).days
+        if diff < 0:
+            summary["overdue"] += 1
+        elif diff <= 7:
+            summary["due_7"] += 1
+        elif diff <= 30:
+            summary["due_30"] += 1
+
+    rows = []
+    for m in matters:
+        dls = sorted(by_matter.get(m.id, []), key=lambda d: d.due_date)
+        nxt = dls[0] if dls else None
+        overdue = sum(1 for d in dls if (d.due_date - today).days < 0)
+        urgent = sum(1 for d in dls if 0 <= (d.due_date - today).days <= 7)
+        rows.append({
+            "id": m.id, "title": m.title, "pan": m.pan, "assessment_year": m.assessment_year,
+            "category": m.category, "status": m.status, "owned": m.user_id == user_id,
+            "open_count": len(dls), "overdue_count": overdue, "urgent_count": urgent,
+            "next_due_date": nxt.due_date.isoformat() if nxt else None,
+            "next_label": nxt.label if nxt else None,
+            "next_section": nxt.section_ref if nxt else None,
+            "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+        })
+    return {"summary": summary, "matters": rows}
+
+
 # --- reminders ---------------------------------------------------------------
 def list_reminders(db: Session, user_id: int, pending_only: bool = True) -> list[Reminder]:
     stmt = select(Reminder).where(Reminder.user_id == user_id)
