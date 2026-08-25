@@ -245,6 +245,17 @@ class AlpIn(BaseModel):
     base_amount: float = 0.0
 
 
+class SftRow(BaseModel):
+    pan: str | None = None
+    name: str | None = None
+    category: str | None = None
+    amount: float = 0.0
+
+
+class SftAnalyzeIn(BaseModel):
+    rows: list[SftRow]
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -683,3 +694,17 @@ def tp_methods(p: Principal = Depends(get_principal)) -> list[dict]:
     """The five prescribed transfer-pricing methods and when to use each."""
     from app.services import calculators
     return [dict(m) for m in calculators.TP_METHODS]
+
+
+@router.post("/sft-analyze")
+def sft_analyze(body: SftAnalyzeIn, p: Principal = Depends(get_principal)) -> dict:
+    """I&CI: aggregate AIS/SFT rows by PAN and flag Rule 114E high-value cases."""
+    from app.services import calculators
+    return calculators.sft_analyze([r.model_dump() for r in body.rows])
+
+
+@router.get("/sft-thresholds")
+def sft_thresholds(p: Principal = Depends(get_principal)) -> list[dict]:
+    """Rule 114E SFT reporting categories and their annual thresholds."""
+    from app.services import calculators
+    return [dict(t) for t in calculators.SFT_THRESHOLDS]

@@ -222,3 +222,32 @@ def test_alp_mean_method_when_fewer_than_six():
     assert r["method"] == "mean"
     assert r["mean"] == 10.0
     assert r["adjustment"] == 40_000           # (10 - 6)% of 10L
+
+
+def test_sft_analyze_aggregates_and_flags():
+    r = calc.sft_analyze([
+        {"pan": "AAAPL1234C", "name": "Ravi", "category": "cash_deposit_sb", "amount": 600_000},
+        {"pan": "AAAPL1234C", "name": "Ravi", "category": "cash_deposit_sb", "amount": 700_000},
+        {"pan": "BBBPL5678D", "name": "Sita", "category": "immovable_property", "amount": 2_500_000},
+        {"pan": "CCCPL9999E", "name": "Amit", "category": "shares_mf_bonds", "amount": 1_500_000},
+    ])
+    assert r["summary"]["persons"] == 3
+    assert r["summary"]["flagged"] == 2          # Ravi (13L SB) + Amit (15L shares)
+    assert r["summary"]["grand_total"] == 5_300_000
+    ravi = next(p for p in r["people"] if p["pan"] == "AAAPL1234C")
+    assert ravi["total"] == 1_300_000 and ravi["flagged"] is True
+    sita = next(p for p in r["people"] if p["pan"] == "BBBPL5678D")
+    assert sita["flagged"] is False              # 25L property < 30L threshold
+
+
+def test_sft_analyze_unknown_category_uses_default():
+    r = calc.sft_analyze([{"pan": "X", "category": "misc", "amount": 1_200_000}])
+    assert r["people"][0]["flagged"] is True     # >= 10L default threshold
+
+
+def test_sft_analyze_ranks_by_total_desc():
+    r = calc.sft_analyze([
+        {"pan": "A", "category": "other", "amount": 100},
+        {"pan": "B", "category": "other", "amount": 900},
+    ])
+    assert [p["pan"] for p in r["people"]] == ["B", "A"]
