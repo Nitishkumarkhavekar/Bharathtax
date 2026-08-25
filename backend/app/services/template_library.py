@@ -242,6 +242,81 @@ If you do not pay within the time allowed, you shall be liable to interest u/s 2
 Date: {{TODAY}}
 """
 
+_NOTICE_221 = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Show-cause notice u/s 221(1) of the Income-tax Act, 1961 — penalty for default in payment of tax
+
+1. A demand of Rs. {{DEMAND}} was raised against you for AY {{AY}} vide notice of demand u/s 156 dated [date]. The amount was payable within 30 days of service. The demand remains unpaid / partly unpaid and you are in default u/s 220(4).
+
+2. You are hereby required to show cause, on or before [date], as to why a penalty u/s 221(1) (not exceeding the amount of tax in arrears) should not be levied for the default. Interest u/s 220(2) continues to accrue at 1% per month on the outstanding amount.
+
+3. If no cause is shown, penalty will be levied and recovery proceedings u/s 222-226 initiated without further notice.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_NOTICE_226_3 = """OFFICE OF THE {{AO}} / TAX RECOVERY OFFICER
+
+To,
+[Name of the garnishee — bank / debtor / employer]
+[Address]
+
+Notice u/s 226(3) of the Income-tax Act, 1961 — recovery from a person holding money for the assessee
+
+1. A sum of Rs. {{DEMAND}} is due from {{ASSESSEE}} (PAN {{PAN}}) for AY {{AY}} and is in arrears.
+
+2. You are hereby required to pay to the credit of the Central Government forthwith, and in any case within [time], any amount due from you to, or held by you for or on account of, the said assessee, up to the amount of the arrears stated above. This includes amounts that may subsequently become due or be held.
+
+3. Any payment made by you in compliance discharges you to that extent. If you fail to comply, you shall be deemed to be an assessee in default u/s 226(3)(x) and the amount shall be recoverable from you. A copy is sent to the assessee.
+
+                                                    ({{AO}} / TRO)
+Date: {{TODAY}}
+"""
+
+_TRO_222 = """OFFICE OF THE {{AO}}
+
+To,
+The Tax Recovery Officer,
+[Jurisdiction]
+
+Sub: Drawing up of statement / certificate u/s 222 r.w. Sch. II — arrears of {{ASSESSEE}}, PAN {{PAN}}, AY {{AY}}
+
+1. The following demand is in arrears against the above defaulter and recovery is requested by attachment and sale u/s 222 read with the Second Schedule:
+      AY {{AY}}                Rs. {{DEMAND}}   (plus interest u/s 220(2))
+
+2. The assessee has been served notice of demand u/s 156 and is in default u/s 220(4). No stay is in operation [confirm]. The defaulter's known assets / bank accounts are: [particulars].
+
+3. A certificate u/s 222 may kindly be drawn up and recovery proceedings under the Second Schedule initiated.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_INSTALMENT_ORDER = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Order u/s 220(3) — grant of instalments for payment of demand
+
+1. With reference to your application dated [date] seeking time to pay the outstanding demand of Rs. {{DEMAND}} for AY {{AY}}, and having considered the circumstances, the demand is permitted to be paid in [N] monthly instalments as under:
+
+      Instalment 1 — Rs. [____] by [date]
+      Instalment 2 — Rs. [____] by [date]
+      … (as scheduled)
+
+2. Interest u/s 220(2) at 1% per month on the amount outstanding will continue to accrue and is payable in addition. Default in any instalment will render the whole of the then-outstanding demand immediately due and recovery u/s 222-226 will follow. You will not be treated as in default so long as the instalments are paid on the due dates.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -256,6 +331,11 @@ LIBRARY = [
     {"id": "notice_142_1", "name": "Notice u/s 142(1) (enquiry)", "category": "notice", "side": "officer", "body": _NOTICE_142_1},
     {"id": "scn_148a", "name": "Show-cause u/s 148A(b) (reopening)", "category": "notice", "side": "officer", "body": _SCN_148A},
     {"id": "notice_156", "name": "Notice of demand u/s 156", "category": "notice", "side": "officer", "body": _NOTICE_156},
+    # --- officer side: recovery / TRO ---
+    {"id": "notice_221", "name": "SCN u/s 221(1) (penalty for default)", "category": "notice", "side": "officer", "body": _NOTICE_221},
+    {"id": "notice_226_3", "name": "Garnishee notice u/s 226(3)", "category": "notice", "side": "officer", "body": _NOTICE_226_3},
+    {"id": "tro_222", "name": "Reference to TRO u/s 222 (recovery certificate)", "category": "order", "side": "officer", "body": _TRO_222},
+    {"id": "instalment_order", "name": "Instalment order u/s 220(3)", "category": "order", "side": "officer", "body": _INSTALMENT_ORDER},
 ]
 
 

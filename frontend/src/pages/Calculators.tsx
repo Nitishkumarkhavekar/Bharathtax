@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -408,8 +408,57 @@ function TdsCalc() {
   );
 }
 
+function RecoveryCalc() {
+  const [demand, setDemand] = useState("");
+  const [n, setN] = useState("6");
+  const [firstDue, setFirstDue] = useState(todayISO());
+  const [res, setRes] = useState<WsInstallmentResult | null>(null);
+  const run = async () => {
+    const d = parseFloat(demand);
+    const cnt = parseInt(n, 10);
+    if (!d || d <= 0) { toast.error("Enter the outstanding demand."); return; }
+    if (!cnt || cnt < 1) { toast.error("Enter the number of instalments."); return; }
+    if (!firstDue) { toast.error("Pick the first instalment date."); return; }
+    try { setRes(await api.wsCalcInstallments({ demand: d, installments: cnt, first_due: firstDue })); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Outstanding demand"><Input type="number" placeholder="e.g. 120000" value={demand} onChange={(e) => setDemand(e.target.value)} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="No. of instalments"><Input type="number" placeholder="e.g. 6" value={n} onChange={(e) => setN(e.target.value)} /></Field>
+          <Field label="First instalment due"><Input type="date" value={firstDue} onChange={(e) => setFirstDue(e.target.value)} /></Field>
+        </div>
+        <Button className="w-full" onClick={run}>Build instalment plan</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500">
+          <Info className="size-3.5 mt-px shrink-0" />
+          Equal monthly principal with Sec. 220(2) interest at 1%/month on the outstanding balance. Pair with the u/s 220(3) instalment order in Templates → Library.
+        </p>
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-2">Instalment plan · 220(2)</div>
+            <div className="max-h-64 overflow-y-auto -mx-1 px-1">
+              {res.schedule.map((r) => (
+                <div key={r.n} className="flex items-center justify-between py-1 text-[12.5px] border-b border-slate-100 last:border-0">
+                  <span className="text-slate-600">#{r.n} · {r.due_date}</span>
+                  <span className="tabular-nums text-slate-800">{inr(r.principal)} <span className="text-slate-400">+ {inr(r.interest_220_2)} int</span></span>
+                </div>
+              ))}
+            </div>
+            <ResultRow label="Total interest 220(2)" value={inr(res.total_interest)} />
+            <ResultRow label="Total payable" value={inr(res.total_payable)} strong />
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter the demand and instalments — the schedule appears here.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -423,7 +472,7 @@ export default function Calculators() {
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -436,6 +485,7 @@ export default function Calculators() {
         {tab === "interest" ? <InterestCalc />
           : tab === "234c" ? <Calc234C />
           : tab === "tds" ? <TdsCalc />
+          : tab === "recovery" ? <RecoveryCalc />
           : tab === "bbe" ? <Bbe115Calc />
           : tab === "slab" ? <SlabCalc />
           : tab === "capgains" ? <CapGainsCalc />
