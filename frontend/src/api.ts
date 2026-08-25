@@ -1624,6 +1624,49 @@ export const api = {
     window.open(URL.createObjectURL(await res.blob()), "_blank");
   },
 
+  // --- assessment-order drafting (AO side) ---
+  asmtCases: () => req<any[]>("/assessment/cases"),
+  asmtCreateCase: (b: any) => req<any>("/assessment/cases", { method: "POST", body: JSON.stringify(b) }),
+  asmtCase: (id: string | number) => req<any>(`/assessment/cases/${id}`),
+  asmtUpload: (id: string | number, files: FileList) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append("files", f));
+    return req<any>(`/assessment/cases/${id}/documents`, { method: "POST", body: fd });
+  },
+  asmtUpdateDocCategory: (cid: string | number, did: number, category: string) =>
+    req<any>(`/assessment/cases/${cid}/documents/${did}`, {
+      method: "PUT", body: JSON.stringify({ category }),
+    }),
+  asmtRun: (id: string | number) => req<any>(`/assessment/cases/${id}/run`, { method: "POST" }),
+  asmtRunStatus: (rid: number) => req<any>(`/assessment/runs/${rid}`),
+  asmtStopCase: (id: string | number) => req<any>(`/assessment/cases/${id}/stop`, { method: "POST" }),
+  asmtCancelRun: (rid: number) => req<any>(`/assessment/runs/${rid}/cancel`, { method: "POST" }),
+  asmtPatchCase: (
+    id: string | number,
+    b: { title?: string; assessment_year?: string | null; pan?: string | null; section?: string | null },
+  ) => req<any>(`/assessment/cases/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
+  asmtDeleteCase: (id: string | number) => req<void>(`/assessment/cases/${id}`, { method: "DELETE" }),
+  asmtDeleteDoc: (cid: string | number, did: number) =>
+    req<any>(`/assessment/cases/${cid}/documents/${did}`, { method: "DELETE" }),
+  asmtLatest: (id: string | number) => req<any>(`/assessment/cases/${id}/latest`),
+  asmtEditOutput: (oid: number, content: string) =>
+    req<any>(`/assessment/outputs/${oid}`, { method: "PUT", body: JSON.stringify({ content }) }),
+  asmtRegenerate: (id: string | number, seq: number) =>
+    req<any>(`/assessment/cases/${id}/issues/${seq}/regenerate`, { method: "POST" }),
+  asmtReassemble: (id: string | number) =>
+    req<any>(`/assessment/cases/${id}/reassemble`, { method: "POST" }),
+  async asmtDownload(path: string, filename: string) {
+    const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token()}` } });
+    if (!res.ok) throw new ApiError(res.status, "Download failed");
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  },
+  async asmtOpenDoc(cid: string | number, did: number) {
+    const res = await fetch(`${BASE}/assessment/cases/${cid}/documents/${did}/file`, { headers: { Authorization: `Bearer ${token()}` } });
+    if (!res.ok) throw new ApiError(res.status, "Open failed");
+    window.open(URL.createObjectURL(await res.blob()), "_blank");
+  },
+
   // ----- Public releases catalogue (landing page) -----
   publicReleases: () => req<PublicReleaseCatalogue>("/desktop/releases"),
 

@@ -2,6 +2,9 @@
 from app.models.activity import AuditLog, Query
 from app.models.admin import LicenseKey, RevenueEntry
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
+from app.models.assessment import (
+    AssessmentCase, AssessmentDocument, AssessmentOutput, AssessmentRun,
+)
 from app.models.chat import Chat, ChatMessage, ChatMemory, ChatSummary
 from app.models.billing import SubscriptionPlan, TokenPrice, UserSubscription
 from app.models.desktop import DesktopRelease
@@ -26,6 +29,7 @@ __all__ = [
     "AuditLog", "Query",
     "LicenseKey", "RevenueEntry",
     "AppealCase", "AppealDocument", "AppealOutput", "AppealRun",
+    "AssessmentCase", "AssessmentDocument", "AssessmentOutput", "AssessmentRun",
     "CorpusChunk", "CorpusDocument", "CorpusSource",
     "Document", "DocumentChunk",
     "ChunkLevel", "CorpusDocStatus", "Domain", "DocumentStatus", "QueryScope", "Role", "SourceType",

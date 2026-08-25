@@ -16,6 +16,8 @@ const ProfilePage = lazy(() => import("./pages/Profile"));
 const History = lazy(() => import("./pages/History"));
 const Appeals = lazy(() => import("./pages/Appeals"));
 const AppealCase = lazy(() => import("./pages/AppealCase"));
+const Assessments = lazy(() => import("./pages/Assessments"));
+const AssessmentCase = lazy(() => import("./pages/AssessmentCase"));
 const Rulings = lazy(() => import("./pages/Rulings"));
 const Drafting = lazy(() => import("./pages/Drafting"));
 const Workspace = lazy(() => import("./pages/Workspace"));
@@ -113,6 +115,8 @@ export default function App() {
       <Route path="/ask" element={<NonAdminOnly raw><Ask /></NonAdminOnly>} />
       <Route path="/appeals" element={<NonAdminOnly><Appeals /></NonAdminOnly>} />
       <Route path="/appeals/:id" element={<NonAdminOnly><AppealCase /></NonAdminOnly>} />
+      <Route path="/assessments" element={<NonAdminOnly><Assessments /></NonAdminOnly>} />
+      <Route path="/assessments/:id" element={<NonAdminOnly><AssessmentCase /></NonAdminOnly>} />
       <Route path="/drafts" element={<NonAdminOnly><Drafting /></NonAdminOnly>} />
       <Route path="/dashboard" element={<NonAdminOnly><Dashboard /></NonAdminOnly>} />
       <Route path="/workspace" element={<NonAdminOnly><Workspace /></NonAdminOnly>} />
