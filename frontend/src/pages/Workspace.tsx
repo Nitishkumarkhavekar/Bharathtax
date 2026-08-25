@@ -21,6 +21,8 @@ const CATEGORIES = [
   { v: "investigation", l: "Investigation" },
   { v: "ici", l: "I&CI" },
   { v: "tds", l: "TDS / Exemptions" },
+  { v: "recovery", l: "Recovery / TRO" },
+  { v: "tp", l: "Transfer Pricing" },
   { v: "ca", l: "CA / Advocate" },
   { v: "other", l: "Other" },
 ];

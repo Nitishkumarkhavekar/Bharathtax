@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
   { v: "drp", l: "DRP" }, { v: "investigation", l: "Investigation" }, { v: "ici", l: "I&CI" },
-  { v: "tds", l: "TDS" }, { v: "ca", l: "CA" }, { v: "other", l: "Other" },
+  { v: "tds", l: "TDS" }, { v: "recovery", l: "Recovery" }, { v: "tp", l: "TP" },
+  { v: "ca", l: "CA" }, { v: "other", l: "Other" },
 ];
 const CAT_LABEL: Record<string, string> = {
   officer: "Assessing Officer", cita: "CIT(A) / NFAC", drp: "DRP", investigation: "Investigation",
-  ici: "I&CI", tds: "TDS / Exemptions", ca: "CA / Advocate", other: "Other",
+  ici: "I&CI", tds: "TDS / Exemptions", recovery: "Recovery / TRO", tp: "Transfer Pricing",
+  ca: "CA / Advocate", other: "Other",
 };
 const STATUS_TONE: Record<string, string> = {
   open: "bg-blue-50 text-blue-700 ring-blue-200",
