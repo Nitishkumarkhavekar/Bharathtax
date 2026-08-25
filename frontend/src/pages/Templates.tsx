@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { FileText, Plus, Trash2, Copy, LayoutTemplate, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { FileText, Plus, Trash2, Copy, LayoutTemplate, X, Search } from "lucide-react";
 import { api, WsTemplate, WsLibraryTemplate } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,23 @@ export default function Templates() {
   const [library, setLibrary] = useState<WsLibraryTemplate[]>([]);
   const [showLib, setShowLib] = useState(false);
   const [libSide, setLibSide] = useState("");
+  const [libQuery, setLibQuery] = useState("");
+
+  const libGroups = useMemo(() => {
+    const q = libQuery.trim().toLowerCase();
+    const filtered = library.filter((t) => {
+      if (libSide && t.side !== libSide) return false;
+      if (!q) return true;
+      return `${t.name} ${t.group ?? ""} ${t.category} ${t.body}`.toLowerCase().includes(q);
+    });
+    const map = new Map<string, WsLibraryTemplate[]>();
+    for (const t of filtered) {
+      const g = t.group || "Other";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(t);
+    }
+    return Array.from(map.entries());
+  }, [library, libSide, libQuery]);
 
   const load = async () => setItems(await api.wsTemplates());
   useEffect(() => {
@@ -134,28 +151,42 @@ export default function Templates() {
               <div className="flex items-center gap-2 text-[14px] font-bold text-slate-900"><LayoutTemplate className="size-4 text-primary" /> Starter library</div>
               <button onClick={() => setShowLib(false)} aria-label="Close" className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="size-4" /></button>
             </div>
-            <div className="p-4 overflow-y-auto space-y-2.5">
-              <p className="text-[12px] text-slate-500">Ready-made notices, orders and replies. Load one, fill the placeholders, and save it as your own.</p>
-              <div className="inline-flex rounded-lg bg-slate-100 p-1">
-                {([["", "All"], ["officer", "Officer"], ["assessee", "Assessee"]] as const).map(([v, l]) => (
-                  <button key={v} onClick={() => setLibSide(v)}
-                    className={cn("px-3 py-1 rounded-md text-[12px] font-semibold transition-colors",
-                      libSide === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
-                    {l}
-                  </button>
-                ))}
+            <div className="p-4 overflow-y-auto space-y-3">
+              <p className="text-[12px] text-slate-500">Ready-made notices, orders and replies across every wing. Load one, fill the placeholders, and save it as your own.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-lg bg-slate-100 p-1">
+                  {([["", "All"], ["officer", "Officer"], ["assessee", "Assessee"]] as const).map(([v, l]) => (
+                    <button key={v} onClick={() => setLibSide(v)}
+                      className={cn("px-3 py-1 rounded-md text-[12px] font-semibold transition-colors",
+                        libSide === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative flex-1 min-w-[160px]">
+                  <Search className="absolute left-2.5 top-2 size-3.5 text-slate-400" />
+                  <input value={libQuery} onChange={(e) => setLibQuery(e.target.value)} placeholder="Search templates…"
+                    className="w-full pl-8 pr-2 h-8 rounded-lg border border-slate-200 bg-white text-[12.5px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                </div>
               </div>
-              {library.filter((t) => !libSide || t.side === libSide).map((t) => (
-                <div key={t.id} className="rounded-xl ring-1 ring-slate-200 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-slate-800 truncate">{t.name}</span>
-                    <span className="shrink-0 text-[10px] font-semibold uppercase text-slate-400">{t.category}</span>
-                  </div>
-                  <p className="mt-1 text-[11.5px] text-slate-500 truncate">{t.body.replace(/\s+/g, " ").trim().slice(0, 160)}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Button size="sm" onClick={() => useLibraryItem(t)}>Use</Button>
-                    <Button size="sm" variant="outline" onClick={() => copy(t.body)}><Copy className="size-3.5 mr-1" /> Copy</Button>
-                  </div>
+              {libGroups.length === 0 && <div className="text-[12.5px] text-slate-400 text-center py-6">No templates match.</div>}
+              {libGroups.map(([group, items]) => (
+                <div key={group} className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-0.5">{group} <span className="text-slate-300">· {items.length}</span></div>
+                  {items.map((t) => (
+                    <div key={t.id} className="rounded-xl ring-1 ring-slate-200 p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-slate-800 truncate">{t.name}</span>
+                        <span className={cn("shrink-0 text-[9.5px] font-semibold uppercase rounded px-1.5 py-0.5", t.side === "officer" ? "bg-primary/10 text-primary" : "bg-brand-green/15 text-brand-green")}>{t.side}</span>
+                        <span className="shrink-0 text-[10px] font-semibold uppercase text-slate-400">{t.category}</span>
+                      </div>
+                      <p className="mt-1 text-[11.5px] text-slate-500 truncate">{t.body.replace(/\s+/g, " ").trim().slice(0, 160)}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Button size="sm" onClick={() => useLibraryItem(t)}>Use</Button>
+                        <Button size="sm" variant="outline" onClick={() => copy(t.body)}><Copy className="size-3.5 mr-1" /> Copy</Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

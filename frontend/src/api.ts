@@ -730,6 +730,7 @@ export interface WsLibraryTemplate {
   name: string;
   category: string;
   side: string;
+  group?: string;
   body: string;
 }
 export interface WsShare {
