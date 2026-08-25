@@ -212,6 +212,12 @@ class TdsIn(BaseModel):
     statement_due: date | None = None   # TDS-statement filing due date (for 234E)
 
 
+class InstallmentIn(BaseModel):
+    demand: float
+    installments: int
+    first_due: date
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -608,3 +614,10 @@ def tds_sections(p: Principal = Depends(get_principal)) -> list[dict]:
     """Reference table of common TDS sections, nature of payment and rates."""
     from app.services import calculators
     return [dict(s) for s in calculators.TDS_SECTIONS]
+
+
+@router.post("/calc/installments")
+def calc_installments(body: InstallmentIn, p: Principal = Depends(get_principal)) -> dict:
+    """Recovery: split a demand into monthly installments with 220(2) interest."""
+    from app.services import calculators
+    return calculators.installment_plan(body.demand, body.installments, body.first_due)

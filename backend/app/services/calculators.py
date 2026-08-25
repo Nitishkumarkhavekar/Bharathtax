@@ -268,6 +268,67 @@ def tds_default(amount: float, rate_pct: float, deduction_due: date,
     }
 
 
+# --- recovery: demand installment plan with 220(2) interest ------------------
+def installment_plan(demand: float, n_installments: int, first_due: date,
+                     monthly_rate_pct: float = 1.0) -> dict:
+    """Split an outstanding demand into ``n_installments`` equal monthly principal
+    installments and accrue Sec. 220(2) interest at 1% per month on the balance
+    OUTSTANDING at the start of each month.
+
+    Each row is a month: the equal principal slice, the 220(2) interest on the
+    opening balance for that month, the total due that month, and the closing
+    balance. Grand totals let the officer see the interest cost of the plan.
+    Estimate — verify against the demand notice and the actual 30-day default
+    date under Sec. 220(1)/(2).
+    """
+    demand = max(0.0, round(demand))
+    n = max(1, int(n_installments))
+    slice_principal = round(demand / n)
+    rows = []
+    balance = demand
+    total_interest = 0
+    due = first_due
+    for i in range(n):
+        # Last installment mops up any rounding remainder.
+        principal = balance if i == n - 1 else min(slice_principal, balance)
+        interest = round(balance * monthly_rate_pct / 100.0)
+        total_interest += interest
+        closing = round(balance - principal)
+        rows.append({
+            "n": i + 1,
+            "due_date": due.isoformat(),
+            "opening_balance": round(balance),
+            "principal": round(principal),
+            "interest_220_2": interest,
+            "total_due": round(principal + interest),
+            "closing_balance": max(0, closing),
+        })
+        balance = closing
+        due = _add_months_date(due, 1)
+    return {
+        "section": "220(2)",
+        "demand": demand,
+        "installments": n,
+        "monthly_rate_pct": monthly_rate_pct,
+        "total_principal": demand,
+        "total_interest": total_interest,
+        "total_payable": demand + total_interest,
+        "schedule": rows,
+        "note": "220(2) interest at 1%/month on the outstanding balance. Estimate — "
+                "verify the 30-day default date and any part-month rounding.",
+    }
+
+
+def _add_months_date(d: date, months: int) -> date:
+    """Add whole months to a date, clamping the day to the month's length."""
+    import calendar
+    m0 = d.month - 1 + months
+    year = d.year + m0 // 12
+    month = m0 % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
 # --- capital gains (post 23-Jul-2024 rates) ----------------------------------
 def capital_gains(amount: float, kind: str = "ltcg_equity") -> dict:
     """Tax on capital gains (rates effective 23 Jul 2024). Estimate — verify."""

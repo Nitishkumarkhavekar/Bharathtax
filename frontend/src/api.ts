@@ -775,6 +775,15 @@ export interface WsTdsResult {
 export interface WsTdsSection {
   section: string; nature: string; rate: number | null; note: string;
 }
+export interface WsInstallmentRow {
+  n: number; due_date: string; opening_balance: number; principal: number;
+  interest_220_2: number; total_due: number; closing_balance: number;
+}
+export interface WsInstallmentResult {
+  section: string; demand: number; installments: number; monthly_rate_pct: number;
+  total_principal: number; total_interest: number; total_payable: number;
+  schedule: WsInstallmentRow[]; note: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1206,6 +1215,8 @@ export const api = {
   wsCalcTds: (b: { amount: number; rate_pct: number; deduction_due: string; deducted_on?: string | null; deposited_on?: string | null; statement_due?: string | null }) =>
     req<WsTdsResult>("/workspace/calc/tds", { method: "POST", body: JSON.stringify(b) }),
   wsTdsSections: () => req<WsTdsSection[]>("/workspace/tds-sections"),
+  wsCalcInstallments: (b: { demand: number; installments: number; first_due: string }) =>
+    req<WsInstallmentResult>("/workspace/calc/installments", { method: "POST", body: JSON.stringify(b) }),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
   wsTemplateLibrary: () => req<WsLibraryTemplate[]>("/workspace/templates/library"),

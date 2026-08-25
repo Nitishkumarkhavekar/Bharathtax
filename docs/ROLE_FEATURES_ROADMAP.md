@@ -22,7 +22,7 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 ## Phase C — Unserved wings (self-contained, quick wins)
 
 | C1 ✅ | **TDS module** *(shipped — calculator + section reference)* — default calculator (short/non-deduction, **201(1A)** interest, **234E** fee), section picker (194C/J/I/195…). *Next: justification-report analysis.* |
-| C2 | **Recovery / TRO module** — outstanding-demand tracker, 220(2) interest (have calc), 220(6) stay, installments, attachment/garnishee (222/226(3)) drafting. |
+| C2 ✅ | **Recovery / TRO module** *(shipped — instalment plan + recovery templates)* — 220(2) declining-balance instalment calculator; officer templates for 221(1) SCN, 226(3) garnishee, 222 TRO reference, 220(3) instalment order. *Next: outstanding-demand tracker.* |
 | C3 | **Exemptions module** — trust/charity compliance: 11/12/13 application & accumulation (11(2)), 12A/80G registration & renewal (Form 10A/10AB), 115BBC. |
 
 ## Phase D — Specialist wings

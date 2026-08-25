@@ -125,3 +125,21 @@ def test_tds_no_default_no_charges():
     assert r["interest_201_1a"] == 0
     assert r["fee_234e"] == 0
     assert r["total_payable"] == 5_000
+
+
+def test_installment_plan_declining_balance():
+    r = calc.installment_plan(120_000, 4, date(2024, 5, 1))
+    assert len(r["schedule"]) == 4
+    assert r["total_principal"] == 120_000
+    # 1% on declining balance: 1200 + 900 + 600 + 300
+    assert r["total_interest"] == 3_000
+    assert r["total_payable"] == 123_000
+    assert r["schedule"][0]["opening_balance"] == 120_000
+    assert r["schedule"][-1]["closing_balance"] == 0
+
+
+def test_installment_plan_rounding_remainder_in_last():
+    r = calc.installment_plan(100_000, 3, date(2024, 4, 1))
+    # Principals must sum exactly to the demand despite rounding.
+    assert sum(row["principal"] for row in r["schedule"]) == 100_000
+    assert r["schedule"][-1]["closing_balance"] == 0
