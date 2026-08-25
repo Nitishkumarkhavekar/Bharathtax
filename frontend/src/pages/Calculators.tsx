@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "../auth";
+import { resolveWorkspace } from "@/lib/workspaceProfiles";
 
 const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n));
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -665,8 +667,11 @@ function AlpCalc() {
   );
 }
 
+type CalcTab = "interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust" | "peak" | "alp";
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust" | "peak" | "alp">("interest");
+  const { session } = useAuth();
+  const defaultTab = (resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).calcTab || "interest") as CalcTab;
+  const [tab, setTab] = useState<CalcTab>(defaultTab);
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
