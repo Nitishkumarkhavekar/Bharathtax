@@ -52,11 +52,14 @@ def test_templates_and_watchlists_scoped(db):
 def test_compute_creates_deadlines_and_seeds_reminder(db):
     m = _matter(db, 1)
     created = ws.compute_and_store(db, m.id, 1, "order_served", date(2026, 8, 1))
-    assert len(created) == 1
-    assert created[0].section_ref == "Sec. 249"
-    assert created[0].due_date == date(2026, 8, 31)
+    # order_served fans out to the CIT(A) appeal window and the 264 revision window.
+    cita = next(d for d in created if d.kind == "appeal_cita")
+    assert cita.section_ref == "Sec. 249"
+    assert cita.due_date == date(2026, 8, 31)
+    # A reminder is seeded for every auto deadline created.
     rems = ws.list_reminders(db, 1)
-    assert len(rems) == 1 and rems[0].deadline_id == created[0].id
+    assert len(rems) == len(created)
+    assert any(r.deadline_id == cita.id for r in rems)
 
 
 def test_compute_blocked_for_non_owner(db):

@@ -440,6 +440,108 @@ ORDER u/s 264 of the Income-tax Act, 1961 (on the assessee's application)
 Date: {{TODAY}}
 """
 
+_SANCTION_151 = """OFFICE OF THE [PRINCIPAL COMMISSIONER / PRINCIPAL CHIEF COMMISSIONER]
+
+Sanction u/s 151 of the Income-tax Act, 1961 — approval for issue of notice u/s 148
+
+Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY: {{AY}}
+
+1. The Assessing Officer, {{AO}}, has, after following the procedure u/s 148A, recorded that income chargeable to tax has escaped assessment for AY {{AY}} to the extent of Rs. [____], on the basis of the following information: [describe the information / material].
+
+2. The order u/s 148A(d) dated [date] and the material on record have been perused. The case is within the time-limit u/s 149 [3 years / beyond 3 years but within 10 years as escaped income represented in the form of an asset is Rs. 50 lakh or more].
+
+3. I am satisfied, on the reasons recorded and the material, that this is a fit case for issue of notice u/s 148. Approval u/s 151 is hereby accorded for issue of notice u/s 148 for AY {{AY}}.
+
+                                                    ([Specified Authority u/s 151])
+Date: {{TODAY}}
+"""
+
+_APPROVAL_153D = """OFFICE OF THE [ADDITIONAL / JOINT COMMISSIONER OF INCOME-TAX], RANGE [__]
+
+Approval u/s 153D of the Income-tax Act, 1961 — search / requisition assessments
+
+Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY(s): {{AY}}
+
+1. The Assessing Officer has forwarded the draft assessment order(s) u/s 153A / 153C / 143(3) r.w.s. 153A for the above assessee for the assessment year(s) noted, arising out of the search / requisition conducted on [date].
+
+2. The draft order(s), the appraisal report, the seized material and the assessment records have been examined. The additions proposed [and the AO's reasoning] are found to be [supported by the seized material / require the following modification: [___]].
+
+3. Approval is hereby accorded u/s 153D to the draft assessment order(s) for AY {{AY}} [subject to the modifications indicated]. The AO may finalise the assessment(s) accordingly within the limitation.
+
+                                                    ([Addl./Joint CIT])
+Date: {{TODAY}}
+"""
+
+_PROSECUTION_SCN = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Show-cause notice — proposed prosecution under Chapter XXII of the Income-tax Act, 1961
+
+1. Proceedings for AY {{AY}} disclose the following: [e.g. wilful attempt to evade tax u/s 276C / failure to furnish return u/s 276CC / false statement in verification u/s 277 / failure to pay TDS u/s 276B], particulars being [state the facts, amount and the provision].
+
+2. The above prima facie constitutes an offence punishable under the said section(s). You are hereby required to show cause, on or before [date], as to why prosecution should not be launched against you (and the persons responsible u/s 278B/278C). You may also state whether you wish to apply for compounding of the offence u/s 279(2).
+
+3. Your written explanation with supporting evidence may be furnished by the date fixed; failing which the matter will be referred for sanction of prosecution.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_SANCTION_279 = """OFFICE OF THE [PRINCIPAL COMMISSIONER / COMMISSIONER OF INCOME-TAX]
+
+Sanction u/s 279(1) of the Income-tax Act, 1961 — for launching prosecution
+
+Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY: {{AY}}
+
+1. The Assessing Officer has proposed prosecution of the above assessee for the offence(s) u/s [276C / 276CC / 277 / 276B] for AY {{AY}}, on the facts: [brief facts, amount of tax sought to be evaded / default].
+
+2. The show-cause notice dated [date] was issued; the reply, if any, has been considered [and is found unsatisfactory for the reasons: [___]]. The ingredients of the offence are prima facie made out on the material on record.
+
+3. Sanction is hereby accorded u/s 279(1) for launching prosecution against the assessee [and the principal officer / persons responsible u/s 278B] before the competent court for the offence(s) noted above.
+
+                                                    (PCIT / CIT)
+Date: {{TODAY}}
+"""
+
+_COMPOUNDING_APPLICATION = """To,
+The [Principal Commissioner / Chief Commissioner] of Income-tax,
+[Jurisdiction]
+
+Sub: Application for compounding of offence u/s 279(2) — {{ASSESSEE}}, PAN {{PAN}}, AY {{AY}}
+
+Respected Sir/Madam,
+
+1. The applicant is [being prosecuted / show-caused] for the offence u/s [276C(1)/276CC/276B/277] for AY {{AY}}. The applicant applies for compounding of the said offence u/s 279(2) in accordance with the Guidelines for Compounding of Offences in force.
+
+2. The applicant submits: (a) the tax, interest and penalty in respect of the default have been paid [particulars and challans enclosed]; (b) the offence is compoundable and not excluded under the Guidelines; (c) this is [the first / a permitted] occasion for compounding; (d) the applicant undertakes to pay the compounding charges as computed.
+
+3. It is prayed that the offence be compounded on payment of the applicable compounding charges, and that prosecution [proposed / pending] be dropped / withdrawn accordingly.
+
+Yours faithfully,
+{{ASSESSEE}} / Authorised Representative
+Date: {{TODAY}}
+Enclosures: proof of payment of tax, interest, penalty; computation.
+"""
+
+_COMPOUNDING_ORDER = """OFFICE OF THE [PRINCIPAL COMMISSIONER / CHIEF COMMISSIONER OF INCOME-TAX]
+
+Compounding order u/s 279(2) of the Income-tax Act, 1961
+
+Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY: {{AY}}
+
+1. The assessee applied on [date] for compounding of the offence u/s [section] for AY {{AY}}. The application has been examined with reference to the Compounding Guidelines.
+
+2. The pre-conditions are satisfied: the tax, interest and penalty stand paid; the offence is compoundable; and the case is not in the excluded category. The compounding charges are computed as under: [compounding fee + establishment expenses + litigation expenses] = Rs. [____].
+
+3. The offence u/s [section] is hereby COMPOUNDED u/s 279(2), subject to payment of the compounding charges of Rs. [____] within [time]. On payment, the prosecution proposed / pending shall be withdrawn / not be launched. Default in payment will render this order void.
+
+                                                    (PCIT / CCIT)
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -467,6 +569,14 @@ LIBRARY = [
     {"id": "scn_263", "name": "SCN u/s 263 (erroneous & prejudicial)", "category": "notice", "side": "officer", "body": _SCN_263},
     {"id": "order_263", "name": "Revision order u/s 263", "category": "order", "side": "officer", "body": _ORDER_263},
     {"id": "order_264", "name": "Revision order u/s 264 (assessee application)", "category": "order", "side": "officer", "body": _ORDER_264},
+    # --- approvals (supervisory) ---
+    {"id": "sanction_151", "name": "Sanction u/s 151 (approve 148 notice)", "category": "order", "side": "officer", "body": _SANCTION_151},
+    {"id": "approval_153d", "name": "Approval u/s 153D (search assessment)", "category": "order", "side": "officer", "body": _APPROVAL_153D},
+    # --- prosecution / compounding ---
+    {"id": "prosecution_scn", "name": "SCN — proposed prosecution (Ch. XXII)", "category": "notice", "side": "officer", "body": _PROSECUTION_SCN},
+    {"id": "sanction_279", "name": "Sanction for prosecution u/s 279(1)", "category": "order", "side": "officer", "body": _SANCTION_279},
+    {"id": "compounding_application", "name": "Compounding application u/s 279(2)", "category": "other", "side": "assessee", "body": _COMPOUNDING_APPLICATION},
+    {"id": "compounding_order", "name": "Compounding order u/s 279(2)", "category": "order", "side": "officer", "body": _COMPOUNDING_ORDER},
 ]
 
 
