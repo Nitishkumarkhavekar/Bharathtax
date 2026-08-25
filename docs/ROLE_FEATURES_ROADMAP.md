@@ -17,7 +17,7 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 ## Phase B — Assessing-Officer depth
 
 | B1 ✅ | **Assessment-order engine** *(shipped)* — issue-by-issue AO order (reason-for-selection → SCN → assessee reply → discussion → addition → computation → demand), cited, to DOCX (the appeals engine, AO-side). |
-| B2 | **CASS questionnaire generator** — 142(1) tailored to the selection reason (cash deposits, large deductions, mismatch). |
+| B2 ✅ | **CASS questionnaire generator** *(shipped)* — LLM-drafted 142(1) questionnaire tailored to the CASS selection reason(s), from the Assessments page (reason picker + optional assessee/PAN/AY + specifics). |
 
 ## Phase C — Unserved wings (self-contained, quick wins)
 

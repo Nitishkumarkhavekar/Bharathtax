@@ -23,8 +23,13 @@ import {
   Trash2,
   X,
   Check,
+  FileQuestion,
+  Copy,
 } from "lucide-react";
 import { api } from "../api";
+import { Markdown } from "@/lib/markdown";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const STATUS_META: Record<
   string,
@@ -65,6 +70,7 @@ export default function Assessments() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "new" | "running" | "ready" | "error">("all");
   const [formOpen, setFormOpen] = useState(true);
+  const [cassOpen, setCassOpen] = useState(false);
 
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
 
@@ -126,7 +132,8 @@ export default function Assessments() {
 
   return (
     <div className="space-y-4">
-      <HeroHeader />
+      <HeroHeader onCass={() => setCassOpen(true)} />
+      {cassOpen && <CassModal onClose={() => setCassOpen(false)} />}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Total cases" value={stats.total} hint={`${stats.drafts} draft${stats.drafts === 1 ? "" : "s"}`} tone="indigo" icon={<FileText className="size-4" />} />
@@ -219,7 +226,7 @@ export default function Assessments() {
 
 // ============================================================ subcomponents
 
-function HeroHeader() {
+function HeroHeader({ onCass }: { onCass: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-primary p-5 sm:p-6 text-white shadow-lg">
       <div
@@ -244,8 +251,104 @@ function HeroHeader() {
             </p>
           </div>
         </div>
+        <button
+          onClick={onCass}
+          className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-semibold bg-white/15 hover:bg-white/25 ring-1 ring-white/25 backdrop-blur transition-colors"
+        >
+          <FileQuestion className="size-4" /> 142(1) questionnaire
+        </button>
       </div>
     </div>
+  );
+}
+
+function CassModal({ onClose }: { onClose: () => void }) {
+  const [reasons, setReasons] = useState<{ key: string; label: string }[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState("");
+  const [assessee, setAssessee] = useState("");
+  const [pan, setPan] = useState("");
+  const [ay, setAy] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState("");
+
+  useEffect(() => { api.asmtCassReasons().then(setReasons).catch(() => {}); }, []);
+
+  const toggle = (k: string) => setPicked((s) => {
+    const n = new Set(s);
+    n.has(k) ? n.delete(k) : n.add(k);
+    return n;
+  });
+
+  const generate = async () => {
+    const labels = reasons.filter((r) => picked.has(r.key)).map((r) => r.label);
+    const combined = [labels.join("; "), notes.trim()].filter(Boolean).join(". ");
+    if (!combined) { toast.error("Pick at least one selection reason or add a note."); return; }
+    setBusy(true);
+    try {
+      const res = await api.asmtCassQuestionnaire({
+        selection_reasons: combined,
+        assessee: assessee.trim() || null, pan: pan.trim() || null, assessment_year: ay.trim() || null,
+      });
+      setResult(res.content);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not generate the questionnaire.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(result); toast.success("Copied to clipboard."); }
+    catch { toast.error("Copy failed."); }
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-up" onClick={onClose}>
+      <div className="w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+          <div className="flex items-center gap-2 text-[14px] font-bold text-slate-900"><FileQuestion className="size-4 text-primary" /> Generate 142(1) questionnaire</div>
+          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="size-4" /></button>
+        </div>
+        <div className="p-5 overflow-y-auto space-y-4">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">CASS selection reason(s)</div>
+            <div className="flex flex-wrap gap-1.5">
+              {reasons.map((r) => (
+                <button key={r.key} onClick={() => toggle(r.key)}
+                  className={cn("px-2.5 py-1 rounded-full text-[12px] font-medium ring-1 transition-colors",
+                    picked.has(r.key) ? "bg-primary text-primary-foreground ring-primary" : "bg-white text-slate-600 ring-slate-200 hover:ring-primary/30")}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <FormField label="Assessee" icon={<FileText className="size-3.5" />}><input value={assessee} onChange={(e) => setAssessee(e.target.value)} className="input" placeholder="optional" /></FormField>
+            <FormField label="PAN" icon={<IdCard className="size-3.5" />}><input value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} className="input font-mono uppercase tracking-wider text-[13px]" maxLength={10} placeholder="optional" /></FormField>
+            <FormField label="AY" icon={<CalendarDays className="size-3.5" />}><input value={ay} onChange={(e) => setAy(e.target.value)} className="input tabular-nums" placeholder="optional" /></FormField>
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Add specifics (optional)</div>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+              placeholder="e.g. cash deposit of Rs. 18 lakh in Nov 2016; purchase of property at [address]"
+              className="w-full resize-y rounded-lg border border-slate-200 bg-white p-2.5 text-[13px] text-slate-800 outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={generate} disabled={busy}>
+              {busy ? <Loader2 className="size-4 animate-spin mr-1" /> : <Sparkles className="size-4 mr-1" />} Generate
+            </Button>
+            {result && <Button variant="outline" onClick={copy}><Copy className="size-4 mr-1" /> Copy</Button>}
+          </div>
+          {result && (
+            <div className="rounded-xl ring-1 ring-slate-200 bg-slate-50 p-4 prose-legal max-w-none text-[13.5px] leading-relaxed text-slate-800">
+              <Markdown text={result} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
