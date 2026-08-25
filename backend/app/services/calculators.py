@@ -148,10 +148,14 @@ def slab_tax(income: float, regime: str = "new") -> dict:
     base = round(_slab_tax(income, slabs))
     rebate_limit = 700000 if regime == "new" else 500000
     if income <= rebate_limit:
-        after = 0                                    # full 87A rebate
-    else:
-        # 87A marginal relief: tax just above the limit can't exceed the excess.
+        after = 0                                    # full 87A rebate (both regimes)
+    elif regime == "new":
+        # 87A marginal relief exists ONLY in the new regime (proviso to 115BAC):
+        # tax just above ₹7L can't exceed the income over ₹7L.
         after = min(base, income - rebate_limit)
+    else:
+        # Old regime: a hard cliff at ₹5L — no rebate and no marginal relief above it.
+        after = base
     reduction = base - after                         # rebate and/or marginal relief
     sur_rate = _surcharge_rate(income, regime)
     surcharge = round(after * sur_rate / 100.0)
@@ -391,25 +395,32 @@ def alp_range(comparables: list[float], tested_margin: float, base_amount: float
         upper = _percentile_10ca(vals, 0.65)
         median = _percentile_10ca(vals, 0.50)
         within = lower <= tested <= upper
-        alp_margin = tested if within else median
-        adjustment = 0.0 if within else round((median - tested) / 100.0 * base)
+        # Only a tested margin BELOW the range triggers an (upward) adjustment to
+        # the median. A margin within OR above the range warrants none — Sec. 92(3)
+        # bars a TP adjustment that reduces the assessee's Indian income.
+        below = tested < lower
+        alp_margin = median if below else tested
+        adjustment = round((median - tested) / 100.0 * base) if below else 0.0
         return {
             "method": "range_35_65", "count": n,
             "lower_p35": round(lower, 2), "upper_p65": round(upper, 2), "median": round(median, 2),
-            "tested_margin": round(tested, 2), "at_arms_length": within,
+            "tested_margin": round(tested, 2), "at_arms_length": not below,
             "alp_margin": round(alp_margin, 2), "adjustment": adjustment,
-            "note": "6+ comparables: Rule 10CA 35th–65th percentile range; median is the ALP if "
-                    "outside. Estimate — apply multiple-year data and the tolerance band.",
+            "note": "6+ comparables: Rule 10CA 35th–65th percentile range; median is the ALP only "
+                    "when the tested margin is BELOW the range (no downward adjustment — Sec. 92(3)). "
+                    "Estimate — apply multiple-year data and the tolerance band.",
         }
     mean = sum(vals) / n
-    within = abs(tested - mean) < 1e-9
-    adjustment = round((mean - tested) / 100.0 * base)
+    # Upward-only: adjust to the mean only when the tested margin is below it.
+    below = tested < mean
+    adjustment = round((mean - tested) / 100.0 * base) if below else 0.0
     return {
         "method": "mean", "count": n, "mean": round(mean, 2),
-        "tested_margin": round(tested, 2), "at_arms_length": within,
-        "alp_margin": round(mean, 2), "adjustment": adjustment,
-        "note": "Fewer than 6 comparables: arithmetic mean is the benchmark; the ±3% (or notified) "
-                "tolerance under the 2nd proviso to 92C(2) applies to the price. Estimate — verify.",
+        "tested_margin": round(tested, 2), "at_arms_length": not below,
+        "alp_margin": round(mean if below else tested, 2), "adjustment": adjustment,
+        "note": "Fewer than 6 comparables: arithmetic mean is the benchmark; no downward adjustment "
+                "(Sec. 92(3)); the ±3% (or notified) tolerance under the 2nd proviso to 92C(2) also "
+                "applies to the price. Estimate — verify.",
     }
 
 

@@ -251,3 +251,36 @@ def test_sft_analyze_ranks_by_total_desc():
         {"pan": "B", "category": "other", "amount": 900},
     ])
     assert [p["pan"] for p in r["people"]] == ["B", "A"]
+
+
+def test_slab_tax_old_regime_hard_cliff_no_marginal_relief():
+    # Old regime above Rs 5L: NO 87A rebate and NO marginal relief (hard cliff).
+    r = calc.slab_tax(510_000, "old")
+    # base = 12,500 (5%*250k) + 2,000 (20%*10k) = 14,500; no reduction
+    assert r["tax_before_rebate"] == 14_500
+    assert r["rebate_87a"] == 0
+    assert r["total_tax"] == round(14_500 * 1.04)   # + 4% cess = 15,080
+
+
+def test_slab_tax_old_regime_full_rebate_at_or_below_5L():
+    r = calc.slab_tax(500_000, "old")
+    assert r["total_tax"] == 0                       # full 87A rebate
+
+
+def test_slab_tax_new_regime_marginal_relief_still_applies():
+    r = calc.slab_tax(710_000, "new")
+    # marginal relief: tax after can't exceed income over 7L (10,000)
+    assert r["rebate_87a"] > 0
+    assert r["total_tax"] <= round(10_000 * 1.04) + 1
+
+
+def test_alp_no_downward_adjustment_when_above_range():
+    r = calc.alp_range([4, 6, 8, 10, 12, 14, 16], tested_margin=20.0, base_amount=10_000_000)
+    assert r["adjustment"] == 0                      # Sec. 92(3): no downward adjustment
+    assert r["at_arms_length"] is True
+
+
+def test_alp_mean_no_downward_adjustment():
+    r = calc.alp_range([8, 10, 12], tested_margin=15.0, base_amount=1_000_000)
+    assert r["adjustment"] == 0                      # tested above mean → no adjustment
+    assert r["at_arms_length"] is True

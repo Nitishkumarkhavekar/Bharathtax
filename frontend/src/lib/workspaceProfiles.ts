@@ -42,3 +42,37 @@ export function profileConfig(key: string | null | undefined): ProfileConfig | n
 export function profileLabel(key: string | null | undefined): string | null {
   return profileConfig(key)?.label ?? null;
 }
+
+// The tailoring the sidebar/dashboard actually apply, resolved from the user's
+// profile + (for "custom") their chosen functions.
+//   mode "none"    — no profile chosen yet (first-run prompt shows).
+//   mode "all"     — explicit "show everything": no scoping.
+//   mode "preset"  — a single function.
+//   mode "custom"  — several functions; categories/tools are the union.
+export interface ResolvedWorkspace {
+  mode: "none" | "all" | "preset" | "custom";
+  categories: string[];
+  tools: string[];
+  scoped: boolean; // whether to featurize the sidebar and default the dashboard to "Mine"
+}
+
+export function resolveWorkspace(
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): ResolvedWorkspace {
+  if (!profile) return { mode: "none", categories: [], tools: [], scoped: false };
+  if (profile === "all") return { mode: "all", categories: [], tools: [], scoped: false };
+  if (profile === "custom") {
+    const chosen = (wings ?? []).map((k) => BY_KEY.get(k)).filter((p): p is ProfileConfig => !!p);
+    const categories = Array.from(new Set(chosen.flatMap((p) => p.categories)));
+    // Preserve first-seen tool order across the chosen functions.
+    const tools: string[] = [];
+    for (const p of chosen) for (const t of p.tools) if (!tools.includes(t)) tools.push(t);
+    // No valid functions selected → behave like "all" (don't trap the user).
+    if (categories.length === 0 && tools.length === 0) return { mode: "all", categories: [], tools: [], scoped: false };
+    return { mode: "custom", categories, tools, scoped: true };
+  }
+  const cfg = BY_KEY.get(profile);
+  if (!cfg) return { mode: "all", categories: [], tools: [], scoped: false };
+  return { mode: "preset", categories: cfg.categories, tools: cfg.tools, scoped: true };
+}

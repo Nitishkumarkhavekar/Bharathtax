@@ -51,6 +51,7 @@ def _patch_user_columns() -> None:
         # them here, idempotently, the same way as the columns above.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS charge VARCHAR(200)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS workspace_profile VARCHAR(20)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS workspace_wings TEXT[]",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) NOT NULL DEFAULT 'en'",
         # Pin a chat to the top of the sidebar. Same idempotent boot-patch route.
         "ALTER TABLE chats ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT FALSE",

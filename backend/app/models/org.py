@@ -83,6 +83,11 @@ class User(Base):
     # label). NULL until the user picks one (first-run prompt). Self-set;
     # an admin can override it.
     workspace_profile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # When workspace_profile == "custom", the set of function keys the user
+    # works (union drives their scoped dashboard + featured tools). Ignored for
+    # single-function and meta ("all") profiles.
+    workspace_wings: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String).with_variant(JSON, "sqlite"), nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(10), default="en")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Self-service registrations land as 'pending' and cannot log in until an
