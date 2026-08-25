@@ -330,12 +330,12 @@ function Features() {
 // ============================================================== Daily workspace
 function WorkspaceFeatures() {
   const cards = [
-    { icon: <CalendarClock className="size-5" />, title: "Limitation calendar", desc: "Enter one trigger date; every statutory deadline — time-barring under §153, appeal windows, the DRP clock — is computed, section-cited and dropped onto your calendar." },
+    { icon: <CalendarClock className="size-5" />, title: "Limitation calendar", desc: "Enter one trigger date; every statutory deadline — §153 time-barring, §149 reopening, §263/264 revision, the §144C DRP clock, §275 penalty — is computed, section-cited and dropped onto your calendar." },
     { icon: <Bell className="size-5" />, title: "Reminders & notifications", desc: "A notification bell surfaces due reminders the moment they fire, with escalating nudges — so nothing goes time-barred on your watch." },
-    { icon: <StickyNote className="size-5" />, title: "Matters & sticky notes", desc: "Track every case by PAN, AY and appeal number, and pin colour-coded notes to a matter, a section or a citation." },
-    { icon: <Calculator className="size-5" />, title: "Statutory calculators", desc: "Interest u/s 234A/B/C & 220(2), tax u/s 115BBE, slab tax and capital gains — each with the workings shown." },
-    { icon: <Scale className="size-5" />, title: "AIS / 26AS reconciliation", desc: "Match two entry sets — 26AS against AIS or the books — and flag only the genuine mismatches worth a query." },
-    { icon: <Users className="size-5" />, title: "Templates & collaboration", desc: "Reusable notice and order templates, section & assessee watchlists, and share a matter across your wing, circle or firm." },
+    { icon: <Users className="size-5" />, title: "Tailored to your wing", desc: "Pick your function — AO, CIT(A), DRP, TPO, Investigation, I&CI, Recovery, Exemptions or CA — and your dashboard, sidebar, calculators and templates re-arrange around the work you actually do." },
+    { icon: <Calculator className="size-5" />, title: "Statutory calculators", desc: "Interest (234A/B/C, 220(2)), TDS defaults (201(1A)/234E), 115BBE, slab & 87A, capital gains, penalty (270A/271AAC), recovery instalments, peak credit and ALP benchmarking — each with the workings shown." },
+    { icon: <Scale className="size-5" />, title: "Reconciliation & SFT scan", desc: "Match 26AS against AIS or the books and flag genuine mismatches — plus a Rule 114E high-value scan that ranks and flags SFT/AIS transactions by PAN." },
+    { icon: <StickyNote className="size-5" />, title: "36 wing templates", desc: "Ready-made notices, orders and applications grouped by wing — assessment, penalty, recovery, exemptions, revision, prosecution, investigation, TP and DRP — plus matters, sticky notes and matter-sharing." },
   ];
   return (
     <section className="bg-slate-50/60 border-y border-slate-100">
@@ -343,7 +343,7 @@ function WorkspaceFeatures() {
         <div className="text-center max-w-2xl mx-auto">
           <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Your daily workspace</div>
           <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Not just a chatbot — your desk.</h2>
-          <p className="mt-3 text-slate-600">BharatTax organises your working life around the dates that matter: matters, deadlines, reminders, notes, calculators and reconciliation — in one place.</p>
+          <p className="mt-3 text-slate-600">BharatTax organises your working life around the dates that matter — and tailors the whole desk to your wing: matters, deadlines, reminders, a suite of calculators, reconciliation and a wing-wise template library, in one place.</p>
         </div>
         <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map((c, i) => {
@@ -376,10 +376,10 @@ function ProductPreview() {
       />
       <SplitBlock
         reverse
-        eyebrow="Appeals"
-        title="Six-module drafting for CIT(A) & NFAC."
-        desc="Upload the appeal file. BharatTax drafts facts, deficiencies, scope, compliance, findings and the order — each cited, each editable, exported to a signable Word document you can put in front of a bench."
-        bullets={["6-module pipeline, each cited", "AI + manual edits round-trip through one doc", "Export to signable .docx or PDF"]}
+        eyebrow="Drafting engines"
+        title="Cited orders — appeal and assessment."
+        desc="Upload the file and BharatTax drafts the order, issue by issue, each point cited and editable. For CIT(A)/NFAC: a six-module appellate order. For the AO: a 143(3)/147/144 assessment order from the return, notices and replies — plus a CASS-tailored 142(1) questionnaire to open the scrutiny. Everything exports to a signable Word document."
+        bullets={["Issue-wise, cited, editable drafts", "AO assessment orders + CASS 142(1) questionnaires", "Export to signable .docx or PDF"]}
         preview={<AppealPreview />}
       />
     </section>
@@ -465,7 +465,7 @@ function AppealPreview() {
 function UseCases() {
   const cases = [
     { who: "Chartered accountants & firms", d: "Draft cited computation frameworks for capital gains, defend Section 68 additions, and turn a sale deed into an ITR-ready position — with every figure tagged to the section that governs it.", points: ["Cited Section 50C / 56 / 68 analysis", "Read sale deeds & assessment notices", "Client-ready computation memos"] },
-    { who: "Assessing Officers & CIT(A) benches", d: "Turn a filed appeal into a fully-cited draft order in minutes. Verify a deed against reported figures, spot missing evidence, and draft the six-module appellate order for signature.", points: ["6-module CIT(A) drafting pipeline", "AO verification points & questionnaires", "Signable .docx / PDF export"] },
+    { who: "Officers — AO to the specialist wings", d: "Draft an assessment order from the return and replies, or an appellate order from the file — issue by issue, each cited. Tools for every wing: CASS 142(1) questionnaires, recovery instalments, peak-credit and ALP working, revision and prosecution templates, and an SFT high-value scan.", points: ["Assessment & appellate order engines", "TP / Investigation / Recovery / DRP toolkits", "Signable .docx / PDF export"] },
     { who: "CFOs, Company Secretaries & counsel", d: "Executive verdicts on tax exposure, board-note-ready checklists, and defensible research on any point that could turn into an assessment — plus SC / HC / ITAT case law with the judgment one click away.", points: ["Board-note briefs with risk ratings", "SC / HC / ITAT case-law search", "Compliance & due-diligence checklists"] },
     { who: "Founders, taxpayers & students", d: "Plain-English answers on what to do, what to keep, and what could go wrong — without the jargon. Pedagogical explanations for CA-Final and law-school revision, with worked examples.", points: ["'What to do / what to keep' briefs", "Worked numerical examples", "Step-by-step case-study answers"] },
   ];
@@ -473,8 +473,8 @@ function UseCases() {
     <section id="use-cases" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
       <div className="text-center max-w-2xl mx-auto">
         <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Use cases</div>
-        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Built for everyone on the file.</h2>
-        <p className="mt-3 text-slate-600">Same evidence discipline, tuned to how each role actually works.</p>
+        <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Built for every wing on the file.</h2>
+        <p className="mt-3 text-slate-600">Same evidence discipline, tuned to how each role actually works — from the Assessing Officer to Investigation, TP, DRP, Recovery and the practitioner across the table.</p>
       </div>
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cases.map((c) => (
