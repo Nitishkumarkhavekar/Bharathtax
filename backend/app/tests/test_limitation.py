@@ -114,3 +114,10 @@ def test_rule_catalogue_shape():
     cat = limitation.rule_catalogue()
     assert {t["id"] for t in cat["triggers"]} >= {"order_served", "draft_order_144c"}
     assert any(r["id"] == "appeal_cita" for r in cat["rules"])
+
+
+def test_final_order_144c13_one_month_end_of_month():
+    # DRP directions received 12 May 2026 -> final order by end of the next month
+    r = _by_id("drp_directions_received", date(2026, 5, 12), "final_order_144c_13")
+    assert r["section"] == "Sec. 144C(13)"
+    assert r["due_date"] == date(2026, 6, 30)
