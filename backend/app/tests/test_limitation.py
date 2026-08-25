@@ -66,16 +66,23 @@ def test_drp_produces_two_deadlines():
 
 def test_time_barring_153_twelve_months():
     # end_of_ay for AY 2023-24 is 31 Mar 2024; +12 months
-    r = _one("end_of_ay", date(2024, 3, 31))
+    r = _by_id("end_of_ay", date(2024, 3, 31), "time_barring_153")
     assert r["section"] == "Sec. 153(1)"
     assert r["due_date"] == date(2025, 3, 31)
 
 
 def test_time_barring_153_ay_aware_periods():
     # AY 2016-17 (ends 31 Mar 2017) → 21 months
-    assert _one("end_of_ay", date(2017, 3, 31))["due_date"] == date(2018, 12, 31)
+    assert _by_id("end_of_ay", date(2017, 3, 31), "time_barring_153")["due_date"] == date(2018, 12, 31)
     # AY 2018-19 (ends 31 Mar 2019) → 18 months
-    assert _one("end_of_ay", date(2019, 3, 31))["due_date"] == date(2020, 9, 30)
+    assert _by_id("end_of_ay", date(2019, 3, 31), "time_barring_153")["due_date"] == date(2020, 9, 30)
+
+
+def test_reassessment_149_three_years():
+    # AY ends 31 Mar 2024 -> normal reopening window 3 years
+    r = _by_id("end_of_ay", date(2024, 3, 31), "reassessment_149")
+    assert r["section"] == "Sec. 149(1)"
+    assert r["due_date"] == date(2027, 3, 31)
 
 
 def test_rectification_four_years_from_fy_end():

@@ -71,6 +71,9 @@ LIMITATION_RULES: list[dict] = [
     {"id": "revision_264_application", "trigger": "order_served",
      "label": "Last date for the assessee to apply for revision", "section": "Sec. 264(3)",
      "offset": {"years": 1}},
+    {"id": "reassessment_149", "trigger": "end_of_ay",
+     "label": "Reopening time-limit (3 yrs; 10 yrs if escaped income >= Rs.50L)",
+     "section": "Sec. 149(1)", "offset": {"years": 3}},
 ]
 
 _RULES_BY_TRIGGER: dict[str, list[dict]] = {}

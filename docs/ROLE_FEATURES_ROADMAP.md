@@ -34,9 +34,9 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 
 ## Phase E — Supervisory / administrative
 
-| E1 | **Approval workflows** — 151 (reopening sanction), 153D (search-assessment approval), 148A queues with the draft + supporting; range monitoring. |
+| E1 ✅ | **Approval workflows** *(shipped — sanctions + 149 window)* — Sec. 149 reopening time-limit on the calendar; templates for 151 sanction (approve 148), 153D approval (search assessment). *Next: 148A approval queues.* |
 | E2 ✅ | **Revision (263/264)** *(shipped)* — 263(2) 2-year & 264(3) 1-year limitation on the calendar; templates for 263 SCN, 263 revision order, 264 order. *Next: erroneous-&-prejudicial checklist.* |
-| E3 | **Prosecution / Compounding** — complaint/sanction drafting, compounding application + fee. |
+| E3 ✅ | **Prosecution / Compounding** *(shipped — templates)* — SCN for proposed prosecution (Ch. XXII), sanction u/s 279(1), compounding application + compounding order u/s 279(2). *Next: compounding-fee helper.* |
 
 ## Cross-cutting enablers (parallel)
 
