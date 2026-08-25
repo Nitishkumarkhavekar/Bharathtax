@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin, personalization, drafting, contact
+from app.api.routes import assessment
 from app.api.routes import workspace
 from app.api.routes import support as support_routes
 from app.api.routes import desktop_session as ds_routes
@@ -123,6 +124,8 @@ app.include_router(history.router, dependencies=[Depends(require_feature("histor
 app.include_router(admin.router)
 app.include_router(appeal.router, dependencies=[Depends(require_feature("appeals"))])
 app.include_router(appeal_oo.router, dependencies=[Depends(require_feature("appeals"))])
+# AO-side assessment-order engine — same officer entitlement as appeals.
+app.include_router(assessment.router, dependencies=[Depends(require_feature("appeals"))])
 app.include_router(rulings.router, dependencies=[Depends(require_feature("rulings"))])
 app.include_router(crossref.router, dependencies=[Depends(require_feature("rulings"))])
 app.include_router(assist.router)

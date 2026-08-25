@@ -269,6 +269,14 @@ def run_appeal_case(run_id: int) -> str:
 
 
 @celery_app.task
+def run_assessment_case(run_id: int) -> str:
+    from app.services.assessment_draft import run_case  # lazy: avoid heavy import at worker boot
+
+    run_case(run_id)
+    return f"assessment run {run_id} complete"
+
+
+@celery_app.task
 def ingest_case_law(path: str = "/data/manual/case_law") -> dict:
     from app.ingestion.case_law import ingest_dir  # lazy
 
