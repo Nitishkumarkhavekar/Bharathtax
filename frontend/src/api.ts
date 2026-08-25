@@ -674,7 +674,7 @@ export interface WsRuleCatalogue {
 export interface WsWorkloadRow {
   id: number; title: string; pan: string | null; assessment_year: string | null;
   category: string | null; status: string; owned: boolean;
-  open_count: number; overdue_count: number; urgent_count: number;
+  open_count: number; overdue_count: number; urgent_count: number; due30_count: number;
   next_due_date: string | null; next_label: string | null; next_section: string | null;
   updated_at: string | null;
 }
