@@ -799,6 +799,12 @@ export interface WsPeakCreditResult {
   peak_credit: number; peak_date: string | null; total_credits: number; total_debits: number;
   entries: number; schedule: WsPeakRow[]; note: string;
 }
+export interface WsTpMethod { key: string; name: string; use: string }
+export interface WsAlpResult {
+  method: string; count: number; at_arms_length: boolean | null;
+  lower_p35?: number; upper_p65?: number; median?: number; mean?: number;
+  tested_margin?: number; alp_margin?: number; adjustment?: number; note: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1238,6 +1244,9 @@ export const api = {
     req<Ws115BBCResult>("/workspace/calc/115bbc", { method: "POST", body: JSON.stringify(b) }),
   wsCalcPeakCredit: (entries: { date: string; amount: number; kind: string }[]) =>
     req<WsPeakCreditResult>("/workspace/calc/peak-credit", { method: "POST", body: JSON.stringify({ entries }) }),
+  wsCalcAlp: (b: { comparables: number[]; tested_margin: number; base_amount: number }) =>
+    req<WsAlpResult>("/workspace/calc/alp", { method: "POST", body: JSON.stringify(b) }),
+  wsTpMethods: () => req<WsTpMethod[]>("/workspace/tp-methods"),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
   wsTemplateLibrary: () => req<WsLibraryTemplate[]>("/workspace/templates/library"),

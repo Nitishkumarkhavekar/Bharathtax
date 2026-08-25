@@ -637,6 +637,64 @@ Prepared by: ____________________
 Date: {{TODAY}}
 """
 
+_TPO_ORDER = """OFFICE OF THE TRANSFER PRICING OFFICER, [__]
+
+Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY: {{AY}}
+
+ORDER u/s 92CA(3) of the Income-tax Act, 1961 — determination of arm's length price
+
+1. Reference: The case was referred u/s 92CA(1) by the AO for determination of the ALP of the international transactions / specified domestic transactions reported in Form 3CEB. Notice u/s 92CA(2) / 92D(3) was issued and the assessee's TP study and submissions considered.
+
+2. International transactions examined:
+      (i)  [nature of transaction] with [AE], value Rs. [____]
+      (ii) [nature] with [AE], value Rs. [____]
+
+3. Method & PLI: The assessee adopted [TNMM/CUP/…] with [OP/OC] as the PLI. [Accepted / rejected because [___]]. The most appropriate method is held to be [____].
+
+4. Comparables & benchmarking: On applying the filters [turnover / functional / RPT / persistent-loss], the accepted set yields a margin range/median of [____]% (Rule 10CA — 35th–65th percentile). The tested party's margin is [____]%.
+
+5. Determination: As the tested margin falls OUTSIDE the arm's length range, the ALP is taken at the median [____]%. The adjustment to the total income on account of the international transaction(s) is worked out as under:
+      Operating cost / sales base            Rs. [____]
+      ALP margin                             [____]%
+      Arm's length operating profit          Rs. [____]
+      Less: operating profit shown           Rs. [____]
+      Transfer pricing ADJUSTMENT u/s 92CA   Rs. [____]
+
+6. The adjustment of Rs. [____] is proposed to the income of the assessee for AY {{AY}}. A copy of this order is sent to the AO for passing the draft order u/s 143(3) r.w.s. 144C.
+
+                                                    (Transfer Pricing Officer)
+Date: {{TODAY}}
+"""
+
+_CHECKLIST_3CEB = """FORM 3CEB — REVIEW CHECKLIST (transfer pricing)
+
+Assessee: {{ASSESSEE}}       PAN: {{PAN}}       AY: {{AY}}
+
+A. Completeness
+   [ ] Form 3CEB filed by the due date; accountant's report (CA) signed.
+   [ ] All Associated Enterprises (Sec. 92A) identified; relationship disclosed.
+   [ ] Every international transaction (Sec. 92B) & SDT (Sec. 92BA) reported clause-wise.
+
+B. Transactions & value
+   [ ] Nature, quantum and terms of each transaction match the books / agreements.
+   [ ] Loans/guarantees, royalty, management fees, cost allocations captured.
+   [ ] Any transaction NOT reported in 3CEB but seen in the accounts? [flag]
+
+C. Method & benchmarking
+   [ ] Most appropriate method stated with reasons; PLI appropriate.
+   [ ] Comparables: filters (turnover, functional, RPT%, persistent loss) reasonable.
+   [ ] Current-year vs multiple-year data; Rule 10CA range/median applied correctly.
+   [ ] Tested party correctly chosen; segmental accounts where needed.
+
+D. Adjustments & risk
+   [ ] Working capital / risk adjustments claimed — justified?
+   [ ] Margin within the arm's length range? If not, quantify the proposed adjustment.
+   [ ] Consider reference to the TPO u/s 92CA where value/So risk is significant.
+
+Reviewed by: ____________________
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -677,6 +735,9 @@ LIBRARY = [
     {"id": "summons_131", "name": "Summons questionnaire u/s 131", "category": "notice", "side": "officer", "body": _SUMMONS_131_Q},
     {"id": "appraisal_report", "name": "Appraisal report skeleton (search)", "category": "other", "side": "officer", "body": _APPRAISAL_REPORT},
     {"id": "unaccounted_note", "name": "Undisclosed-income working note", "category": "other", "side": "officer", "body": _UNACCOUNTED_NOTE},
+    # --- transfer pricing ---
+    {"id": "tpo_order", "name": "TPO order u/s 92CA(3) (ALP adjustment)", "category": "order", "side": "officer", "body": _TPO_ORDER},
+    {"id": "checklist_3ceb", "name": "Form 3CEB review checklist", "category": "other", "side": "officer", "body": _CHECKLIST_3CEB},
 ]
 
 

@@ -201,3 +201,24 @@ def test_peak_credit_debit_not_below_zero():
         {"date": "2016-11-03", "amount": 50_000, "kind": "credit"},
     ])
     assert r["peak_credit"] == 100_000           # balance floors at 0, not -400000
+
+
+def test_alp_range_outside_uses_median():
+    r = calc.alp_range([4, 6, 8, 10, 12, 14, 16], tested_margin=3.0, base_amount=10_000_000)
+    assert r["method"] == "range_35_65"
+    assert r["lower_p35"] == 8.0 and r["median"] == 10.0 and r["upper_p65"] == 12.0
+    assert r["at_arms_length"] is False
+    assert r["adjustment"] == 700_000          # (10 - 3)% of 1cr
+
+
+def test_alp_range_within_no_adjustment():
+    r = calc.alp_range([4, 6, 8, 10, 12, 14, 16], tested_margin=10.0, base_amount=10_000_000)
+    assert r["at_arms_length"] is True
+    assert r["adjustment"] == 0
+
+
+def test_alp_mean_method_when_fewer_than_six():
+    r = calc.alp_range([8, 10, 12], tested_margin=6.0, base_amount=1_000_000)
+    assert r["method"] == "mean"
+    assert r["mean"] == 10.0
+    assert r["adjustment"] == 40_000           # (10 - 6)% of 10L

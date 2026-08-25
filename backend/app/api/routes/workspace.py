@@ -239,6 +239,12 @@ class PeakCreditIn(BaseModel):
     entries: list[PeakEntry]
 
 
+class AlpIn(BaseModel):
+    comparables: list[float]
+    tested_margin: float
+    base_amount: float = 0.0
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -663,3 +669,17 @@ def calc_peak_credit(body: PeakCreditIn, p: Principal = Depends(get_principal)) 
     """Investigation: peak credit of unexplained deposits (rotating-fund theory)."""
     from app.services import calculators
     return calculators.peak_credit([e.model_dump() for e in body.entries])
+
+
+@router.post("/calc/alp")
+def calc_alp(body: AlpIn, p: Principal = Depends(get_principal)) -> dict:
+    """Transfer pricing: arm's-length range/mean benchmarking (e.g. TNMM)."""
+    from app.services import calculators
+    return calculators.alp_range(body.comparables, body.tested_margin, body.base_amount)
+
+
+@router.get("/tp-methods")
+def tp_methods(p: Principal = Depends(get_principal)) -> list[dict]:
+    """The five prescribed transfer-pricing methods and when to use each."""
+    from app.services import calculators
+    return [dict(m) for m in calculators.TP_METHODS]
