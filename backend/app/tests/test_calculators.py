@@ -95,3 +95,33 @@ def test_capital_gains_ltcg_equity_exemption():
     assert r["taxable"] == 100_000         # after 1.25L exemption
     assert r["tax"] == 12_500              # 12.5%
     assert r["total_tax"] == 13_000        # + 4% cess
+
+
+def test_tds_default_full():
+    r = calc.tds_default(100_000, 10.0, date(2024, 5, 10),
+                         date(2024, 6, 20), date(2024, 8, 10), date(2024, 7, 31))
+    assert r["tds"] == 10_000
+    assert r["interest_deduction_leg"]["interest"] == 200    # 1% × 2 months
+    assert r["interest_deposit_leg"]["interest"] == 300      # 1.5% × 2 months
+    assert r["interest_201_1a"] == 500
+    assert r["fee_234e_days"] == 10
+    assert r["fee_234e"] == 2_000                            # 10 × 200, under the cap
+    assert r["total_payable"] == 12_500
+
+
+def test_tds_234e_capped_at_tds():
+    # Tiny TDS, long delay → 234E fee is capped at the TDS amount.
+    r = calc.tds_default(10_000, 1.0, date(2024, 4, 1),
+                         date(2024, 4, 1), date(2025, 4, 1), date(2024, 5, 31))
+    assert r["tds"] == 100
+    assert r["fee_234e"] == 100                              # capped, not 200/day
+
+
+def test_tds_no_default_no_charges():
+    # Deducted and deposited on time → no interest, no fee.
+    r = calc.tds_default(50_000, 10.0, date(2024, 4, 10),
+                         date(2024, 4, 10), date(2024, 4, 10), date(2024, 5, 7))
+    assert r["tds"] == 5_000
+    assert r["interest_201_1a"] == 0
+    assert r["fee_234e"] == 0
+    assert r["total_payable"] == 5_000

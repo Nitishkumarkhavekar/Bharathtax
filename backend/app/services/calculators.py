@@ -187,6 +187,87 @@ def penalty(kind: str, base_tax: float, pct: float | None = None) -> dict:
             "note": "Base = the tax on the under-reported / 115BBE / evaded amount."}
 
 
+# --- TDS: default computation + section rate reference -----------------------
+# section -> (nature of payment, default resident rate %). Rates are the common
+# residents' rates; thresholds and special cases (e.g. no-PAN 206AA @ 20%) are
+# noted for the officer to confirm against the year's Finance Act.
+TDS_SECTIONS: list[dict] = [
+    {"section": "192", "nature": "Salary", "rate": None, "note": "At the average rate on estimated salary."},
+    {"section": "192A", "nature": "Premature EPF withdrawal", "rate": 10.0, "note": "20% if no PAN. Threshold Rs. 50,000."},
+    {"section": "193", "nature": "Interest on securities", "rate": 10.0, "note": ""},
+    {"section": "194", "nature": "Dividend", "rate": 10.0, "note": "Threshold Rs. 5,000."},
+    {"section": "194A", "nature": "Interest other than securities", "rate": 10.0, "note": "Bank threshold Rs. 40,000 (Rs. 50,000 senior)."},
+    {"section": "194C", "nature": "Payment to contractor", "rate": 1.0, "note": "1% individual/HUF, 2% others. Threshold Rs. 30,000 single / Rs. 1,00,000 aggregate."},
+    {"section": "194H", "nature": "Commission or brokerage", "rate": 2.0, "note": "Threshold Rs. 20,000 (FY 2024-25)."},
+    {"section": "194I(a)", "nature": "Rent — plant & machinery", "rate": 2.0, "note": "Threshold Rs. 2,40,000."},
+    {"section": "194I(b)", "nature": "Rent — land / building", "rate": 10.0, "note": "Threshold Rs. 2,40,000."},
+    {"section": "194J", "nature": "Professional / technical fees", "rate": 10.0, "note": "2% for technical services & call-centres."},
+    {"section": "194Q", "nature": "Purchase of goods", "rate": 0.1, "note": "On value above Rs. 50,00,000."},
+    {"section": "195", "nature": "Payment to non-resident", "rate": None, "note": "Rate per Act / DTAA — depends on the income."},
+    {"section": "206AA", "nature": "No PAN furnished", "rate": 20.0, "note": "Higher of the specified rate or 20%."},
+]
+
+
+def tds_default(amount: float, rate_pct: float, deduction_due: date,
+                deducted_on: date | None, deposited_on: date | None,
+                due_date_for_deposit: date | None = None) -> dict:
+    """Compute a TDS short-/non-deduction default: the TDS itself, the interest
+    u/s 201(1A) and the late-filing fee u/s 234E.
+
+    - Interest 201(1A): 1% per month (or part) from the date tax was DEDUCTIBLE
+      to the date it was actually DEDUCTED (failure/late DEDUCTION); plus 1.5%
+      per month from the date DEDUCTED to the date DEPOSITED (late PAYMENT).
+    - Fee 234E: Rs. 200 per day of delay in filing the TDS statement, capped at
+      the TDS amount. Charged only when a ``due_date_for_deposit`` (the statement
+      due date) and a later ``deposited_on`` are given.
+    All results carry ``workings`` for verification. Estimate — confirm dates.
+    """
+    amount = max(0.0, round(amount))
+    rate_pct = max(0.0, float(rate_pct))
+    tds = round(amount * rate_pct / 100.0)
+
+    # 201(1A)(i): 1%/month, deductible -> deducted (or -> deposited if never deducted)
+    end_deduct = deducted_on or deposited_on or deduction_due
+    m1 = months_or_part(deduction_due, end_deduct) if end_deduct > deduction_due else 0
+    int_deduct = round(tds * 0.01 * m1)
+
+    # 201(1A)(ii): 1.5%/month, deducted -> deposited
+    int_deposit = 0
+    m2 = 0
+    if deducted_on and deposited_on and deposited_on > deducted_on:
+        m2 = months_or_part(deducted_on, deposited_on)
+        int_deposit = round(tds * 0.015 * m2)
+
+    interest = int_deduct + int_deposit
+
+    # 234E: Rs. 200/day of delay in filing the statement, capped at the TDS.
+    fee_234e = 0
+    days_late = 0
+    if due_date_for_deposit and deposited_on and deposited_on > due_date_for_deposit:
+        days_late = (deposited_on - due_date_for_deposit).days
+        fee_234e = min(tds, days_late * 200)
+
+    return {
+        "amount": amount,
+        "rate_pct": rate_pct,
+        "tds": tds,
+        "interest_201_1a": interest,
+        "interest_deduction_leg": {"months": m1, "rate_pct_per_month": 1.0, "interest": int_deduct},
+        "interest_deposit_leg": {"months": m2, "rate_pct_per_month": 1.5, "interest": int_deposit},
+        "fee_234e": fee_234e,
+        "fee_234e_days": days_late,
+        "total_payable": tds + interest + fee_234e,
+        "workings": (
+            f"TDS = {amount:,.0f} × {rate_pct:g}% = {tds:,.0f}; "
+            f"201(1A)(i) {tds:,.0f} × 1% × {m1} = {int_deduct:,.0f}; "
+            f"201(1A)(ii) {tds:,.0f} × 1.5% × {m2} = {int_deposit:,.0f}; "
+            f"234E {days_late} day(s) × 200 (cap {tds:,.0f}) = {fee_234e:,.0f}"
+        ),
+        "note": "201(1A)(i) 1%/mth deductible→deducted; (ii) 1.5%/mth deducted→deposited; "
+                "234E Rs.200/day capped at the TDS. Estimate — verify the dates and current rates.",
+    }
+
+
 # --- capital gains (post 23-Jul-2024 rates) ----------------------------------
 def capital_gains(amount: float, kind: str = "ltcg_equity") -> dict:
     """Tax on capital gains (rates effective 23 Jul 2024). Estimate — verify."""

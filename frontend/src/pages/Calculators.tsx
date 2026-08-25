@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -323,8 +323,93 @@ function PenaltyCalc() {
   );
 }
 
+function TdsCalc() {
+  const [sections, setSections] = useState<WsTdsSection[]>([]);
+  const [section, setSection] = useState("194C");
+  const [amount, setAmount] = useState("");
+  const [rate, setRate] = useState("1");
+  const [due, setDue] = useState("");
+  const [deducted, setDeducted] = useState("");
+  const [deposited, setDeposited] = useState("");
+  const [stmtDue, setStmtDue] = useState("");
+  const [res, setRes] = useState<WsTdsResult | null>(null);
+
+  useEffect(() => {
+    api.wsTdsSections().then(setSections).catch(() => {});
+  }, []);
+
+  const pickSection = (sec: string) => {
+    setSection(sec);
+    const row = sections.find((s) => s.section === sec);
+    if (row && row.rate != null) setRate(String(row.rate));
+  };
+
+  const run = async () => {
+    const a = parseFloat(amount);
+    const r = parseFloat(rate);
+    if (!a || a <= 0) { toast.error("Enter the payment amount."); return; }
+    if (!r || r < 0) { toast.error("Enter the TDS rate."); return; }
+    if (!due) { toast.error("Enter the date the tax was deductible."); return; }
+    try {
+      setRes(await api.wsCalcTds({
+        amount: a, rate_pct: r, deduction_due: due,
+        deducted_on: deducted || null, deposited_on: deposited || null,
+        statement_due: stmtDue || null,
+      }));
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+
+  const curNote = sections.find((s) => s.section === section)?.note || "";
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Section / nature of payment">
+          <select value={section} onChange={(e) => pickSection(e.target.value)}
+            className="w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700">
+            {sections.map((s) => <option key={s.section} value={s.section}>{`${s.section} — ${s.nature}${s.rate != null ? ` (${s.rate}%)` : ""}`}</option>)}
+          </select>
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Payment amount"><Input type="number" placeholder="e.g. 100000" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+          <Field label="TDS rate %"><Input type="number" placeholder="e.g. 1" value={rate} onChange={(e) => setRate(e.target.value)} /></Field>
+        </div>
+        <Field label="Tax deductible on (payment / credit)"><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Actually deducted on"><Input type="date" value={deducted} onChange={(e) => setDeducted(e.target.value)} /></Field>
+          <Field label="Deposited on"><Input type="date" value={deposited} onChange={(e) => setDeposited(e.target.value)} /></Field>
+        </div>
+        <Field label="Statement due date (for 234E fee)"><Input type="date" value={stmtDue} onChange={(e) => setStmtDue(e.target.value)} /></Field>
+        <Button className="w-full" onClick={run}>Compute TDS default</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500">
+          <Info className="size-3.5 mt-px shrink-0" />
+          201(1A): 1%/mth deductible→deducted, 1.5%/mth deducted→deposited. 234E: ₹200/day, capped at the TDS.{curNote ? ` ${curNote}` : ""}
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1">TDS default</div>
+            <ResultRow label={`TDS @ ${res.rate_pct}%`} value={inr(res.tds)} />
+            <ResultRow label={`Interest 201(1A)(i) — ${res.interest_deduction_leg.months} mth @ 1%`} value={inr(res.interest_deduction_leg.interest)} />
+            <ResultRow label={`Interest 201(1A)(ii) — ${res.interest_deposit_leg.months} mth @ 1.5%`} value={inr(res.interest_deposit_leg.interest)} />
+            <ResultRow label={`Fee u/s 234E — ${res.fee_234e_days} day(s)`} value={inr(res.fee_234e)} />
+            <ResultRow label="Total payable" value={inr(res.total_payable)} strong />
+            <p className="mt-2 text-[11px] text-slate-500">{res.workings}</p>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">
+            Enter the payment, rate and dates — the TDS, interest and fee appear here.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -338,7 +423,7 @@ export default function Calculators() {
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -350,6 +435,7 @@ export default function Calculators() {
       <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
         {tab === "interest" ? <InterestCalc />
           : tab === "234c" ? <Calc234C />
+          : tab === "tds" ? <TdsCalc />
           : tab === "bbe" ? <Bbe115Calc />
           : tab === "slab" ? <SlabCalc />
           : tab === "capgains" ? <CapGainsCalc />

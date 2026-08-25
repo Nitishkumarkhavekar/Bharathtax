@@ -203,6 +203,15 @@ class PenaltyIn(BaseModel):
     pct: float | None = None
 
 
+class TdsIn(BaseModel):
+    amount: float
+    rate_pct: float
+    deduction_due: date            # date the tax was deductible (payment/credit)
+    deducted_on: date | None = None
+    deposited_on: date | None = None
+    statement_due: date | None = None   # TDS-statement filing due date (for 234E)
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -582,3 +591,20 @@ def calc_capital_gains(body: CapitalGainsIn, p: Principal = Depends(get_principa
 def calc_penalty(body: PenaltyIn, p: Principal = Depends(get_principal)) -> dict:
     from app.services import calculators
     return calculators.penalty(body.kind, body.base_tax, body.pct)
+
+
+@router.post("/calc/tds")
+def calc_tds(body: TdsIn, p: Principal = Depends(get_principal)) -> dict:
+    """TDS default: the tax, interest u/s 201(1A) and late-filing fee u/s 234E."""
+    from app.services import calculators
+    return calculators.tds_default(
+        body.amount, body.rate_pct, body.deduction_due,
+        body.deducted_on, body.deposited_on, body.statement_due,
+    )
+
+
+@router.get("/tds-sections")
+def tds_sections(p: Principal = Depends(get_principal)) -> list[dict]:
+    """Reference table of common TDS sections, nature of payment and rates."""
+    from app.services import calculators
+    return [dict(s) for s in calculators.TDS_SECTIONS]
