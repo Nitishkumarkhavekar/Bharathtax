@@ -6,6 +6,7 @@ interface Session {
   fullName: string | null;
   role: string;
   wingId: number;
+  workspaceProfile: string | null;   // primary function; null until picked
   features: string[] | null;   // allowed modules; null = all
 }
 interface AuthCtx {
@@ -13,6 +14,7 @@ interface AuthCtx {
   loading: boolean;
   login: (u: string, p: string) => Promise<Session>;
   logout: () => Promise<void>;
+  setWorkspaceProfile: (key: string | null) => void;
 }
 
 /**
@@ -45,7 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .me()
       .then((me) => {
-        setSession({ username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, features: me.features ?? null });
+        const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, features: me.features ?? null };
+        localStorage.setItem(SESS, JSON.stringify(s));
+        setSession(s);
       })
       .catch(() => {
         localStorage.removeItem(KEY);
@@ -100,10 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(KEY, tok.access_token);
     // Pull the full profile (incl. allowed modules) so the session is complete.
     const me = await api.me();
-    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, features: me.features ?? null };
+    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, features: me.features ?? null };
     localStorage.setItem(SESS, JSON.stringify(s));
     setSession(s);
     return s;
+  }
+
+  function setWorkspaceProfile(key: string | null) {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, workspaceProfile: key };
+      localStorage.setItem(SESS, JSON.stringify(next));
+      return next;
+    });
   }
 
   async function logout() {
@@ -117,5 +130,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }
 
-  return <Ctx.Provider value={{ session, loading, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ session, loading, login, logout, setWorkspaceProfile }}>{children}</Ctx.Provider>;
 }

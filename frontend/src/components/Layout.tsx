@@ -26,6 +26,8 @@ import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
+import { profileConfig } from "@/lib/workspaceProfiles";
+import WorkspaceProfilePrompt from "./WorkspaceProfilePrompt";
 import NotificationBell from "./NotificationBell";
 import AppTour from "./AppTour";
 
@@ -126,6 +128,45 @@ function SidebarBody({
       (!n.roles || (session && n.roles.includes(session.role))) &&
       (!n.feature || isAdmin || !feats || feats.includes(n.feature)),
   );
+  // Role-tailored sidebar: when the user has picked a workspace profile, split
+  // the nav into "Your workspace" (the function's tools + core) and a
+  // collapsible "All tools" with the rest. Soft emphasis — nothing is removed.
+  const profile = profileConfig(session?.workspaceProfile);
+  const CORE_PATHS = ["/dashboard", "/ask", "/workspace"]; // for everyone
+  let featured: typeof nav = [];
+  let rest: typeof nav = nav;
+  if (profile) {
+    const order = ["/dashboard", ...profile.tools, "/ask", "/workspace"];
+    const featuredSet = new Set([...CORE_PATHS, ...profile.tools]);
+    featured = order
+      .map((p) => nav.find((n) => n.to === p))
+      .filter((n): n is (typeof nav)[number] => !!n);
+    rest = nav.filter((n) => !featuredSet.has(n.to));
+  }
+
+  const renderItem = (n: (typeof nav)[number]) => {
+    const active = loc.pathname.startsWith(n.to);
+    return (
+      <Link
+        key={n.to}
+        to={n.to}
+        onClick={onNavigate}
+        title={collapsed ? n.label : undefined}
+        aria-label={n.label}
+        className={cn(
+          "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors",
+          collapsed ? "justify-center p-1.5" : "gap-3 px-2.5 py-2",
+          active ? "bg-primary/10 text-primary font-semibold" : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+        )}
+      >
+        {active && !collapsed && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />}
+        <span className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", NAV_TONE_TILE[n.tone])}>
+          <n.icon className="size-4" />
+        </span>
+        {!collapsed && <span className="min-w-0 flex-1 truncate">{n.label}</span>}
+      </Link>
+    );
+  };
   // Prefer the human-facing full name over the login handle so the sidebar
   // and greeting agree ("Hello, Avinash" vs. an initial from "ceo").  Fall
   // back to the username when full_name isn't set on the user record.
@@ -233,89 +274,74 @@ function SidebarBody({
           collapsed ? "px-2 py-3" : (slot ? "" : "p-3"),
         )}
       >
-        {/* Section header — collapsible dropdown on the expanded sidebar so
-            the workspace list can be tucked away when the officer is deep in
-            a page (e.g. drafts) and wants the chrome minimal. Hidden entirely
-            on the icon rail (collapsed sidebar) where all icons are always
-            reachable regardless. */}
-        {!collapsed && (
-          <button
-            type="button"
-            onClick={toggleWorkspace}
-            aria-expanded={workspaceOpen}
-            aria-controls="sidebar-workspace-list"
-            className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-          >
-            <span>Workspace</span>
-            <span
-              className={cn(
-                "size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center transition-transform duration-200 text-slate-500",
-                workspaceOpen ? "rotate-180" : "rotate-0",
-              )}
-              title={workspaceOpen ? "Collapse" : "Expand"}
-            >
-              <ChevronDown className="size-3.5" />
-            </span>
-          </button>
-        )}
-        <div
-          id="sidebar-workspace-list"
-          className={cn(
-            // The icon rail keeps all nav items reachable at every zoom.
-            // The full-width sidebar shows/hides based on toggle.
-            collapsed
-              ? "space-y-1"
-              : cn(
-                  "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out space-y-1",
-                  workspaceOpen ? "max-h-[600px] opacity-100 mt-1.5" : "max-h-0 opacity-0 mt-0",
-                ),
-          )}
-        >
-        {nav.map((n, i) => {
-          const active = loc.pathname.startsWith(n.to);
-          const startTools = n.group === "tools" && nav[i - 1]?.group !== "tools";
-          return (
-            <Fragment key={n.to}>
-              {startTools && (
-                collapsed
-                  ? <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
-                  : <div className="px-2 pt-3 pb-1 text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400">Tools</div>
-              )}
-            <Link
-              to={n.to}
-              onClick={onNavigate}
-              title={collapsed ? n.label : undefined}
-              aria-label={n.label}
-              className={cn(
-                "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors",
-                collapsed
-                  ? "justify-center p-1.5"
-                  : "gap-3 px-2.5 py-2",
-                active
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
-              )}
-            >
-              {/* Active-state left accent bar */}
-              {active && !collapsed && (
-                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
-              )}
-              <span
-                className={cn(
-                  "size-8 rounded-lg flex items-center justify-center shrink-0",
-                  NAV_TONE_TILE[n.tone],
-                )}
+        {/* Profile-tailored layout: a static "Your workspace" (the function's
+            tools) + a collapsible "All tools" with the rest. Falls back to the
+            single collapsible "Workspace" list when no profile is picked. On
+            the icon rail every item is always shown. */}
+        {profile && !collapsed ? (
+          <>
+            <div className="px-2 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">Your workspace</div>
+            <div className="space-y-1 mt-0.5">{featured.map((n) => renderItem(n))}</div>
+            {rest.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleWorkspace}
+                  aria-expanded={workspaceOpen}
+                  aria-controls="sidebar-workspace-list"
+                  className="mt-3 w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                >
+                  <span>All tools</span>
+                  <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center transition-transform duration-200 text-slate-500", workspaceOpen ? "rotate-180" : "rotate-0")} title={workspaceOpen ? "Collapse" : "Expand"}>
+                    <ChevronDown className="size-3.5" />
+                  </span>
+                </button>
+                <div id="sidebar-workspace-list" className={cn("overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out space-y-1", workspaceOpen ? "max-h-[600px] opacity-100 mt-1.5" : "max-h-0 opacity-0 mt-0")}>
+                  {rest.map((n) => renderItem(n))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {!collapsed && (
+              <button
+                type="button"
+                onClick={toggleWorkspace}
+                aria-expanded={workspaceOpen}
+                aria-controls="sidebar-workspace-list"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               >
-                <n.icon className="size-4" />
-              </span>
-              {!collapsed && (
-                <span className="min-w-0 flex-1 truncate">{n.label}</span>
+                <span>Workspace</span>
+                <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center transition-transform duration-200 text-slate-500", workspaceOpen ? "rotate-180" : "rotate-0")} title={workspaceOpen ? "Collapse" : "Expand"}>
+                  <ChevronDown className="size-3.5" />
+                </span>
+              </button>
+            )}
+            <div
+              id="sidebar-workspace-list"
+              className={cn(
+                collapsed
+                  ? "space-y-1"
+                  : cn("overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out space-y-1", workspaceOpen ? "max-h-[600px] opacity-100 mt-1.5" : "max-h-0 opacity-0 mt-0"),
               )}
-            </Link>
-            </Fragment>
-          );
-        })}
-        </div>
+            >
+              {nav.map((n, i) => {
+                const startTools = n.group === "tools" && nav[i - 1]?.group !== "tools";
+                return (
+                  <Fragment key={n.to}>
+                    {startTools && (
+                      collapsed
+                        ? <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
+                        : <div className="px-2 pt-3 pb-1 text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400">Tools</div>
+                    )}
+                    {renderItem(n)}
+                  </Fragment>
+                );
+              })}
+            </div>
+          </>
+        )}
       </nav>
 
       {/* Footer: seat widget + user card */}
@@ -440,6 +466,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
     // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
     // whole page grow, scrolling the body — sidebar and all).
     <div className="h-screen flex bg-background overflow-hidden">
+      <WorkspaceProfilePrompt />
       {/* Desktop sidebar — collapses to a 4rem icon rail when the header
           toggle is clicked. The width is animated so the transition feels
           intentional. */}

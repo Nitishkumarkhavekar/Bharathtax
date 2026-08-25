@@ -4,6 +4,8 @@ import { LayoutDashboard, FolderOpen, ArrowUpRight, RefreshCw, AlarmClock } from
 import { api, WsWorkload, WsWorkloadRow } from "../api";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "../auth";
+import { profileConfig } from "@/lib/workspaceProfiles";
 
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
@@ -49,10 +51,16 @@ function Tile({ label, value, tone }: { label: string; value: number; tone: stri
 
 export default function Dashboard() {
   const nav = useNavigate();
+  const { session } = useAuth();
+  const profile = profileConfig(session?.workspaceProfile);
+  const myCats = profile?.categories ?? [];
   const [data, setData] = useState<WsWorkload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cat, setCat] = useState("");
+  // Default to the user's own function when a profile is set ("Mine"); All otherwise.
+  const [cat, setCat] = useState(myCats.length ? "__mine" : "");
   const [sort, setSort] = useState<"urgent" | "overdue" | "updated">("urgent");
+  // The category chips: a leading "Mine" when a profile is set, then the full set.
+  const cats = myCats.length ? [{ v: "__mine", l: "Mine" }, ...CATS] : CATS;
 
   const load = async () => {
     try { setData(await api.wsWorkload()); }
@@ -63,13 +71,14 @@ export default function Dashboard() {
 
   const rows = useMemo(() => {
     if (!data) return [];
-    let r = data.matters.filter((m) => !cat || m.category === cat);
+    let r = data.matters.filter((m) =>
+      !cat ? true : cat === "__mine" ? myCats.includes(m.category || "") : m.category === cat);
     const nextKey = (m: WsWorkloadRow) => (m.next_due_date ? daysUntil(m.next_due_date) : 99999);
     if (sort === "urgent") r = [...r].sort((a, b) => nextKey(a) - nextKey(b));
     else if (sort === "overdue") r = [...r].sort((a, b) => b.overdue_count - a.overdue_count || nextKey(a) - nextKey(b));
     else r = [...r].sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
     return r;
-  }, [data, cat, sort]);
+  }, [data, cat, sort, session?.workspaceProfile]);
 
   const s = data?.summary;
 
@@ -101,7 +110,7 @@ export default function Dashboard() {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1.5">
-          {CATS.map((c) => (
+          {cats.map((c) => (
             <button key={c.v} onClick={() => setCat(c.v)}
               className={cn("px-3 py-1.5 rounded-full text-[12px] font-semibold ring-1 transition-colors",
                 cat === c.v ? "bg-primary text-white ring-primary" : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50")}>
