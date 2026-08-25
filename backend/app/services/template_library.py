@@ -317,6 +317,68 @@ Order u/s 220(3) — grant of instalments for payment of demand
 Date: {{TODAY}}
 """
 
+_FORM10_ACCUM = """To,
+The Assessing Officer / [Jurisdictional AO — Exemptions],
+{{AO}}
+
+Sub: Intimation of accumulation of income u/s 11(2) r.w. Rule 17 (Form No. 10) — {{ASSESSEE}}, PAN {{PAN}}, AY {{AY}}
+
+Respected Sir/Madam,
+
+1. {{ASSESSEE}}, a trust/institution registered u/s 12AB, hereby gives notice u/s 11(2) of its intention to accumulate or set apart the following income for application to its charitable/religious objects:
+
+      Amount to be accumulated/set apart:  Rs. [____]
+      Period of accumulation (not exceeding 5 years): FY [__] to FY [__]
+      Specific purpose(s) of accumulation: [state the objects]
+
+2. The amount so accumulated has been / will be invested in the modes specified u/s 11(5). Form No. 10 is filed electronically within the due date u/s 139(1). The audit report in Form 10B is enclosed/filed.
+
+3. It is submitted that on the above accumulation being validly set apart, no part of the said income is chargeable to tax for AY {{AY}}.
+
+Yours faithfully,
+For {{ASSESSEE}}
+(Managing Trustee / Authorised Signatory)
+Date: {{TODAY}}
+"""
+
+_FORM10AB_80G = """To,
+The Principal Commissioner / Commissioner of Income-tax (Exemptions),
+[Jurisdiction]
+
+Sub: Application for renewal/approval u/s 80G(5) (Form No. 10AB) — {{ASSESSEE}}, PAN {{PAN}}
+
+Respected Sir/Madam,
+
+1. {{ASSESSEE}} holds provisional/regular approval u/s 80G(5) [registration no. ____ dated ____] and applies for renewal/regular approval in Form No. 10AB within the time allowed.
+
+2. Enclosures: (a) self-certified copy of the instrument of creation; (b) 12AB registration; (c) audited accounts for the last [3] years; (d) note on activities; (e) details of donations and application to objects.
+
+3. It is submitted that the trust has carried out genuine charitable activities in accordance with its objects and has complied with the conditions of Sec. 80G(5). Renewal of approval is prayed for.
+
+Yours faithfully,
+For {{ASSESSEE}}
+(Authorised Signatory)
+Date: {{TODAY}}
+"""
+
+_SCN_12AB4 = """OFFICE OF THE PRINCIPAL COMMISSIONER / COMMISSIONER OF INCOME-TAX (EXEMPTIONS)
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}
+
+Show-cause notice u/s 12AB(4)/(5) of the Income-tax Act, 1961 — proposed cancellation of registration
+
+1. Registration u/s 12AB was granted to the trust/institution vide order dated [date]. Information/material on record indicates the occurrence of a "specified violation", namely: [e.g. application of income for non-charitable purposes / activities not genuine / income applied for the benefit of a person referred to in Sec. 13(3) / Sec. 13 violation / non-compliance with other law material to the objects].
+
+2. You are hereby required to show cause, on or before [date], as to why the registration u/s 12AB should not be cancelled for the previous year(s) [__] in view of the above. You may furnish a written reply with supporting evidence and avail an opportunity of being heard.
+
+3. In the absence of a satisfactory explanation, registration will be cancelled and the consequences u/s 115TD (tax on accreted income) considered.
+
+                                                    (PCIT/CIT (Exemptions))
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -336,6 +398,10 @@ LIBRARY = [
     {"id": "notice_226_3", "name": "Garnishee notice u/s 226(3)", "category": "notice", "side": "officer", "body": _NOTICE_226_3},
     {"id": "tro_222", "name": "Reference to TRO u/s 222 (recovery certificate)", "category": "order", "side": "officer", "body": _TRO_222},
     {"id": "instalment_order", "name": "Instalment order u/s 220(3)", "category": "order", "side": "officer", "body": _INSTALMENT_ORDER},
+    # --- trust / charity (exemptions) ---
+    {"id": "form10_accum", "name": "Form 10 — accumulation u/s 11(2)", "category": "other", "side": "assessee", "body": _FORM10_ACCUM},
+    {"id": "form10ab_80g", "name": "Form 10AB — 80G renewal application", "category": "other", "side": "assessee", "body": _FORM10AB_80G},
+    {"id": "scn_12ab4", "name": "SCN u/s 12AB(4) (cancel registration)", "category": "notice", "side": "officer", "body": _SCN_12AB4},
 ]
 
 
