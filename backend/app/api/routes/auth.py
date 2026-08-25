@@ -316,6 +316,13 @@ def register(body: RegisterRequest, request: Request,
 
 
 # -------- profile (current user) --------------------------------------------
+@router.get("/workspace-profiles")
+def workspace_profiles() -> list[dict]:
+    """The selectable primary-function profiles for the workspace picker."""
+    from app.core.profiles import WORKSPACE_PROFILES
+    return [dict(p) for p in WORKSPACE_PROFILES]
+
+
 @router.get("/profile", response_model=ProfileOut)
 def get_profile(user: User = Depends(get_current_user)) -> User:
     return user
@@ -331,6 +338,12 @@ def update_profile(body: ProfileUpdate,
         user.organisation = body.organisation.strip() or None
     if body.designation is not None:
         user.designation = body.designation.strip() or None
+    if body.workspace_profile is not None:
+        from app.core.profiles import is_valid_profile
+        wp = body.workspace_profile.strip() or None
+        if not is_valid_profile(wp):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Unknown workspace profile.")
+        user.workspace_profile = wp
     if body.new_password:
         if len(body.new_password) < 6:
             raise HTTPException(

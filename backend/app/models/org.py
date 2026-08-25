@@ -77,6 +77,12 @@ class User(Base):
     # (e.g. "Ward 28(1), Delhi") — used to personalize answers and pre-fill
     # order/notice headers. Purely descriptive; no access impact.
     charge: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Structured PRIMARY FUNCTION the officer works (officer/cita/drp/tp/
+    # investigation/ici/recovery/tds/ca) — drives the role-tailored dashboard
+    # and sidebar. Distinct from `role` (access) and `designation` (free-text
+    # label). NULL until the user picks one (first-run prompt). Self-set;
+    # an admin can override it.
+    workspace_profile: Mapped[str | None] = mapped_column(String(20), nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(10), default="en")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Self-service registrations land as 'pending' and cannot log in until an

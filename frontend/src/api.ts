@@ -219,6 +219,8 @@ export interface Profile {
   full_name: string | null;
   organisation: string | null;
   role: string;
+  designation: string | null;
+  workspace_profile: string | null;
   wing_id: number;
   is_active: boolean;
   approval_status: string;
@@ -228,6 +230,8 @@ export interface Profile {
 export interface ProfileUpdate {
   full_name?: string;
   organisation?: string;
+  designation?: string;
+  workspace_profile?: string;
   current_password?: string;
   new_password?: string;
 }
@@ -958,7 +962,8 @@ export const api = {
   updateProfile: (b: ProfileUpdate) =>
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
-  me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
+  me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; workspace_profile: string | null; wing_id: number; features: string[] | null }>("/auth/me"),
+  workspaceProfiles: () => req<{ key: string; label: string }[]>("/auth/workspace-profiles"),
 
   // --- personalization / memory ---
   personalization: () => req<Personalization>("/me/personalization"),

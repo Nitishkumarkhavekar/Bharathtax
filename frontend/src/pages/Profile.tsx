@@ -234,14 +234,20 @@ function PersonalDetailsCard({
   profile: ProfileT;
   onSaved: (p: ProfileT) => void;
 }) {
+  const { setWorkspaceProfile } = useAuth();
   const [fullName, setFullName] = useState(profile.full_name ?? "");
   const [organisation, setOrganisation] = useState(profile.organisation ?? "");
+  const [wp, setWp] = useState(profile.workspace_profile ?? "");
+  const [wpOptions, setWpOptions] = useState<{ key: string; label: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  useEffect(() => { api.workspaceProfiles().then(setWpOptions).catch(() => {}); }, []);
+
   const dirty =
     (fullName ?? "") !== (profile.full_name ?? "") ||
-    (organisation ?? "") !== (profile.organisation ?? "");
+    (organisation ?? "") !== (profile.organisation ?? "") ||
+    (wp ?? "") !== (profile.workspace_profile ?? "");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -252,8 +258,10 @@ function PersonalDetailsCard({
       const updated = await api.updateProfile({
         full_name: fullName,
         organisation,
+        workspace_profile: wp,
       });
       onSaved(updated);
+      setWorkspaceProfile(updated.workspace_profile ?? null);
       setMsg({ kind: "ok", text: "Profile updated." });
       setTimeout(() => setMsg(null), 2200);
     } catch (e) {
@@ -324,6 +332,22 @@ function PersonalDetailsCard({
             placeholder="e.g. Income-tax Department, Mumbai · Acme & Co."
             className="w-full h-10 rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
+        </IconWrap>
+      </Field>
+
+      <Field
+        label="Primary function"
+        hint="Tailors your dashboard and sidebar to the work you actually do. Every tool stays reachable under “All tools”."
+      >
+        <IconWrap icon={<UserCog className="size-4" />}>
+          <select
+            value={wp}
+            onChange={(e) => setWp(e.target.value)}
+            className="w-full h-10 rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">Not set (show everything)</option>
+            {wpOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
         </IconWrap>
       </Field>
 

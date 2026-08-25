@@ -48,6 +48,8 @@ class ProfileOut(BaseModel):
     full_name: str | None = None
     organisation: str | None = None
     role: Role
+    designation: str | None = None
+    workspace_profile: str | None = None
     wing_id: int
     is_active: bool
     approval_status: str
@@ -58,6 +60,7 @@ class ProfileUpdate(BaseModel):
     full_name: str | None = None
     organisation: str | None = None
     designation: str | None = None
+    workspace_profile: str | None = None   # "" clears it; validated server-side
     # Optional password change (only applied when both are sent and match).
     current_password: str | None = None
     new_password: str | None = None
@@ -82,6 +85,7 @@ class MeResponse(BaseModel):
     role: Role
     designation: str | None = None
     wing_id: int
+    workspace_profile: str | None = None   # primary function; drives the tailored home
     features: list[str] | None = None   # allowed modules; null = all
 
 
@@ -185,6 +189,7 @@ class UserCreate(BaseModel):
     email: str | None = None
     role: Role = Role.officer
     designation: str | None = None      # free-text job title
+    workspace_profile: str | None = None
     wing_id: int
     office_id: int | None = None
     features: list[str] | None = None   # allowed modules; null = all
@@ -199,6 +204,7 @@ class UserOut(BaseModel):
     organisation: str | None = None
     role: Role
     designation: str | None = None
+    workspace_profile: str | None = None
     wing_id: int
     office_id: int | None = None
     is_active: bool
@@ -213,6 +219,7 @@ class UserUpdate(BaseModel):
     email: str | None = None
     role: Role | None = None
     designation: str | None = None
+    workspace_profile: str | None = None
     wing_id: int | None = None
     office_id: int | None = None
     is_active: bool | None = None

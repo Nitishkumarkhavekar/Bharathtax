@@ -162,7 +162,7 @@ def create_user(body: UserCreate, admin: User = Depends(_admin),
     user = User(
         username=body.username, password_hash=hash_password(body.password),
         full_name=body.full_name, email=body.email, role=body.role,
-        designation=body.designation,
+        designation=body.designation, workspace_profile=body.workspace_profile,
         wing_id=body.wing_id, office_id=body.office_id, features=body.features,
     )
     db.add(user); db.commit(); db.refresh(user)
@@ -203,6 +203,7 @@ def update_user(user_id: int, body: UserUpdate, admin: User = Depends(_admin),
     if body.full_name is not None: user.full_name = body.full_name
     if body.email is not None: user.email = body.email
     if body.designation is not None: user.designation = body.designation
+    if body.workspace_profile is not None: user.workspace_profile = (body.workspace_profile or None)
     if body.office_id is not None: user.office_id = body.office_id
     if body.is_active is not None: user.is_active = body.is_active
     if body.features is not None: user.features = body.features
