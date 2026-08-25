@@ -121,3 +121,15 @@ def test_final_order_144c13_one_month_end_of_month():
     r = _by_id("drp_directions_received", date(2026, 5, 12), "final_order_144c_13")
     assert r["section"] == "Sec. 144C(13)"
     assert r["due_date"] == date(2026, 6, 30)
+
+
+def test_time_barring_153_ay_2021_22_is_nine_months():
+    # AY 2021-22 ends 31 Mar 2022 -> Finance Act 2021 set 9 months -> 31 Dec 2022
+    r = _by_id("end_of_ay", date(2022, 3, 31), "time_barring_153")
+    assert r["due_date"] == date(2022, 12, 31)
+    # AY 2022-23 ends 31 Mar 2023 -> back to 12 months -> 31 Mar 2024
+    r2 = _by_id("end_of_ay", date(2023, 3, 31), "time_barring_153")
+    assert r2["due_date"] == date(2024, 3, 31)
+    # AY 2020-21 ends 31 Mar 2021 -> 12 months -> 31 Mar 2022
+    r3 = _by_id("end_of_ay", date(2021, 3, 31), "time_barring_153")
+    assert r3["due_date"] == date(2022, 3, 31)

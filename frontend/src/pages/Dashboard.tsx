@@ -68,6 +68,11 @@ export default function Dashboard() {
     finally { setLoading(false); }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  // If the profile changes while this page is live (so the "Mine" chip vanishes)
+  // but "Mine" was selected, fall back to "All" instead of an empty, chip-less list.
+  useEffect(() => {
+    if (!myCats.length && cat === "__mine") setCat("");
+  }, [myCats.length, cat]);
 
   const rows = useMemo(() => {
     if (!data) return [];

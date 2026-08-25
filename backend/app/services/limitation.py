@@ -135,7 +135,9 @@ def _months_153(trigger_date: date) -> int:
         return 21
     if ay_start == 2018:      # AY 2018-19
         return 18
-    return 12                 # AY 2019-20 onwards
+    if ay_start == 2021:      # AY 2021-22 — Finance Act 2021 set 9 months
+        return 9              # (31 Dec 2022), before reverting to 12 for AY 2022-23+
+    return 12                 # AY 2019-20, 2020-21, and 2022-23 onwards
 
 
 # --- public API --------------------------------------------------------------

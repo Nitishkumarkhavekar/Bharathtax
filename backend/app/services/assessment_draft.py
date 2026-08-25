@@ -452,6 +452,8 @@ def run_case(run_id: int) -> None:
         if not run:
             return
         case = db.get(AssessmentCase, run.case_id)
+        if not case:   # orphan run (shouldn't happen via the cascade) — nothing to draft
+            return
         db.execute(update(AssessmentRun).where(AssessmentRun.id == run.id)
                    .values(status="running", provider=settings.llm_backend, model=ad._APPEAL_MODEL))
         db.execute(update(AssessmentCase).where(AssessmentCase.id == case.id).values(status="running"))
