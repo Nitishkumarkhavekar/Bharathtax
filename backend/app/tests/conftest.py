@@ -21,13 +21,13 @@ from app.core.db import Base
 import app.models  # noqa: F401 — register every model on Base.metadata
 from app.models.org import User
 from app.models.workspace import (
-    Deadline, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
+    Deadline, Demand, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
 )
 
 _TABLES = [
     User.__table__, Matter.__table__, Deadline.__table__, Reminder.__table__,
     StickyNote.__table__, WorkspaceTemplate.__table__, Watchlist.__table__,
-    MatterShare.__table__,
+    MatterShare.__table__, Demand.__table__,
 ]
 
 

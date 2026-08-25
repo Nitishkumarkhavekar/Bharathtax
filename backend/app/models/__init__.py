@@ -22,7 +22,7 @@ from app.models.org import Department, Office, SeatLease, User, Wing
 from app.models.personalization import UserMemory, UserSettings
 from app.models.token_usage import TokenUsage
 from app.models.workspace import (
-    Deadline, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
+    Deadline, Demand, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
 )
 
 __all__ = [
@@ -36,7 +36,7 @@ __all__ = [
     "Department", "Office", "SeatLease", "User", "Wing",
     "UserMemory", "UserSettings",
     "TokenUsage",
-    "Matter", "Deadline", "Reminder", "StickyNote",
+    "Matter", "Deadline", "Demand", "Reminder", "StickyNote",
     "WorkspaceTemplate", "Watchlist", "MatterShare",
     "SubscriptionPlan", "TokenPrice", "UserSubscription",
     "DesktopRelease",

@@ -660,6 +660,22 @@ export interface WsDeadline {
   status: string;
   notes: string | null;
 }
+export interface WsDemand {
+  id: number;
+  matter_id: number;
+  assessment_year: string | null;
+  section: string | null;
+  amount: number;
+  paid: number;
+  outstanding: number;
+  default_date: string | null;
+  raised_date: string | null;
+  status: string;
+  notes: string | null;
+  interest_220_2: number;
+  interest_months: number;
+  total_due: number;
+}
 export interface WsReminder {
   id: number;
   matter_id: number | null;
@@ -1206,7 +1222,13 @@ export const api = {
   // --- Daily workspace ------------------------------------------------------
   wsLimitationRules: () => req<WsRuleCatalogue>("/workspace/limitation-rules"),
   wsMatters: () => req<WsMatter[]>("/workspace/matters"),
-  wsMatter: (id: number) => req<WsMatter & { deadlines: WsDeadline[] }>(`/workspace/matters/${id}`),
+  wsMatter: (id: number) => req<WsMatter & { deadlines: WsDeadline[]; demands: WsDemand[] }>(`/workspace/matters/${id}`),
+  wsAddDemand: (matterId: number, body: { amount: number; assessment_year?: string; section?: string; paid?: number; default_date?: string; raised_date?: string; notes?: string }) =>
+    req<WsDemand>(`/workspace/matters/${matterId}/demands`, { method: "POST", body: JSON.stringify(body) }),
+  wsUpdateDemand: (id: number, body: { amount?: number; paid?: number; status?: string; section?: string; assessment_year?: string; default_date?: string; raised_date?: string; notes?: string }) =>
+    req<WsDemand>(`/workspace/demands/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  wsDeleteDemand: (id: number) =>
+    req<void>(`/workspace/demands/${id}`, { method: "DELETE" }),
   wsCreateMatter: (body: Partial<WsMatter>) =>
     req<WsMatter>("/workspace/matters", { method: "POST", body: JSON.stringify(body) }),
   wsUpdateMatter: (id: number, body: Partial<WsMatter>) =>
