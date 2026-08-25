@@ -264,6 +264,14 @@ def workload(db: Session, user_id: int, today: date | None = None) -> dict:
     for d in deadlines:
         by_matter.setdefault(d.matter_id, []).append(d)
 
+    # Outstanding demand (incl. live 220(2) interest) per matter, for the desk view.
+    demand_by_matter: dict[int, float] = {}
+    if mids:
+        for dm in db.scalars(select(Demand).where(
+                Demand.matter_id.in_(mids), Demand.status == "outstanding")):
+            demand_by_matter[dm.matter_id] = demand_by_matter.get(dm.matter_id, 0.0) + \
+                demand_with_interest(dm, today)["total_due"]
+
     summary = {"total_matters": len(matters), "open_deadlines": len(deadlines),
                "overdue": 0, "due_7": 0, "due_30": 0}
     for d in deadlines:
@@ -287,6 +295,7 @@ def workload(db: Session, user_id: int, today: date | None = None) -> dict:
             "category": m.category, "status": m.status, "owned": m.user_id == user_id,
             "open_count": len(dls), "overdue_count": overdue, "urgent_count": urgent,
             "due30_count": soon,
+            "demand_due": round(demand_by_matter.get(m.id, 0.0)),
             "next_due_date": nxt.due_date.isoformat() if nxt else None,
             "next_label": nxt.label if nxt else None,
             "next_section": nxt.section_ref if nxt else None,

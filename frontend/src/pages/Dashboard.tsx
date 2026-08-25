@@ -212,6 +212,11 @@ export default function Dashboard() {
                   <div className="text-[12px] text-slate-400">No open deadline</div>
                 )}
               </div>
+              {m.demand_due > 0 && (
+                <span className="shrink-0 text-[10.5px] font-bold px-2 py-1 rounded-full ring-1 tabular-nums bg-rose-50 text-rose-700 ring-rose-200" title="Outstanding demand incl. 220(2) interest">
+                  ₹{new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(m.demand_due)} due
+                </span>
+              )}
               {u && <span className={cn("shrink-0 text-[10.5px] font-bold px-2 py-1 rounded-full ring-1 tabular-nums", u.tone)}>{u.tag}</span>}
               {m.open_count > 0 && (
                 <span className="shrink-0 hidden md:inline-flex items-center gap-1 text-[11px] text-slate-400" title="Open deadlines">
