@@ -26,7 +26,7 @@ import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
-import { profileConfig } from "@/lib/workspaceProfiles";
+import { resolveWorkspace } from "@/lib/workspaceProfiles";
 import WorkspaceProfilePrompt from "./WorkspaceProfilePrompt";
 import NotificationBell from "./NotificationBell";
 import AppTour from "./AppTour";
@@ -131,13 +131,14 @@ function SidebarBody({
   // Role-tailored sidebar: when the user has picked a workspace profile, split
   // the nav into "Your workspace" (the function's tools + core) and a
   // collapsible "All tools" with the rest. Soft emphasis — nothing is removed.
-  const profile = profileConfig(session?.workspaceProfile);
+  const ws = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings);
   const CORE_PATHS = ["/dashboard", "/ask", "/workspace"]; // for everyone
   let featured: typeof nav = [];
   let rest: typeof nav = nav;
-  if (profile) {
-    const order = ["/dashboard", ...profile.tools, "/ask", "/workspace"];
-    const featuredSet = new Set([...CORE_PATHS, ...profile.tools]);
+  const scoped = ws.scoped;
+  if (scoped) {
+    const order = ["/dashboard", ...ws.tools, "/ask", "/workspace"];
+    const featuredSet = new Set([...CORE_PATHS, ...ws.tools]);
     featured = order
       .map((p) => nav.find((n) => n.to === p))
       .filter((n): n is (typeof nav)[number] => !!n);
@@ -278,7 +279,7 @@ function SidebarBody({
             tools) + a collapsible "All tools" with the rest. Falls back to the
             single collapsible "Workspace" list when no profile is picked. On
             the icon rail every item is always shown. */}
-        {profile && !collapsed ? (
+        {scoped && !collapsed ? (
           <>
             <div className="px-2 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">Your workspace</div>
             <div className="space-y-1 mt-0.5">{featured.map((n) => renderItem(n))}</div>

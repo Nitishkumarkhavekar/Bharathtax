@@ -5,7 +5,7 @@ import { api, WsWorkload, WsWorkloadRow } from "../api";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
-import { profileConfig } from "@/lib/workspaceProfiles";
+import { resolveWorkspace } from "@/lib/workspaceProfiles";
 
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
@@ -52,8 +52,8 @@ function Tile({ label, value, tone }: { label: string; value: number; tone: stri
 export default function Dashboard() {
   const nav = useNavigate();
   const { session } = useAuth();
-  const profile = profileConfig(session?.workspaceProfile);
-  const myCats = profile?.categories ?? [];
+  const ws = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings);
+  const myCats = ws.categories;
   const [data, setData] = useState<WsWorkload | null>(null);
   const [loading, setLoading] = useState(true);
   // Default to the user's own function when a profile is set ("Mine"); All otherwise.
@@ -78,7 +78,7 @@ export default function Dashboard() {
     else if (sort === "overdue") r = [...r].sort((a, b) => b.overdue_count - a.overdue_count || nextKey(a) - nextKey(b));
     else r = [...r].sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
     return r;
-  }, [data, cat, sort, session?.workspaceProfile]);
+  }, [data, cat, sort, session?.workspaceProfile, session?.workspaceWings]);
 
   const s = data?.summary;
 

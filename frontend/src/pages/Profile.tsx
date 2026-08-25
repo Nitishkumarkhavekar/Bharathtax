@@ -238,20 +238,30 @@ function PersonalDetailsCard({
   const [fullName, setFullName] = useState(profile.full_name ?? "");
   const [organisation, setOrganisation] = useState(profile.organisation ?? "");
   const [wp, setWp] = useState(profile.workspace_profile ?? "");
+  const [wpWings, setWpWings] = useState<string[]>(profile.workspace_wings ?? []);
   const [wpOptions, setWpOptions] = useState<{ key: string; label: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => { api.workspaceProfiles().then(setWpOptions).catch(() => {}); }, []);
 
+  const wingsEqual = JSON.stringify([...wpWings].sort()) === JSON.stringify([...(profile.workspace_wings ?? [])].sort());
   const dirty =
     (fullName ?? "") !== (profile.full_name ?? "") ||
     (organisation ?? "") !== (profile.organisation ?? "") ||
-    (wp ?? "") !== (profile.workspace_profile ?? "");
+    (wp ?? "") !== (profile.workspace_profile ?? "") ||
+    (wp === "custom" && !wingsEqual);
+
+  const toggleWing = (k: string) =>
+    setWpWings((ws) => (ws.includes(k) ? ws.filter((x) => x !== k) : [...ws, k]));
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!dirty || busy) return;
+    if (wp === "custom" && wpWings.length === 0) {
+      setMsg({ kind: "err", text: "Pick at least one function, or choose “Show everything”." });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     try {
@@ -259,9 +269,10 @@ function PersonalDetailsCard({
         full_name: fullName,
         organisation,
         workspace_profile: wp,
+        workspace_wings: wp === "custom" ? wpWings : null,
       });
       onSaved(updated);
-      setWorkspaceProfile(updated.workspace_profile ?? null);
+      setWorkspaceProfile(updated.workspace_profile ?? null, updated.workspace_wings ?? null);
       setMsg({ kind: "ok", text: "Profile updated." });
       setTimeout(() => setMsg(null), 2200);
     } catch (e) {
@@ -345,11 +356,34 @@ function PersonalDetailsCard({
             onChange={(e) => setWp(e.target.value)}
             className="w-full h-10 rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
-            <option value="">Not set (show everything)</option>
-            {wpOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            <option value="">Not set</option>
+            <option value="all">Show everything (all wings)</option>
+            <option value="custom">Custom — pick the wings I work</option>
+            <optgroup label="Single function">
+              {wpOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </optgroup>
           </select>
         </IconWrap>
       </Field>
+
+      {wp === "custom" && (
+        <div className="rounded-xl ring-1 ring-slate-200 bg-slate-50 p-3">
+          <div className="text-[11.5px] font-semibold text-slate-600 mb-2">Pick the functions you work — your dashboard and sidebar cover all of them.</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            {wpOptions.map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                onClick={() => toggleWing(o.key)}
+                className={cn("rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ring-1 text-left transition-colors",
+                  wpWings.includes(o.key) ? "bg-primary text-white ring-primary" : "bg-white text-slate-600 ring-slate-200 hover:ring-primary/40")}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end pt-1">
         <Button type="submit" disabled={!dirty || busy}>

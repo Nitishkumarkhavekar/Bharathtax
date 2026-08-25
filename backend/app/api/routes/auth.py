@@ -344,6 +344,16 @@ def update_profile(body: ProfileUpdate,
         if not is_valid_profile(wp):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Unknown workspace profile.")
         user.workspace_profile = wp
+        # A single-function or "all" profile has no custom wing set — clear it
+        # so a stale custom selection can't leak into the tailoring logic.
+        if wp != "custom":
+            user.workspace_wings = None
+    if body.workspace_wings is not None:
+        from app.core.profiles import valid_wings
+        wings = [w for w in body.workspace_wings if (w or "").strip()] or None
+        if not valid_wings(wings):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Unknown function in custom wings.")
+        user.workspace_wings = wings
     if body.new_password:
         if len(body.new_password) < 6:
             raise HTTPException(

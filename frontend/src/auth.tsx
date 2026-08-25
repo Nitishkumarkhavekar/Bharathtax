@@ -6,7 +6,8 @@ interface Session {
   fullName: string | null;
   role: string;
   wingId: number;
-  workspaceProfile: string | null;   // primary function; null until picked
+  workspaceProfile: string | null;   // primary function / "all" / "custom"; null until picked
+  workspaceWings: string[] | null;   // chosen functions when profile === "custom"
   features: string[] | null;   // allowed modules; null = all
 }
 interface AuthCtx {
@@ -14,7 +15,7 @@ interface AuthCtx {
   loading: boolean;
   login: (u: string, p: string) => Promise<Session>;
   logout: () => Promise<void>;
-  setWorkspaceProfile: (key: string | null) => void;
+  setWorkspaceProfile: (key: string | null, wings?: string[] | null) => void;
 }
 
 /**
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .me()
       .then((me) => {
-        const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, features: me.features ?? null };
+        const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, workspaceWings: me.workspace_wings ?? null, features: me.features ?? null };
         localStorage.setItem(SESS, JSON.stringify(s));
         setSession(s);
       })
@@ -104,16 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(KEY, tok.access_token);
     // Pull the full profile (incl. allowed modules) so the session is complete.
     const me = await api.me();
-    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, features: me.features ?? null };
+    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, workspaceWings: me.workspace_wings ?? null, features: me.features ?? null };
     localStorage.setItem(SESS, JSON.stringify(s));
     setSession(s);
     return s;
   }
 
-  function setWorkspaceProfile(key: string | null) {
+  function setWorkspaceProfile(key: string | null, wings: string[] | null = null) {
     setSession((prev) => {
       if (!prev) return prev;
-      const next = { ...prev, workspaceProfile: key };
+      const next = { ...prev, workspaceProfile: key, workspaceWings: key === "custom" ? wings : null };
       localStorage.setItem(SESS, JSON.stringify(next));
       return next;
     });

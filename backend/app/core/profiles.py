@@ -19,6 +19,20 @@ WORKSPACE_PROFILES: list[dict] = [
 
 WORKSPACE_PROFILE_KEYS = {p["key"] for p in WORKSPACE_PROFILES}
 
+# Meta profile values (not a single function):
+#   "all"    -> explicit "show everything" (no scoping, no first-run prompt)
+#   "custom" -> the user picks several functions; the chosen keys live in
+#               User.workspace_wings.
+# None -> not chosen yet (the first-run prompt still shows).
+META_PROFILES = {"all", "custom"}
+
 
 def is_valid_profile(key: str | None) -> bool:
-    return key is None or key in WORKSPACE_PROFILE_KEYS
+    return key is None or key in WORKSPACE_PROFILE_KEYS or key in META_PROFILES
+
+
+def valid_wings(keys: list[str] | None) -> bool:
+    """Every entry of a custom wing selection must be a real function key."""
+    if not keys:
+        return True
+    return all(k in WORKSPACE_PROFILE_KEYS for k in keys)
