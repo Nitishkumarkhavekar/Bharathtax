@@ -766,6 +766,15 @@ export interface WsCapGainsResult {
 export interface WsPenaltyResult {
   kind: string; label: string; base_tax: number; rate_pct: number; penalty: number; note: string;
 }
+export interface WsTdsResult {
+  amount: number; rate_pct: number; tds: number; interest_201_1a: number;
+  interest_deduction_leg: { months: number; rate_pct_per_month: number; interest: number };
+  interest_deposit_leg: { months: number; rate_pct_per_month: number; interest: number };
+  fee_234e: number; fee_234e_days: number; total_payable: number; workings: string; note: string;
+}
+export interface WsTdsSection {
+  section: string; nature: string; rate: number | null; note: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1194,6 +1203,9 @@ export const api = {
     req<WsCapGainsResult>("/workspace/calc/capital-gains", { method: "POST", body: JSON.stringify({ amount, kind }) }),
   wsCalcPenalty: (kind: string, base_tax: number, pct?: number) =>
     req<WsPenaltyResult>("/workspace/calc/penalty", { method: "POST", body: JSON.stringify({ kind, base_tax, pct }) }),
+  wsCalcTds: (b: { amount: number; rate_pct: number; deduction_due: string; deducted_on?: string | null; deposited_on?: string | null; statement_due?: string | null }) =>
+    req<WsTdsResult>("/workspace/calc/tds", { method: "POST", body: JSON.stringify(b) }),
+  wsTdsSections: () => req<WsTdsSection[]>("/workspace/tds-sections"),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
   wsTemplateLibrary: () => req<WsLibraryTemplate[]>("/workspace/templates/library"),
