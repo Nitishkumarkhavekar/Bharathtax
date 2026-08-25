@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Scale, Play, CheckCircle2, AlertTriangle, ArrowLeftRight, Flag, Search } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Scale, Play, CheckCircle2, AlertTriangle, ArrowLeftRight, Flag, Search, Upload } from "lucide-react";
 import { api, WsReconResult, WsSftResult, WsSftThreshold } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,15 +169,41 @@ function parseSftRows(text: string): { pan: string; name: string; category: stri
 
 const SFT_PLACEHOLDER = "One row per line:  PAN, Name, Category, Amount\nAAAPL1234C, Ravi Kumar, cash_deposit_sb, 600000\nAAAPL1234C, Ravi Kumar, cash_deposit_sb, 700000\nBBBPL5678D, Sita Devi, immovable_property, 2500000";
 
+// Strip a header row (e.g. "PAN,Name,Category,Amount") from pasted/uploaded CSV
+// text; the row parser (amount-from-the-right, comma-tolerant) handles the rest.
+function stripSftHeader(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  if (lines.length && /pan|amount|category/i.test(lines[0]) && !/\d\s*$/.test(lines[0].trim())) {
+    lines.shift();
+  }
+  return lines.join("\n");
+}
+
 function SftMode() {
   const [text, setText] = useState("");
   const [cats, setCats] = useState<WsSftThreshold[]>([]);
   const [res, setRes] = useState<WsSftResult | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => { api.wsSftThresholds().then(setCats).catch(() => {}); }, []);
+
+  const onFile = async (f: File | null) => {
+    if (!f) return;
+    try {
+      const raw = await f.text();
+      const cleaned = stripSftHeader(raw);
+      setText(cleaned);
+      const n = parseSftRows(cleaned).length;
+      toast.success(`Loaded ${n} row${n === 1 ? "" : "s"} from ${f.name}.`);
+    } catch {
+      toast.error("Could not read that file.");
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const run = async () => {
     const rows = parseSftRows(text);
-    if (!rows.length) { toast.error("Paste rows as PAN, Name, Category, Amount."); return; }
+    if (!rows.length) { toast.error("Paste rows or upload a CSV (PAN, Name, Category, Amount)."); return; }
     try { setRes(await api.wsSftAnalyze(rows)); }
     catch (e: any) { toast.error(e?.message || "Could not analyse."); }
   };
@@ -186,7 +212,13 @@ function SftMode() {
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4 items-start">
         <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-3">
-          <div className="text-[12px] font-semibold text-slate-600 mb-2 px-1">AIS / SFT rows</div>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <div className="text-[12px] font-semibold text-slate-600">AIS / SFT rows</div>
+            <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline">
+              <Upload className="size-3.5" /> Upload CSV
+            </button>
+            <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
+          </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={SFT_PLACEHOLDER} rows={12}
             className="w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-[12.5px] font-mono text-slate-800 outline-none focus:ring-2 focus:ring-primary/20" />
         </div>
