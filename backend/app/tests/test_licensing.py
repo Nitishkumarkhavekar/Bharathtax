@@ -23,7 +23,15 @@ def _future():
 
 @pytest.fixture()
 def env():
+    from sqlalchemy import text as _sql_text
     db = SessionLocal()
+    # This suite is DB-backed (real Postgres, in the api container). When no
+    # database is reachable — e.g. a local unit-test run on SQLite/without a
+    # server — skip cleanly instead of erroring the whole collection.
+    try:
+        db.execute(_sql_text("SELECT 1"))
+    except Exception:
+        pytest.skip("test_licensing requires a live Postgres (runs in the api container)")
     # idempotent clean slate for the test wing
     wing = db.scalar(select(Wing).where(Wing.code == WCODE))
     if wing:
