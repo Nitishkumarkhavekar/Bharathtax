@@ -76,6 +76,38 @@ class Deadline(Base):
     )
 
 
+class Demand(Base):
+    """An outstanding tax demand on a matter — the Recovery-wing ledger. Sec.
+    220(2) interest (1%/month on the amount in default) is computed on the fly
+    from ``amount - paid`` and the dates; not stored."""
+    __tablename__ = "demands"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    matter_id: Mapped[int] = mapped_column(
+        ForeignKey("matters.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    assessment_year: Mapped[str | None] = mapped_column(String(9), nullable=True)
+    section: Mapped[str | None] = mapped_column(String(40), nullable=True)   # e.g. 156 / 143(3)
+    amount: Mapped[float] = mapped_column(default=0)
+    paid: Mapped[float] = mapped_column(default=0)
+    # Date the demand fell into default (30 days after the 156 notice) — the
+    # 220(2) interest anchor. Falls back to the notice/raised date.
+    default_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    raised_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # outstanding | paid | stayed | reduced
+    status: Mapped[str] = mapped_column(String(16), default="outstanding", index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Reminder(Base):
     """A dated nudge — optionally tied to a matter and/or a deadline."""
     __tablename__ = "reminders"

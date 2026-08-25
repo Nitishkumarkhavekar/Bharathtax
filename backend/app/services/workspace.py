@@ -13,7 +13,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.models.workspace import (
-    Deadline, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
+    Deadline, Demand, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
 )
 from app.services import limitation
 
@@ -168,6 +168,72 @@ def delete_deadline(db: Session, deadline_id: int, user_id: int) -> bool:
     db.delete(dl)
     db.commit()
     return True
+
+
+# --- demands (recovery ledger) -----------------------------------------------
+def list_demands(db: Session, matter_id: int) -> list[Demand]:
+    """All demands on a matter (caller must gate matter access first)."""
+    return list(db.scalars(
+        select(Demand).where(Demand.matter_id == matter_id)
+        .order_by(Demand.raised_date.desc().nullslast(), Demand.id.desc())
+        .limit(_LIST_CAP)))
+
+
+def create_demand(db: Session, matter_id: int, user_id: int, **fields) -> Demand | None:
+    if not get_matter(db, matter_id, user_id):
+        return None
+    d = Demand(matter_id=matter_id, user_id=user_id, **fields)
+    db.add(d)
+    db.commit()
+    db.refresh(d)
+    return d
+
+
+def update_demand(db: Session, demand_id: int, user_id: int, **fields) -> Demand | None:
+    d = db.scalar(select(Demand).where(Demand.id == demand_id, Demand.user_id == user_id))
+    if not d:
+        return None
+    for k, v in fields.items():
+        if v is not None:
+            setattr(d, k, v)
+    db.commit()
+    db.refresh(d)
+    return d
+
+
+def delete_demand(db: Session, demand_id: int, user_id: int) -> bool:
+    d = db.scalar(select(Demand).where(Demand.id == demand_id, Demand.user_id == user_id))
+    if not d:
+        return False
+    db.delete(d)
+    db.commit()
+    return True
+
+
+def demand_with_interest(d: Demand, today: date | None = None) -> dict:
+    """Serialize a demand with its live Sec. 220(2) interest to date on the
+    outstanding balance (1%/month or part, from the default/raised date)."""
+    from app.services.calculators import simple_interest
+    today = today or datetime.now(_IST).date()
+    outstanding = max(0.0, round((d.amount or 0) - (d.paid or 0)))
+    anchor = d.default_date or d.raised_date
+    interest = 0
+    months = 0
+    if outstanding > 0 and anchor and d.status == "outstanding" and today > anchor:
+        r = simple_interest("220(2)", outstanding, anchor, today)
+        interest = r["interest"]
+        months = r["months"]
+    return {
+        "id": d.id, "matter_id": d.matter_id,
+        "assessment_year": d.assessment_year, "section": d.section,
+        "amount": round(d.amount or 0), "paid": round(d.paid or 0),
+        "outstanding": outstanding,
+        "default_date": d.default_date.isoformat() if d.default_date else None,
+        "raised_date": d.raised_date.isoformat() if d.raised_date else None,
+        "status": d.status, "notes": d.notes,
+        "interest_220_2": interest, "interest_months": months,
+        "total_due": outstanding + interest,
+    }
 
 
 # --- calendar ----------------------------------------------------------------

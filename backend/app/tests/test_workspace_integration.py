@@ -119,3 +119,25 @@ def test_share_matter_by_email_flow(db, user_factory):
     assert ws.unshare(db, rows[0]["id"], 2) is False               # non-owner can't unshare
     assert ws.unshare(db, rows[0]["id"], 1) is True
     assert ws.list_shares(db, m.id, 1) == []
+
+
+def test_demand_crud_scoped_and_interest(db):
+    from datetime import date
+    m = _matter(db, 1)
+    d = ws.create_demand(db, m.id, 1, amount=1_000_000, paid=200_000,
+                         default_date=date(2024, 1, 1), section="156")
+    assert d is not None
+    # A non-owner cannot create a demand on someone else's matter.
+    assert ws.create_demand(db, m.id, 2, amount=5000) is None
+    # 220(2) interest to date on the outstanding balance.
+    out = ws.demand_with_interest(d, today=date(2024, 7, 1))
+    assert out["outstanding"] == 800_000
+    assert out["interest_220_2"] == 48_000     # 800000 × 1% × 6
+    assert out["total_due"] == 848_000
+    # Non-owner cannot update or delete.
+    assert ws.update_demand(db, d.id, 2, status="paid") is None
+    assert ws.delete_demand(db, d.id, 2) is False
+    # Owner can, and a paid demand accrues no interest.
+    ws.update_demand(db, d.id, 1, status="paid")
+    assert ws.demand_with_interest(db.get(type(d), d.id), today=date(2024, 7, 1))["interest_220_2"] == 0
+    assert ws.delete_demand(db, d.id, 1) is True

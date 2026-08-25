@@ -101,6 +101,30 @@ class DeadlinePatch(BaseModel):
     notes: str | None = None
 
 
+DemandStatus = Literal["outstanding", "paid", "stayed", "reduced"]
+
+
+class DemandIn(BaseModel):
+    amount: float
+    assessment_year: str | None = None
+    section: str | None = None
+    paid: float = 0
+    default_date: date | None = None
+    raised_date: date | None = None
+    notes: str | None = None
+
+
+class DemandPatch(BaseModel):
+    amount: float | None = None
+    paid: float | None = None
+    assessment_year: str | None = None
+    section: str | None = None
+    default_date: date | None = None
+    raised_date: date | None = None
+    status: DemandStatus | None = None
+    notes: str | None = None
+
+
 class ReminderIn(BaseModel):
     title: str
     due_at: datetime
@@ -330,6 +354,7 @@ def get_matter(matter_id: int, p: Principal = Depends(get_principal),
         raise HTTPException(404, "Not found")
     out = _matter_out(m, owned=(m.user_id == p.user.id))
     out["deadlines"] = [_deadline_out(d) for d in svc.list_deadlines(db, matter_id)]
+    out["demands"] = [svc.demand_with_interest(d) for d in svc.list_demands(db, matter_id)]
     return out
 
 
@@ -380,6 +405,32 @@ def update_deadline(deadline_id: int, body: DeadlinePatch,
     if not dl:
         raise HTTPException(404, "Not found")
     return _deadline_out(dl)
+
+
+# ------------------------------------------------------------------ demands
+@router.post("/matters/{matter_id}/demands", status_code=201)
+def add_demand(matter_id: int, body: DemandIn,
+               p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> dict:
+    d = svc.create_demand(db, matter_id, p.user.id, **body.model_dump(exclude_none=True))
+    if not d:
+        raise HTTPException(404, "Matter not found")
+    return svc.demand_with_interest(d)
+
+
+@router.patch("/demands/{demand_id}")
+def update_demand(demand_id: int, body: DemandPatch,
+                  p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> dict:
+    d = svc.update_demand(db, demand_id, p.user.id, **body.model_dump(exclude_none=True))
+    if not d:
+        raise HTTPException(404, "Not found")
+    return svc.demand_with_interest(d)
+
+
+@router.delete("/demands/{demand_id}", status_code=204)
+def delete_demand(demand_id: int, p: Principal = Depends(get_principal),
+                  db: Session = Depends(get_db)) -> None:
+    if not svc.delete_demand(db, demand_id, p.user.id):
+        raise HTTPException(404, "Not found")
 
 
 @router.delete("/deadlines/{deadline_id}", status_code=204)

@@ -4,7 +4,7 @@ import {
   CalendarClock, Plus, Trash2, Check, AlarmClock, X, RefreshCw, FolderOpen, Info,
   StickyNote as StickyNoteIcon, Pin, Share2, UserPlus, Users2,
 } from "lucide-react";
-import { api, WsMatter, WsDeadline, WsRuleCatalogue, WsNote, WsShare } from "../api";
+import { api, WsMatter, WsDeadline, WsDemand, WsRuleCatalogue, WsNote, WsShare } from "../api";
 import { formatPan, formatAy, isPan, isAy, optional } from "@/lib/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace } from "@/lib/workspaceProfiles";
 
-type MatterDetail = WsMatter & { deadlines: WsDeadline[] };
+type MatterDetail = WsMatter & { deadlines: WsDeadline[]; demands: WsDemand[] };
 
 const CATEGORIES = [
   { v: "officer", l: "Assessing Officer" },
@@ -124,6 +124,119 @@ function DeadlineRow({
           <Trash2 className="size-4" />
         </button>
       </div>
+    </div>
+  );
+}
+
+const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n || 0));
+const DEMAND_STATUS: Record<string, string> = {
+  outstanding: "bg-rose-50 text-rose-700 ring-rose-200",
+  paid: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  stayed: "bg-amber-50 text-amber-700 ring-amber-200",
+  reduced: "bg-blue-50 text-blue-700 ring-blue-200",
+};
+
+/** Outstanding-demand ledger for a matter, with live Sec. 220(2) interest. */
+function DemandsPanel({ matterId, demands, onChanged }: {
+  matterId: number; demands: WsDemand[]; onChanged: () => void;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [f, setF] = useState({ amount: "", assessment_year: "", section: "156", default_date: todayISO() });
+  const [busy, setBusy] = useState(false);
+  const totalOutstanding = demands.reduce((s, d) => s + (d.total_due || 0), 0);
+
+  const add = async () => {
+    const amount = parseFloat(f.amount);
+    if (!amount || amount <= 0) { toast.error("Enter the demand amount."); return; }
+    setBusy(true);
+    try {
+      await api.wsAddDemand(matterId, {
+        amount, assessment_year: f.assessment_year || undefined,
+        section: f.section || undefined, default_date: f.default_date || undefined,
+      });
+      setF({ amount: "", assessment_year: "", section: "156", default_date: todayISO() });
+      setShowAdd(false);
+      onChanged();
+      toast.success("Demand added");
+    } catch (e: any) { toast.error(e?.message || "Could not add."); }
+    finally { setBusy(false); }
+  };
+
+  const setPaid = async (d: WsDemand, paid: number) => {
+    try { await api.wsUpdateDemand(d.id, { paid, status: paid >= d.amount ? "paid" : "outstanding" }); onChanged(); }
+    catch (e: any) { toast.error(e?.message || "Could not update."); }
+  };
+  const setStatus = async (d: WsDemand, status: string) => {
+    try { await api.wsUpdateDemand(d.id, { status }); onChanged(); }
+    catch (e: any) { toast.error(e?.message || "Could not update."); }
+  };
+  const del = async (d: WsDemand) => {
+    try { await api.wsDeleteDemand(d.id); onChanged(); }
+    catch (e: any) { toast.error(e?.message || "Could not delete."); }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <span className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-[0.1em]">
+          Outstanding demands
+        </span>
+        {demands.length > 0 && (
+          <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 ring-1 ring-rose-200 rounded-full px-2 py-0.5">
+            {inr(totalOutstanding)} due
+          </span>
+        )}
+        <button onClick={() => setShowAdd((s) => !s)} className="ml-auto inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline">
+          {showAdd ? <X className="size-3.5" /> : <Plus className="size-3.5" />}{showAdd ? "Close" : "Add"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg ring-1 ring-slate-200 bg-slate-50 p-2.5">
+          <label className="text-[11px] text-slate-500">Amount (₹)
+            <Input type="number" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} placeholder="e.g. 1000000" className="mt-0.5 h-8" /></label>
+          <label className="text-[11px] text-slate-500">Default date (30d after 156)
+            <Input type="date" value={f.default_date} onChange={(e) => setF({ ...f, default_date: e.target.value })} className="mt-0.5 h-8" /></label>
+          <label className="text-[11px] text-slate-500">AY
+            <Input value={f.assessment_year} onChange={(e) => setF({ ...f, assessment_year: formatAy(e.target.value) })} placeholder="2022-23" className="mt-0.5 h-8" /></label>
+          <label className="text-[11px] text-slate-500">Section
+            <Input value={f.section} onChange={(e) => setF({ ...f, section: e.target.value })} placeholder="156" className="mt-0.5 h-8" /></label>
+          <div className="col-span-2 flex justify-end">
+            <Button className="h-8" disabled={busy} onClick={add}>{busy ? "Adding…" : "Add demand"}</Button>
+          </div>
+        </div>
+      )}
+
+      {demands.length === 0 ? (
+        <div className="py-4 text-center text-[12.5px] text-slate-400">No demands recorded.</div>
+      ) : (
+        <div className="space-y-2">
+          {demands.map((d) => (
+            <div key={d.id} className="rounded-lg ring-1 ring-slate-200 p-2.5">
+              <div className="flex items-center gap-2 text-[12px] text-slate-500">
+                <span>{[d.assessment_year && `AY ${d.assessment_year}`, d.section && `u/s ${d.section}`, d.default_date && `default ${fmtDate(d.default_date)}`].filter(Boolean).join(" · ") || "—"}</span>
+                <select value={d.status} onChange={(e) => setStatus(d, e.target.value)}
+                  className={cn("ml-auto text-[10.5px] font-semibold rounded-full ring-1 px-1.5 py-0.5 capitalize", DEMAND_STATUS[d.status] || DEMAND_STATUS.outstanding)}>
+                  {["outstanding", "paid", "stayed", "reduced"].map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <button onClick={() => del(d)} className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete"><Trash2 className="size-3.5" /></button>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+                <span className="text-slate-500">Demand <b className="text-slate-800 tabular-nums">{inr(d.amount)}</b></span>
+                <span className="text-slate-500 flex items-center gap-1">Paid
+                  <input type="number" defaultValue={d.paid || ""} placeholder="0"
+                    onBlur={(e) => { const v = parseFloat(e.target.value) || 0; if (v !== d.paid) setPaid(d, v); }}
+                    className="w-24 h-7 rounded border border-slate-200 px-1.5 text-[12.5px] tabular-nums" />
+                </span>
+                <span className="text-slate-500">Outstanding <b className="text-slate-800 tabular-nums">{inr(d.outstanding)}</b></span>
+                {d.interest_220_2 > 0 && <span className="text-amber-700">+{inr(d.interest_220_2)} <span className="text-amber-600/80">220(2) · {d.interest_months}mo</span></span>}
+                <span className="ml-auto font-bold text-primary tabular-nums">{inr(d.total_due)} due</span>
+              </div>
+            </div>
+          ))}
+          <p className="text-[10.5px] text-slate-400">Sec. 220(2): 1% per month on the outstanding balance from the default date. Estimate — verify.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -490,6 +603,14 @@ export default function Workspace() {
                     <DeadlineRow key={d.id} d={d}
                       onDone={() => markDone(d)} onDelete={() => removeDeadline(d)} />
                   ))}
+                </div>
+              )}
+
+              {/* Outstanding demands for this matter */}
+              {detail.owned !== false && (
+                <div className="mt-5 pt-4 border-t border-slate-100">
+                  <DemandsPanel matterId={detail.id} demands={detail.demands || []}
+                    onChanged={() => selectedId && loadDetail(selectedId)} />
                 </div>
               )}
 
