@@ -725,6 +725,13 @@ export interface WsWatchlist {
   kind: string;
   created_at: string | null;
 }
+export interface WsLibraryTemplate {
+  id: string;
+  name: string;
+  category: string;
+  side: string;
+  body: string;
+}
 export interface WsShare {
   id: number;
   email: string | null;
@@ -1189,6 +1196,7 @@ export const api = {
     req<WsPenaltyResult>("/workspace/calc/penalty", { method: "POST", body: JSON.stringify({ kind, base_tax, pct }) }),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
+  wsTemplateLibrary: () => req<WsLibraryTemplate[]>("/workspace/templates/library"),
   wsCreateTemplate: (body: { name: string; body: string; category?: string }) =>
     req<WsTemplate>("/workspace/templates", { method: "POST", body: JSON.stringify(body) }),
   wsUpdateTemplate: (id: number, body: { name?: string; body?: string; category?: string }) =>

@@ -443,6 +443,13 @@ def calc_115bbe(body: TaxBBEIn, p: Principal = Depends(get_principal)) -> dict:
 
 
 # ------------------------------------------------------------------ templates
+@router.get("/templates/library")
+def template_library(p: Principal = Depends(get_principal)) -> list[dict]:
+    """Built-in starter templates (notice responses, applications) users can copy."""
+    from app.services import template_library as lib
+    return lib.library()
+
+
 @router.get("/templates")
 def list_templates(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> list[dict]:
     return [_template_out(t) for t in svc.list_templates(db, p.user.id)]
