@@ -137,13 +137,125 @@ Yours faithfully,
 Date: {{TODAY}}
 """
 
+# ----------------------------------------------------------------- officer side
+_ASSESSMENT_143_3 = """OFFICE OF THE {{AO}}
+
+PAN: {{PAN}}                       Assessment Year: {{AY}}
+Name & address of the assessee: {{ASSESSEE}}
+
+ASSESSMENT ORDER u/s 143(3) of the Income-tax Act, 1961
+
+1. The assessee filed the return of income for AY {{AY}} on [date] declaring total income of Rs. [____]. The case was selected for scrutiny under CASS for the reason(s): [reason for selection]. Notice u/s 143(2) was issued on {{NOTICE_DATE}} and notice(s) u/s 142(1) with questionnaire were issued and served. In response, [AR] attended and filed the details, which have been examined and placed on record.
+
+2. Issue-wise discussion:
+
+   Issue 1 — [description of the issue]
+   (a) Facts: [___]
+   (b) Show-cause: The assessee was required to explain [___] vide notice dated [date].
+   (c) Assessee's submission: [___]
+   (d) Discussion & finding: [reasoning; distinguish assessee's case law; cite the provision]. In view of the above, an addition of Rs. [____] is made u/s [section].
+
+   Issue 2 — [___]  (repeat the (a)-(d) structure)
+
+3. Computation of total income:
+      Returned income                              Rs. __________
+      Add: [addition 1] u/s [section]              Rs. __________
+      Add: [addition 2] u/s [section]              Rs. __________
+      Assessed total income                        Rs. __________
+
+4. Tax computed as per ITNS-150 enclosed. Charge interest u/s 234A / 234B / 234C as applicable; credit prepaid taxes. Where any addition is sustained u/s 68/69/69A-D, tax is charged u/s 115BBE.
+
+5. Penalty proceedings u/s 270A (under-/mis-reporting) / 271AAC are initiated separately. Issue demand notice u/s 156 and challan.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_PENALTY_ORDER_270A = """OFFICE OF THE {{AO}}
+
+PAN: {{PAN}}                       Assessment Year: {{AY}}
+{{ASSESSEE}}
+
+PENALTY ORDER u/s 270A of the Income-tax Act, 1961
+
+1. Assessment u/s 143(3)/147 for AY {{AY}} was completed on [date] determining additions of Rs. [____]. Penalty proceedings u/s 270A were initiated for under-reporting / mis-reporting of income.
+
+2. A show-cause notice was issued on {{NOTICE_DATE}}. The assessee's reply dated [date] has been considered and is found [not acceptable — reasons].
+
+3. Finding: The case is one of [under-reporting u/s 270A(2) / mis-reporting u/s 270A(9)]. The tax payable on the under-reported income works out to Rs. [____]. Penalty @ [50% / 200%] of such tax is leviable.
+
+4. Penalty of Rs. [____] is levied u/s 270A. Issue notice of demand u/s 156 and challan.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_NOTICE_142_1 = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Notice u/s 142(1) of the Income-tax Act, 1961
+
+In connection with the assessment for AY {{AY}}, you are required to furnish, on or before [date], the following accounts/documents/information (questionnaire annexed):
+   1. [___]
+   2. [___]
+
+You may comply electronically through the e-proceeding facility. Non-compliance may lead to best-judgment assessment u/s 144 and penalty u/s 272A(1)(d).
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_SCN_148A = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Show-cause notice u/s 148A(b) of the Income-tax Act, 1961
+
+1. Information has been received / flagged suggesting that income chargeable to tax has escaped assessment for AY {{AY}}, namely: [describe the information and the amount].
+
+2. You are requested to show cause, on or before [date], as to why a notice u/s 148 should not be issued. You may furnish your explanation with supporting evidence.
+
+Enclosure: material relied upon (subject to Sec. 148A).
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_NOTICE_156 = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Notice of demand u/s 156 of the Income-tax Act, 1961
+
+This is to give you notice that a sum of Rs. {{DEMAND}} has been determined to be payable by you in respect of AY {{AY}} as per the order dated [date]. The amount is payable within 30 days of service of this notice to the credit of the Central Government.
+
+If you do not pay within the time allowed, you shall be liable to interest u/s 220(2) and recovery proceedings u/s 222-226, in addition to any penalty u/s 221.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
+    # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
     {"id": "reply_143_2", "name": "Reply to scrutiny notice u/s 143(2)", "category": "notice", "side": "assessee", "body": _REPLY_143_2},
     {"id": "reply_148a", "name": "Reply to SCN u/s 148A(b) (reopening)", "category": "notice", "side": "assessee", "body": _REPLY_148A},
     {"id": "reply_penalty", "name": "Reply to penalty SCN (270A / 271AAC)", "category": "notice", "side": "assessee", "body": _REPLY_PENALTY},
     {"id": "adjournment", "name": "Adjournment request", "category": "other", "side": "assessee", "body": _ADJOURNMENT},
     {"id": "stay_220_6", "name": "Stay application u/s 220(6)", "category": "other", "side": "assessee", "body": _STAY_220_6},
+    # --- officer side ---
+    {"id": "assessment_143_3", "name": "Assessment order u/s 143(3)", "category": "order", "side": "officer", "body": _ASSESSMENT_143_3},
+    {"id": "penalty_order_270a", "name": "Penalty order u/s 270A", "category": "order", "side": "officer", "body": _PENALTY_ORDER_270A},
+    {"id": "notice_142_1", "name": "Notice u/s 142(1) (enquiry)", "category": "notice", "side": "officer", "body": _NOTICE_142_1},
+    {"id": "scn_148a", "name": "Show-cause u/s 148A(b) (reopening)", "category": "notice", "side": "officer", "body": _SCN_148A},
+    {"id": "notice_156", "name": "Notice of demand u/s 156", "category": "notice", "side": "officer", "body": _NOTICE_156},
 ]
 
 
