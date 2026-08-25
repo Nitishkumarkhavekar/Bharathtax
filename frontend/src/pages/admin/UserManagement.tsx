@@ -461,6 +461,10 @@ function UserForm({
   const [wingBusy, setWingBusy] = useState(false);
   const [wingErr, setWingErr] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(current?.is_active ?? true);
+  // Workspace profile (primary function) — tailors the user's dashboard/sidebar.
+  const [wsProfile, setWsProfile] = useState<string>(current?.workspace_profile ?? "");
+  const [wsOptions, setWsOptions] = useState<{ key: string; label: string }[]>([]);
+  useEffect(() => { api.workspaceProfiles().then(setWsOptions).catch(() => {}); }, []);
 
   async function createWing() {
     setWingErr(null);
@@ -502,6 +506,7 @@ function UserForm({
           email: email || undefined,
           role,
           designation: isAdminMode ? undefined : designation.trim() || undefined,
+          workspace_profile: isAdminMode ? undefined : (wsProfile || null),
           wing_id: wingId,
           features,
         };
@@ -512,6 +517,7 @@ function UserForm({
           email: email || undefined,
           role,
           designation: isAdminMode ? undefined : designation.trim() || undefined,
+          workspace_profile: isAdminMode ? undefined : (wsProfile || null),
           wing_id: wingId,
           is_active: isActive,
           features,
@@ -635,6 +641,24 @@ function UserForm({
               <option value="CA" />
               <option value="Consultant" />
             </datalist>
+          </Field>
+        )}
+        {!isAdminMode && (
+          <Field
+            label="Primary function"
+            hint="Tailors their dashboard and sidebar to this function. They can change it themselves in Profile; leave 'Not set' to let them pick."
+          >
+            <IconSelect
+              icon={<ShieldCheck className="size-4" />}
+              value={wsProfile}
+              onChange={(e) => setWsProfile(e.target.value)}
+            >
+              <option value="">Not set</option>
+              <option value="all">Show everything (all wings)</option>
+              {wsOptions.map((o) => (
+                <option key={o.key} value={o.key}>{o.label}</option>
+              ))}
+            </IconSelect>
           </Field>
         )}
         <Field
