@@ -8,29 +8,30 @@ export interface ProfileConfig {
   label: string;
   categories: string[]; // MatterCategory values this function owns (dashboard scope)
   tools: string[];      // nav `to` paths to feature, in priority order
+  calcTab: string;      // the Calculators tab this function opens on by default
 }
 
 // Dashboard + Calendar are core for everyone, so they aren't listed per-profile
 // (the sidebar always keeps them in the workspace section).
 export const PROFILES: ProfileConfig[] = [
   { key: "officer", label: "Assessing Officer", categories: ["officer", "recovery"],
-    tools: ["/assessments", "/calculators", "/templates", "/rulings", "/drafts"] },
+    tools: ["/assessments", "/calculators", "/templates", "/rulings", "/drafts"], calcTab: "interest" },
   { key: "cita", label: "CIT(A) / NFAC", categories: ["cita"],
-    tools: ["/appeals", "/rulings", "/templates", "/drafts"] },
+    tools: ["/appeals", "/rulings", "/templates", "/drafts"], calcTab: "interest" },
   { key: "drp", label: "DRP", categories: ["drp"],
-    tools: ["/appeals", "/calculators", "/templates", "/rulings"] },
+    tools: ["/appeals", "/calculators", "/templates", "/rulings"], calcTab: "alp" },
   { key: "tp", label: "Transfer Pricing (TPO)", categories: ["tp"],
-    tools: ["/calculators", "/templates", "/rulings"] },
+    tools: ["/calculators", "/templates", "/rulings"], calcTab: "alp" },
   { key: "investigation", label: "Investigation", categories: ["investigation"],
-    tools: ["/calculators", "/reconcile", "/templates"] },
+    tools: ["/calculators", "/reconcile", "/templates"], calcTab: "peak" },
   { key: "ici", label: "I&CI", categories: ["ici"],
-    tools: ["/reconcile", "/calculators", "/templates"] },
+    tools: ["/reconcile", "/calculators", "/templates"], calcTab: "peak" },
   { key: "recovery", label: "Recovery / TRO", categories: ["recovery"],
-    tools: ["/calculators", "/templates", "/drafts"] },
+    tools: ["/calculators", "/templates", "/drafts"], calcTab: "recovery" },
   { key: "tds", label: "TDS / Exemptions", categories: ["tds"],
-    tools: ["/calculators", "/templates", "/drafts"] },
+    tools: ["/calculators", "/templates", "/drafts"], calcTab: "tds" },
   { key: "ca", label: "CA / Advocate", categories: ["ca"],
-    tools: ["/appeals", "/assessments", "/calculators", "/templates", "/rulings", "/reconcile"] },
+    tools: ["/appeals", "/assessments", "/calculators", "/templates", "/rulings", "/reconcile"], calcTab: "interest" },
 ];
 
 const BY_KEY = new Map(PROFILES.map((p) => [p.key, p]));
@@ -54,14 +55,15 @@ export interface ResolvedWorkspace {
   categories: string[];
   tools: string[];
   scoped: boolean; // whether to featurize the sidebar and default the dashboard to "Mine"
+  calcTab: string | null; // the Calculators tab to open on (null = app default)
 }
 
 export function resolveWorkspace(
   profile: string | null | undefined,
   wings: string[] | null | undefined,
 ): ResolvedWorkspace {
-  if (!profile) return { mode: "none", categories: [], tools: [], scoped: false };
-  if (profile === "all") return { mode: "all", categories: [], tools: [], scoped: false };
+  if (!profile) return { mode: "none", categories: [], tools: [], scoped: false, calcTab: null };
+  if (profile === "all") return { mode: "all", categories: [], tools: [], scoped: false, calcTab: null };
   if (profile === "custom") {
     const chosen = (wings ?? []).map((k) => BY_KEY.get(k)).filter((p): p is ProfileConfig => !!p);
     const categories = Array.from(new Set(chosen.flatMap((p) => p.categories)));
@@ -69,10 +71,10 @@ export function resolveWorkspace(
     const tools: string[] = [];
     for (const p of chosen) for (const t of p.tools) if (!tools.includes(t)) tools.push(t);
     // No valid functions selected → behave like "all" (don't trap the user).
-    if (categories.length === 0 && tools.length === 0) return { mode: "all", categories: [], tools: [], scoped: false };
-    return { mode: "custom", categories, tools, scoped: true };
+    if (categories.length === 0 && tools.length === 0) return { mode: "all", categories: [], tools: [], scoped: false, calcTab: null };
+    return { mode: "custom", categories, tools, scoped: true, calcTab: chosen[0]?.calcTab ?? null };
   }
   const cfg = BY_KEY.get(profile);
-  if (!cfg) return { mode: "all", categories: [], tools: [], scoped: false };
-  return { mode: "preset", categories: cfg.categories, tools: cfg.tools, scoped: true };
+  if (!cfg) return { mode: "all", categories: [], tools: [], scoped: false, calcTab: null };
+  return { mode: "preset", categories: cfg.categories, tools: cfg.tools, scoped: true, calcTab: cfg.calcTab };
 }
