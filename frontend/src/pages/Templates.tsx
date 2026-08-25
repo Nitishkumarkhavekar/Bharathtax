@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "../auth";
+import { resolveWorkspace } from "@/lib/workspaceProfiles";
 
 const CATS = [
   { v: "notice", l: "Notice" }, { v: "order", l: "Order" },
@@ -22,11 +24,18 @@ export default function Templates() {
   const [showLib, setShowLib] = useState(false);
   const [libSide, setLibSide] = useState("");
   const [libQuery, setLibQuery] = useState("");
+  // Open the library on the user's own wing group (they can clear to see all).
+  const { session } = useAuth();
+  const myGroup = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).templateGroup;
+  const [libGroup, setLibGroup] = useState<string>("");
+
+  const openLibrary = () => { setLibGroup(myGroup ?? ""); setShowLib(true); };
 
   const libGroups = useMemo(() => {
     const q = libQuery.trim().toLowerCase();
     const filtered = library.filter((t) => {
       if (libSide && t.side !== libSide) return false;
+      if (libGroup && (t.group || "Other") !== libGroup) return false;
       if (!q) return true;
       return `${t.name} ${t.group ?? ""} ${t.category} ${t.body}`.toLowerCase().includes(q);
     });
@@ -37,7 +46,7 @@ export default function Templates() {
       map.get(g)!.push(t);
     }
     return Array.from(map.entries());
-  }, [library, libSide, libQuery]);
+  }, [library, libSide, libQuery, libGroup]);
 
   const load = async () => setItems(await api.wsTemplates());
   useEffect(() => {
@@ -87,7 +96,7 @@ export default function Templates() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Templates</h1>
           <p className="text-[13px] text-slate-500">Reusable notice, order and appeal boilerplate — save once, reuse anywhere.</p>
         </div>
-        <Button variant="outline" className="ml-auto" onClick={() => setShowLib(true)}>
+        <Button variant="outline" className="ml-auto" onClick={openLibrary}>
           <LayoutTemplate className="size-4 mr-1" /> Library
         </Button>
         <Button onClick={startNew}><Plus className="size-4 mr-1" /> New</Button>
@@ -169,6 +178,15 @@ export default function Templates() {
                     className="w-full pl-8 pr-2 h-8 rounded-lg border border-slate-200 bg-white text-[12.5px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                 </div>
               </div>
+              {libGroup && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary ring-1 ring-primary/20 px-2.5 py-1 font-semibold">
+                    {libGroup}
+                    <button onClick={() => setLibGroup("")} aria-label="Clear group filter" className="ml-0.5 hover:text-primary/70"><X className="size-3" /></button>
+                  </span>
+                  <button onClick={() => setLibGroup("")} className="text-slate-500 hover:text-slate-800 font-medium">Show all groups</button>
+                </div>
+              )}
               {libGroups.length === 0 && <div className="text-[12.5px] text-slate-400 text-center py-6">No templates match.</div>}
               {libGroups.map(([group, items]) => (
                 <div key={group} className="space-y-2">
