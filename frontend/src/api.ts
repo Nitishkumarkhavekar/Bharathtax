@@ -180,6 +180,7 @@ export interface AdminUser {
   email: string | null;
   role: AdminRole;
   designation: string | null;
+  workspace_profile: string | null;
   wing_id: number;
   office_id: number | null;
   is_active: boolean;
@@ -244,6 +245,7 @@ export interface AdminUserCreate {
   email?: string;
   role: AdminRole;
   designation?: string | null;
+  workspace_profile?: string | null;
   wing_id: number;
   office_id?: number;
   features?: string[] | null;   // allowed modules; null/omitted = all
@@ -253,6 +255,7 @@ export interface AdminUserUpdate {
   email?: string;
   role?: AdminRole;
   designation?: string | null;
+  workspace_profile?: string | null;
   wing_id?: number;
   office_id?: number;
   is_active?: boolean;
