@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { FileText, Plus, Trash2, Copy } from "lucide-react";
-import { api, WsTemplate } from "../api";
+import { FileText, Plus, Trash2, Copy, LayoutTemplate, X } from "lucide-react";
+import { api, WsTemplate, WsLibraryTemplate } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -18,14 +18,24 @@ export default function Templates() {
   const [selId, setSelId] = useState<number | null>(null);
   const [draft, setDraft] = useState({ name: "", category: "notice", body: "" });
   const [loading, setLoading] = useState(true);
+  const [library, setLibrary] = useState<WsLibraryTemplate[]>([]);
+  const [showLib, setShowLib] = useState(false);
 
   const load = async () => setItems(await api.wsTemplates());
   useEffect(() => {
     (async () => {
-      try { await load(); } catch (e: any) { toast.error(e?.message || "Could not load templates."); }
+      try { await Promise.all([load(), api.wsTemplateLibrary().then(setLibrary).catch(() => {})]); }
+      catch (e: any) { toast.error(e?.message || "Could not load templates."); }
       finally { setLoading(false); }
     })();
   }, []);
+
+  const useLibraryItem = (t: WsLibraryTemplate) => {
+    setSelId(null);
+    setDraft({ name: t.name, category: t.category, body: t.body });
+    setShowLib(false);
+    toast("Loaded from library — edit and save it as your own.", { icon: "📄" });
+  };
 
   const startNew = () => { setSelId(null); setDraft({ name: "", category: "notice", body: "" }); };
   const edit = (t: WsTemplate) => { setSelId(t.id); setDraft({ name: t.name, category: t.category, body: t.body }); };
@@ -59,7 +69,10 @@ export default function Templates() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Templates</h1>
           <p className="text-[13px] text-slate-500">Reusable notice, order and appeal boilerplate — save once, reuse anywhere.</p>
         </div>
-        <Button className="ml-auto" onClick={startNew}><Plus className="size-4 mr-1" /> New</Button>
+        <Button variant="outline" className="ml-auto" onClick={() => setShowLib(true)}>
+          <LayoutTemplate className="size-4 mr-1" /> Library
+        </Button>
+        <Button onClick={startNew}><Plus className="size-4 mr-1" /> New</Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 items-start">
@@ -113,6 +126,32 @@ export default function Templates() {
           </div>
         </div>
       </div>
+      {showLib && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowLib(false)}>
+          <div className="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-[14px] font-bold text-slate-900"><LayoutTemplate className="size-4 text-primary" /> Starter library</div>
+              <button onClick={() => setShowLib(false)} aria-label="Close" className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="size-4" /></button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-2.5">
+              <p className="text-[12px] text-slate-500">Ready-made notice replies and applications. Load one, fill the placeholders, and save it as your own.</p>
+              {library.map((t) => (
+                <div key={t.id} className="rounded-xl ring-1 ring-slate-200 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-slate-800 truncate">{t.name}</span>
+                    <span className="shrink-0 text-[10px] font-semibold uppercase text-slate-400">{t.category}</span>
+                  </div>
+                  <p className="mt-1 text-[11.5px] text-slate-500 truncate">{t.body.replace(/\s+/g, " ").trim().slice(0, 160)}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button size="sm" onClick={() => useLibraryItem(t)}>Use</Button>
+                    <Button size="sm" variant="outline" onClick={() => copy(t.body)}><Copy className="size-3.5 mr-1" /> Copy</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {dialog}
     </div>
   );
