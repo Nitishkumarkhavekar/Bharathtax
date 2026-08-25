@@ -268,6 +268,81 @@ def tds_default(amount: float, rate_pct: float, deduction_due: date,
     }
 
 
+# --- I&CI: SFT / AIS high-value transaction analytics ------------------------
+# Rule 114E reporting thresholds (per person, per year) — the annual aggregate
+# at or above which a transaction category is a "specified financial transaction".
+SFT_THRESHOLDS: list[dict] = [
+    {"key": "cash_deposit_sb", "label": "Cash deposits — savings account", "threshold": 1000000},
+    {"key": "cash_deposit_ca", "label": "Cash deposits/withdrawals — current account", "threshold": 5000000},
+    {"key": "time_deposit", "label": "Time deposits (FD)", "threshold": 1000000},
+    {"key": "credit_card", "label": "Credit-card payments", "threshold": 1000000},
+    {"key": "cc_cash", "label": "Credit-card payments in cash", "threshold": 100000},
+    {"key": "immovable_property", "label": "Purchase/sale of immovable property", "threshold": 3000000},
+    {"key": "shares_mf_bonds", "label": "Shares / mutual funds / bonds / debentures", "threshold": 1000000},
+    {"key": "foreign_currency", "label": "Foreign-currency sale / forex card", "threshold": 1000000},
+]
+_SFT_BY_KEY = {t["key"]: t for t in SFT_THRESHOLDS}
+_SFT_DEFAULT_THRESHOLD = 1000000
+
+
+def sft_analyze(rows: list[dict]) -> dict:
+    """Aggregate a set of AIS/SFT transaction rows by person (PAN) and flag those
+    whose per-category annual aggregate meets or exceeds the Rule 114E reporting
+    threshold — the I&CI first-cut for high-value transactions and potential
+    non-/under-reporting.
+
+    ``rows`` = list of {pan, name, category, amount}. ``category`` should match an
+    SFT key (see SFT_THRESHOLDS); unknown categories use a default Rs. 10L
+    threshold. Returns a per-PAN summary (ranked by total) with the flagged
+    categories, plus portfolio stats. Estimate — the flag is a lead for
+    verification, not a finding.
+    """
+    people: dict[str, dict] = {}
+    for r in rows:
+        pan = (str(r.get("pan") or "").strip().upper()) or "UNKNOWN"
+        name = str(r.get("name") or "").strip()
+        cat = str(r.get("category") or "other").strip()
+        amt = max(0.0, float(r.get("amount") or 0))
+        p = people.setdefault(pan, {"pan": pan, "name": name, "total": 0.0,
+                                    "count": 0, "by_category": {}})
+        if name and not p["name"]:
+            p["name"] = name
+        p["total"] += amt
+        p["count"] += 1
+        p["by_category"][cat] = p["by_category"].get(cat, 0.0) + amt
+
+    results = []
+    flagged_count = 0
+    grand_total = 0.0
+    for p in people.values():
+        flags = []
+        for cat, total in p["by_category"].items():
+            thr = _SFT_BY_KEY.get(cat, {}).get("threshold", _SFT_DEFAULT_THRESHOLD)
+            if total >= thr:
+                flags.append({"category": cat,
+                              "label": _SFT_BY_KEY.get(cat, {}).get("label", cat),
+                              "amount": round(total), "threshold": thr})
+        grand_total += p["total"]
+        if flags:
+            flagged_count += 1
+        results.append({
+            "pan": p["pan"], "name": p["name"], "total": round(p["total"]),
+            "count": p["count"], "flags": flags, "flagged": bool(flags),
+        })
+    results.sort(key=lambda x: x["total"], reverse=True)
+    return {
+        "people": results,
+        "summary": {
+            "persons": len(results),
+            "flagged": flagged_count,
+            "transactions": sum(p["count"] for p in results),
+            "grand_total": round(grand_total),
+        },
+        "note": "Flag = per-category annual aggregate at/above the Rule 114E threshold — a lead "
+                "for verification (source, disclosure in the return, non-filer check), not a finding.",
+    }
+
+
 # --- transfer pricing: ALP range / mean (TNMM etc.) --------------------------
 # The five prescribed methods (Sec. 92C r.w. Rule 10B) for the picker/reference.
 TP_METHODS: list[dict] = [

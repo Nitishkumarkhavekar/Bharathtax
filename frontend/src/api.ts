@@ -748,6 +748,14 @@ export interface WsReconResult {
     mismatch_count: number; only_a_count: number; only_b_count: number;
   };
 }
+export interface WsSftThreshold { key: string; label: string; threshold: number }
+export interface WsSftFlag { category: string; label: string; amount: number; threshold: number }
+export interface WsSftPerson { pan: string; name: string; total: number; count: number; flagged: boolean; flags: WsSftFlag[] }
+export interface WsSftResult {
+  people: WsSftPerson[];
+  summary: { persons: number; flagged: number; transactions: number; grand_total: number };
+  note: string;
+}
 export interface Ws234CResult {
   section: string;
   tax_liability: number;
@@ -1268,6 +1276,9 @@ export const api = {
   // reconciliation
   wsReconcile: (rows_a: { key: string; name?: string; amount: number }[], rows_b: { key: string; name?: string; amount: number }[], tolerance?: number) =>
     req<WsReconResult>("/workspace/reconcile", { method: "POST", body: JSON.stringify({ rows_a, rows_b, tolerance }) }),
+  wsSftAnalyze: (rows: { pan?: string; name?: string; category?: string; amount: number }[]) =>
+    req<WsSftResult>("/workspace/sft-analyze", { method: "POST", body: JSON.stringify({ rows }) }),
+  wsSftThresholds: () => req<WsSftThreshold[]>("/workspace/sft-thresholds"),
   wings: () => req<{ id: number; name: string; code: string; seat_limit: number }[]>("/admin/wings"),
   adminCreateWing: (body: { name: string; code?: string; seat_limit?: number }) =>
     req<{ id: number; name: string; code: string; seat_limit: number }>("/admin/wings", {
