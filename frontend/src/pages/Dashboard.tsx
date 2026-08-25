@@ -63,9 +63,21 @@ export default function Dashboard() {
   const cats = myCats.length ? [{ v: "__mine", l: "Mine" }, ...CATS] : CATS;
 
   const load = async () => {
-    try { setData(await api.wsWorkload()); }
-    catch (e: any) { toast.error(e?.message || "Could not load your workload."); }
-    finally { setLoading(false); }
+    try {
+      const d = await api.wsWorkload();
+      setData(d);
+      // Don't strand the user on an empty "Mine": if their function's wings
+      // match none of their (possibly untagged / other-wing) matters, open on
+      // "All" so the caseload is visible. Only adjusts the initial default.
+      if (myCats.length && d.matters.length > 0 &&
+          !d.matters.some((m) => myCats.includes(m.category || ""))) {
+        setCat("");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Could not load your workload.");
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
   // If the profile changes while this page is live (so the "Mine" chip vanishes)
@@ -137,12 +149,25 @@ export default function Dashboard() {
         {!loading && rows.length === 0 && (
           <div className="py-12 text-center">
             <FolderOpen className="size-7 mx-auto text-slate-300 mb-2" />
-            <p className="text-[13px] text-slate-400">
-              {data && data.matters.length > 0 ? "No matters in this filter." : "No matters yet."}
-            </p>
-            <button onClick={() => nav("/workspace")} className="mt-2 text-[13px] font-semibold text-primary hover:underline">
-              Open the Calendar to add one →
-            </button>
+            {data && data.matters.length > 0 ? (
+              <>
+                <p className="text-[13px] text-slate-400">
+                  {cat === "__mine"
+                    ? `None of your ${data.matters.length} matter${data.matters.length === 1 ? "" : "s"} are tagged to your function.`
+                    : "No matters in this filter."}
+                </p>
+                <button onClick={() => setCat("")} className="mt-2 text-[13px] font-semibold text-primary hover:underline">
+                  Show all {data.matters.length} →
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] text-slate-400">No matters yet.</p>
+                <button onClick={() => nav("/workspace")} className="mt-2 text-[13px] font-semibold text-primary hover:underline">
+                  Open the Calendar to add one →
+                </button>
+              </>
+            )}
           </div>
         )}
         {rows.map((m) => {
