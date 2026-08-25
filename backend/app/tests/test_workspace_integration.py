@@ -138,6 +138,11 @@ def test_demand_crud_scoped_and_interest(db):
     assert ws.update_demand(db, d.id, 2, status="paid") is None
     assert ws.delete_demand(db, d.id, 2) is False
     # Owner can, and a paid demand accrues no interest.
+    # Portfolio view surfaces the demand while it is outstanding.
+    ws.update_demand(db, d.id, 1, status="outstanding")
+    wl = ws.workload(db, 1)
+    row = next(r for r in wl["matters"] if r["id"] == m.id)
+    assert row["demand_due"] > 0
     ws.update_demand(db, d.id, 1, status="paid")
     assert ws.demand_with_interest(db.get(type(d), d.id), today=date(2024, 7, 1))["interest_220_2"] == 0
     assert ws.delete_demand(db, d.id, 1) is True
