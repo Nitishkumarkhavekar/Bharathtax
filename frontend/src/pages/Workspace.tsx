@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "../auth";
+import { resolveWorkspace } from "@/lib/workspaceProfiles";
 
 type MatterDetail = WsMatter & { deadlines: WsDeadline[] };
 
@@ -135,9 +137,14 @@ export default function Workspace() {
   const [upcoming, setUpcoming] = useState<WsDeadline[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // New matters default to the officer's OWN function so they land under "Mine"
+  // on the dashboard (instead of everything defaulting to a wing that isn't theirs).
+  const { session } = useAuth();
+  const defaultCategory = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).categories[0] || "officer";
+
   // new-matter form
   const [showNew, setShowNew] = useState(false);
-  const [nm, setNm] = useState({ title: "", pan: "", assessment_year: "", category: "officer" });
+  const [nm, setNm] = useState({ title: "", pan: "", assessment_year: "", category: defaultCategory });
 
   // compute form
   const [trigger, setTrigger] = useState("");
@@ -241,7 +248,7 @@ export default function Workspace() {
         assessment_year: nm.assessment_year.trim() || null,
         category: nm.category,
       });
-      setNm({ title: "", pan: "", assessment_year: "", category: "officer" });
+      setNm({ title: "", pan: "", assessment_year: "", category: defaultCategory });
       setShowNew(false);
       await refreshMatters();
       await select(m.id);
@@ -328,7 +335,12 @@ export default function Workspace() {
           <div className="flex items-center justify-between px-1 mb-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">My Matters</span>
             <button
-              onClick={() => setShowNew((s) => !s)}
+              onClick={() => setShowNew((s) => {
+                // Opening: seed the category with the user's function (session may
+                // have loaded after mount, so refresh the default here).
+                if (!s) setNm((n) => ({ ...n, category: defaultCategory }));
+                return !s;
+              })}
               className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
             >
               {showNew ? <X className="size-3.5" /> : <Plus className="size-3.5" />}

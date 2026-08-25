@@ -59,13 +59,29 @@ export default function Dashboard() {
   // Default to the user's own function when a profile is set ("Mine"); All otherwise.
   const [cat, setCat] = useState(myCats.length ? "__mine" : "");
   const [sort, setSort] = useState<"urgent" | "overdue" | "updated">("urgent");
-  // The category chips: a leading "Mine" when a profile is set, then the full set.
-  const cats = myCats.length ? [{ v: "__mine", l: "Mine" }, ...CATS] : CATS;
+  // The category chips. With a profile set, the dashboard is department-specific:
+  // only "Mine" + "All" + the user's own function chips — not every wing. Without
+  // a profile ("all"/none), the full set is shown.
+  const cats = myCats.length
+    ? [{ v: "__mine", l: "Mine" }, { v: "", l: "All" }, ...CATS.filter((c) => myCats.includes(c.v))]
+    : CATS;
 
   const load = async () => {
-    try { setData(await api.wsWorkload()); }
-    catch (e: any) { toast.error(e?.message || "Could not load your workload."); }
-    finally { setLoading(false); }
+    try {
+      const d = await api.wsWorkload();
+      setData(d);
+      // Don't strand the user on an empty "Mine": if their function's wings
+      // match none of their (possibly untagged / other-wing) matters, open on
+      // "All" so the caseload is visible. Only adjusts the initial default.
+      if (myCats.length && d.matters.length > 0 &&
+          !d.matters.some((m) => myCats.includes(m.category || ""))) {
+        setCat("");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Could not load your workload.");
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
   // If the profile changes while this page is live (so the "Mine" chip vanishes)
@@ -85,7 +101,15 @@ export default function Dashboard() {
     return r;
   }, [data, cat, sort, session?.workspaceProfile, session?.workspaceWings]);
 
-  const s = data?.summary;
+  // Tiles reflect the CURRENT filter (your desk), not the whole department's
+  // caseload — so the numbers always agree with the list below.
+  const s = useMemo(() => ({
+    total_matters: rows.length,
+    open_deadlines: rows.reduce((n, m) => n + m.open_count, 0),
+    overdue: rows.reduce((n, m) => n + m.overdue_count, 0),
+    due_7: rows.reduce((n, m) => n + m.urgent_count, 0),
+    due_30: rows.reduce((n, m) => n + (m.due30_count ?? 0), 0),
+  }), [rows]);
 
   return (
     <div className="space-y-5">
@@ -95,7 +119,9 @@ export default function Dashboard() {
         </div>
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Your Desk</h1>
-          <p className="text-[13px] text-slate-500">Your whole caseload, sorted by what's due next.</p>
+          <p className="text-[13px] text-slate-500">
+            {myCats.length ? "Tailored to your function — sorted by what's due next." : "Your whole caseload, sorted by what's due next."}
+          </p>
         </div>
         <button onClick={() => { setLoading(true); load(); }} title="Refresh"
           className="ml-auto p-2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
@@ -137,12 +163,25 @@ export default function Dashboard() {
         {!loading && rows.length === 0 && (
           <div className="py-12 text-center">
             <FolderOpen className="size-7 mx-auto text-slate-300 mb-2" />
-            <p className="text-[13px] text-slate-400">
-              {data && data.matters.length > 0 ? "No matters in this filter." : "No matters yet."}
-            </p>
-            <button onClick={() => nav("/workspace")} className="mt-2 text-[13px] font-semibold text-primary hover:underline">
-              Open the Calendar to add one →
-            </button>
+            {data && data.matters.length > 0 ? (
+              <>
+                <p className="text-[13px] text-slate-400">
+                  {cat === "__mine"
+                    ? `None of your ${data.matters.length} matter${data.matters.length === 1 ? "" : "s"} are tagged to your function.`
+                    : "No matters in this filter."}
+                </p>
+                <button onClick={() => setCat("")} className="mt-2 text-[13px] font-semibold text-primary hover:underline">
+                  Show all {data.matters.length} →
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] text-slate-400">No matters yet.</p>
+                <button onClick={() => nav("/workspace")} className="mt-2 text-[13px] font-semibold text-primary hover:underline">
+                  Open the Calendar to add one →
+                </button>
+              </>
+            )}
           </div>
         )}
         {rows.map((m) => {

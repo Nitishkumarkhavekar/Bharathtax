@@ -215,10 +215,12 @@ def workload(db: Session, user_id: int, today: date | None = None) -> dict:
         nxt = dls[0] if dls else None
         overdue = sum(1 for d in dls if (d.due_date - today).days < 0)
         urgent = sum(1 for d in dls if 0 <= (d.due_date - today).days <= 7)
+        soon = sum(1 for d in dls if 8 <= (d.due_date - today).days <= 30)
         rows.append({
             "id": m.id, "title": m.title, "pan": m.pan, "assessment_year": m.assessment_year,
             "category": m.category, "status": m.status, "owned": m.user_id == user_id,
             "open_count": len(dls), "overdue_count": overdue, "urgent_count": urgent,
+            "due30_count": soon,
             "next_due_date": nxt.due_date.isoformat() if nxt else None,
             "next_label": nxt.label if nxt else None,
             "next_section": nxt.section_ref if nxt else None,
