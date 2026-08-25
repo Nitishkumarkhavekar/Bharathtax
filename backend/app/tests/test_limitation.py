@@ -16,11 +16,31 @@ def _one(trigger, d):
     return out[0]
 
 
+def _by_id(trigger, d, rule_id):
+    out = limitation.compute_deadlines(trigger, d)
+    match = [r for r in out if r["rule_id"] == rule_id]
+    assert len(match) == 1, out
+    return match[0]
+
+
 def test_appeal_cita_is_30_days_sec_249():
-    r = _one("order_served", date(2026, 8, 1))
-    assert r["rule_id"] == "appeal_cita"
+    r = _by_id("order_served", date(2026, 8, 1), "appeal_cita")
     assert r["section"] == "Sec. 249"
     assert r["due_date"] == date(2026, 8, 31)
+
+
+def test_revision_263_two_years_from_fy_end():
+    # order passed 15 Dec 2023 -> FY ends 31 Mar 2024 -> +2 years
+    r = _by_id("order_passed", date(2023, 12, 15), "revision_263")
+    assert r["section"] == "Sec. 263(2)"
+    assert r["due_date"] == date(2026, 3, 31)
+
+
+def test_revision_264_one_year_from_order():
+    # assessee's window: 1 year from the order served
+    r = _by_id("order_served", date(2024, 5, 10), "revision_264_application")
+    assert r["section"] == "Sec. 264(3)"
+    assert r["due_date"] == date(2025, 5, 10)
 
 
 def test_itat_is_60_days_sec_253():
@@ -60,7 +80,7 @@ def test_time_barring_153_ay_aware_periods():
 
 def test_rectification_four_years_from_fy_end():
     # order passed 10 Aug 2026 -> FY ends 31 Mar 2027 -> +4 years
-    r = _one("order_passed", date(2026, 8, 10))
+    r = _by_id("order_passed", date(2026, 8, 10), "rectification")
     assert r["section"] == "Sec. 154"
     assert r["due_date"] == date(2031, 3, 31)
 

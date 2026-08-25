@@ -379,6 +379,67 @@ Show-cause notice u/s 12AB(4)/(5) of the Income-tax Act, 1961 — proposed cance
 Date: {{TODAY}}
 """
 
+_SCN_263 = """OFFICE OF THE PRINCIPAL COMMISSIONER / COMMISSIONER OF INCOME-TAX
+
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Show-cause notice u/s 263 of the Income-tax Act, 1961 — proposed revision of an erroneous order prejudicial to the interests of revenue
+
+1. The assessment order u/s [143(3)/147] for AY {{AY}} was passed by the Assessing Officer on [date] determining total income of Rs. [____].
+
+2. On examination of the record, the said order appears to be ERRONEOUS in so far as it is PREJUDICIAL to the interests of revenue, for the following reason(s):
+   (i)  [The AO allowed [claim] without any enquiry / verification of [___]] — no enquiry was made though the facts called for it (Explanation 2 to Sec. 263).
+   (ii) [The AO failed to add / disallow [amount] u/s [section] though the material on record required it].
+   (iii)[The order was passed without applying mind to [issue] / contrary to [provision / binding decision]].
+
+3. You are hereby required to show cause, on or before [date], as to why the assessment should not be revised u/s 263 by setting aside / modifying the order and directing the AO to make the addition / disallowance / enquiry indicated above. You may appear in person or through an authorised representative and file a written reply with supporting evidence.
+
+4. The revision, if made, will be within the limitation u/s 263(2) [2 years from the end of the FY in which the order sought to be revised was passed].
+
+                                                    (PCIT / CIT)
+Date: {{TODAY}}
+"""
+
+_ORDER_263 = """OFFICE OF THE PRINCIPAL COMMISSIONER / COMMISSIONER OF INCOME-TAX
+
+PAN: {{PAN}}                       AY: {{AY}}
+{{ASSESSEE}}
+
+ORDER u/s 263 of the Income-tax Act, 1961
+
+1. The assessment for AY {{AY}} was completed u/s [143(3)/147] on [date]. A notice u/s 263 dated [date] was issued proposing revision on the ground that the order is erroneous and prejudicial to the interests of revenue in respect of [issue(s)].
+
+2. The assessee's reply dated [date] has been considered. [Summary of the submissions and why they are / are not accepted.]
+
+3. Findings: For the reasons discussed, the assessment order is held to be erroneous in so far as it is prejudicial to the interests of revenue, as [the AO made no enquiry into [___] / failed to [___] — Explanation 2 to Sec. 263 is attracted].
+
+4. In exercise of the powers u/s 263, the assessment order dated [date] is SET ASIDE / MODIFIED to the extent indicated, and the Assessing Officer is directed to [make the addition/disallowance of Rs. [____] u/s [section] / make a fresh assessment on the issue of [___] after affording the assessee an opportunity of being heard], and pass a fresh order in accordance with law.
+
+                                                    (PCIT / CIT)
+Date: {{TODAY}}
+"""
+
+_ORDER_264 = """OFFICE OF THE PRINCIPAL COMMISSIONER / COMMISSIONER OF INCOME-TAX
+
+PAN: {{PAN}}                       AY: {{AY}}
+{{ASSESSEE}}
+
+ORDER u/s 264 of the Income-tax Act, 1961 (on the assessee's application)
+
+1. The assessee filed an application u/s 264 dated [date] seeking revision of the order u/s [section] for AY {{AY}} passed on [date], on the ground(s) that [grievance]. The application is within time / delay is condoned for the reasons stated.
+
+2. The record has been examined and the assessee heard. [Discussion of the grievance and the material.]
+
+3. Findings: [The grievance is found to be justified / not justified because [___].]
+
+4. In exercise of the powers u/s 264, the order dated [date] is revised / modified as under: [relief granted — e.g. the addition of Rs. [____] is deleted / the credit for Rs. [____] is allowed], and the AO is directed to give effect to this order. [Or: the application is rejected for the reasons above.] It is clarified that an order u/s 264 is not prejudicial to the assessee.
+
+                                                    (PCIT / CIT)
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -402,6 +463,10 @@ LIBRARY = [
     {"id": "form10_accum", "name": "Form 10 — accumulation u/s 11(2)", "category": "other", "side": "assessee", "body": _FORM10_ACCUM},
     {"id": "form10ab_80g", "name": "Form 10AB — 80G renewal application", "category": "other", "side": "assessee", "body": _FORM10AB_80G},
     {"id": "scn_12ab4", "name": "SCN u/s 12AB(4) (cancel registration)", "category": "notice", "side": "officer", "body": _SCN_12AB4},
+    # --- revision (263 / 264) ---
+    {"id": "scn_263", "name": "SCN u/s 263 (erroneous & prejudicial)", "category": "notice", "side": "officer", "body": _SCN_263},
+    {"id": "order_263", "name": "Revision order u/s 263", "category": "order", "side": "officer", "body": _ORDER_263},
+    {"id": "order_264", "name": "Revision order u/s 264 (assessee application)", "category": "order", "side": "officer", "body": _ORDER_264},
 ]
 
 

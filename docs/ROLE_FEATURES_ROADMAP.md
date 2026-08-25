@@ -35,7 +35,7 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 ## Phase E — Supervisory / administrative
 
 | E1 | **Approval workflows** — 151 (reopening sanction), 153D (search-assessment approval), 148A queues with the draft + supporting; range monitoring. |
-| E2 | **Revision (263/264)** — flag erroneous-&-prejudicial orders, 2-year limitation, revision-order drafting. |
+| E2 ✅ | **Revision (263/264)** *(shipped)* — 263(2) 2-year & 264(3) 1-year limitation on the calendar; templates for 263 SCN, 263 revision order, 264 order. *Next: erroneous-&-prejudicial checklist.* |
 | E3 | **Prosecution / Compounding** — complaint/sanction drafting, compounding application + fee. |
 
 ## Cross-cutting enablers (parallel)

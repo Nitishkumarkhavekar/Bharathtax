@@ -65,6 +65,12 @@ LIMITATION_RULES: list[dict] = [
     {"id": "penalty_275", "trigger": "penalty_initiated",
      "label": "Penalty order limitation", "section": "Sec. 275",
      "offset": {"months": 6, "base": "end_of_month"}},
+    {"id": "revision_263", "trigger": "order_passed",
+     "label": "Revision order limitation (erroneous & prejudicial)", "section": "Sec. 263(2)",
+     "offset": {"years": 2, "base": "end_of_fy"}},
+    {"id": "revision_264_application", "trigger": "order_served",
+     "label": "Last date for the assessee to apply for revision", "section": "Sec. 264(3)",
+     "offset": {"years": 1}},
 ]
 
 _RULES_BY_TRIGGER: dict[str, list[dict]] = {}
