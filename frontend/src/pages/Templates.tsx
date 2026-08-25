@@ -20,6 +20,7 @@ export default function Templates() {
   const [loading, setLoading] = useState(true);
   const [library, setLibrary] = useState<WsLibraryTemplate[]>([]);
   const [showLib, setShowLib] = useState(false);
+  const [libSide, setLibSide] = useState("");
 
   const load = async () => setItems(await api.wsTemplates());
   useEffect(() => {
@@ -134,8 +135,17 @@ export default function Templates() {
               <button onClick={() => setShowLib(false)} aria-label="Close" className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="size-4" /></button>
             </div>
             <div className="p-4 overflow-y-auto space-y-2.5">
-              <p className="text-[12px] text-slate-500">Ready-made notice replies and applications. Load one, fill the placeholders, and save it as your own.</p>
-              {library.map((t) => (
+              <p className="text-[12px] text-slate-500">Ready-made notices, orders and replies. Load one, fill the placeholders, and save it as your own.</p>
+              <div className="inline-flex rounded-lg bg-slate-100 p-1">
+                {([["", "All"], ["officer", "Officer"], ["assessee", "Assessee"]] as const).map(([v, l]) => (
+                  <button key={v} onClick={() => setLibSide(v)}
+                    className={cn("px-3 py-1 rounded-md text-[12px] font-semibold transition-colors",
+                      libSide === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {library.filter((t) => !libSide || t.side === libSide).map((t) => (
                 <div key={t.id} className="rounded-xl ring-1 ring-slate-200 p-3">
                   <div className="flex items-center gap-2">
                     <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-slate-800 truncate">{t.name}</span>
