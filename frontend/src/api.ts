@@ -756,6 +756,9 @@ export interface WsCapGainsResult {
   kind: string; label: string; gain: number; exemption: number;
   taxable: number; rate_pct: number; tax: number; cess: number; total_tax: number;
 }
+export interface WsPenaltyResult {
+  kind: string; label: string; base_tax: number; rate_pct: number; penalty: number; note: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1182,6 +1185,8 @@ export const api = {
     req<WsSlabResult>("/workspace/calc/slab", { method: "POST", body: JSON.stringify({ income, regime }) }),
   wsCalcCapitalGains: (amount: number, kind: string) =>
     req<WsCapGainsResult>("/workspace/calc/capital-gains", { method: "POST", body: JSON.stringify({ amount, kind }) }),
+  wsCalcPenalty: (kind: string, base_tax: number, pct?: number) =>
+    req<WsPenaltyResult>("/workspace/calc/penalty", { method: "POST", body: JSON.stringify({ kind, base_tax, pct }) }),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
   wsCreateTemplate: (body: { name: string; body: string; category?: string }) =>

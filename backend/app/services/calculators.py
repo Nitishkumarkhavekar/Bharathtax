@@ -163,6 +163,30 @@ def slab_tax(income: float, regime: str = "new") -> dict:
             "effective_rate_pct": round(total / income * 100, 2) if income else 0.0}
 
 
+# --- penalties ---------------------------------------------------------------
+# kind -> (label, default rate % of the base tax)
+_PENALTY = {
+    "270a_under": ("Sec. 270A — under-reporting", 50.0),
+    "270a_mis": ("Sec. 270A — mis-reporting", 200.0),
+    "271aac": ("Sec. 271AAC — tax u/s 115BBE", 10.0),
+    "271_1c": ("Sec. 271(1)(c) — concealment", 100.0),
+}
+
+
+def penalty(kind: str, base_tax: float, pct: float | None = None) -> dict:
+    """Penalty amount as a % of the base tax (tax on the under-reported / 115BBE
+    / evaded amount). 270A is 50% (under) / 200% (mis); 271AAC is 10%; 271(1)(c)
+    ranges 100–300% (caller may set ``pct``)."""
+    label, default_pct = _PENALTY.get(kind, ("Penalty", 100.0))
+    rate = float(pct) if (pct is not None and kind == "271_1c") else default_pct
+    rate = min(300.0, max(0.0, rate))
+    base_tax = max(0.0, round(base_tax))
+    amount = round(base_tax * rate / 100.0)
+    return {"kind": kind, "label": label, "base_tax": base_tax, "rate_pct": rate,
+            "penalty": amount,
+            "note": "Base = the tax on the under-reported / 115BBE / evaded amount."}
+
+
 # --- capital gains (post 23-Jul-2024 rates) ----------------------------------
 def capital_gains(amount: float, kind: str = "ltcg_equity") -> dict:
     """Tax on capital gains (rates effective 23 Jul 2024). Estimate — verify."""

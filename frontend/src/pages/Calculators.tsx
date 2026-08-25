@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -271,8 +271,60 @@ function CapGainsCalc() {
   );
 }
 
+const PENALTY_KINDS = [
+  { v: "270a_under", l: "270A — under-reporting (50%)" },
+  { v: "270a_mis", l: "270A — mis-reporting (200%)" },
+  { v: "271aac", l: "271AAC — 115BBE income (10%)" },
+  { v: "271_1c", l: "271(1)(c) — concealment (100–300%)" },
+];
+function PenaltyCalc() {
+  const [kind, setKind] = useState("270a_under");
+  const [baseTax, setBaseTax] = useState("");
+  const [pct, setPct] = useState("100");
+  const [res, setRes] = useState<WsPenaltyResult | null>(null);
+  const run = async () => {
+    const t = parseFloat(baseTax);
+    if (!t || t <= 0) { toast.error("Enter the base tax."); return; }
+    try { setRes(await api.wsCalcPenalty(kind, t, kind === "271_1c" ? (parseFloat(pct) || 100) : undefined)); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Penalty section">
+          <select value={kind} onChange={(e) => setKind(e.target.value)}
+            className="w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700">
+            {PENALTY_KINDS.map((k) => <option key={k.v} value={k.v}>{k.l}</option>)}
+          </select>
+        </Field>
+        <Field label="Tax on the under-reported / evaded / 115BBE amount">
+          <Input type="number" placeholder="e.g. 100000" value={baseTax} onChange={(e) => setBaseTax(e.target.value)} />
+        </Field>
+        {kind === "271_1c" && (
+          <Field label="Rate % (100–300)">
+            <Input type="number" value={pct} onChange={(e) => setPct(e.target.value)} />
+          </Field>
+        )}
+        <Button className="w-full" onClick={run}>Compute penalty</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />A % of the tax on the disputed amount. Track the Sec. 275 order limitation on your Calendar.</p>
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1">{res.label}</div>
+            <ResultRow label="Base tax" value={inr(res.base_tax)} />
+            <ResultRow label="Rate" value={`${res.rate_pct}%`} />
+            <ResultRow label="Penalty" value={inr(res.penalty)} strong />
+            <p className="mt-2 text-[11px] text-slate-500">{res.note}</p>
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter the base tax and compute.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -286,7 +338,7 @@ export default function Calculators() {
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"]] as const).map(([k, l]) => (
+        {([["interest", "Interest"], ["234c", "234C"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -300,7 +352,8 @@ export default function Calculators() {
           : tab === "234c" ? <Calc234C />
           : tab === "bbe" ? <Bbe115Calc />
           : tab === "slab" ? <SlabCalc />
-          : <CapGainsCalc />}
+          : tab === "capgains" ? <CapGainsCalc />
+          : <PenaltyCalc />}
       </div>
 
       <p className="flex items-start gap-1.5 text-[11.5px] text-slate-400">

@@ -72,6 +72,13 @@ def test_143_2_window_three_months_from_fy_end():
     assert r["due_date"] == date(2027, 6, 30)
 
 
+def test_penalty_275_order_limitation():
+    # initiated 10 Aug 2026 → 6 months from end of that month → 28 Feb 2027
+    r = _one("penalty_initiated", date(2026, 8, 10))
+    assert r["section"] == "Sec. 275"
+    assert r["due_date"] == date(2027, 2, 28)
+
+
 def test_unknown_trigger_returns_empty():
     assert limitation.compute_deadlines("does_not_exist", date(2026, 1, 1)) == []
 

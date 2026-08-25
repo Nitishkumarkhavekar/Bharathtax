@@ -31,6 +31,7 @@ TRIGGERS: dict[str, str] = {
     "order_passed": "Any order passed (for rectification window)",
     "end_of_ay": "End of the assessment year (31 March) — for time-barring",
     "return_filed": "Return of income filed — for the 143(2) window",
+    "penalty_initiated": "Penalty proceedings initiated — for the Sec. 275 order limitation",
 }
 
 # --- the rule catalogue (DATA) -----------------------------------------------
@@ -61,6 +62,9 @@ LIMITATION_RULES: list[dict] = [
     {"id": "notice_143_2", "trigger": "return_filed",
      "label": "Last date to issue a 143(2) notice", "section": "Sec. 143(2)",
      "offset": {"months": 3, "base": "end_of_fy"}},
+    {"id": "penalty_275", "trigger": "penalty_initiated",
+     "label": "Penalty order limitation", "section": "Sec. 275",
+     "offset": {"months": 6, "base": "end_of_month"}},
 ]
 
 _RULES_BY_TRIGGER: dict[str, list[dict]] = {}

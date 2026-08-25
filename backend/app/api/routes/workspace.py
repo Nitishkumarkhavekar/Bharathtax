@@ -197,6 +197,12 @@ class CapitalGainsIn(BaseModel):
     kind: str | None = None
 
 
+class PenaltyIn(BaseModel):
+    kind: Literal["270a_under", "270a_mis", "271aac", "271_1c"]
+    base_tax: float
+    pct: float | None = None
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -563,3 +569,9 @@ def calc_slab(body: SlabTaxIn, p: Principal = Depends(get_principal)) -> dict:
 def calc_capital_gains(body: CapitalGainsIn, p: Principal = Depends(get_principal)) -> dict:
     from app.services import calculators
     return calculators.capital_gains(body.amount, kind=body.kind or "ltcg_equity")
+
+
+@router.post("/calc/penalty")
+def calc_penalty(body: PenaltyIn, p: Principal = Depends(get_principal)) -> dict:
+    from app.services import calculators
+    return calculators.penalty(body.kind, body.base_tax, body.pct)
