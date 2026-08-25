@@ -695,6 +695,72 @@ Reviewed by: ____________________
 Date: {{TODAY}}
 """
 
+_DRP_DIRECTIONS = """DISPUTE RESOLUTION PANEL, [__]
+
+Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY: {{AY}}
+
+DIRECTIONS u/s 144C(5) of the Income-tax Act, 1961
+
+1. The eligible assessee filed objections u/s 144C(2) dated [date] against the draft assessment order dated [date] passed by the AO [incorporating the TPO's order u/s 92CA(3)]. The Panel has considered the objections, the draft order, the TP/AO records and the submissions, and afforded an opportunity of hearing.
+
+2. Objection-wise directions:
+
+   Objection 1 — [issue, e.g. TP adjustment on [transaction] / corporate addition of [___]]
+      Assessee's contention: [___]
+      AO/TPO stand: [___]
+      Panel's consideration & DIRECTION: [confirm / reduce / enhance / delete] the [addition/adjustment], for the reasons [___]. [Where enhancement — note the opportunity given u/s 144C(11).]
+
+   Objection 2 — [___]  (repeat)
+
+3. The AO shall pass the final assessment order in conformity with these directions u/s 144C(13), without any further opportunity of hearing, within one month from the end of the month in which these directions are received. These directions are binding on the AO u/s 144C(10).
+
+                                                    (Members, Dispute Resolution Panel)
+Date: {{TODAY}}
+"""
+
+_DRP_PANEL_NOTE = """DRP — OBJECTIONS ANALYSIS / PANEL NOTE (internal)
+
+Assessee: {{ASSESSEE}}       PAN: {{PAN}}       AY: {{AY}}
+
+For each objection:
+   1. Issue & amount: [___] — Rs. [____].
+   2. Draft-order / TPO reasoning: [summary].
+   3. Assessee's objection & evidence: [summary]; case law relied on: [___].
+   4. Verification: [is the fact/comparable/method point made out? remand needed?].
+   5. Proposed direction: [confirm / modify / delete], with reasons. If enhancement is proposed, record that an opportunity u/s 144C(11) is to be given.
+   6. Money effect: adjustment retained Rs. [____] / relief Rs. [____].
+
+Limitation: DRP directions u/s 144C(5) within 9 months of the end of the month of the draft order (144C(12)); AO's final order within 1 month of receipt of directions (144C(13)).
+
+Prepared by: ____________________
+Date: {{TODAY}}
+"""
+
+_FINAL_ORDER_144C13 = """OFFICE OF THE {{AO}}
+
+PAN: {{PAN}}                       AY: {{AY}}
+{{ASSESSEE}}
+
+FINAL ASSESSMENT ORDER u/s 143(3) r.w.s. 144C(13) of the Income-tax Act, 1961
+
+1. A draft assessment order was passed on [date] [incorporating the TPO's adjustment of Rs. [____] u/s 92CA(3)]. The assessee, being an eligible assessee u/s 144C(15), filed objections before the DRP.
+
+2. The DRP has issued directions u/s 144C(5) dated [date], received on [date]. In conformity with the binding directions u/s 144C(10) & (13), the assessment is finalised as under:
+
+      Draft total income                         Rs. [____]
+      Effect of DRP directions (issue-wise):     [+/- ____]
+      Assessed total income                      Rs. [____]
+
+3. Issue-wise effect given to the directions:
+   (i)  [TP adjustment: retained/reduced to Rs. [____]]
+   (ii) [Corporate addition: [___]]
+
+4. Tax is computed accordingly; charge interest u/s 234A/234B/234C as applicable. Issue notice of demand u/s 156 and penalty notices as directed. This order is passed within the limitation u/s 144C(13).
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -738,6 +804,10 @@ LIBRARY = [
     # --- transfer pricing ---
     {"id": "tpo_order", "name": "TPO order u/s 92CA(3) (ALP adjustment)", "category": "order", "side": "officer", "body": _TPO_ORDER},
     {"id": "checklist_3ceb", "name": "Form 3CEB review checklist", "category": "other", "side": "officer", "body": _CHECKLIST_3CEB},
+    # --- DRP ---
+    {"id": "drp_directions_144c5", "name": "DRP directions u/s 144C(5)", "category": "order", "side": "officer", "body": _DRP_DIRECTIONS},
+    {"id": "drp_panel_note", "name": "DRP objections-analysis note", "category": "other", "side": "officer", "body": _DRP_PANEL_NOTE},
+    {"id": "final_order_144c13", "name": "Final order u/s 143(3) r.w.s. 144C(13)", "category": "order", "side": "officer", "body": _FINAL_ORDER_144C13},
 ]
 
 

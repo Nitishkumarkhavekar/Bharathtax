@@ -29,7 +29,7 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 
 | D1 🟡 | **Investigation** *(v1 shipped — peak-credit calc + templates)* — peak-credit/rotating-fund calculator; templates for 132(4) & 131 statement questionnaires, appraisal-report skeleton, undisclosed-income working note. *Next: seizure inventory, 153A/153C block-assessment engine, network mapping.* |
 | D2 🟡 | **International Tax / TPO** *(v1 shipped — ALP calc + TP templates)* — Rule 10CA 35th–65th percentile / mean ALP benchmarking (TNMM), 5-method reference; TPO order u/s 92CA(3) + Form 3CEB review checklist. *Next: DTAA/PE/MLI lookup, working-capital adjustment.* |
-| D3 | **DRP** — TPO methodology/comparables analysis, panel notes, 144C(5) directions drafting. |
+| D3 ✅ | **DRP** *(shipped)* — 144C(13) final-order limitation on the calendar; templates for 144C(5) directions, objections-analysis panel note, and the final order u/s 143(3) r.w.s. 144C(13). |
 | D4 | **I&CI** — SFT/AIS analytics at scale (high-value txns, mismatches, non-filer flags). |
 
 ## Phase E — Supervisory / administrative

@@ -32,6 +32,7 @@ TRIGGERS: dict[str, str] = {
     "end_of_ay": "End of the assessment year (31 March) — for time-barring",
     "return_filed": "Return of income filed — for the 143(2) window",
     "penalty_initiated": "Penalty proceedings initiated — for the Sec. 275 order limitation",
+    "drp_directions_received": "DRP directions received by the AO (for the final-order clock)",
 }
 
 # --- the rule catalogue (DATA) -----------------------------------------------
@@ -74,6 +75,9 @@ LIMITATION_RULES: list[dict] = [
     {"id": "reassessment_149", "trigger": "end_of_ay",
      "label": "Reopening time-limit (3 yrs; 10 yrs if escaped income >= Rs.50L)",
      "section": "Sec. 149(1)", "offset": {"years": 3}},
+    {"id": "final_order_144c_13", "trigger": "drp_directions_received",
+     "label": "Final assessment order after DRP directions", "section": "Sec. 144C(13)",
+     "offset": {"months": 1, "base": "end_of_month"}},
 ]
 
 _RULES_BY_TRIGGER: dict[str, list[dict]] = {}
