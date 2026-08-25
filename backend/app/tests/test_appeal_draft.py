@@ -52,7 +52,11 @@ def test_docs_text_includes_inventory_and_all_documents():
 
     bundle = appeal_draft._docs_text(case, max_chars=8000)
 
-    assert "DOCUMENT INVENTORY" in bundle
+    # _docs_text now emits a per-document header
+    # ("===== <file> (category: <cat>) =====") rather than a single
+    # "DOCUMENT INVENTORY" block; assert that structure + that every document is
+    # present (the test's real intent).
+    assert "category: form_35" in bundle
     assert "FORM35.pdf" in bundle
     assert "submission.docx" in bundle
     assert "Written submission" in bundle
