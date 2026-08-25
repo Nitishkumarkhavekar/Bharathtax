@@ -61,6 +61,13 @@ class OutputEdit(BaseModel):
     content: str
 
 
+class CassIn(BaseModel):
+    selection_reasons: str
+    assessee: str | None = None
+    pan: str | None = None
+    assessment_year: str | None = None
+
+
 def _get_case(db: Session, user: User, cid) -> AssessmentCase:
     """Resolve a case by opaque slug or numeric id, enforcing access control."""
     case: AssessmentCase | None = None
@@ -110,6 +117,47 @@ def _latest_outputs(db: Session, run_id: int) -> list[AssessmentOutput]:
         if key not in best or o.version > best[key].version:
             best[key] = o
     return list(best.values())
+
+
+# --- CASS 142(1) questionnaire generator (self-contained) ---
+@router.get("/cass-reasons")
+def cass_reasons(p: Principal = Depends(get_principal)) -> list[dict]:
+    """The common CASS selection reasons for the questionnaire picker."""
+    return [dict(r) for r in svc.CASS_REASONS]
+
+
+@router.post("/cass-questionnaire")
+def cass_questionnaire(body: CassIn, p: Principal = Depends(get_principal),
+                       _quota: Principal = Depends(require_quota),
+                       db: Session = Depends(get_db), request: Request = None) -> dict:
+    """Draft a 142(1) questionnaire tailored to the CASS selection reason(s)."""
+    reasons = (body.selection_reasons or "").strip()
+    if not reasons:
+        raise HTTPException(400, "selection_reasons must not be empty")
+    if len(reasons) > 4000:
+        raise HTTPException(400, "selection_reasons too long (max 4000 chars)")
+    try:
+        text = svc.draft_cass_questionnaire(
+            reasons, assessee=body.assessee, pan=body.pan, ay=body.assessment_year)
+    except Exception as e:  # noqa: BLE001
+        log.warning("cass questionnaire failed: %s", e)
+        raise HTTPException(503, "The drafting service is temporarily unavailable. Try again shortly.")
+    if not text.strip():
+        raise HTTPException(502, "The AI returned an empty questionnaire — please try again.")
+    # Bill the LLM spend against this officer.
+    try:
+        from app.services import tokens as _tokens
+        meta = svc._last_meta()
+        if meta:
+            _tokens.record(db, user_id=p.user.id, action="assessment.cass",
+                           model=meta.get("model"), usage=meta.get("usage"),
+                           latency_ms=meta.get("latency_ms"))
+    except Exception:
+        pass
+    audit.log_event(db, action="assessment.cass", user_id=p.user.id, wing_id=p.user.wing_id,
+                    resource_type="assessment", resource_id="-",
+                    query_text=reasons[:500], **client_meta(request))
+    return {"content": text}
 
 
 # --- cases ---

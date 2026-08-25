@@ -1703,6 +1703,9 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, "Open failed");
     window.open(URL.createObjectURL(await res.blob()), "_blank");
   },
+  asmtCassReasons: () => req<{ key: string; label: string }[]>("/assessment/cass-reasons"),
+  asmtCassQuestionnaire: (b: { selection_reasons: string; assessee?: string | null; pan?: string | null; assessment_year?: string | null }) =>
+    req<{ content: string }>("/assessment/cass-questionnaire", { method: "POST", body: JSON.stringify(b) }),
 
   // ----- Public releases catalogue (landing page) -----
   publicReleases: () => req<PublicReleaseCatalogue>("/desktop/releases"),

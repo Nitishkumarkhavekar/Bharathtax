@@ -390,6 +390,60 @@ def assemble(understanding: dict, findings_blocks: list[str], *,
     return "\n\n".join(p for p in out if p).strip()
 
 
+# --------------------------------------------------------- CASS questionnaire
+# Common CASS selection reasons -> the frontend picker. The LLM tailors the
+# actual queries; this list also nudges the model for terse reasons.
+CASS_REASONS: list[dict] = [
+    {"key": "cash_deposits", "label": "Large cash deposits / SBN"},
+    {"key": "high_value_purchase", "label": "High-value purchase / investment"},
+    {"key": "refund", "label": "Large refund claim"},
+    {"key": "ais_mismatch", "label": "Mismatch with AIS / 26AS / SFT"},
+    {"key": "large_deduction", "label": "Large deduction / exemption (Ch. VI-A, 54)"},
+    {"key": "low_income_high_turnover", "label": "Low income vs high turnover / expenses"},
+    {"key": "capital_gains", "label": "Capital gains / property transaction"},
+    {"key": "foreign", "label": "Foreign assets / remittance (LRS)"},
+    {"key": "loans", "label": "Unsecured loans / share capital / 68"},
+    {"key": "bogus_purchase", "label": "Suspicious / bogus purchases or expenses"},
+]
+
+_CASS_SYSTEM = (
+    "You are an expert AI that drafts a notice u/s 142(1) with a QUESTIONNAIRE for an Indian "
+    "Assessing Officer at the START of a scrutiny assessment. Draft a focused, professional "
+    "questionnaire tailored to the CASS selection reason(s) given. STRICT RULES:\n"
+    "- Produce a point-wise list of specific queries and the exact documents/details to be furnished "
+    "for EACH selection reason — the information that actually lets the AO verify that issue "
+    "(e.g. for cash deposits: bank statements, source of cash, cash book, sales/withdrawal linkage).\n"
+    "- Also include the standard opening verification points (return, computation, books/audit "
+    "report, bank accounts, confirmation of parties) briefly.\n"
+    "- Do NOT invent facts, figures, dates or party names. Use placeholders like [amount], [date], "
+    "[party] where a specific detail would go. Keep it as a template the officer completes.\n"
+    "- Formal 142(1) register. Plain markdown; number the points. Output ONLY the questionnaire text."
+)
+
+
+def draft_cass_questionnaire(selection_reasons: str, *, assessee: str | None = None,
+                             pan: str | None = None, ay: str | None = None) -> str:
+    """Draft a 142(1) questionnaire tailored to the CASS selection reason(s).
+    Self-contained (no case/DB needed). Returns markdown text."""
+    header = []
+    if assessee:
+        header.append(f"Assessee: {assessee}")
+    if pan:
+        header.append(f"PAN: {pan}")
+    if ay:
+        header.append(f"AY: {ay}")
+    ctx = ("\n".join(header) + "\n\n") if header else ""
+    prompt = (
+        f"{ctx}CASS SELECTION REASON(S):\n{selection_reasons.strip()}\n\n"
+        "Draft the 142(1) questionnaire now — a numbered list of point-wise queries and the "
+        "documents/details to be furnished, tailored to the above selection reason(s), preceded by "
+        "the standard opening verification points. Use placeholders for any specific figure/date."
+    )
+    client = ad._appeal_llm()
+    _LAST.client = client
+    return _clean(client.complete(_CASS_SYSTEM, prompt, max_tokens=1600))
+
+
 # --------------------------------------------------------------- orchestration
 def run_case(run_id: int) -> None:
     db = SessionLocal()
