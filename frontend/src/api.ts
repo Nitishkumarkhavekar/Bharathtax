@@ -794,6 +794,11 @@ export interface Ws115BBCResult {
   taxable_at_115bbc: number; rate_pct: number; tax: number; cess: number; total_tax: number;
   workings: string; note: string;
 }
+export interface WsPeakRow { date: string; kind: string; amount: number; running_balance: number }
+export interface WsPeakCreditResult {
+  peak_credit: number; peak_date: string | null; total_credits: number; total_debits: number;
+  entries: number; schedule: WsPeakRow[]; note: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1231,6 +1236,8 @@ export const api = {
     req<WsTrust11Result>("/workspace/calc/trust-11", { method: "POST", body: JSON.stringify(b) }),
   wsCalc115bbc: (b: { anonymous_donations: number; total_donations: number }) =>
     req<Ws115BBCResult>("/workspace/calc/115bbc", { method: "POST", body: JSON.stringify(b) }),
+  wsCalcPeakCredit: (entries: { date: string; amount: number; kind: string }[]) =>
+    req<WsPeakCreditResult>("/workspace/calc/peak-credit", { method: "POST", body: JSON.stringify({ entries }) }),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
   wsTemplateLibrary: () => req<WsLibraryTemplate[]>("/workspace/templates/library"),

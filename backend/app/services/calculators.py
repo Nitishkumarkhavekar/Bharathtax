@@ -268,6 +268,55 @@ def tds_default(amount: float, rate_pct: float, deduction_due: date,
     }
 
 
+# --- investigation: peak credit of unexplained deposits ----------------------
+def peak_credit(entries: list[dict]) -> dict:
+    """Peak-credit theory for unexplained cash deposits/credits.
+
+    ``entries`` = list of {date: 'YYYY-MM-DD', amount: float, kind: 'credit'|'debit'}.
+    Arranged chronologically, deposits (credits) build a rotating fund and
+    withdrawals (debits) draw it down (not below zero — a withdrawal is assumed
+    available for redeposit). The PEAK of the running balance is the maximum
+    unexplained investment rotated, and is the defensible quantum of the
+    addition (rather than the gross of all deposits). Returns the peak, its
+    date, and the running schedule. Estimate — the AO must still establish that
+    the credits are unexplained and that telescoping/rotation applies.
+    """
+    def _key(e):
+        return str(e.get("date") or "")
+    ordered = sorted(entries, key=_key)
+    balance = 0.0
+    peak = 0.0
+    peak_date = None
+    rows = []
+    total_credit = 0.0
+    total_debit = 0.0
+    for e in ordered:
+        amt = max(0.0, float(e.get("amount") or 0))
+        kind = (e.get("kind") or "credit").lower()
+        if kind == "debit":
+            total_debit += amt
+            balance = max(0.0, balance - amt)
+        else:
+            total_credit += amt
+            balance += amt
+        if balance > peak:
+            peak = balance
+            peak_date = e.get("date")
+        rows.append({"date": e.get("date"), "kind": kind, "amount": round(amt),
+                     "running_balance": round(balance)})
+    return {
+        "peak_credit": round(peak),
+        "peak_date": peak_date,
+        "total_credits": round(total_credit),
+        "total_debits": round(total_debit),
+        "entries": len(ordered),
+        "schedule": rows,
+        "note": "Peak credit = the maximum rotating balance of the credits, the defensible "
+                "quantum vs the gross of all deposits. The AO must establish the credits are "
+                "unexplained and that rotation/telescoping applies. Estimate — verify.",
+    }
+
+
 # --- trust / charity: 11 application shortfall & 115BBC anonymous donations --
 def trust_application_11(gross_income: float, amount_applied: float,
                          accumulated_11_2: float = 0.0) -> dict:

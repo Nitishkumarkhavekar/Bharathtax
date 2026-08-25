@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult, WsPeakCreditResult } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -539,8 +539,70 @@ function TrustCalc() {
   );
 }
 
+type PeakEntry = { date: string; amount: string; kind: "credit" | "debit" };
+function PeakCreditCalc() {
+  const [rows, setRows] = useState<PeakEntry[]>([{ date: "", amount: "", kind: "credit" }]);
+  const [res, setRes] = useState<WsPeakCreditResult | null>(null);
+  const setRow = (i: number, patch: Partial<PeakEntry>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const addRow = () => setRows((rs) => [...rs, { date: "", amount: "", kind: "credit" }]);
+  const delRow = (i: number) => setRows((rs) => rs.filter((_, j) => j !== i));
+
+  const run = async () => {
+    const entries = rows
+      .filter((r) => r.date && parseFloat(r.amount) > 0)
+      .map((r) => ({ date: r.date, amount: parseFloat(r.amount), kind: r.kind }));
+    if (!entries.length) { toast.error("Add at least one dated credit."); return; }
+    try { setRes(await api.wsCalcPeakCredit(entries)); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <div className="text-[11.5px] font-semibold text-slate-500 uppercase tracking-[0.08em]">Deposits & withdrawals</div>
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input type="date" value={r.date} onChange={(e) => setRow(i, { date: e.target.value })} className="flex-1" />
+              <Input type="number" placeholder="amount" value={r.amount} onChange={(e) => setRow(i, { amount: e.target.value })} className="w-28" />
+              <select value={r.kind} onChange={(e) => setRow(i, { kind: e.target.value as "credit" | "debit" })}
+                className="h-9 rounded-md border border-slate-200 bg-white px-1.5 text-[12px] text-slate-700 shrink-0">
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+              <button onClick={() => delRow(i)} className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0" aria-label="Remove row">×</button>
+            </div>
+          ))}
+        </div>
+        <button onClick={addRow} className="text-[12.5px] font-semibold text-primary hover:underline">+ Add row</button>
+        <Button className="w-full" onClick={run}>Compute peak credit</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />Peak credit is the highest rotating balance — the defensible quantum vs the gross of all deposits. Pair with the working note in Templates → Library.</p>
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-2">Peak credit</div>
+            <div className="max-h-56 overflow-y-auto -mx-1 px-1">
+              {res.schedule.map((r, i) => (
+                <div key={i} className="flex items-center justify-between py-1 text-[12px] border-b border-slate-100 last:border-0">
+                  <span className="text-slate-600">{r.date} · {r.kind}</span>
+                  <span className="tabular-nums text-slate-800">{r.kind === "debit" ? "−" : "+"}{inr(r.amount)} <span className="text-slate-400">→ {inr(r.running_balance)}</span></span>
+                </div>
+              ))}
+            </div>
+            <ResultRow label="Total credits" value={inr(res.total_credits)} />
+            <ResultRow label="Total debits" value={inr(res.total_debits)} />
+            <ResultRow label={`Peak credit${res.peak_date ? ` (${res.peak_date})` : ""}`} value={inr(res.peak_credit)} strong />
+            <p className="mt-2 text-[11px] text-slate-500">{res.note}</p>
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Add the dated deposits/withdrawals and compute.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust" | "peak">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -554,7 +616,7 @@ export default function Calculators() {
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["peak", "Peak credit"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -569,6 +631,7 @@ export default function Calculators() {
           : tab === "tds" ? <TdsCalc />
           : tab === "recovery" ? <RecoveryCalc />
           : tab === "trust" ? <TrustCalc />
+          : tab === "peak" ? <PeakCreditCalc />
           : tab === "bbe" ? <Bbe115Calc />
           : tab === "slab" ? <SlabCalc />
           : tab === "capgains" ? <CapGainsCalc />

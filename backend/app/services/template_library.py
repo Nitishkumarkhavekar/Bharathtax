@@ -542,6 +542,101 @@ Assessee: {{ASSESSEE}}                 PAN: {{PAN}}                 AY: {{AY}}
 Date: {{TODAY}}
 """
 
+_STMT_132_4 = """STATEMENT u/s 132(4) of the Income-tax Act, 1961
+
+Statement of Shri/Smt. {{ASSESSEE}} (PAN {{PAN}}) recorded on oath during the course of search & seizure action u/s 132 at [premises] on [date] before [designation of the authorised officer].
+
+Preliminary:
+Q1. Please identify yourself — name, father's name, address, PAN, and your relationship to the premises/entity searched.
+Q2. What is your role in [entity]? Since when? Please describe your business/profession and sources of income.
+Q3. Do you maintain books of account? Where? Who maintains them? Please identify the accountant / person in charge.
+
+On the material found:
+Q4. During the search, [cash of Rs. ____ / jewellery of ____ gms / documents marked Annexure __] were found at [location]. Please explain the source and ownership of each.
+Q5. [Refer to a specific seized document/entry] — please explain the entries at page/para [__]: the nature of the transaction, the parties, the amounts, and whether they are recorded in the regular books.
+Q6. [Digital data / whatsapp / excel] found on [device] shows [___]. Please explain.
+Q7. Do these transactions find place in your returned income? If not, please explain why.
+
+Disclosure:
+Q8. In view of the above, do you wish to make any disclosure of undisclosed income? If so, for which year(s), of what amount, and on what account? Please specify how it will be substantiated and taxes paid.
+Q9. Is this statement being given voluntarily, without any threat, coercion or inducement? Have you been allowed to consult the material?
+
+Deponent: ____________________            Recorded before: ____________________
+Date: {{TODAY}}
+(The statement was read over to the deponent, who admitted it to be correct.)
+"""
+
+_SUMMONS_131_Q = """OFFICE OF THE {{AO}} / [INVESTIGATION WING]
+
+Questionnaire annexed to summons u/s 131 of the Income-tax Act, 1961
+
+To: {{ASSESSEE}}, PAN {{PAN}}  —  Attendance on [date] at [time] at [place]
+
+You are required to attend and give evidence / produce the following, and to answer the following on oath:
+   1. Your identity, address, PAN, occupation and connection with [entity/person].
+   2. Details and documentary evidence of the transaction(s) with [party] during FY [____]: nature, amount, mode, dates, and the books in which recorded.
+   3. Bank statements of all accounts for the period [____] with explanation of credits aggregating Rs. [____].
+   4. Confirmation, PAN and creditworthiness of the parties from whom [loans/share capital/advances] of Rs. [____] were received.
+   5. [Issue-specific queries].
+
+Documents to produce: [list]. Non-compliance attracts consequences u/s 131 and penalty u/s 272A.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_APPRAISAL_REPORT = """APPRAISAL REPORT — Search & Seizure u/s 132 / Requisition u/s 132A
+
+Group: [name]                        Lead PAN: {{PAN}}                 Search date: [date]
+
+1. Introduction & warrant
+   - Persons/premises covered; date(s) of search; officers; period of authorisation.
+
+2. Group profile
+   - Entities, key persons, nature of business, control/network chart.
+
+3. Seizure & inventory summary
+   - Cash seized Rs. [____]; jewellery [gms/Rs. ____]; documents Annexures [__]; digital devices [__]; stock/valuables.
+
+4. Statements recorded (u/s 132(4)/131)
+   - Deponent, date, key admissions, disclosures, retractions (if any) and corroboration.
+
+5. Issue-wise findings (per entity / per year)
+   For each issue: the seized material relied on -> the transaction -> the undisclosed income worked out -> the section (68/69/69A-D, 115BBE) -> corroboration.
+   - Issue 1: [___]  — quantum Rs. [____]  — evidence: Annexure [__]
+   - Issue 2: [___]
+
+6. Undisclosed income computation (AY-wise)
+   - Peak credit / telescoping applied where credits rotate; year-wise table of additions.
+
+7. Recommendations
+   - Assessment u/s 153A/153C for AY(s) [__]; protective/substantive; 153D approval; penalty/prosecution; references to other wings/parties.
+
+Prepared by: ____________________
+Date: {{TODAY}}
+"""
+
+_UNACCOUNTED_NOTE = """WORKING NOTE — Computation of undisclosed / unaccounted income
+
+Assessee: {{ASSESSEE}}       PAN: {{PAN}}       AY: {{AY}}
+
+1. Basis: [seized document Annexure __ / bank credits / statement u/s 132(4) para __].
+
+2. Credits considered (chronological) — see peak-credit working:
+      Total credits examined            Rs. [____]
+      Less: explained / recorded         Rs. [____]
+      Unexplained credits                Rs. [____]
+      Peak credit (rotating fund)        Rs. [____]   <- quantum of addition
+   [Where each deposit is independently unexplained and rotation is not established, the gross may be added instead — state the basis.]
+
+3. Telescoping: earlier addition of Rs. [____] is set off against the later application/investment of Rs. [____] to avoid double addition, to the extent [____].
+
+4. Head & section: addition of Rs. [____] u/s [68/69/69A-D]; tax u/s 115BBE; penalty u/s 271AAC / 270A initiated.
+
+Prepared by: ____________________
+Date: {{TODAY}}
+"""
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -577,6 +672,11 @@ LIBRARY = [
     {"id": "sanction_279", "name": "Sanction for prosecution u/s 279(1)", "category": "order", "side": "officer", "body": _SANCTION_279},
     {"id": "compounding_application", "name": "Compounding application u/s 279(2)", "category": "other", "side": "assessee", "body": _COMPOUNDING_APPLICATION},
     {"id": "compounding_order", "name": "Compounding order u/s 279(2)", "category": "order", "side": "officer", "body": _COMPOUNDING_ORDER},
+    # --- investigation (search & seizure) ---
+    {"id": "stmt_132_4", "name": "Statement questionnaire u/s 132(4)", "category": "notice", "side": "officer", "body": _STMT_132_4},
+    {"id": "summons_131", "name": "Summons questionnaire u/s 131", "category": "notice", "side": "officer", "body": _SUMMONS_131_Q},
+    {"id": "appraisal_report", "name": "Appraisal report skeleton (search)", "category": "other", "side": "officer", "body": _APPRAISAL_REPORT},
+    {"id": "unaccounted_note", "name": "Undisclosed-income working note", "category": "other", "side": "officer", "body": _UNACCOUNTED_NOTE},
 ]
 
 

@@ -170,3 +170,34 @@ def test_tax_115bbc_5pct_threshold_dominates():
     assert r["exempt_threshold"] == 500_000       # 5% of 1cr > 1L
     assert r["taxable_at_115bbc"] == 0            # anon below threshold
     assert r["total_tax"] == 0
+
+
+def test_peak_credit_rotating_fund():
+    r = calc.peak_credit([
+        {"date": "2016-11-10", "amount": 500_000, "kind": "credit"},
+        {"date": "2016-11-15", "amount": 300_000, "kind": "debit"},
+        {"date": "2016-11-20", "amount": 700_000, "kind": "credit"},
+        {"date": "2016-11-25", "amount": 200_000, "kind": "debit"},
+    ])
+    assert r["peak_credit"] == 900_000          # 500 - 300 + 700 = 900 peak
+    assert r["peak_date"] == "2016-11-20"
+    assert r["total_credits"] == 1_200_000
+
+
+def test_peak_credit_sorts_by_date():
+    # Out-of-order input must be chronologically ordered before running balance.
+    r = calc.peak_credit([
+        {"date": "2016-12-05", "amount": 200_000, "kind": "credit"},
+        {"date": "2016-11-01", "amount": 100_000, "kind": "credit"},
+    ])
+    assert r["peak_credit"] == 300_000
+    assert r["schedule"][0]["date"] == "2016-11-01"
+
+
+def test_peak_credit_debit_not_below_zero():
+    r = calc.peak_credit([
+        {"date": "2016-11-01", "amount": 100_000, "kind": "credit"},
+        {"date": "2016-11-02", "amount": 500_000, "kind": "debit"},
+        {"date": "2016-11-03", "amount": 50_000, "kind": "credit"},
+    ])
+    assert r["peak_credit"] == 100_000           # balance floors at 0, not -400000
