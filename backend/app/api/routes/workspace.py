@@ -17,7 +17,8 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 # Constrained enums — invalid values are rejected with a 422 rather than stored.
-MatterCategory = Literal["officer", "cita", "drp", "investigation", "ici", "tds", "ca", "other"]
+MatterCategory = Literal["officer", "cita", "drp", "investigation", "ici", "tds",
+                         "recovery", "tp", "ca", "other"]
 MatterStatus = Literal["open", "in_progress", "awaiting_order", "closed"]
 DeadlineStatus = Literal["open", "done", "dismissed"]
 NoteColor = Literal["yellow", "blue", "green", "pink", "slate"]
