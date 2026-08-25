@@ -64,6 +64,18 @@ def test_compute_blocked_for_non_owner(db):
     assert ws.compute_and_store(db, m.id, 2, "order_served", date(2026, 8, 1)) == []
 
 
+def test_workload_summary_next_deadline_and_counts(db):
+    m = _matter(db, 1, "case")
+    ws.add_manual_deadline(db, m.id, 1, label="near", due_date=date(2026, 9, 4))
+    ws.add_manual_deadline(db, m.id, 1, label="old", due_date=date(2026, 8, 30))
+    wl = ws.workload(db, 1, today=date(2026, 9, 1))
+    s = wl["summary"]
+    assert s["total_matters"] == 1 and s["overdue"] == 1 and s["due_7"] == 1
+    row = wl["matters"][0]
+    assert row["open_count"] == 2 and row["overdue_count"] == 1 and row["urgent_count"] == 1
+    assert row["next_due_date"] == "2026-08-30"          # earliest open deadline
+
+
 def test_calendar_is_per_user(db):
     m = _matter(db, 1)
     ws.compute_and_store(db, m.id, 1, "order_served", date(2026, 8, 1))

@@ -8,6 +8,7 @@ import {
   Gavel,
   ScrollText,
   CalendarClock,
+  LayoutDashboard,
   Calculator,
   FileText,
   Bookmark,
@@ -38,6 +39,7 @@ const NAV: {
   hint: string;
   group?: "tools";    // renders under a "Tools" subheader
 }[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tone: "primary", hint: "Your caseload at a glance" },
   { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
   { to: "/workspace", label: "Calendar", icon: CalendarClock, tone: "primary", hint: "Matters, deadlines & reminders" },
   { to: "/appeals", label: "Appeals", icon: Gavel, feature: "appeals", tone: "amber", hint: "Draft CIT(A) orders" },

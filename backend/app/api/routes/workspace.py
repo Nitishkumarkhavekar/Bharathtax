@@ -338,6 +338,12 @@ def calendar(start: date, end: date, include_done: bool = False,
     return [_deadline_out(d) for d in svc.calendar(db, p.user.id, start, end, include_done)]
 
 
+@router.get("/workload")
+def workload(p: Principal = Depends(get_principal), db: Session = Depends(get_db)) -> dict:
+    """Portfolio dashboard: matters enriched with next deadline + caseload totals."""
+    return svc.workload(db, p.user.id)
+
+
 # ------------------------------------------------------------------ reminders
 @router.get("/reminders")
 def list_reminders(pending_only: bool = True,

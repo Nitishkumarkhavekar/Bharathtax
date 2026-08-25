@@ -19,6 +19,7 @@ const AppealCase = lazy(() => import("./pages/AppealCase"));
 const Rulings = lazy(() => import("./pages/Rulings"));
 const Drafting = lazy(() => import("./pages/Drafting"));
 const Workspace = lazy(() => import("./pages/Workspace"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Calculators = lazy(() => import("./pages/Calculators"));
 const Templates = lazy(() => import("./pages/Templates"));
 const Watchlists = lazy(() => import("./pages/Watchlists"));
@@ -113,6 +114,7 @@ export default function App() {
       <Route path="/appeals" element={<NonAdminOnly><Appeals /></NonAdminOnly>} />
       <Route path="/appeals/:id" element={<NonAdminOnly><AppealCase /></NonAdminOnly>} />
       <Route path="/drafts" element={<NonAdminOnly><Drafting /></NonAdminOnly>} />
+      <Route path="/dashboard" element={<NonAdminOnly><Dashboard /></NonAdminOnly>} />
       <Route path="/workspace" element={<NonAdminOnly><Workspace /></NonAdminOnly>} />
       <Route path="/calculators" element={<NonAdminOnly><Calculators /></NonAdminOnly>} />
       <Route path="/templates" element={<NonAdminOnly><Templates /></NonAdminOnly>} />
