@@ -218,6 +218,17 @@ class InstallmentIn(BaseModel):
     first_due: date
 
 
+class Trust11In(BaseModel):
+    gross_income: float
+    amount_applied: float
+    accumulated_11_2: float = 0.0
+
+
+class Tax115BBCIn(BaseModel):
+    anonymous_donations: float
+    total_donations: float
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -621,3 +632,17 @@ def calc_installments(body: InstallmentIn, p: Principal = Depends(get_principal)
     """Recovery: split a demand into monthly installments with 220(2) interest."""
     from app.services import calculators
     return calculators.installment_plan(body.demand, body.installments, body.first_due)
+
+
+@router.post("/calc/trust-11")
+def calc_trust_11(body: Trust11In, p: Principal = Depends(get_principal)) -> dict:
+    """Sec. 11 application test (85% application / 15% accumulation shortfall)."""
+    from app.services import calculators
+    return calculators.trust_application_11(body.gross_income, body.amount_applied, body.accumulated_11_2)
+
+
+@router.post("/calc/115bbc")
+def calc_115bbc(body: Tax115BBCIn, p: Principal = Depends(get_principal)) -> dict:
+    """Sec. 115BBC tax on anonymous donations above the threshold."""
+    from app.services import calculators
+    return calculators.tax_115bbc(body.anonymous_donations, body.total_donations)

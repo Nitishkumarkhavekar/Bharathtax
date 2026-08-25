@@ -268,6 +268,68 @@ def tds_default(amount: float, rate_pct: float, deduction_due: date,
     }
 
 
+# --- trust / charity: 11 application shortfall & 115BBC anonymous donations --
+def trust_application_11(gross_income: float, amount_applied: float,
+                         accumulated_11_2: float = 0.0) -> dict:
+    """Sec. 11 application test for a charitable/religious trust.
+
+    A trust may accumulate up to 15% of its income unconditionally; it must
+    APPLY at least 85% of income to its objects. Any part of that 85% that is
+    neither applied nor validly set apart u/s 11(2) (Form 10, up to 5 years) is
+    taxable. Returns the permitted 15% accumulation, the 85% application
+    requirement, and the taxable shortfall. Estimate — verify against the
+    accounts and Form 10.
+    """
+    gross = max(0.0, round(gross_income))
+    applied = max(0.0, round(amount_applied))
+    form10 = max(0.0, round(accumulated_11_2))
+    permitted_15 = round(gross * 0.15)
+    required_85 = round(gross * 0.85)
+    covered = min(required_85, applied + form10)
+    shortfall = max(0.0, round(required_85 - covered))
+    return {
+        "gross_income": gross,
+        "permitted_accumulation_15pct": permitted_15,
+        "required_application_85pct": required_85,
+        "amount_applied": applied,
+        "accumulated_11_2_form10": form10,
+        "shortfall_taxable": shortfall,
+        "workings": (f"85% of {gross:,.0f} = {required_85:,.0f} to be applied; "
+                     f"applied {applied:,.0f} + Form 10 {form10:,.0f} = {applied + form10:,.0f}; "
+                     f"shortfall taxable = {shortfall:,.0f}"),
+        "note": "15% may be accumulated freely; 85% must be applied or set apart u/s 11(2). "
+                "Estimate — verify the accounts, corpus donations and Form 10.",
+    }
+
+
+def tax_115bbc(anonymous_donations: float, total_donations: float,
+               rate_pct: float = 30.0, cess_pct: float = 4.0) -> dict:
+    """Tax on anonymous donations u/s 115BBC: 30% on the anonymous donations
+    that EXCEED the higher of 5% of total donations or Rs. 1,00,000. The
+    exempt slice is taxed at normal trust rates; only the excess bears 30%."""
+    anon = max(0.0, round(anonymous_donations))
+    total = max(0.0, round(total_donations))
+    threshold = round(max(0.05 * total, 100000))
+    taxable = max(0.0, round(anon - threshold))
+    tax = round(taxable * rate_pct / 100.0)
+    cess = round(tax * cess_pct / 100.0)
+    return {
+        "anonymous_donations": anon,
+        "total_donations": total,
+        "exempt_threshold": threshold,
+        "taxable_at_115bbc": taxable,
+        "rate_pct": rate_pct,
+        "tax": tax,
+        "cess": cess,
+        "total_tax": tax + cess,
+        "workings": (f"threshold = max(5% of {total:,.0f}, 1,00,000) = {threshold:,.0f}; "
+                     f"taxable = {anon:,.0f} − {threshold:,.0f} = {taxable:,.0f}; "
+                     f"30% + cess = {tax + cess:,.0f}"),
+        "note": "Only anonymous donations above the threshold bear 30%. Wholly-religious "
+                "trusts and certain institutions are outside 115BBC — verify eligibility.",
+    }
+
+
 # --- recovery: demand installment plan with 220(2) interest ------------------
 def installment_plan(demand: float, n_installments: int, first_due: date,
                      monthly_rate_pct: float = 1.0) -> dict:

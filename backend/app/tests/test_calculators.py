@@ -143,3 +143,30 @@ def test_installment_plan_rounding_remainder_in_last():
     # Principals must sum exactly to the demand despite rounding.
     assert sum(row["principal"] for row in r["schedule"]) == 100_000
     assert r["schedule"][-1]["closing_balance"] == 0
+
+
+def test_trust_application_11_shortfall():
+    r = calc.trust_application_11(1_000_000, 700_000, 50_000)
+    assert r["required_application_85pct"] == 850_000
+    assert r["permitted_accumulation_15pct"] == 150_000
+    assert r["shortfall_taxable"] == 100_000     # 850000 - (700000 + 50000)
+
+
+def test_trust_application_11_no_shortfall_when_fully_applied():
+    r = calc.trust_application_11(1_000_000, 900_000)
+    assert r["shortfall_taxable"] == 0            # applied > 85%
+
+
+def test_tax_115bbc_threshold_and_rate():
+    r = calc.tax_115bbc(500_000, 2_000_000)
+    assert r["exempt_threshold"] == 100_000       # max(5% of 20L, 1L)
+    assert r["taxable_at_115bbc"] == 400_000
+    assert r["tax"] == 120_000                    # 30%
+    assert r["total_tax"] == 124_800              # + 4% cess
+
+
+def test_tax_115bbc_5pct_threshold_dominates():
+    r = calc.tax_115bbc(300_000, 10_000_000)
+    assert r["exempt_threshold"] == 500_000       # 5% of 1cr > 1L
+    assert r["taxable_at_115bbc"] == 0            # anon below threshold
+    assert r["total_tax"] == 0

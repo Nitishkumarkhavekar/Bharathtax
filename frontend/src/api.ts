@@ -784,6 +784,16 @@ export interface WsInstallmentResult {
   total_principal: number; total_interest: number; total_payable: number;
   schedule: WsInstallmentRow[]; note: string;
 }
+export interface WsTrust11Result {
+  gross_income: number; permitted_accumulation_15pct: number; required_application_85pct: number;
+  amount_applied: number; accumulated_11_2_form10: number; shortfall_taxable: number;
+  workings: string; note: string;
+}
+export interface Ws115BBCResult {
+  anonymous_donations: number; total_donations: number; exempt_threshold: number;
+  taxable_at_115bbc: number; rate_pct: number; tax: number; cess: number; total_tax: number;
+  workings: string; note: string;
+}
 
 function token(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -1217,6 +1227,10 @@ export const api = {
   wsTdsSections: () => req<WsTdsSection[]>("/workspace/tds-sections"),
   wsCalcInstallments: (b: { demand: number; installments: number; first_due: string }) =>
     req<WsInstallmentResult>("/workspace/calc/installments", { method: "POST", body: JSON.stringify(b) }),
+  wsCalcTrust11: (b: { gross_income: number; amount_applied: number; accumulated_11_2: number }) =>
+    req<WsTrust11Result>("/workspace/calc/trust-11", { method: "POST", body: JSON.stringify(b) }),
+  wsCalc115bbc: (b: { anonymous_donations: number; total_donations: number }) =>
+    req<Ws115BBCResult>("/workspace/calc/115bbc", { method: "POST", body: JSON.stringify(b) }),
   // templates
   wsTemplates: () => req<WsTemplate[]>("/workspace/templates"),
   wsTemplateLibrary: () => req<WsLibraryTemplate[]>("/workspace/templates/library"),

@@ -23,7 +23,7 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 
 | C1 ✅ | **TDS module** *(shipped — calculator + section reference)* — default calculator (short/non-deduction, **201(1A)** interest, **234E** fee), section picker (194C/J/I/195…). *Next: justification-report analysis.* |
 | C2 ✅ | **Recovery / TRO module** *(shipped — instalment plan + recovery templates)* — 220(2) declining-balance instalment calculator; officer templates for 221(1) SCN, 226(3) garnishee, 222 TRO reference, 220(3) instalment order. *Next: outstanding-demand tracker.* |
-| C3 | **Exemptions module** — trust/charity compliance: 11/12/13 application & accumulation (11(2)), 12A/80G registration & renewal (Form 10A/10AB), 115BBC. |
+| C3 ✅ | **Exemptions module** *(shipped — application/115BBC calculators + trust templates)* — Sec. 11 85%/15% application-shortfall calc; 115BBC anonymous-donations calc; templates for Form 10 (11(2)), Form 10AB (80G renewal), 12AB(4) cancellation SCN. *Next: 115TD accreted-income calc.* |
 
 ## Phase D — Specialist wings
 

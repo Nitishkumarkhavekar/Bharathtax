@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -457,8 +457,90 @@ function RecoveryCalc() {
   );
 }
 
+function TrustCalc() {
+  const [mode, setMode] = useState<"apply" | "anon">("apply");
+  // 11(2) application
+  const [gross, setGross] = useState("");
+  const [applied, setApplied] = useState("");
+  const [form10, setForm10] = useState("");
+  const [r11, setR11] = useState<WsTrust11Result | null>(null);
+  // 115BBC
+  const [anon, setAnon] = useState("");
+  const [total, setTotal] = useState("");
+  const [rbbc, setRbbc] = useState<Ws115BBCResult | null>(null);
+
+  const run11 = async () => {
+    const g = parseFloat(gross), a = parseFloat(applied);
+    if (!g || g <= 0) { toast.error("Enter the gross income."); return; }
+    try { setR11(await api.wsCalcTrust11({ gross_income: g, amount_applied: a || 0, accumulated_11_2: parseFloat(form10) || 0 })); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+  const runBbc = async () => {
+    const an = parseFloat(anon), t = parseFloat(total);
+    if (!t || t <= 0) { toast.error("Enter the total donations."); return; }
+    try { setRbbc(await api.wsCalc115bbc({ anonymous_donations: an || 0, total_donations: t })); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex rounded-lg bg-slate-100 p-1">
+        {([["apply", "11(2) application"], ["anon", "115BBC — anonymous"]] as const).map(([k, l]) => (
+          <button key={k} onClick={() => setMode(k)}
+            className={cn("px-3.5 py-1.5 rounded-md text-[12.5px] font-semibold transition-colors", mode === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>{l}</button>
+        ))}
+      </div>
+
+      {mode === "apply" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-3">
+            <Field label="Gross income of the trust"><Input type="number" placeholder="e.g. 1000000" value={gross} onChange={(e) => setGross(e.target.value)} /></Field>
+            <Field label="Amount applied to objects"><Input type="number" placeholder="e.g. 700000" value={applied} onChange={(e) => setApplied(e.target.value)} /></Field>
+            <Field label="Set apart u/s 11(2) (Form 10)"><Input type="number" placeholder="e.g. 50000" value={form10} onChange={(e) => setForm10(e.target.value)} /></Field>
+            <Button className="w-full" onClick={run11}>Compute application test</Button>
+            <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />15% may be accumulated freely; 85% must be applied or set apart u/s 11(2). Pair with Form 10 in Templates → Library.</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+            {r11 ? (
+              <>
+                <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1">Sec. 11 application</div>
+                <ResultRow label="Permitted accumulation (15%)" value={inr(r11.permitted_accumulation_15pct)} />
+                <ResultRow label="Required application (85%)" value={inr(r11.required_application_85pct)} />
+                <ResultRow label="Applied + Form 10" value={inr(r11.amount_applied + r11.accumulated_11_2_form10)} />
+                <ResultRow label="Shortfall — taxable" value={inr(r11.shortfall_taxable)} strong />
+                <p className="mt-2 text-[11px] text-slate-500">{r11.workings}</p>
+              </>
+            ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter the figures and compute.</div>}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-3">
+            <Field label="Anonymous donations"><Input type="number" placeholder="e.g. 500000" value={anon} onChange={(e) => setAnon(e.target.value)} /></Field>
+            <Field label="Total donations received"><Input type="number" placeholder="e.g. 2000000" value={total} onChange={(e) => setTotal(e.target.value)} /></Field>
+            <Button className="w-full" onClick={runBbc}>Compute 115BBC tax</Button>
+            <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />30% on anonymous donations above the higher of 5% of total donations or ₹1,00,000.</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+            {rbbc ? (
+              <>
+                <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1">Sec. 115BBC</div>
+                <ResultRow label="Exempt threshold" value={inr(rbbc.exempt_threshold)} />
+                <ResultRow label={`Taxable @ ${rbbc.rate_pct}%`} value={inr(rbbc.taxable_at_115bbc)} />
+                <ResultRow label="Cess @ 4%" value={inr(rbbc.cess)} />
+                <ResultRow label="Total tax" value={inr(rbbc.total_tax)} strong />
+                <p className="mt-2 text-[11px] text-slate-500">{rbbc.workings}</p>
+              </>
+            ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter the donations and compute.</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -472,7 +554,7 @@ export default function Calculators() {
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -486,6 +568,7 @@ export default function Calculators() {
           : tab === "234c" ? <Calc234C />
           : tab === "tds" ? <TdsCalc />
           : tab === "recovery" ? <RecoveryCalc />
+          : tab === "trust" ? <TrustCalc />
           : tab === "bbe" ? <Bbe115Calc />
           : tab === "slab" ? <SlabCalc />
           : tab === "capgains" ? <CapGainsCalc />
