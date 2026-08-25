@@ -268,6 +268,76 @@ def tds_default(amount: float, rate_pct: float, deduction_due: date,
     }
 
 
+# --- transfer pricing: ALP range / mean (TNMM etc.) --------------------------
+# The five prescribed methods (Sec. 92C r.w. Rule 10B) for the picker/reference.
+TP_METHODS: list[dict] = [
+    {"key": "CUP", "name": "Comparable Uncontrolled Price", "use": "A reliable comparable uncontrolled price exists (same product/terms) — the most direct method."},
+    {"key": "RPM", "name": "Resale Price Method", "use": "Distributor/reseller adding little value; benchmarks the gross resale margin."},
+    {"key": "CPM", "name": "Cost Plus Method", "use": "Manufacturer/service provider; benchmarks the gross mark-up on costs."},
+    {"key": "TNMM", "name": "Transactional Net Margin Method", "use": "Most common; benchmarks a net-profit-level indicator (OP/OC, OP/Sales, Berry ratio) against comparables."},
+    {"key": "PSM", "name": "Profit Split Method", "use": "Highly integrated transactions or unique intangibles on both sides; splits the combined profit."},
+]
+
+
+def _percentile_10ca(sorted_vals: list[float], frac: float) -> float:
+    """Percentile per the Rule 10CA data-set convention: position = n*frac; if it
+    is a whole number take the mean of that value and the next, else take the
+    value at the next higher place."""
+    n = len(sorted_vals)
+    pos = n * frac
+    import math
+    if abs(pos - round(pos)) < 1e-9:
+        i = int(round(pos))
+        # i-th and (i+1)-th (1-indexed) -> 0-indexed i-1 and i
+        return (sorted_vals[i - 1] + sorted_vals[min(i, n - 1)]) / 2.0
+    i = math.ceil(pos)
+    return sorted_vals[min(i, n) - 1]
+
+
+def alp_range(comparables: list[float], tested_margin: float, base_amount: float = 0.0) -> dict:
+    """Arm's-length benchmarking for a net-margin method (e.g. TNMM).
+
+    ``comparables`` = the comparables' margins (%). With 6 or more, applies the
+    Rule 10CA inter-quartile-style RANGE (35th–65th percentile): if the tested
+    margin lies within [P35, P65] it is at arm's length; otherwise the MEDIAN is
+    the ALP and the adjustment is computed. With fewer than 6, the arithmetic
+    MEAN is the benchmark. ``base_amount`` (operating cost or sales) turns a
+    margin gap into a money adjustment. Estimate — Rule 10CA/10CB have detail
+    (multiple-year data, tolerance band) the officer must apply.
+    """
+    vals = sorted(float(x) for x in comparables)
+    n = len(vals)
+    base = max(0.0, float(base_amount or 0))
+    tested = float(tested_margin)
+    if n == 0:
+        return {"method": "range", "count": 0, "at_arms_length": None, "note": "No comparables supplied."}
+    if n >= 6:
+        lower = _percentile_10ca(vals, 0.35)
+        upper = _percentile_10ca(vals, 0.65)
+        median = _percentile_10ca(vals, 0.50)
+        within = lower <= tested <= upper
+        alp_margin = tested if within else median
+        adjustment = 0.0 if within else round((median - tested) / 100.0 * base)
+        return {
+            "method": "range_35_65", "count": n,
+            "lower_p35": round(lower, 2), "upper_p65": round(upper, 2), "median": round(median, 2),
+            "tested_margin": round(tested, 2), "at_arms_length": within,
+            "alp_margin": round(alp_margin, 2), "adjustment": adjustment,
+            "note": "6+ comparables: Rule 10CA 35th–65th percentile range; median is the ALP if "
+                    "outside. Estimate — apply multiple-year data and the tolerance band.",
+        }
+    mean = sum(vals) / n
+    within = abs(tested - mean) < 1e-9
+    adjustment = round((mean - tested) / 100.0 * base)
+    return {
+        "method": "mean", "count": n, "mean": round(mean, 2),
+        "tested_margin": round(tested, 2), "at_arms_length": within,
+        "alp_margin": round(mean, 2), "adjustment": adjustment,
+        "note": "Fewer than 6 comparables: arithmetic mean is the benchmark; the ±3% (or notified) "
+                "tolerance under the 2nd proviso to 92C(2) applies to the price. Estimate — verify.",
+    }
+
+
 # --- investigation: peak credit of unexplained deposits ----------------------
 def peak_credit(entries: list[dict]) -> dict:
     """Peak-credit theory for unexplained cash deposits/credits.

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
-import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult, WsPeakCreditResult } from "../api";
+import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult, WsPeakCreditResult, WsAlpResult, WsTpMethod } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
@@ -601,8 +601,72 @@ function PeakCreditCalc() {
   );
 }
 
+function AlpCalc() {
+  const [methods, setMethods] = useState<WsTpMethod[]>([]);
+  const [comps, setComps] = useState("");
+  const [tested, setTested] = useState("");
+  const [base, setBase] = useState("");
+  const [res, setRes] = useState<WsAlpResult | null>(null);
+  useEffect(() => { api.wsTpMethods().then(setMethods).catch(() => {}); }, []);
+
+  const run = async () => {
+    const comparables = comps.split(/[,\s]+/).map((x) => parseFloat(x)).filter((x) => !isNaN(x));
+    const t = parseFloat(tested);
+    if (!comparables.length) { toast.error("Enter the comparables' margins (comma-separated)."); return; }
+    if (isNaN(t)) { toast.error("Enter the tested-party margin."); return; }
+    try { setRes(await api.wsCalcAlp({ comparables, tested_margin: t, base_amount: parseFloat(base) || 0 })); }
+    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <Field label="Comparables' margins % (comma-separated)">
+          <Input placeholder="e.g. 4, 6, 8, 10, 12, 14, 16" value={comps} onChange={(e) => setComps(e.target.value)} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Tested margin %"><Input type="number" placeholder="e.g. 3" value={tested} onChange={(e) => setTested(e.target.value)} /></Field>
+          <Field label="Base (op. cost / sales)"><Input type="number" placeholder="e.g. 10000000" value={base} onChange={(e) => setBase(e.target.value)} /></Field>
+        </div>
+        <Button className="w-full" onClick={run}>Compute arm's length</Button>
+        <p className="flex items-start gap-1 text-[11px] text-slate-500"><Info className="size-3.5 mt-px shrink-0" />6+ comparables → Rule 10CA 35th–65th percentile range (median = ALP if outside); fewer → arithmetic mean. Pair with the TPO order / 3CEB checklist in Templates.</p>
+        {methods.length > 0 && (
+          <details className="rounded-lg ring-1 ring-slate-200 bg-white p-3">
+            <summary className="text-[12px] font-semibold text-slate-700 cursor-pointer">Method reference (Sec. 92C / Rule 10B)</summary>
+            <div className="mt-2 space-y-1.5">
+              {methods.map((m) => (
+                <div key={m.key} className="text-[11.5px]"><span className="font-semibold text-slate-800">{m.key}</span> — {m.name}. <span className="text-slate-500">{m.use}</span></div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        {res ? (
+          <>
+            <div className="text-[11px] font-semibold text-primary uppercase tracking-[0.1em] mb-1">Arm's length ({res.count} comparables)</div>
+            {res.method === "range_35_65" ? (
+              <>
+                <ResultRow label="35th percentile" value={`${res.lower_p35}%`} />
+                <ResultRow label="Median" value={`${res.median}%`} />
+                <ResultRow label="65th percentile" value={`${res.upper_p65}%`} />
+              </>
+            ) : (
+              <ResultRow label="Mean of comparables" value={`${res.mean}%`} />
+            )}
+            <ResultRow label="Tested margin" value={`${res.tested_margin}%`} />
+            <ResultRow label="Within arm's length?" value={res.at_arms_length ? "Yes" : "No"} />
+            <ResultRow label="TP adjustment" value={inr(res.adjustment || 0)} strong />
+            <p className="mt-2 text-[11px] text-slate-500">{res.note}</p>
+          </>
+        ) : <div className="h-full flex items-center justify-center text-center text-[12.5px] text-slate-400 py-8">Enter the comparables and tested margin.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function Calculators() {
-  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust" | "peak">("interest");
+  const [tab, setTab] = useState<"interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust" | "peak" | "alp">("interest");
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -616,7 +680,7 @@ export default function Calculators() {
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["peak", "Peak credit"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["peak", "Peak credit"], ["alp", "ALP / TP"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
               tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
@@ -632,6 +696,7 @@ export default function Calculators() {
           : tab === "recovery" ? <RecoveryCalc />
           : tab === "trust" ? <TrustCalc />
           : tab === "peak" ? <PeakCreditCalc />
+          : tab === "alp" ? <AlpCalc />
           : tab === "bbe" ? <Bbe115Calc />
           : tab === "slab" ? <SlabCalc />
           : tab === "capgains" ? <CapGainsCalc />
