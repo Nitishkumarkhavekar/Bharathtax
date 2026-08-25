@@ -811,5 +811,27 @@ LIBRARY = [
 ]
 
 
+# Topic/wing grouping for the library UI — keeps the 30+ templates navigable.
+_GROUPS: dict[str, str] = {
+    "reply_142_1": "Assessee replies", "reply_143_2": "Assessee replies",
+    "reply_148a": "Assessee replies", "reply_penalty": "Assessee replies",
+    "adjournment": "Assessee replies", "stay_220_6": "Assessee replies",
+    "assessment_143_3": "Assessment & notices", "notice_142_1": "Assessment & notices",
+    "scn_148a": "Assessment & notices", "notice_156": "Assessment & notices",
+    "penalty_order_270a": "Penalty",
+    "notice_221": "Recovery", "notice_226_3": "Recovery",
+    "tro_222": "Recovery", "instalment_order": "Recovery",
+    "form10_accum": "Exemptions", "form10ab_80g": "Exemptions", "scn_12ab4": "Exemptions",
+    "scn_263": "Revision", "order_263": "Revision", "order_264": "Revision",
+    "sanction_151": "Approvals", "approval_153d": "Approvals",
+    "prosecution_scn": "Prosecution", "sanction_279": "Prosecution",
+    "compounding_application": "Prosecution", "compounding_order": "Prosecution",
+    "stmt_132_4": "Investigation", "summons_131": "Investigation",
+    "appraisal_report": "Investigation", "unaccounted_note": "Investigation",
+    "tpo_order": "Transfer Pricing", "checklist_3ceb": "Transfer Pricing",
+    "drp_directions_144c5": "DRP", "drp_panel_note": "DRP", "final_order_144c13": "DRP",
+}
+
+
 def library() -> list[dict]:
-    return [dict(t) for t in LIBRARY]
+    return [{**t, "group": _GROUPS.get(t["id"], "Other")} for t in LIBRARY]
