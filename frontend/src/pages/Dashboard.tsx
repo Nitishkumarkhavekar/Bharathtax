@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LayoutDashboard, FolderOpen, ArrowUpRight, RefreshCw, AlarmClock } from "lucide-react";
 import { api, WsWorkload, WsWorkloadRow } from "../api";
@@ -66,17 +66,22 @@ export default function Dashboard() {
     ? [{ v: "__mine", l: "Mine" }, { v: "", l: "All" }, ...CATS.filter((c) => myCats.includes(c.v))]
     : CATS;
 
+  const didInitFallback = useRef(false);
+  const prevCatsLen = useRef(myCats.length);
+
   const load = async () => {
     try {
       const d = await api.wsWorkload();
       setData(d);
       // Don't strand the user on an empty "Mine": if their function's wings
       // match none of their (possibly untagged / other-wing) matters, open on
-      // "All" so the caseload is visible. Only adjusts the initial default.
-      if (myCats.length && d.matters.length > 0 &&
+      // "All" so the caseload is visible. INITIAL load only — a later manual
+      // Refresh must never override the user's chosen chip.
+      if (!didInitFallback.current && myCats.length && d.matters.length > 0 &&
           !d.matters.some((m) => myCats.includes(m.category || ""))) {
         setCat("");
       }
+      didInitFallback.current = true;
     } catch (e: any) {
       toast.error(e?.message || "Could not load your workload.");
     } finally {
@@ -84,11 +89,16 @@ export default function Dashboard() {
     }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
-  // If the profile changes while this page is live (so the "Mine" chip vanishes)
-  // but "Mine" was selected, fall back to "All" instead of an empty, chip-less list.
+  // React to the profile changing while this page is live (e.g. picked in the
+  // first-run prompt): default to "Mine" when it becomes set, and fall back to
+  // "All" when it's cleared so the "Mine" chip never lingers with no list.
   useEffect(() => {
+    const was = prevCatsLen.current;
+    prevCatsLen.current = myCats.length;
     if (!myCats.length && cat === "__mine") setCat("");
-  }, [myCats.length, cat]);
+    else if (was === 0 && myCats.length > 0 && cat === "") setCat("__mine");
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [myCats.length]);
 
   const rows = useMemo(() => {
     if (!data) return [];

@@ -219,7 +219,9 @@ def demand_with_interest(d: Demand, today: date | None = None) -> dict:
     anchor = d.default_date or d.raised_date
     interest = 0
     months = 0
-    if outstanding > 0 and anchor and d.status == "outstanding" and today > anchor:
+    # 220(2) runs while the demand is live and payable. A 'reduced' demand still
+    # has a payable balance and keeps accruing; 'stayed'/'paid' do not.
+    if outstanding > 0 and anchor and d.status in ("outstanding", "reduced") and today > anchor:
         r = simple_interest("220(2)", outstanding, anchor, today)
         interest = r["interest"]
         months = r["months"]

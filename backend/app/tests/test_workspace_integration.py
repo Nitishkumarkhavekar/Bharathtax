@@ -145,4 +145,7 @@ def test_demand_crud_scoped_and_interest(db):
     assert row["demand_due"] > 0
     ws.update_demand(db, d.id, 1, status="paid")
     assert ws.demand_with_interest(db.get(type(d), d.id), today=date(2024, 7, 1))["interest_220_2"] == 0
+    # A 'reduced' demand still has a payable balance → 220(2) keeps accruing.
+    d2 = ws.create_demand(db, m.id, 1, amount=500_000, default_date=date(2024, 1, 1), status="reduced")
+    assert ws.demand_with_interest(d2, today=date(2024, 7, 1))["interest_220_2"] == 30_000
     assert ws.delete_demand(db, d.id, 1) is True
