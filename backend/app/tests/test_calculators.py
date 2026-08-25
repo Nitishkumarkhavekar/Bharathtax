@@ -83,6 +83,13 @@ def test_slab_surcharge_over_50l():
     assert r["surcharge"] == 149_000
 
 
+def test_penalties():
+    assert calc.penalty("270a_under", 100_000)["penalty"] == 50_000
+    assert calc.penalty("270a_mis", 100_000)["penalty"] == 200_000
+    assert calc.penalty("271aac", 100_000)["penalty"] == 10_000
+    assert calc.penalty("271_1c", 100_000, pct=300)["penalty"] == 300_000
+
+
 def test_capital_gains_ltcg_equity_exemption():
     r = calc.capital_gains(225_000, "ltcg_equity")
     assert r["taxable"] == 100_000         # after 1.25L exemption
