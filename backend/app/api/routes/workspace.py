@@ -229,6 +229,16 @@ class Tax115BBCIn(BaseModel):
     total_donations: float
 
 
+class PeakEntry(BaseModel):
+    date: str
+    amount: float
+    kind: Literal["credit", "debit"] = "credit"
+
+
+class PeakCreditIn(BaseModel):
+    entries: list[PeakEntry]
+
+
 # ------------------------------------------------------------------ serializers
 def _matter_out(m, owned: bool = True) -> dict:
     return {"id": m.id, "title": m.title, "pan": m.pan,
@@ -646,3 +656,10 @@ def calc_115bbc(body: Tax115BBCIn, p: Principal = Depends(get_principal)) -> dic
     """Sec. 115BBC tax on anonymous donations above the threshold."""
     from app.services import calculators
     return calculators.tax_115bbc(body.anonymous_donations, body.total_donations)
+
+
+@router.post("/calc/peak-credit")
+def calc_peak_credit(body: PeakCreditIn, p: Principal = Depends(get_principal)) -> dict:
+    """Investigation: peak credit of unexplained deposits (rotating-fund theory)."""
+    from app.services import calculators
+    return calculators.peak_credit([e.model_dump() for e in body.entries])

@@ -27,7 +27,7 @@ Execution model: build → PR → deploy → next, one feature at a time (as wit
 
 ## Phase D — Specialist wings
 
-| D1 | **Investigation** — appraisal-report builder, statement (132(4)/131) questionnaire, seizure/valuation inventory, unaccounted-income computation (peak credit, telescoping), 153A/153C block assessment, entity/network mapping. |
+| D1 🟡 | **Investigation** *(v1 shipped — peak-credit calc + templates)* — peak-credit/rotating-fund calculator; templates for 132(4) & 131 statement questionnaires, appraisal-report skeleton, undisclosed-income working note. *Next: seizure inventory, 153A/153C block-assessment engine, network mapping.* |
 | D2 | **International Tax / TPO** — ALP method picker (CUP/TNMM/RPM/CPM/PSM), benchmarking helper, DTAA article + MLI/POEM/PE lookup, Form 3CEB review. |
 | D3 | **DRP** — TPO methodology/comparables analysis, panel notes, 144C(5) directions drafting. |
 | D4 | **I&CI** — SFT/AIS analytics at scale (high-value txns, mismatches, non-filer flags). |
