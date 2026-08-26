@@ -500,6 +500,13 @@ def ask(body: AskRequest, request: Request,
         db: Session = Depends(get_db)) -> AnswerResponse:
     started = time.monotonic()
     domain = _domain(body.domain)
+    # Explicit "remember that …" — capture a durable cross-chat memory on EVERY
+    # answer path (not just the legacy fallback). Best-effort; never blocks.
+    try:
+        from app.services import personalization as _pers
+        _pers.remember_if_requested(db, p.user, body.question)
+    except Exception:
+        pass
     # Follow-up resolution: if the user asks about 'the above case' /
     # 'the above document' WITHOUT re-attaching, silently pull the last
     # attachment(s) from the same chat's history and use them as the
@@ -779,6 +786,12 @@ def ask_stream(body: AskRequest, request: Request,
     a 'done' event carrying citations + meta. Persists the turn at the end.
     Scoped to the caller; falls back to the non-streaming pipeline if needed."""
     import json as _json
+    # Explicit "remember that …" — capture on the streaming path too (best-effort).
+    try:
+        from app.services import personalization as _pers
+        _pers.remember_if_requested(db, p.user, body.question)
+    except Exception:
+        pass
 
     question = body.question
     chat_id = body.chat_id

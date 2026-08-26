@@ -75,6 +75,7 @@ jobs:
             app/tests/test_assessment.py \
             app/tests/test_template_library.py \
             app/tests/test_profiles.py \
+            app/tests/test_personalization.py \
             app/tests/test_chunker.py
 
   frontend-build:

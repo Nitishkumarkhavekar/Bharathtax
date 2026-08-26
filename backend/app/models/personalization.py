@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,7 +35,8 @@ class UserSettings(Base):
     about_me: Mapped[str] = mapped_column(Text, default="")
     # Response-style toggles, e.g. {"concise": true, "tables": true,
     # "citation_density": "high", "standpoint": "officer"}.
-    style: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # JSONB on Postgres; plain JSON on other dialects (SQLite) so it's testable.
+    style: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"), default=dict)
     # Master switch: when False, no learned memory is written or recalled.
     memory_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     updated_at: Mapped[datetime] = mapped_column(
