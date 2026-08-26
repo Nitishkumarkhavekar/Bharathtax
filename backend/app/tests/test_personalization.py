@@ -3,6 +3,7 @@ instructions + cross-chat memory must reach the LIVE chat prompt (agent /
 multi-agent), not just the legacy fallback."""
 from app.services import personalization as pers
 from app.services import agent, multi_agent
+from app.services import assessment_draft, appeal_draft
 
 
 def _officer(db, user_factory):
@@ -58,3 +59,42 @@ def test_remember_if_requested_captures_fact(db, user_factory):
     assert m is not None and "short findings" in m.content
     # It's now a durable memory, retrievable in build_context.
     assert "short findings" in pers.build_context(db, u, "draft a finding")
+
+
+# ---- Phase 2: personalization reaches the DRAFTING engines -------------------
+def test_drafting_persona_carries_charge_and_instructions(db, user_factory):
+    u = _officer(db, user_factory)
+    pers.update_settings(db, u.id, custom_instructions="Number every paragraph.",
+                         style={"concise": True})
+    p = pers.drafting_persona(db, u)
+    assert "Ward 28(1), Delhi" in p            # jurisdiction on the letterhead
+    assert "Assessing Officer" in p            # designation
+    assert "Number every paragraph." in p      # drafting instruction
+    assert "concise" in p                      # house style
+
+
+def test_drafting_persona_excludes_cross_matter_memory(db, user_factory):
+    """An order must rest only on THIS case's record — the officer's other
+    matters must never bleed into a draft."""
+    u = _officer(db, user_factory)
+    pers.add_memory(db, u.id, "Working the ABC Traders group for AY 2021-22.")
+    p = pers.drafting_persona(db, u)
+    assert "ABC Traders" not in p              # memory is NOT in the drafting persona
+    # …but it IS in the chat context, proving the two assemblers differ.
+    assert "ABC Traders" in pers.build_context(db, u, "abc traders")
+
+
+def test_drafting_persona_empty_without_profile(db, user_factory):
+    u = user_factory(2)                        # no designation, charge or settings
+    assert pers.drafting_persona(db, u) == ""
+
+
+def test_persona_is_additive_default_is_unchanged():
+    """persona="" must reproduce the base system prompt byte-for-byte, so
+    drafting is identical when no personalization is set (zero-regression)."""
+    assert assessment_draft._sys("") == assessment_draft.ASSESSMENT_SYSTEM
+    assert appeal_draft._sys("") == appeal_draft.OFFICER_SYSTEM
+    a = assessment_draft._sys("PERSONA-LINE")
+    assert a.startswith("PERSONA-LINE") and a.endswith(assessment_draft.ASSESSMENT_SYSTEM)
+    b = appeal_draft._sys("PERSONA-LINE")
+    assert b.startswith("PERSONA-LINE") and b.endswith(appeal_draft.OFFICER_SYSTEM)
