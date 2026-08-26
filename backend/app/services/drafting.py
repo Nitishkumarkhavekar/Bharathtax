@@ -67,6 +67,7 @@ TEMPLATES: dict[str, dict] = {
         "label": "Notice u/s 143(2)",
         "category": "Notice",
         "section": "143(2)",
+        "wings": ["officer"],
         "fields": _COMMON + [
             Field("reason", "Reason / issues flagged", textarea=True, required=False,
                   placeholder="Large cash deposits; mismatch in reported turnover…"),
@@ -103,6 +104,7 @@ TEMPLATES: dict[str, dict] = {
         "label": "Rectification order u/s 154",
         "category": "Order",
         "section": "154",
+        "wings": ["officer"],
         "fields": _COMMON + [
             Field("mistake", "Mistake apparent from record", textarea=True,
                   placeholder="Credit for TDS of Rs. 1,20,000 as per 26AS not allowed in the intimation…"),
@@ -116,15 +118,234 @@ TEMPLATES: dict[str, dict] = {
             "the officer's designation and charge. Do NOT invent figures — use only what is provided."
         ),
     },
+
+    # ---- Recovery / TRO -------------------------------------------------------
+    "notice_226_3": {
+        "label": "Garnishee notice u/s 226(3)",
+        "category": "Notice",
+        "section": "226(3)",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("amount", "Tax arrears outstanding", placeholder="Rs. 12,45,000"),
+            Field("garnishee", "Person/bank holding the money", placeholder="State Bank of India, XYZ Branch"),
+            Field("demand_ref", "Demand notice reference", required=False, placeholder="Demand u/s 156 dated 10.01.2025"),
+        ],
+        "structure": (
+            "a notice under section 226(3) of the Income-tax Act, 1961 addressed to a person from whom "
+            "money is due to the assessee (the garnishee): heading of the office of the Tax Recovery "
+            "Officer / Assessing Officer, notice number and date, the garnishee's name, the assessee's "
+            "name + PAN, the amount of tax arrears outstanding, a direction to pay to the credit of the "
+            "Central Government so much of the money as is or becomes due to the assessee, a statement "
+            "that on failure the garnishee shall be deemed an assessee-in-default under section "
+            "226(3)(x), the requirement to comply forthwith / by the stated date, and the officer's "
+            "designation and charge. Use only the figures provided."
+        ),
+    },
+    "notice_221": {
+        "label": "Show-cause for penalty u/s 221 (default in payment)",
+        "category": "Notice",
+        "section": "221(1)",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("amount", "Demand in default", placeholder="Rs. 12,45,000"),
+            Field("demand_ref", "Demand notice + due date", required=False,
+                  placeholder="Demand u/s 156 dated 10.01.2025, payable by 09.02.2025"),
+            Field("comply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 221(1) proposing penalty for default in payment of tax: "
+            "heading, number and date, assessee + PAN + AY, a statement that the demand of the stated "
+            "amount raised vide the demand notice remains unpaid despite the due date and the assessee "
+            "is therefore in default, a call to show cause why penalty under section 221(1) should not "
+            "be levied, the reply-by date, a note that the penalty shall not exceed the tax in arrears "
+            "and that no penalty is levied if good and sufficient reasons are shown, and the officer's "
+            "designation and charge."
+        ),
+    },
+    "order_220_6": {
+        "label": "Order allowing installments u/s 220(6)",
+        "category": "Order",
+        "section": "220(6)",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("amount", "Demand outstanding", placeholder="Rs. 12,45,000"),
+            Field("plan", "Installment terms allowed", textarea=True,
+                  placeholder="6 monthly installments of Rs. 2,07,500 commencing 01.09.2026"),
+            Field("conditions", "Conditions", required=False, textarea=True,
+                  placeholder="Interest u/s 220(2) to continue; default of one installment vacates the facility"),
+        ],
+        "structure": (
+            "an order under section 220(6)/220(3) allowing the outstanding demand to be paid in "
+            "installments: heading, number and date, assessee + PAN + AY, reference to the demand "
+            "outstanding and the application considered, the installment schedule allowed (amounts and "
+            "dates exactly as provided), the conditions (continuation of interest under section 220(2), "
+            "and that default in any installment renders the whole demand due and recovery will follow), "
+            "and the officer's designation and charge. Use only the figures provided."
+        ),
+    },
+
+    # ---- TDS / Exemptions -----------------------------------------------------
+    "notice_201": {
+        "label": "Show-cause u/s 201/201(1A) (TDS default)",
+        "category": "Notice",
+        "section": "201",
+        "wings": ["tds"],
+        "fields": [
+            Field("assessee", "Deductor name", placeholder="M/s ABC Pvt. Ltd."),
+            Field("pan", "TAN / PAN", placeholder="DELA12345A"),
+            Field("ay", "Financial year", placeholder="2022-23"),
+            Field("default", "Nature of default", textarea=True,
+                  placeholder="Short deduction of TDS u/s 194C on contractor payments of Rs. 50,00,000"),
+            Field("comply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 201(1)/201(1A) proposing to treat the deductor as an "
+            "assessee-in-default: heading, number and date, the deductor's name + TAN/PAN + financial "
+            "year, a statement of the default (non-deduction / short deduction / non-payment of TDS) "
+            "with the amount and the section under which tax was deductible, a call to show cause why "
+            "the deductor should not be treated as an assessee-in-default under section 201(1) and "
+            "interest charged under section 201(1A), the reply-by date, and the officer's designation "
+            "and charge. Use only the figures provided."
+        ),
+    },
+
+    # ---- Transfer Pricing (TPO) ----------------------------------------------
+    "show_cause_92ca": {
+        "label": "Show-cause proposing TP adjustment u/s 92CA(3)",
+        "category": "Notice",
+        "section": "92CA(3)",
+        "wings": ["tp"],
+        "fields": _COMMON + [
+            Field("transaction", "International / specified domestic transaction", textarea=True,
+                  placeholder="Provision of software development services to AE — Rs. 45,00,00,000"),
+            Field("proposed_adjustment", "Proposed adjustment & basis", textarea=True,
+                  placeholder="TNMM; arm's-length margin 18% vs 11% shown; proposed adjustment Rs. 3,15,00,000"),
+            Field("comply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice by the Transfer Pricing Officer under section 92CA(3) proposing an "
+            "adjustment to the arm's-length price: heading of the office of the TPO, number and date, "
+            "assessee + PAN + AY, identification of the international transaction / specified domestic "
+            "transaction, the most appropriate method and the comparables/margin relied on, the "
+            "proposed adjustment to the ALP with the amount, a call to show cause why the adjustment "
+            "should not be made, the reply-by date, and the TPO's designation and charge. Use only the "
+            "figures provided; do NOT invent comparables."
+        ),
+    },
+
+    # ---- Investigation / I&CI -------------------------------------------------
+    "summons_131": {
+        "label": "Summons u/s 131",
+        "category": "Notice",
+        "section": "131(1)",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("attend_on", "Date & time to attend", placeholder="20.08.2026 at 11:30 AM"),
+            Field("produce", "Evidence / documents to produce", textarea=True,
+                  placeholder="Books of account and bank statements for FY 2022-23; to give evidence on cash transactions"),
+        ],
+        "structure": (
+            "a summons under section 131(1) of the Income-tax Act, 1961: heading, number and date, the "
+            "name + PAN of the person summoned, a direction to attend in person before the officer on "
+            "the stated date and time to give evidence on oath and/or to produce the documents "
+            "specified, a note that the officer has the powers of a civil court and of the consequence "
+            "of non-attendance, and the officer's designation and charge."
+        ),
+    },
+    "notice_133_6": {
+        "label": "Notice u/s 133(6) (call for information)",
+        "category": "Notice",
+        "section": "133(6)",
+        "wings": ["investigation", "ici"],
+        "fields": _COMMON + [
+            Field("information", "Information / documents required", textarea=True,
+                  placeholder="Details of all transactions with M/s XYZ during FY 2022-23; ledger and bank statements"),
+            Field("comply_by", "Furnish by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a notice under section 133(6) calling for information: heading, number and date, the "
+            "addressee + PAN, a statement that the information is required for the purposes of an "
+            "enquiry/proceeding under the Act, a numbered list of exactly the information/documents "
+            "required, the date by which to furnish it, the consequence of non-compliance (penalty "
+            "u/s 272A(2)), and the officer's designation and charge."
+        ),
+    },
+
+    # ---- CIT(A) / NFAC --------------------------------------------------------
+    "notice_250": {
+        "label": "Notice of hearing u/s 250(1)",
+        "category": "Notice",
+        "section": "250(1)",
+        "wings": ["cita"],
+        "fields": _COMMON + [
+            Field("appeal_no", "Appeal number", required=False, placeholder="CIT(A)/NFAC/12345/2024-25"),
+            Field("hearing_on", "Date & time of hearing", placeholder="20.08.2026 at 11:00 AM"),
+        ],
+        "structure": (
+            "a notice of hearing under section 250(1) issued by the CIT(A)/NFAC in a pending appeal: "
+            "heading, appeal number, date, the appellant + PAN + AY, a statement fixing the date and "
+            "time of hearing of the appeal, a direction to attend and/or file written submissions, a "
+            "note that in default the appeal may be decided on merits / ex parte, and the issuing "
+            "appellate authority's designation."
+        ),
+    },
+
+    # ---- CA / Advocate (assessee side) ---------------------------------------
+    "reply_notice": {
+        "label": "Reply to a notice (assessee side)",
+        "category": "Letter",
+        "section": "",
+        "wings": ["ca"],
+        "fields": _COMMON + [
+            Field("notice_ref", "Notice being replied to", placeholder="Notice u/s 142(1) dated 01.08.2026"),
+            Field("points", "Points / explanation to make", textarea=True,
+                  placeholder="Cash deposits are out of accumulated business receipts; ledger and cash book enclosed"),
+        ],
+        "structure": (
+            "a reply, on behalf of the assessee, to a notice issued by the Assessing Officer: heading "
+            "addressed to the officer, reference to the notice being replied to, the assessee's name + "
+            "PAN + AY, a courteous point-wise reply addressing each requirement/query with the "
+            "explanation and the documents enclosed, a request to drop/adjourn the proceeding as "
+            "appropriate, and the authorised representative's details. Written from the ASSESSEE's side."
+        ),
+    },
 }
 
 
-def list_templates() -> list[dict]:
-    return [
-        {"kind": k, "label": t["label"], "category": t["category"], "section": t["section"],
-         "fields": [f.as_dict() for f in t["fields"]]}
+def _user_wing_keys(profile: str | None, wings: list[str] | None) -> set[str]:
+    """The function key(s) the requesting officer works. Empty = no scoping
+    (all/none) → natural template order."""
+    if not profile or profile == "all":
+        return set()
+    if profile == "custom":
+        return set(wings or [])
+    return {profile}
+
+
+def list_templates(profile: str | None = None, wings: list[str] | None = None) -> list[dict]:
+    """Every template, but RANKED so the officer's own function's templates come
+    first, then the universal ones, then the rest — soft emphasis, nothing
+    hidden (an AO can still reach a 133(6); a TRO can still reach a 142(1))."""
+    keys = _user_wing_keys(profile, wings)
+
+    def rank(t: dict) -> int:
+        tw = t.get("wings")  # None = universal (belongs to every desk)
+        if not keys:
+            return 0
+        if tw and keys & set(tw):
+            return 0  # the officer's own function
+        if tw is None:
+            return 1  # universal
+        return 2      # another wing's — still listed, just lower
+
+    items = [
+        (rank(t), {"kind": k, "label": t["label"], "category": t["category"],
+                   "section": t["section"], "wings": t.get("wings") or [],
+                   "fields": [f.as_dict() for f in t["fields"]]})
         for k, t in TEMPLATES.items()
     ]
+    items.sort(key=lambda x: x[0])  # stable → preserves definition order within a rank
+    return [d for _, d in items]
 
 
 # --------------------------------------------------------------- grounding
