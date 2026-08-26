@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BharatTax Executive Briefing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --paper:#faf9f5; --card:#ffffff; --card-2:#f2f0ea;
+    --ink:#101f38; --muted:#55637e; --faint:#8592a8;
+    --line:#e2ddd1; --line-2:#d3ccbc;
+    --navy:#173f70; --navy-tint:#e9eff7;
+    --accent:#a6742a; --accent-tint:#f5ecd9;
+    --good:#0f7a52; --good-tint:#e2f1ea;
+    --warn:#a6432a; --warn-tint:#f8e8e2;
+    --shadow:0 1px 2px rgba(16,31,56,.05), 0 8px 26px rgba(16,31,56,.055);
+  }
+  *{box-sizing:border-box}
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .sheet{max-width:840px;margin:0 auto;padding:0 26px}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:600}
+
+  /* masthead */
+  header.top{padding:46px 0 22px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand .name{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:22px;letter-spacing:-.01em}
+  .brand .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);transform:translateY(-3px)}
+  h1{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:clamp(30px,4.6vw,44px);line-height:1.05;letter-spacing:-.015em;margin:16px 0 0;text-wrap:balance;max-width:20ch}
+  .sub{font-size:18px;color:var(--muted);margin:14px 0 0;max-width:64ch}
+  .meta{margin-top:24px;border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:var(--shadow);
+    display:grid;grid-template-columns:auto 1fr auto 1fr;gap:2px 0;overflow:hidden}
+  @media(max-width:640px){.meta{grid-template-columns:auto 1fr}}
+  .meta .k{padding:9px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;background:var(--card-2);white-space:nowrap}
+  .meta .v{padding:9px 14px;font-size:13.5px;color:var(--ink);font-weight:500}
+
+  /* summary */
+  .summary{margin:26px 0 6px;padding:22px 24px;border-left:3px solid var(--accent);background:var(--card);border-radius:0 14px 14px 0;box-shadow:var(--shadow)}
+  .summary .t{font-family:Newsreader,serif;font-style:italic;font-size:20px;line-height:1.42;color:var(--ink)}
+  .summary .t b{font-style:normal;font-weight:600;color:var(--navy)}
+  .summary p{margin:12px 0 0;font-size:14px;color:var(--muted)}
+
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  .qnum{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--navy);letter-spacing:.04em}
+  h2{font-family:Newsreader,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;margin:6px 0 0;text-wrap:balance;max-width:26ch}
+  .ask{margin:12px 0 16px;padding:12px 16px;background:var(--card-2);border-radius:11px;font-size:14px;color:var(--muted);font-style:italic}
+  .ask b{font-style:normal;color:var(--ink);font-weight:600}
+  p.body{margin:0 0 14px;max-width:72ch}
+  p.body b{color:var(--ink);font-weight:600}
+  .lead{color:var(--navy)}
+
+  .status{display:inline-flex;align-items:center;gap:7px;margin:2px 0 16px;padding:5px 12px;border-radius:999px;
+    font-size:12px;font-weight:600;letter-spacing:.02em}
+  .status.live{background:var(--good-tint);color:var(--good)}
+  .status.ready{background:var(--accent-tint);color:var(--accent)}
+  .status .d{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+  ul.clean{margin:0 0 14px;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:9px;max-width:72ch}
+  ul.clean li{display:flex;gap:11px;align-items:flex-start;font-size:14.5px}
+  ul.clean li svg{flex:none;margin-top:3px;color:var(--good)}
+  ul.clean li b{color:var(--ink);font-weight:600}
+
+  /* three-category strip */
+  .cats{display:grid;grid-template-columns:1fr 1fr 1.12fr;gap:12px;margin:4px 0 14px}
+  @media(max-width:680px){.cats{grid-template-columns:1fr}}
+  .cat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 17px;box-shadow:var(--shadow)}
+  .cat.us{border-color:var(--navy);background:linear-gradient(180deg,var(--navy-tint),var(--card))}
+  .cat .tag{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:var(--faint)}
+  .cat.us .tag{color:var(--navy)}
+  .cat h3{margin:5px 0 5px;font-size:15.5px;font-weight:600}
+  .cat p{margin:0;font-size:13px;color:var(--muted)}
+  .cat .who{margin-top:9px;font-size:11.5px;color:var(--faint)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);background:var(--card);margin:2px 0 8px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+  th,td{text-align:left;padding:11px 15px;vertical-align:top}
+  thead th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700;border-bottom:1px solid var(--line-2);background:var(--card-2)}
+  thead th.us{color:var(--navy)}
+  tbody td{border-bottom:1px solid var(--line)}
+  tbody tr:last-child td{border-bottom:0}
+  td.feat{font-weight:600}
+  td.us{background:color-mix(in srgb,var(--navy-tint) 60%,transparent);font-weight:600}
+  .yes{color:var(--good);font-weight:700}.no{color:var(--warn);font-weight:700}.mid{color:var(--accent);font-weight:700}
+
+  .obj{display:flex;flex-direction:column;gap:11px;margin-top:4px}
+  .qa{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px 17px;box-shadow:var(--shadow)}
+  .qa .q{font-weight:600;color:var(--ink);font-size:14.5px}
+  .qa .q::before{content:"“";color:var(--faint)}.qa .q::after{content:"”";color:var(--faint)}
+  .qa .a{margin-top:6px;font-size:13.8px;color:var(--muted)}
+  .qa .a b{color:var(--ink);font-weight:600}
+
+  .bottom{margin-top:8px;padding:20px 24px;background:var(--navy);color:#eaf1fb;border-radius:16px}
+  .bottom .lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#a9c4ea;font-weight:600}
+  .bottom p{margin:9px 0 0;font-family:Newsreader,serif;font-size:19px;line-height:1.45;font-style:italic}
+  .bottom p b{font-style:normal;font-weight:600;color:#fff}
+
+  footer{border-top:1px solid var(--line);margin-top:26px;padding:22px 0 60px;color:var(--faint);font-size:12.5px}
+  footer b{color:var(--muted)}
+
+  @media print{
+    body{background:#fff;font-size:11.5pt}
+    .sheet{max-width:100%;padding:0}
+    .cat,.qa,.tablewrap,.summary,.meta{box-shadow:none}
+    .bottom{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    section{break-inside:avoid}
+    thead th{position:static}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="top">
+    <div class="brand"><span class="dot"></span><span class="name">BharatTax</span><span class="eyebrow" style="margin-left:auto">Executive briefing</span></div>
+    <h1>Your four questions, answered — and what we shipped.</h1>
+    <p class="sub">A direct response to the concerns you raised on the tool: our pitch against ChatGPT, Gemini and Taxmann; how we win customers who already pay for those; where the data lives; and personalisation that carries across everything.</p>
+    <div class="meta">
+      <div class="k">Prepared for</div><div class="v">The Management</div>
+      <div class="k">Prepared by</div><div class="v">BharatTax product team</div>
+      <div class="k">Re</div><div class="v">Response to review — positioning, sovereignty &amp; personalisation</div>
+      <div class="k">Status</div><div class="v">3 of 4 already live in production</div>
+    </div>
+  </header>
+
+  <div class="summary">
+    <div class="t">Three of the four concerns you raised are <b>already answered in shipped, running product</b> — not a plan. The fourth, personalisation, was a real gap; we found it, fixed it, and it went live this week across chat <b>and</b> drafted orders.</div>
+    <p>Below: each question in your words, the honest answer, and — where it applies — exactly what is now working in production.</p>
+  </div>
+
+  <!-- Q1 -->
+  <section>
+    <div class="qnum">QUESTION 01</div>
+    <h2>What is our pitch — and why us over ChatGPT, Gemini or Taxmann?</h2>
+    <div class="ask"><b>You asked:</b> “What’s our sales pitch? What’s the difference between ChatGPT, Gemini, Taxmann — why should they prefer ours, especially over Taxmann?”</div>
+
+    <p class="body lead">Because we are not competing in their category. We stop losing the moment we stop trying to be a better chatbot or a bigger library, and own the category they cannot enter: the tool that <b>does the officer’s actual work</b>.</p>
+
+    <div class="cats">
+      <div class="cat"><div class="tag">General AI</div><h3>Answers anything</h3><p>Grounded in nothing Indian-tax-specific. Confident, and confidently wrong.</p><div class="who">ChatGPT · Gemini</div></div>
+      <div class="cat"><div class="tag">Research library</div><h3>You read it, then do the work</h3><p>Authoritative content — acts, commentary, case law. A reference, not an output.</p><div class="who">Taxmann · CCH</div></div>
+      <div class="cat us"><div class="tag">Working desk</div><h3>Produces the actual output</h3><p>Drafts the order, computes the calendar &amp; interest, tracks the demand — cited, editable, deadline-aware.</p><div class="who">BharatTax</div></div>
+    </div>
+
+    <div class="tablewrap"><table>
+      <thead><tr><th>What the officer needs on a file</th><th>ChatGPT / Gemini</th><th>Taxmann</th><th class="us">BharatTax</th></tr></thead>
+      <tbody>
+        <tr><td class="feat">Cited to the exact section / judgment</td><td><span class="no">✗</span> invents cites</td><td><span class="yes">✓</span> own content</td><td class="us"><span class="yes">✓</span> primary law + case law</td></tr>
+        <tr><td class="feat">Says “not on record” when the source is silent</td><td><span class="no">✗</span> hallucinates</td><td><span class="mid">n/a</span></td><td class="us"><span class="yes">✓</span></td></tr>
+        <tr><td class="feat">Drafts the assessment / appellate order</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td class="us"><span class="yes">✓</span> cited, to DOCX</td></tr>
+        <tr><td class="feat">Computes limitation calendar &amp; interest</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td class="us"><span class="yes">✓</span> 153/149/263/144C + 220(2)</td></tr>
+        <tr><td class="feat">Data can stay on government infrastructure</td><td><span class="no">✗</span> foreign cloud</td><td><span class="no">✗</span> SaaS</td><td class="us"><span class="yes">✓</span> sovereign / on-prem</td></tr>
+      </tbody>
+    </table></div>
+    <p class="body" style="font-size:14px;color:var(--muted)"><b class="mono" style="color:var(--accent);font-weight:600">One line for the top of the deck —</b> “ChatGPT guesses. Taxmann is a library. BharatTax does the officer’s job — cited.”</p>
+  </section>
+
+  <!-- Q2 -->
+  <section>
+    <div class="qnum">QUESTION 02</div>
+    <h2>How do we convince people who already pay for another tool?</h2>
+    <div class="ask"><b>You asked:</b> “How do I convince those who already subscribed to other tools — what unique thing are we giving?”</div>
+
+    <p class="body lead">We don’t ask them to switch. We sell a <b>different purchase for a different job</b>. Their subscription tells them what the law <b>says</b>; ours produces what they have to <b>file</b>. Keeping Taxmann and adding BharatTax is the natural position, not an either/or.</p>
+
+    <div class="obj">
+      <div class="qa"><div class="q">We already subscribe to Taxmann.</div><div class="a">Keep it. Taxmann tells you what the law <b>says</b>; BharatTax <b>drafts your order, watches your limitation dates and computes your interest</b>. And on the assessment / recovery / investigation side, Taxmann doesn’t serve you at all — we do.</div></div>
+      <div class="qa"><div class="q">Why not just use ChatGPT?</div><div class="a">It will confidently cite a section that’s been amended or never existed — you can’t put that before a bench — and it won’t draft your 143(3) order or flag a time-bar. Ours is <b>cited, and honest when it doesn’t know</b>.</div></div>
+      <div class="qa"><div class="q">How do we trust an AI with our case data?</div><div class="a">Because <b>your case data stays on your infrastructure</b>. Taxmann never had to solve this; ChatGPT can’t. Only we keep the working data under your control — see Question 03.</div></div>
+    </div>
+  </section>
+
+  <!-- Q3 -->
+  <section>
+    <div class="qnum">QUESTION 03</div>
+    <h2>The government wants the data on their premises, not the cloud.</h2>
+    <div class="ask"><b>You raised:</b> “Government data is very important — they want all of it kept at their place. They won’t be happy saving their data in the cloud.”</div>
+    <span class="status live"><span class="d"></span>Deployment hook live in production</span>
+
+    <p class="body lead">Correct — and we don’t fight it, we offer it. Sovereignty does <b>not</b> mean a server in every office. It means the data sits on government-controlled infrastructure — <b>one central instance, exactly like ITBA, Insight and TRACES already run.</b> Officers connect over the department network and manage nothing.</p>
+
+    <ul class="clean">
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Managed sovereign instance (default for govt):</b> a dedicated, isolated instance on gov-approved Indian infrastructure — their tenant, their keys — that we operate. On-prem-grade control, SaaS-grade convenience, zero ops burden on any office.</span></li>
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Central-hosted or air-gapped on-prem:</b> for the highest-control wings, the whole stack <em>and a local AI model</em> run inside the department’s network. Nothing leaves — no byte to any outside cloud.</span></li>
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>What we shipped this month:</b> one build now points at any backend by editing a single config file on their server — no rebuild — so “runs on your infrastructure” is a demo, not a claim. The local-AI-model path is already a first-class option in the product.</span></li>
+    </ul>
+    <p class="body" style="font-size:13.8px;color:var(--muted)">Honest note for the room: an on-network AI model needs the department’s own GPU to match cloud quality. We offer a hybrid — the sensitive drafting stays local; general research can use a government-approved managed model where policy permits.</p>
+  </section>
+
+  <!-- Q4 -->
+  <section>
+    <div class="qnum">QUESTION 04</div>
+    <h2>Personalisation only worked inside one chat. It should carry everywhere.</h2>
+    <div class="ask"><b>You raised:</b> “I tested it — personalisation is limited only to the current chat. I want it to be overall, interconnected across all things.”</div>
+    <span class="status live"><span class="d"></span>Fixed &amp; live across chat and drafted orders</span>
+
+    <p class="body lead">You were right, and it was a genuine gap — the officer’s profile only reached a fallback path, not the live product. We found it, fixed it, and shipped it. Personalisation is now <b>platform-wide</b>.</p>
+
+    <ul class="clean">
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Every answer, every mode:</b> the officer’s role, jurisdiction, their own instructions and durable cross-chat memory now feed the live chat — single-agent, multi-agent and document Q&amp;A alike — not just one conversation.</span></li>
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Connected to their caseload:</b> answers are aware of the officer’s open matters and their nearest deadline — the tool knows the desk it sits on.</span></li>
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Now reaches the drafts too (shipped this week):</b> the assessment order, the appellate order and the CASS questionnaire are framed for the officer’s own charge and house style — carefully walled so an order still rests only on that case’s record.</span></li>
+      <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Next:</b> deepen it wing-by-wing and role-by-role, so each designation’s desk, defaults and drafting are tuned to that officer’s actual work.</span></li>
+    </ul>
+    <p class="body" style="font-size:13.8px;color:var(--muted)">Demo in one minute: sign in, set a charge and an instruction in the profile, ask a question — the answer adopts them — then generate a draft and see the same identity on the order.</p>
+  </section>
+
+  <section style="border-top:none;padding-top:8px">
+    <div class="bottom">
+      <div class="lbl">Bottom line</div>
+      <p><b>A private AI that lives inside the department, drafts the officer’s orders and computes their deadlines — every line cited — and now knows each officer across their whole desk.</b> ChatGPT can’t be private. Taxmann can’t draft. Three of your four concerns are already answered in running product; the fourth is fixed and live. What remains is depth — wing by wing — not repair.</p>
+    </div>
+  </section>
+
+  <footer>
+    <b>BharatTax</b> · Wenvia Global Solutions — citation-grounded AI for the Income-Tax Department. &nbsp;Prepared in response to management review. Figures and capabilities reflect production as of this briefing.
+  </footer>
+
+</div>
+</body>
+</html>
