@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Calculator, Info, IndianRupee, Percent } from "lucide-react";
+import { Calculator, Info, IndianRupee, Percent, RotateCcw } from "lucide-react";
 import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult, WsPeakCreditResult, WsAlpResult, WsTpMethod } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -672,6 +672,9 @@ export default function Calculators() {
   const { session } = useAuth();
   const defaultTab = (resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).calcTab || "interest") as CalcTab;
   const [tab, setTab] = useState<CalcTab>(defaultTab);
+  // Bumping this remounts the active calculator, resetting its inputs + result.
+  const [resetKey, setResetKey] = useState(0);
+  const clear = () => setResetKey((k) => k + 1);
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -684,17 +687,23 @@ export default function Calculators() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-        {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["peak", "Peak credit"], ["alp", "ALP / TP"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)}
-            className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
-              tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
-            {l}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
+          {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["peak", "Peak credit"], ["alp", "ALP / TP"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setTab(k)}
+              className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
+                tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <button onClick={clear} title="Clear this calculator"
+          className="ml-auto inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors">
+          <RotateCcw className="size-3.5" /> Clear
+        </button>
       </div>
 
-      <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
+      <div key={`${tab}-${resetKey}`} className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
         {tab === "interest" ? <InterestCalc />
           : tab === "234c" ? <Calc234C />
           : tab === "tds" ? <TdsCalc />
