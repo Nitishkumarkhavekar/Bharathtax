@@ -5,6 +5,8 @@ surface) lives in the frontend; the backend only stores and validates the key.
 """
 from __future__ import annotations
 
+import re
+
 WORKSPACE_PROFILES: list[dict] = [
     {"key": "officer", "label": "Assessing Officer"},
     {"key": "cita", "label": "CIT(A) / NFAC"},
@@ -46,6 +48,47 @@ def wing_label(profile: str | None, wings: list[str] | None = None) -> str | Non
                     return _LABEL_BY_KEY[k]
         return None
     return _LABEL_BY_KEY.get(profile)
+
+
+# ---- Seniority tier within a wing (the "wing-role-wise" layer) --------------
+# Derived from the officer's free-text designation. Distinguishes the field
+# officer who drafts from the supervisory authority who reviews / approves /
+# revises, so chat and templates can adapt to seniority — not just function.
+_RANGE_RE = re.compile(r"\b(add?l\.?|additional|joint|jt\.?|jcit|range)\b", re.I)
+_COMMR_RE = re.compile(r"\b(p?\.?\s*ccit|p?\.?\s*cit|commissioner|principal\s+chief)\b", re.I)
+_FIELD_RE = re.compile(r"\b(i\.?t\.?o\.?|income[\s-]*tax\s+officer|assessing\s+officer|a\.?o\.?|[ad]cit|assistant|deputy|tro|tpo)\b", re.I)
+
+# The standpoint refinement each tier adds on top of the wing standpoint.
+_TIER_STANDPOINT = {
+    "range": "As the supervisory Range authority (Addl./Joint CIT), weigh the approval, "
+             "sanction, administrative-review and revisional angle — not only the drafting.",
+    "commissioner": "As a Commissioner-level authority, focus on the revisional (263/264), "
+                    "approval/sanction and administrative-supervision perspective.",
+}
+
+
+def role_tier(designation: str | None) -> str:
+    """Coarse seniority tier from a free-text designation:
+    'field' (ITO/AO/ACIT/DCIT/TRO/TPO — drafts), 'range' (Addl./Joint CIT —
+    approves/reviews), 'commissioner' (CIT/PCIT/CCIT — revises/sanctions), or ''
+    when it can't be told (→ no role nuance, behaviour unchanged)."""
+    d = (designation or "").strip()
+    if not d:
+        return ""
+    if _RANGE_RE.search(d):
+        return "range"
+    # Commissioner-level, but NOT 'Assistant/Deputy Commissioner' (those are AOs).
+    if _COMMR_RE.search(d) and not re.search(r"\b([ad]cit|assistant|deputy)\b", d, re.I):
+        return "commissioner"
+    if _FIELD_RE.search(d):
+        return "field"
+    return ""
+
+
+def role_standpoint(designation: str | None) -> str:
+    """The seniority-tier standpoint refinement, or '' for a field officer /
+    unknown tier (the wing standpoint already frames the field officer)."""
+    return _TIER_STANDPOINT.get(role_tier(designation), "")
 
 
 def wing_standpoint(profile: str | None, wings: list[str] | None = None) -> str:

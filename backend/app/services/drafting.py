@@ -119,6 +119,49 @@ TEMPLATES: dict[str, dict] = {
         ),
     },
 
+    # ---- Supervisory / approving authority (Range head, Commissioner) --------
+    "approval_153D": {
+        "label": "Approval u/s 153D (search assessments)",
+        "category": "Approval",
+        "section": "153D",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("draft_ref", "Draft order(s) submitted for approval", textarea=True,
+                  placeholder="Draft assessment orders u/s 153A for AY 2018-19 to 2024-25 submitted by the AO, Central Circle-2"),
+            Field("observations", "Observations / directions", required=False, textarea=True,
+                  placeholder="Additions on the seized material examined; AO to verify the peak on issue 3 before finalising"),
+        ],
+        "structure": (
+            "an approval under section 153D by the Range Head (Additional / Joint CIT): heading of the "
+            "office of the Additional/Joint CIT, number and date, reference to the draft assessment "
+            "order(s) under section 153A/153C submitted by the Assessing Officer for the assessment "
+            "year(s) stated, a statement that the draft order(s) together with the seized material and "
+            "the assessment records have been examined, the approval accorded with any observations / "
+            "directions to the AO, and the approving authority's designation and charge. This is a "
+            "SUPERVISORY approval — record application of mind; do NOT re-draft the assessment."
+        ),
+    },
+    "sanction_151": {
+        "label": "Sanction u/s 151 for issue of notice u/s 148",
+        "category": "Approval",
+        "section": "151",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("reasons_ref", "Reasons recorded / AO's proposal", textarea=True,
+                  placeholder="Reasons recorded by the AO for reopening AY 2019-20 — escapement of Rs. 42,00,000 on account of bogus purchases"),
+            Field("decision", "Satisfaction", required=False, placeholder="Fit case — sanction accorded"),
+        ],
+        "structure": (
+            "a sanction under section 151 for issue of a notice under section 148: heading of the "
+            "specified sanctioning authority (Pr. CIT/CIT, or Pr. CCIT/CCIT where the extended time "
+            "limit applies), number and date, reference to the reasons recorded and the proposal of "
+            "the Assessing Officer for the assessment year stated, a statement that the reasons and the "
+            "material on record have been examined and that it is a fit case for issue of notice under "
+            "section 148, the satisfaction recorded and the sanction accorded, and the sanctioning "
+            "authority's designation. RECORD the satisfaction — do NOT merely state 'approved'."
+        ),
+    },
+
     # ---- Recovery / TRO -------------------------------------------------------
     "notice_226_3": {
         "label": "Garnishee notice u/s 226(3)",
