@@ -9,7 +9,8 @@ import {
   BookOpen,
   ScrollText,
   Clock,
-  UserCircle2,
+  LayoutDashboard,
+  CalendarClock,
   MessageSquareText,
   SquarePen,
   Coins,
@@ -27,30 +28,16 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 
-// Tools available to officers / auditors alongside the chat.
+// The app's pages, reachable from the chat sidebar too — so /ask isn't a
+// dead-end and the product feels like one place. Mirrors the main sidebar order.
 const TOOLS = [
-  { to: "/drafting", label: "Drafting", icon: ScrollText, tone: "teal" as const },
-  { to: "/rulings", label: "Rulings", icon: BookOpen, tone: "violet" as const },
-  { to: "/history", label: "History", icon: Clock, tone: "emerald" as const },
-  { to: "/tokens", label: "Token Usage", icon: Coins, tone: "rose" as const },
-  { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo" as const },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/workspace", label: "Calendar", icon: CalendarClock },
+  { to: "/drafting", label: "Drafting", icon: ScrollText },
+  { to: "/rulings", label: "Rulings", icon: BookOpen },
+  { to: "/history", label: "History", icon: Clock },
+  { to: "/tokens", label: "Token Usage", icon: Coins },
 ];
-
-/** Icon-tile styling for the light-theme sidebar — soft chip with a
- *  matching-tone ring and slightly-desaturated icon colour.
- *  Tiles rotate across the three BharatTax logo tones (navy primary,
- *  brand-orange, brand-green) so each tool section carries a visual
- *  anchor from the palette while still respecting the brand. Emerald /
- *  rose kept for their long-standing semantic meanings. */
-const TONE_TILE: Record<string, string> = {
-  amber: "bg-brand-orange/15 text-brand-orange",
-  teal: "bg-brand-green/15 text-brand-green",
-  violet: "bg-primary/10 text-primary",
-  sky: "bg-primary/10 text-primary",
-  emerald: "bg-brand-green/15 text-brand-green",
-  rose: "bg-brand-orange/15 text-brand-orange",
-  indigo: "bg-primary/10 text-primary",
-};
 
 interface ChatSidebarProps {
   threads: ChatThread[];
@@ -174,13 +161,12 @@ export default function ChatSidebar({
                 aria-label={t.label}
                 className={({ isActive }) =>
                   cn(
-                    "size-9 rounded-lg flex items-center justify-center transition-all",
-                    TONE_TILE[t.tone],
-                    isActive && "ring-2 ring-primary/50 shadow-sm",
+                    "size-9 rounded-lg flex items-center justify-center transition-colors",
+                    isActive ? "bg-primary/10 text-primary" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700",
                   )
                 }
               >
-                <t.icon className="size-4" />
+                <t.icon className="size-[18px]" />
               </NavLink>
             ))}
           </div>
@@ -375,22 +361,19 @@ export default function ChatSidebar({
                   to={t.to}
                   className={({ isActive }) =>
                     cn(
-                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-all",
+                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13.5px] transition-colors",
                       isActive
-                        ? "bg-primary/15 text-primary ring-1 ring-primary/40 shadow-sm font-semibold"
-                        : "text-slate-800 hover:bg-primary/[0.08] hover:text-primary hover:ring-1 hover:ring-primary/20",
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900",
                     )
                   }
                 >
-                  <span
-                    className={cn(
-                      "size-7 rounded-lg flex items-center justify-center shrink-0",
-                      TONE_TILE[t.tone],
-                    )}
-                  >
-                    <t.icon className="size-4" />
-                  </span>
-                  <span className="truncate">{t.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <t.icon className={cn("size-[18px] shrink-0", isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+                      <span className="truncate">{t.label}</span>
+                    </>
+                  )}
                 </NavLink>
               ))}
             </div>

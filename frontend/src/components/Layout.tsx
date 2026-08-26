@@ -1,4 +1,4 @@
-import { Fragment, ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   MessageSquareText,
@@ -17,7 +17,6 @@ import {
   X,
   HelpCircle,
   UserCircle2,
-  ChevronDown,
   PanelLeft,
 } from "lucide-react";
 import { api, SeatUsage } from "../api";
@@ -53,26 +52,6 @@ const NAV: {
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },
 ];
-
-/** Icon chip — a single primary tint across every nav item. The colour
- *  differentiates action items from body text and from the neutral surface;
- *  we lean on iconography (not hue) to differentiate sections. Admin rows
- *  keep a neutral slate chip so the console reads as "system" area. */
-/** Icon-tile styling for the main app sidebar. Rotates across the three
- *  BharatTax logo tones (navy primary, brand-orange, brand-green) so each
- *  workspace section carries a visual anchor from the palette. Mirrors
- *  the ChatSidebar's TONE_TILE so navigating between /ask and other
- *  pages keeps the same coloured chips per tool. */
-const NAV_TONE_TILE: Record<NavTone, string> = {
-  primary: "bg-primary/10 text-primary",                        // Chat
-  amber: "bg-brand-orange/15 text-brand-orange",                // Appeals
-  violet: "bg-primary/10 text-primary",                         // Rulings
-  sky: "bg-primary/10 text-primary",                            // (legacy)
-  emerald: "bg-brand-green/15 text-brand-green",                // History
-  rose: "bg-brand-green/15 text-brand-green",                   // Drafting
-  indigo: "bg-primary/10 text-primary",                         // Profile
-  slate: "bg-slate-100 text-slate-600",                         // Admin
-};
 
 function SeatWidget() {
   const { session } = useAuth();
@@ -121,24 +100,43 @@ function SidebarBody({
   const feats = session?.features ?? null; // null = all modules
   const nav = NAV.filter(
     (n) =>
+      n.to !== "/profile" && // account lives in the footer card, not the nav
       (!n.roles || (session && n.roles.includes(session.role))) &&
       (!n.feature || isAdmin || !feats || feats.includes(n.feature)),
   );
-  // Role-tailored sidebar: when the user has picked a workspace profile, split
-  // the nav into "Your workspace" (the function's tools + core) and a
-  // collapsible "All tools" with the rest. Soft emphasis — nothing is removed.
+  // Two clean, always-visible sections: a PRIMARY list (the officer's most-used
+  // pages — wing-ordered when they've picked a function) and a TOOLS list. No
+  // hiding behind a default-collapsed drawer; the icons carry the hierarchy.
   const ws = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings);
-  const CORE_PATHS = ["/dashboard", "/ask", "/workspace"]; // for everyone
-  let featured: typeof nav = [];
-  let rest: typeof nav = nav;
   const scoped = ws.scoped;
+  const toolPaths = new Set(nav.filter((n) => n.group === "tools").map((n) => n.to));
+
+  let primaryList: typeof nav;
+  let secondaryList: typeof nav;
+  let primaryLabel: string | null;
+  const secondaryLabel = "Tools";
   if (scoped) {
-    const order = ["/dashboard", ...ws.tools, "/ask", "/workspace"];
-    const featuredSet = new Set([...CORE_PATHS, ...ws.tools]);
-    featured = order
+    // Officer's function first: Dashboard, their wing tools, then Chat/Calendar,
+    // then any remaining primary pages. Tools stay in the Tools group below.
+    const order = ["/dashboard", ...ws.tools.filter((p) => !toolPaths.has(p)), "/ask", "/workspace"];
+    const seen = new Set<string>();
+    primaryList = order
       .map((p) => nav.find((n) => n.to === p))
       .filter((n): n is (typeof nav)[number] => !!n);
-    rest = nav.filter((n) => !featuredSet.has(n.to));
+    primaryList.forEach((n) => seen.add(n.to));
+    nav.forEach((n) => { if (n.group !== "tools" && !seen.has(n.to)) { primaryList.push(n); seen.add(n.to); } });
+    // Tools: the tool-group, wing tools first.
+    const wingTools = ws.tools.filter((p) => toolPaths.has(p));
+    const tOrder = [...wingTools, ...nav.filter((n) => n.group === "tools").map((n) => n.to)];
+    const tSeen = new Set<string>();
+    secondaryList = tOrder
+      .map((p) => nav.find((n) => n.to === p && n.group === "tools"))
+      .filter((n): n is (typeof nav)[number] => !!n && !tSeen.has(n.to) && (tSeen.add(n.to), true));
+    primaryLabel = "Your workspace";
+  } else {
+    primaryList = nav.filter((n) => n.group !== "tools");
+    secondaryList = nav.filter((n) => n.group === "tools");
+    primaryLabel = null;
   }
 
   const renderItem = (n: (typeof nav)[number]) => {
@@ -151,15 +149,14 @@ function SidebarBody({
         title={collapsed ? n.label : undefined}
         aria-label={n.label}
         className={cn(
-          "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors",
-          collapsed ? "justify-center p-1.5" : "gap-3 px-2.5 py-2",
-          active ? "bg-primary/10 text-primary font-semibold" : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+          "group flex items-center rounded-lg text-[13.5px] transition-colors",
+          collapsed ? "justify-center p-2" : "gap-2.5 px-2.5 py-[7px]",
+          active
+            ? "bg-primary/10 text-primary font-semibold"
+            : "text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900",
         )}
       >
-        {active && !collapsed && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />}
-        <span className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", NAV_TONE_TILE[n.tone])}>
-          <n.icon className="size-4" />
-        </span>
+        <n.icon className={cn("size-[18px] shrink-0", active ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
         {!collapsed && <span className="min-w-0 flex-1 truncate">{n.label}</span>}
       </Link>
     );
@@ -171,38 +168,12 @@ function SidebarBody({
   const firstLetter = (displayName || "?").slice(0, 1).toUpperCase();
   // A page (e.g. Drafting) may have injected a panel to render at the top
   // of the sidebar. When present, the panel gets the flex-1 scroll space and
-  // Workspace nav sinks to a pinned strip at the bottom.
+  // the nav sinks to a pinned strip at the bottom.
   const slot = useSidebarSlotContent();
 
-  // Persist the Workspace collapse state — default is CLOSED so the sidebar
-  // reads as clean chrome and the officer can expand tools on demand.
-  const [workspaceOpen, setWorkspaceOpen] = useState<boolean>(() => {
-    try { return localStorage.getItem("bt_sidebar_workspace_open_v1") === "1"; }
-    catch { return false; }
-  });
-  const toggleWorkspace = () => {
-    setWorkspaceOpen((o) => {
-      const nxt = !o;
-      try { localStorage.setItem("bt_sidebar_workspace_open_v1", nxt ? "1" : "0"); } catch { /* */ }
-      return nxt;
-    });
-  };
-  // Auto-expand once when the current route lives inside the nav — otherwise
-  // arriving at a fresh page in a closed sidebar would hide the active pill.
-  useEffect(() => {
-    if (collapsed) return;
-    const active = nav.some((n) => loc.pathname.startsWith(n.to));
-    if (active && !workspaceOpen) {
-      // Only nudge open the first time we land on a nav route in this
-      // session — otherwise we'd fight the officer's explicit collapse.
-      try {
-        if (localStorage.getItem("bt_sidebar_workspace_open_v1") === null) {
-          setWorkspaceOpen(true);
-        }
-      } catch { /* */ }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc.pathname]);
+  const SectionLabel = ({ children }: { children: ReactNode }) => (
+    <div className="px-2.5 pt-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.13em] text-slate-400">{children}</div>
+  );
 
   return (
     <>
@@ -261,84 +232,26 @@ function SidebarBody({
         </div>
       )}
 
-      {/* Nav */}
+      {/* Nav — a PRIMARY list and a TOOLS list, both always visible. The
+          primary list is wing-ordered when the officer has picked a function;
+          nothing is hidden behind a drawer. The icon rail shows the same order
+          with a hairline divider between the two groups. */}
       <nav
         className={cn(
-          "relative space-y-1 overflow-y-auto chat-scrollbar",
-          // When a page has injected a slot, cap the Workspace nav so the
-          // drafts / thread panel above keeps most of the vertical space.
-          slot && !collapsed ? "shrink-0 max-h-[42vh] p-2" : "flex-1",
-          collapsed ? "px-2 py-3" : (slot ? "" : "p-3"),
+          "relative overflow-y-auto chat-scrollbar",
+          slot && !collapsed ? "shrink-0 max-h-[42vh]" : "flex-1",
+          collapsed ? "px-2 py-3 space-y-1" : "px-2.5 py-2.5 space-y-0.5",
         )}
       >
-        {/* Profile-tailored layout: a static "Your workspace" (the function's
-            tools) + a collapsible "All tools" with the rest. Falls back to the
-            single collapsible "Workspace" list when no profile is picked. On
-            the icon rail every item is always shown. */}
-        {scoped && !collapsed ? (
-          <>
-            <div className="px-2 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">Your workspace</div>
-            <div className="space-y-1 mt-0.5">{featured.map((n) => renderItem(n))}</div>
-            {rest.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  onClick={toggleWorkspace}
-                  aria-expanded={workspaceOpen}
-                  aria-controls="sidebar-workspace-list"
-                  className="mt-3 w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                >
-                  <span>All tools</span>
-                  <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center transition-transform duration-200 text-slate-500", workspaceOpen ? "rotate-180" : "rotate-0")} title={workspaceOpen ? "Collapse" : "Expand"}>
-                    <ChevronDown className="size-3.5" />
-                  </span>
-                </button>
-                <div id="sidebar-workspace-list" className={cn("overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out space-y-1", workspaceOpen ? "max-h-[600px] opacity-100 mt-1.5" : "max-h-0 opacity-0 mt-0")}>
-                  {rest.map((n) => renderItem(n))}
-                </div>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            {!collapsed && (
-              <button
-                type="button"
-                onClick={toggleWorkspace}
-                aria-expanded={workspaceOpen}
-                aria-controls="sidebar-workspace-list"
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <span>Workspace</span>
-                <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center transition-transform duration-200 text-slate-500", workspaceOpen ? "rotate-180" : "rotate-0")} title={workspaceOpen ? "Collapse" : "Expand"}>
-                  <ChevronDown className="size-3.5" />
-                </span>
-              </button>
-            )}
-            <div
-              id="sidebar-workspace-list"
-              className={cn(
-                collapsed
-                  ? "space-y-1"
-                  : cn("overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out space-y-1", workspaceOpen ? "max-h-[600px] opacity-100 mt-1.5" : "max-h-0 opacity-0 mt-0"),
-              )}
-            >
-              {nav.map((n, i) => {
-                const startTools = n.group === "tools" && nav[i - 1]?.group !== "tools";
-                return (
-                  <Fragment key={n.to}>
-                    {startTools && (
-                      collapsed
-                        ? <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
-                        : <div className="px-2 pt-3 pb-1 text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400">Tools</div>
-                    )}
-                    {renderItem(n)}
-                  </Fragment>
-                );
-              })}
-            </div>
-          </>
+        {!collapsed && primaryLabel && <SectionLabel>{primaryLabel}</SectionLabel>}
+        {primaryList.map((n) => renderItem(n))}
+
+        {secondaryList.length > 0 && (
+          collapsed
+            ? <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
+            : <SectionLabel>{secondaryLabel}</SectionLabel>
         )}
+        {secondaryList.map((n) => renderItem(n))}
       </nav>
 
       {/* Footer: seat widget + user card */}
