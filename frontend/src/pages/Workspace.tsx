@@ -253,7 +253,9 @@ export default function Workspace() {
   // New matters default to the officer's OWN function so they land under "Mine"
   // on the dashboard (instead of everything defaulting to a wing that isn't theirs).
   const { session } = useAuth();
-  const defaultCategory = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).categories[0] || "officer";
+  // The officer's own function for a scoped profile; "other" for an
+  // all/no-profile user (don't presume "Assessing Officer" for e.g. a CA).
+  const defaultCategory = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).categories[0] || "other";
 
   // new-matter form
   const [showNew, setShowNew] = useState(false);

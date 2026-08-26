@@ -160,9 +160,23 @@ function parseSftRows(text: string): { pan: string; name: string; category: stri
     const amount = parseFloat(m[1].replace(/,/g, ""));
     if (isNaN(amount)) continue;
     const rest = line.slice(0, m.index).replace(/[,\s]+$/, "");
-    const parts = rest.split(",").map((s) => s.trim());
+    // Fields: PAN, Name, Category. The NAME may itself contain commas (and may
+    // be quoted), so anchor PAN as the FIRST field and Category as the LAST,
+    // with everything between as the name — otherwise a "Kumar, Sons" name
+    // would shift the category and the row would never flag. Strip stray quotes.
+    const parts = rest.split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
     if (!parts[0]) continue;
-    rows.push({ pan: parts[0], name: parts[1] || "", category: (parts[2] || "other").toLowerCase().replace(/\s+/g, "_"), amount });
+    let pan: string, name: string, category: string;
+    if (parts.length >= 3) {
+      pan = parts[0];
+      category = parts[parts.length - 1];
+      name = parts.slice(1, -1).join(", ");
+    } else if (parts.length === 2) {
+      pan = parts[0]; name = parts[1]; category = "other";
+    } else {
+      pan = parts[0]; name = ""; category = "other";
+    }
+    rows.push({ pan, name, category: (category || "other").toLowerCase().replace(/\s+/g, "_"), amount });
   }
   return rows;
 }
@@ -173,9 +187,13 @@ const SFT_PLACEHOLDER = "One row per line:  PAN, Name, Category, Amount\nAAAPL12
 // text; the row parser (amount-from-the-right, comma-tolerant) handles the rest.
 function stripSftHeader(text: string): string {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
-  if (lines.length && /pan|amount|category/i.test(lines[0]) && !/\d\s*$/.test(lines[0].trim())) {
-    lines.shift();
-  }
+  const first = lines[0] ?? "";
+  const firstField = (first.split(/[,;]/)[0] || "").trim().toLowerCase();
+  // A real header either starts with a "PAN" column, or carries a header keyword
+  // and doesn't end in a figure (a data row always ends in the amount).
+  const isHeader = firstField === "pan" ||
+    (/\bpan\b|amount|category/i.test(first) && !/\d\s*$/.test(first.trim()));
+  if (lines.length && isHeader) lines.shift();
   return lines.join("\n");
 }
 
