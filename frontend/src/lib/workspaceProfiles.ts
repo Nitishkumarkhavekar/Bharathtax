@@ -110,6 +110,30 @@ export const WING_STARTERS: Record<string, WingStarter[]> = {
   ],
 };
 
+// Which summary tiles a function's desk leads with, in order. Keys map to the
+// Dashboard TILE registry. Only functions that differ from the default are
+// listed; every other wing (and all/none) uses DEFAULT_TILES. "demand" surfaces
+// the outstanding-demand total, which matters most to Recovery and the AO.
+export const DEFAULT_TILES = ["matters", "open", "overdue", "due7", "due30"];
+const WING_TILES: Record<string, string[]> = {
+  recovery: ["matters", "demand", "overdue", "due7", "due30"],
+  officer: ["matters", "open", "overdue", "due7", "demand"],
+};
+
+export function resolveTiles(
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): string[] {
+  if (!profile || profile === "all") return DEFAULT_TILES;
+  if (profile === "custom") {
+    // If any chosen function cares about demand, give it a slot.
+    if ((wings ?? []).some((k) => (WING_TILES[k] ?? []).includes("demand")))
+      return ["matters", "open", "demand", "overdue", "due7"];
+    return DEFAULT_TILES;
+  }
+  return WING_TILES[profile] ?? DEFAULT_TILES;
+}
+
 // The starter prompts to show for a resolved profile. Empty for "all"/"none"
 // (the caller falls back to the global trending starters). For "custom" it
 // round-robins the chosen wings' prompts so each is represented, capped at 6.
