@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- BharatTax QA Runbook -->
+<title>BharatTax QA Runbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef2f8;
+    --ink:#111d33; --muted:#54648199; --muted-solid:#546481;
+    --line:#dbe2ee; --line-strong:#c3cddd;
+    --primary:#1b3a6b; --primary-tint:#e7eef8; --primary-ink:#1b3a6b;
+    --pass:#0f7a54; --pass-tint:#e3f3ec;
+    --fail:#a5324a; --fail-tint:#fbe9ec;
+    --warn:#9a6410; --warn-tint:#f8efd8;
+    --accent:#b4802a;
+    --shadow:0 1px 2px rgba(17,29,51,.05), 0 6px 20px rgba(17,29,51,.05);
+    --radius:14px;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --bg:#0d1420; --surface:#141d2c; --surface-2:#1b2536;
+      --ink:#e7edf6; --muted:#9fb0c99e; --muted-solid:#9fb0c9;
+      --line:#26324a; --line-strong:#334263;
+      --primary:#7ea6e0; --primary-tint:#1a2740; --primary-ink:#bcd3f4;
+      --pass:#4fc79a; --pass-tint:#12271f;
+      --fail:#f0899c; --fail-tint:#2b1720;
+      --warn:#e0b25f; --warn-tint:#2a2211;
+      --accent:#d6a24e;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1420; --surface:#141d2c; --surface-2:#1b2536;
+    --ink:#e7edf6; --muted:#9fb0c99e; --muted-solid:#9fb0c9;
+    --line:#26324a; --line-strong:#334263;
+    --primary:#7ea6e0; --primary-tint:#1a2740; --primary-ink:#bcd3f4;
+    --pass:#4fc79a; --pass-tint:#12271f;
+    --fail:#f0899c; --fail-tint:#2b1720;
+    --warn:#e0b25f; --warn-tint:#2a2211;
+    --accent:#d6a24e;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+
+  /* header */
+  header.top{
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,var(--surface),var(--bg));
+  }
+  .masthead{display:flex; gap:20px; align-items:flex-start; justify-content:space-between; padding:38px 0 26px; flex-wrap:wrap}
+  .brandmark{display:flex; align-items:center; gap:12px}
+  .logo{width:40px;height:40px;border-radius:11px;background:var(--primary);display:grid;place-items:center;flex:none;box-shadow:var(--shadow)}
+  .logo svg{width:22px;height:22px}
+  .kicker{font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted-solid); font-weight:600}
+  h1{
+    font-family:Newsreader,Georgia,serif; font-weight:600; font-size:40px; line-height:1.05;
+    margin:6px 0 0; letter-spacing:-.01em; text-wrap:balance;
+  }
+  .sub{color:var(--muted-solid); margin:12px 0 0; max-width:60ch}
+  .meta{display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--muted-solid); text-align:right}
+  .meta b{color:var(--ink); font-weight:600}
+  .meta .badge{align-self:flex-end}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface)}
+  .dot{width:7px;height:7px;border-radius:50%}
+
+  /* how-to + legend strip */
+  .strip{display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin:24px 0 8px}
+  @media(max-width:760px){.strip{grid-template-columns:1fr}}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow)}
+  .card h3{margin:0 0 10px; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-solid); font-weight:700}
+  .card ol{margin:0; padding-left:20px} .card ol li{margin:4px 0}
+  .legend{display:flex; flex-direction:column; gap:9px}
+  .legrow{display:flex; align-items:center; gap:10px; font-size:13.5px}
+  .pill{font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; font-weight:600; padding:3px 8px; border-radius:7px; white-space:nowrap}
+  .pill.pass{background:var(--pass-tint); color:var(--pass)}
+  .pill.fail{background:var(--fail-tint); color:var(--fail)}
+  .pill.warn{background:var(--warn-tint); color:var(--warn)}
+  .pill.crit{background:var(--fail-tint); color:var(--fail); border:1px solid var(--fail)}
+
+  /* TOC */
+  nav.toc{margin:22px 0 6px}
+  nav.toc ul{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px}
+  nav.toc a{display:flex; gap:10px; align-items:baseline; text-decoration:none; color:var(--ink); font-size:13.5px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface); transition:border-color .15s, background .15s}
+  nav.toc a:hover{border-color:var(--line-strong); background:var(--surface-2)}
+  nav.toc a b{font-family:'JetBrains Mono',monospace; color:var(--primary-ink); font-weight:600; font-size:12px}
+  a:focus-visible, summary:focus-visible{outline:2px solid var(--primary); outline-offset:2px; border-radius:4px}
+
+  /* sections */
+  section{padding:34px 0 8px; border-top:1px solid var(--line); margin-top:26px}
+  section:first-of-type{border-top:0}
+  .sechead{display:flex; align-items:baseline; gap:14px; margin:0 0 4px}
+  .secno{font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; color:var(--primary-ink); background:var(--primary-tint); padding:4px 10px; border-radius:8px; flex:none}
+  h2{font-family:Newsreader,Georgia,serif; font-weight:600; font-size:27px; margin:0; letter-spacing:-.01em; text-wrap:balance}
+  .secintro{color:var(--muted-solid); margin:8px 0 18px; max-width:74ch}
+
+  /* tables */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); background:var(--surface)}
+  table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:640px}
+  thead th{
+    text-align:left; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted-solid);
+    font-weight:700; padding:12px 14px; border-bottom:1px solid var(--line-strong); background:var(--surface-2); position:sticky; top:0;
+  }
+  tbody td{padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover td{background:color-mix(in srgb, var(--primary-tint) 40%, transparent)}
+  td.id{font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--primary-ink); white-space:nowrap; font-size:12.5px}
+  td.exp{font-variant-numeric:tabular-nums}
+  td.exp b, .mono{font-family:'JetBrains Mono',monospace; font-weight:600; font-variant-numeric:tabular-nums}
+  .k{font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--surface-2); border:1px solid var(--line); padding:1px 6px; border-radius:6px; white-space:nowrap}
+  td.res{white-space:nowrap; color:var(--muted-solid); font-size:12px; text-align:center}
+  .box{display:inline-block; width:13px; height:13px; border:1.5px solid var(--line-strong); border-radius:3px; vertical-align:-2px; margin-right:4px}
+  .steps{margin:0; padding-left:16px} .steps li{margin:3px 0}
+  .lead{font-weight:600}
+
+  .note{display:flex; gap:10px; align-items:flex-start; background:var(--warn-tint); border:1px solid color-mix(in srgb,var(--warn) 35%, transparent); border-radius:12px; padding:12px 15px; margin:16px 0; font-size:13.5px; color:var(--ink)}
+  .note svg{flex:none; margin-top:2px; color:var(--warn)}
+  .note.crit{background:var(--fail-tint); border-color:color-mix(in srgb,var(--fail) 35%, transparent)}
+  .note.crit svg{color:var(--fail)}
+
+  .caption{font-size:12.5px; color:var(--muted-solid); margin:10px 2px 0}
+
+  footer{border-top:1px solid var(--line); margin-top:40px; padding:26px 0 60px; color:var(--muted-solid); font-size:13px}
+  .signoff{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:16px 0 8px}
+  @media(max-width:640px){.signoff{grid-template-columns:1fr}}
+  .sig{border:1px solid var(--line); border-radius:12px; padding:16px; background:var(--surface)}
+  .sig .line{border-bottom:1px solid var(--line-strong); height:30px; margin-top:14px}
+  .sig span{font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted-solid); font-weight:600}
+
+  @media print{
+    body{background:#fff; font-size:11.5px}
+    .strip, nav.toc, header.top .meta .badge{break-inside:avoid}
+    section{break-inside:auto}
+    .tablewrap{box-shadow:none; break-inside:auto}
+    tbody tr{break-inside:avoid}
+    a{color:inherit; text-decoration:none}
+    thead th{position:static}
+  }
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="masthead">
+      <div>
+        <div class="brandmark">
+          <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7l8-4 8 4v6c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7z" fill="#fff" opacity=".18"/><path d="M4 7l8-4 8 4v6c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7z" stroke="#fff" stroke-width="1.4"/><path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="kicker">BharatTax · Quality Assurance</span>
+        </div>
+        <h1>BharatTax QA Runbook</h1>
+        <p class="sub">A step-by-step manual test procedure for every feature — with exact inputs and the figures they must produce. Run it end to end for a release, or a single section after a targeted change.</p>
+      </div>
+      <div class="meta">
+        <span class="badge"><span class="dot" style="background:var(--pass)"></span> Living document</span>
+        <div><b>Scope</b> · Officer &amp; practitioner platform</div>
+        <div><b>Environment</b> · bharattax.wenvia.global</div>
+        <div><b>Version</b> · v1 · covers PRs #47–#77</div>
+      </div>
+    </div>
+
+    <div class="strip">
+      <div class="card">
+        <h3>How to use this runbook</h3>
+        <ol>
+          <li>Pick the environment (staging or prod) and note it on the sign-off.</li>
+          <li>Work top-to-bottom, or jump to a section after a targeted change.</li>
+          <li>For each case, follow the steps with the <span class="lead">exact test data</span> given, then compare against <span class="lead">Expected</span>.</li>
+          <li>Mark the result. A <span class="pill fail">FAIL</span> or <span class="pill crit">BLOCKER</span> gets a note + screenshot and a ticket.</li>
+          <li><span class="lead">Regression shortcut:</span> §C and §D are fully deterministic — re-run just those two after any deploy to catch statutory-math regressions to the rupee.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Result legend</h3>
+        <div class="legend">
+          <div class="legrow"><span class="pill pass">PASS</span> Matches expected exactly.</div>
+          <div class="legrow"><span class="pill warn">MINOR</span> Works; cosmetic / copy nit.</div>
+          <div class="legrow"><span class="pill fail">FAIL</span> Wrong output or broken flow.</div>
+          <div class="legrow"><span class="pill crit">BLOCKER</span> Wrong legal figure, data leak, or crash.</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="toc" aria-label="Sections">
+      <ul>
+        <li><a href="#a"><b>A</b> Onboarding &amp; access</a></li>
+        <li><a href="#b"><b>B</b> Workspace profile &amp; tailoring</a></li>
+        <li><a href="#c"><b>C</b> Limitation calendar</a></li>
+        <li><a href="#d"><b>D</b> Statutory calculators</a></li>
+        <li><a href="#e"><b>E</b> Matters, notes, sharing</a></li>
+        <li><a href="#f"><b>F</b> Demand tracker</a></li>
+        <li><a href="#g"><b>G</b> Reconcile &amp; SFT scan</a></li>
+        <li><a href="#h"><b>H</b> Templates</a></li>
+        <li><a href="#i"><b>I</b> Drafting engines</a></li>
+        <li><a href="#j"><b>J</b> Chat, Rulings, History</a></li>
+        <li><a href="#k"><b>K</b> Admin console</a></li>
+        <li><a href="#l"><b>L</b> Cross-cutting &amp; security</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- A -->
+  <section id="a">
+    <div class="sechead"><span class="secno">A</span><h2>Onboarding &amp; access</h2></div>
+    <p class="secintro">Registration is admin-approved; a seat is leased on login. The first-run prompt tailors the workspace to the officer's function.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">A1</td>
+          <td>Register a new account, then have an admin approve it, then log in.</td>
+          <td>Email + password; admin → Users → Approve.</td>
+          <td>New account lands as <span class="k">pending</span> and cannot log in; after approval, login succeeds and lands on Chat.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">A2</td>
+          <td>Log in as a fresh non-admin with no function set.</td>
+          <td>—</td>
+          <td>“What do you mainly work on?” prompt appears once, with the 9 functions, <span class="k">I work across several…</span>, <span class="k">Show everything</span> and <span class="k">Skip for now</span>. After any choice it does not reappear.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">A3</td>
+          <td>Open the app in more sessions than the wing seat limit.</td>
+          <td>Wing seat_limit = N; open N+1 sessions.</td>
+          <td>The N+1th is refused a seat; releasing one frees it. Deactivating a licence signs the user out within ~60s.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">A4</td>
+          <td>Test field validation on registration / matter / profile forms.</td>
+          <td>PAN <span class="k">AAAPL1234C</span> vs <span class="k">abc</span>; AY <span class="k">2023-24</span> vs <span class="k">2023</span>; a bad email / mobile.</td>
+          <td>Valid values accepted; invalid ones are rejected inline with a clear message. PAN uppercases.</td>
+          <td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- B -->
+  <section id="b">
+    <div class="sechead"><span class="secno">B</span><h2>Workspace profile &amp; tailoring</h2></div>
+    <p class="secintro">One function reshapes the whole desk — dashboard, sidebar, calculators and templates — without hiding anything. Test as an <b>Assessing Officer</b> unless noted.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">B1</td>
+          <td>Profile → Primary function. Set each mode and save.</td>
+          <td>Single (Assessing Officer); Custom → tick Recovery + TP; Show everything; Not set.</td>
+          <td>Saves and persists across reload. Custom reveals the wing multi-select and requires ≥1 pick. “Not set” re-enables the first-run prompt next session.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">B2</td>
+          <td>Admin → User Management → edit a non-admin user → Primary function.</td>
+          <td>Set to TPO; save; re-open the user.</td>
+          <td>Selector offers Not set / Show everything / 9 functions; the choice saves and shows on re-open. The user’s desk reflects it on next load.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">B3</td>
+          <td>Inspect the sidebar with the AO profile; then collapse it.</td>
+          <td>—</td>
+          <td><b>Your workspace</b> = Dashboard · Chat · Calendar · Assessments · Calculators · Templates · Rulings · Drafts. <b>All tools</b> (collapsible) holds the rest. Collapsed rail shows <span class="lead">every</span> icon.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">B4</td>
+          <td>Open the Dashboard with the AO profile.</td>
+          <td>—</td>
+          <td>Chips = <span class="k">Mine</span> · <span class="k">All</span> · <span class="k">AO</span> only — no DRP/TP/Investigation/etc. Tiles reflect the current filter. “Mine” is default; if no AO-tagged matters exist it opens on “All”. A manual Refresh keeps your chosen chip.</td>
+          <td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">B5</td>
+          <td>Open Calculators / Templates for several functions.</td>
+          <td>AO, TPO, Investigation, Recovery, TDS.</td>
+          <td>Calculators open on: AO→<span class="k">Interest</span>, TPO→<span class="k">ALP</span>, Investigation→<span class="k">Peak credit</span>, Recovery→<span class="k">Recovery</span>, TDS→<span class="k">TDS</span>. Templates library opens on the matching wing group. All tabs/groups still reachable.</td>
+          <td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- C -->
+  <section id="c">
+    <div class="sechead"><span class="secno">C</span><h2>Limitation calendar</h2></div>
+    <p class="secintro">On a matter, choose a trigger event and date; every statutory deadline is computed and section-cited. Enter each trigger date exactly and check the due dates to the day.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Trigger &amp; date</th><th>Rule (section)</th><th class="exp">Expected due date</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">C1</td><td>Order served · <span class="mono">01-Aug-2026</span></td><td>Appeal to CIT(A) <span class="k">s.249</span></td><td class="exp"><b>31-Aug-2026</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C2</td><td>Order served · <span class="mono">01-Aug-2026</span></td><td>Revision by assessee <span class="k">s.264(3)</span></td><td class="exp"><b>01-Aug-2027</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C3</td><td>CIT(A) order served · <span class="mono">01-Jan-2026</span></td><td>Appeal to ITAT <span class="k">s.253</span></td><td class="exp"><b>02-Mar-2026</b> <span class="mono">(+60d)</span></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C4</td><td>ITAT order served · <span class="mono">01-Jan-2026</span></td><td>Appeal to HC <span class="k">s.260A</span></td><td class="exp"><b>01-May-2026</b> <span class="mono">(+120d)</span></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C5</td><td>Order passed · <span class="mono">15-Dec-2023</span></td><td>Rectification <span class="k">s.154</span></td><td class="exp"><b>31-Mar-2028</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C6</td><td>Order passed · <span class="mono">15-Dec-2023</span></td><td>Revision (err. &amp; prej.) <span class="k">s.263(2)</span></td><td class="exp"><b>31-Mar-2026</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C7</td><td>End of AY · <span class="mono">31-Mar-2024</span> (AY 2023-24)</td><td>Assessment time-bar <span class="k">s.153(1)</span></td><td class="exp"><b>31-Mar-2025</b> <span class="mono">(12mo)</span></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C8</td><td>End of AY · <span class="mono">31-Mar-2022</span> (AY 2021-22)</td><td>Assessment time-bar <span class="k">s.153(1)</span></td><td class="exp"><b>31-Dec-2022</b> <span class="mono">(9mo — FA-2021)</span></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C9</td><td>End of AY · <span class="mono">31-Mar-2024</span></td><td>Reopening window <span class="k">s.149(1)</span></td><td class="exp"><b>31-Mar-2027</b> <span class="mono">(3yr)</span></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C10</td><td>Draft order (TP/144C) · <span class="mono">15-Apr-2026</span></td><td>DRP objections <span class="k">s.144C(2)</span></td><td class="exp"><b>15-May-2026</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C11</td><td>Draft order (TP/144C) · <span class="mono">15-Apr-2026</span></td><td>DRP directions <span class="k">s.144C(12)</span></td><td class="exp"><b>31-Jan-2027</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C12</td><td>DRP directions received · <span class="mono">12-May-2026</span></td><td>Final order <span class="k">s.144C(13)</span></td><td class="exp"><b>30-Jun-2026</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C13</td><td>Penalty initiated · <span class="mono">10-Aug-2026</span></td><td>Penalty order <span class="k">s.275</span></td><td class="exp"><b>28-Feb-2027</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">C14</td><td>Return filed · <span class="mono">20-Jul-2026</span></td><td>143(2) notice window <span class="k">s.143(2)</span></td><td class="exp"><b>30-Jun-2027</b></td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="caption">Also verify: a reminder is auto-seeded 7 days before each deadline at 09:00 IST and surfaces in the notification bell; a deadline can be marked done / deleted.</p>
+  </section>
+
+  <!-- D -->
+  <section id="d">
+    <div class="sechead"><span class="secno">D</span><h2>Statutory calculators</h2></div>
+    <p class="secintro">Eleven tabs, each showing its workings. Enter the input exactly; the figures below are the correct outputs to the rupee. These are the fastest regression check after any deploy.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Tab</th><th>Input</th><th class="exp">Expected output</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">D1</td><td>Interest</td><td>s.234B · ₹1,00,000 · 01-Apr-2024 → 15-Jul-2024</td><td class="exp">4 months · interest <b>₹4,000</b> · total <b>₹1,04,000</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D2</td><td>234C</td><td>Liability ₹1,00,000 · cumulative paid 15,000 / 45,000 / 75,000 / 1,00,000</td><td class="exp">interest <b>₹0</b> (schedule met). Enter all-0 → interest accrues on each shortfall.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D3</td><td>TDS</td><td>₹1,00,000 @10% · deductible 10-May-24 · deducted 20-Jun-24 · deposited 10-Aug-24 · stmt due 31-Jul-24</td><td class="exp">TDS <b>₹10,000</b> · 201(1A)(i) <b>₹200</b> · (ii) <b>₹300</b> · 234E <b>₹2,000</b> · total <b>₹12,500</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D4</td><td>Recovery</td><td>Demand ₹1,20,000 · 4 instalments</td><td class="exp">220(2) interest 1,200+900+600+300 = <b>₹3,000</b> · total <b>₹1,23,000</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D5</td><td>Trust · 11(2)</td><td>Gross ₹10,00,000 · applied ₹7,00,000 · Form 10 ₹50,000</td><td class="exp">85% req ₹8,50,000 · shortfall taxable <b>₹1,00,000</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D6</td><td>Trust · 115BBC</td><td>Anonymous ₹5,00,000 · total donations ₹20,00,000</td><td class="exp">threshold ₹1,00,000 · taxable ₹4,00,000 · tax <b>₹1,24,800</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D7</td><td>Peak credit</td><td>+5,00,000 (10-Nov) · −3,00,000 (15-Nov) · +7,00,000 (20-Nov) · −2,00,000 (25-Nov)</td><td class="exp">peak <b>₹9,00,000</b> on 20-Nov (vs ₹12,00,000 gross)</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D8</td><td>ALP / TP</td><td>Comparables 4,6,8,10,12,14,16 · tested 3% · base ₹1,00,00,000</td><td class="exp">P35 8 · median 10 · P65 12 · outside · adjustment <b>₹7,00,000</b>. Tested <b>20%</b> → adjustment <b>₹0</b> (no downward).</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D9</td><td>115BBE</td><td>Unexplained income ₹10,00,000</td><td class="exp">60% + 25% surcharge + 4% cess = <b>₹7,80,000</b> (≈78%)</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D10</td><td>Slab · new</td><td>Total income ₹12,00,000 · new regime</td><td class="exp">tax before rebate ₹80,000 · total <b>₹83,200</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D11</td><td>Slab · old (cliff)</td><td>Total income ₹5,10,000 · old regime</td><td class="exp">no 87A rebate above ₹5L → tax ₹14,500 · total <b>₹15,080</b>. At ₹5,00,000 → <b>₹0</b>.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D12</td><td>Cap. gains</td><td>LTCG listed equity (112A) ₹3,00,000</td><td class="exp">exempt ₹1,25,000 · taxable ₹1,75,000 @12.5% · total <b>₹22,750</b></td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">D13</td><td>Penalty</td><td>270A under-reporting · base tax ₹1,00,000</td><td class="exp">50% → <b>₹50,000</b></td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16.5h.01M10.3 3.9 2.4 18a1.8 1.8 0 0 0 1.6 2.7h16a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>D11 is a guarded regression.</b> The old regime has a hard ₹5-lakh 87A cliff (no rebate, no marginal relief above it). A total near ₹15,080 for ₹5,10,000 is correct; anything lower means the marginal-relief bug has regressed — log a <span class="pill crit">BLOCKER</span>.</div></div>
+  </section>
+
+  <!-- E -->
+  <section id="e">
+    <div class="sechead"><span class="secno">E</span><h2>Matters, notes &amp; sharing</h2></div>
+    <p class="secintro">Matters are the anchor. New matters auto-tag to your function so they land under “Mine”.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">E1</td><td>Create a matter as an AO; check its category; edit; delete.</td><td>Title + PAN + AY.</td><td>Category defaults to <span class="k">Assessing Officer</span>; it appears under “Mine” on the dashboard. Edit and delete work; delete cascades deadlines/demands.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">E2</td><td>Share a matter with another user by email; log in as that user.</td><td>Colleague’s registered email.</td><td>Recipient sees the matter read-only (Shared badge); can view deadlines/demands but cannot edit or delete the owner’s deadlines.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">E3</td><td>Add colour-coded sticky notes; pin one; delete one.</td><td>Any note text.</td><td>Notes persist per matter and per user; pin/unpin and delete work.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">E4</td><td>Watchlists: save a section/topic watch; open “Find rulings”.</td><td>e.g. “section 68”.</td><td>Watch saves; “Find rulings” deep-links into Rulings with the query pre-run.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- F -->
+  <section id="f">
+    <div class="sechead"><span class="secno">F</span><h2>Demand tracker</h2></div>
+    <p class="secintro">A recovery ledger on the matter, with live Sec. 220(2) interest on the outstanding balance.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">F1</td><td>Open a matter → Outstanding demands → Add.</td><td>Amount ₹10,00,000 · default date 6 months before today · s.156.</td><td>Row shows outstanding ₹10,00,000 · 220(2) interest ≈ <b>₹60,000</b> (6mo @1%) · total ≈ <b>₹10,60,000</b>. Header shows a “₹… due” badge.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">F2</td><td>Record a part-payment in the Paid box.</td><td>Paid ₹2,00,000.</td><td>Outstanding drops to ₹8,00,000; interest recomputes on the reduced balance (≈ ₹48,000 for 6mo).</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">F3</td><td>Change status and watch the interest.</td><td>Set <span class="k">stayed</span>, then <span class="k">reduced</span>, then <span class="k">paid</span>.</td><td><b>outstanding</b> &amp; <b>reduced</b> accrue 220(2); <b>stayed</b> &amp; <b>paid</b> accrue ₹0. Fully paid → chip disappears.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">F4</td><td>Return to the Dashboard.</td><td>—</td><td>The matter shows a red <span class="k">₹… due</span> chip (outstanding + interest); it clears when the demand is paid/stayed.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- G -->
+  <section id="g">
+    <div class="sechead"><span class="secno">G</span><h2>Reconcile &amp; SFT scan</h2></div>
+    <p class="secintro">AIS/26AS matching, and a Rule 114E high-value scan that flags SFT transactions by PAN.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">G1</td><td>Reconcile tab: paste two entry sets and run.</td><td>Set A: <span class="k">TAN, ACME, 45,000</span> · Set B: <span class="k">TAN, ACME, 45,000</span> and one that differs.</td><td>Matched / Amount-mismatch / Only-in-A / Only-in-B split correctly. A comma inside an amount (<span class="k">45,000</span>) is <b>not</b> split.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">G2</td><td>SFT tab: paste rows and Scan high-value.</td><td>Two SB cash deposits ₹6L + ₹7L (same PAN); a property ₹25L; shares ₹15L.</td><td>Ranked by value; SB (₹13L ≥ ₹10L) and shares (₹15L ≥ ₹10L) <span class="pill fail" style="padding:2px 7px">Flag</span>; property (₹25L &lt; ₹30L) not flagged.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">G3</td><td>SFT tab: Upload CSV (with a header row).</td><td>CSV incl. a <b>comma in the name</b>: <span class="k">AAAPL1234C, "Kumar, Sons", cash_deposit_sb, 1300000</span></td><td>Header dropped; the name comma does <b>not</b> shift the category — the row still parses <span class="k">cash_deposit_sb</span> and <span class="lead">flags</span>. (Regression: a miss here is a <span class="pill crit">BLOCKER</span>.)</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- H -->
+  <section id="h">
+    <div class="sechead"><span class="secno">H</span><h2>Templates</h2></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">H1</td><td>Templates → Library.</td><td>As an AO, then as a TPO.</td><td>Opens on your wing group (AO→“Assessment &amp; notices”, TPO→“Transfer Pricing”). Officer/Assessee filter + search work. “Show all groups” clears it. Every profile’s group shows ≥1 template.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">H2</td><td>Use a library item; then create / edit / delete your own template.</td><td>Any built-in.</td><td>“Use” loads the body into the editor with placeholders; “Copy” copies. Own templates save, edit and delete per user.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- I -->
+  <section id="i">
+    <div class="sechead"><span class="secno">I</span><h2>Drafting engines</h2></div>
+    <p class="secintro">LLM-backed. Verify the flow, the citations discipline, editability and export — not the exact prose.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">I1</td><td>Assessments → new case → upload → Draft order.</td><td>Return + a 143(2) notice + an assessee reply (PDF).</td><td>Status polls; case understanding, issue-wise findings, computation and the assembled order appear. Figures/dates come from the docs or read <span class="k">[not on record]</span>.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">I2</td><td>On the case: inline-edit a finding; regenerate one issue; rebuild the order; download DOCX; then Stop mid-run on a re-run.</td><td>—</td><td>Edit saves a new version; regenerate replaces that issue; rebuild reassembles; DOCX downloads and opens in Word; Stop cancels cleanly and keeps completed parts.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">I3</td><td>Assessments → “142(1) questionnaire”.</td><td>Tick “Large cash deposits”; add a specific.</td><td>A tailored, point-wise 142(1) is drafted with placeholders; Copy works. Empty input is rejected.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">I4</td><td>Appeals → new case → upload appeal file → run.</td><td>Form 35 + assessment order + grounds.</td><td>The six-module appellate order drafts, each part cited &amp; editable; exports to signable DOCX/PDF.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- J -->
+  <section id="j">
+    <div class="sechead"><span class="secno">J</span><h2>Chat, Rulings &amp; History</h2></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">J1</td><td>Ask a grounded question; then an out-of-scope one.</td><td>“Deduction under s.80D for senior citizens?” · then something with no basis.</td><td>Grounded answer carries inline citations to primary law; an ungrounded query is refused rather than invented. Attach a PDF and ask about it.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">J2</td><td>Rulings: search; use a deep-link.</td><td>“cash credit 68”; open <span class="k">/rulings?q=68</span>.</td><td>Results return; the <span class="k">?q</span> deep-link runs the search on load.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">J3</td><td>History lists past queries / cases.</td><td>—</td><td>Prior activity appears and re-opens.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- K -->
+  <section id="k">
+    <div class="sechead"><span class="secno">K</span><h2>Admin console</h2></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">K1</td><td>Users: create, edit (role/designation/function/features), approve/reject, deactivate.</td><td>—</td><td>All persist; a wing-admin is scoped to its own wing; feature toggles gate the corresponding nav (Chat/Appeals/Rulings/History).</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">K2</td><td>Wings &amp; licences.</td><td>Create a wing; issue/deactivate a licence.</td><td>Wing seat-limit enforced (see A3); licence status changes reflect for the user.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">K3</td><td>Plans/pricing surface.</td><td>Public site + Profile.</td><td>A single “BharatTax Annual License” (₹45,999) is shown — no stale Starter/Pro/Power tiers.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- L -->
+  <section id="l">
+    <div class="sechead"><span class="secno">L</span><h2>Cross-cutting &amp; security</h2></div>
+    <p class="secintro">Run these on every release regardless of what changed.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Steps</th><th>Test data</th><th>Expected result</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">L1</td><td>Access control: as user B, try to open user A’s matter / assessment case / demand by guessing its id or slug in the URL.</td><td>A’s matter id / case slug.</td><td><span class="lead">403 / 404 — never</span> another user’s data. (A deliberately-shared matter is the only exception, read-only.)</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">L2</td><td>Responsive: load the app at mobile width; open the drawer nav; run one calculator.</td><td>~390px.</td><td>No horizontal body scroll; drawer works; tables scroll within their own container.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">L3</td><td>App tour.</td><td>Help (?) button.</td><td>The guided tour runs through the main areas.</td><td class="res"><span class="box"></span></td></tr>
+        <tr><td class="id">L4</td><td><b>Deploy regression:</b> after any release, re-run §C (all 14 dates) and §D (all 13 figures).</td><td>The vectors above.</td><td>Every date and figure matches to the day / to the rupee. Any drift is a statutory-math regression → <span class="pill crit">BLOCKER</span>.</td><td class="res"><span class="box"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    <p><b>Sign-off.</b> Record the build, environment and date, and note every FAIL/BLOCKER with a ticket reference.</p>
+    <div class="signoff">
+      <div class="sig"><span>Build / commit</span><div class="line"></div></div>
+      <div class="sig"><span>Environment</span><div class="line"></div></div>
+      <div class="sig"><span>Date</span><div class="line"></div></div>
+      <div class="sig"><span>Tester</span><div class="line"></div></div>
+      <div class="sig"><span>Pass / Fail / Blocker counts</span><div class="line"></div></div>
+      <div class="sig"><span>Approved for release by</span><div class="line"></div></div>
+    </div>
+    <p style="margin-top:18px">BharatTax QA Runbook · statutory figures are the reference outputs of the platform’s own calculators and limitation engine; confirm any figure against primary law before relying on it in an order.</p>
+  </footer>
+</main>
+
+</body>
+</html>
