@@ -137,8 +137,11 @@ def cass_questionnaire(body: CassIn, p: Principal = Depends(get_principal),
     if len(reasons) > 4000:
         raise HTTPException(400, "selection_reasons too long (max 4000 chars)")
     try:
+        from app.services import personalization as _pers
+        persona = _pers.drafting_persona(db, p.user)
         text = svc.draft_cass_questionnaire(
-            reasons, assessee=body.assessee, pan=body.pan, ay=body.assessment_year)
+            reasons, assessee=body.assessee, pan=body.pan, ay=body.assessment_year,
+            persona=persona)
     except Exception as e:  # noqa: BLE001
         log.warning("cass questionnaire failed: %s", e)
         raise HTTPException(503, "The drafting service is temporarily unavailable. Try again shortly.")

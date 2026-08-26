@@ -159,6 +159,44 @@ def remember_if_requested(db: Session, user: User, question: str) -> UserMemory 
     return add_memory(db, user.id, fact, source="chat:explicit")
 
 
+def drafting_persona(db: Session, user: User) -> str:
+    """Compact officer-context preamble for the DRAFTING engines (assessment /
+    appeal / CASS questionnaire).
+
+    Deliberately NARROWER than build_context: it carries only the officer's
+    designation/jurisdiction, their drafting instructions and house style — and
+    NO cross-matter memory or caseload. A statutory order must rest solely on
+    the record of THIS case; the officer's other matters must never leak into
+    it. The preamble also tells the model the context is letterhead/tone only,
+    never evidence, so a stated charge can't invent a jurisdiction that isn't in
+    the documents. Empty string when there's nothing worth adding."""
+    if user is None:
+        return ""
+    s = db.get(UserSettings, user.id)
+    lines: list[str] = []
+
+    who = (user.designation or (user.role.value if hasattr(user.role, "value") else str(user.role))).strip()
+    posting = (user.charge or "").strip()
+    if (user.designation or "").strip() or posting:
+        lines.append(f"Drafting officer: {who}" + (f", {posting}" if posting else "") + ".")
+    if s and (s.custom_instructions or "").strip():
+        lines.append(f"Their drafting instructions: {s.custom_instructions.strip()}")
+    # House style, minus the officer-standpoint hint — the drafters are already
+    # written in the AO's voice, so that hint would be redundant noise here.
+    hints = [h for h in _style_hints(s.style if s else {})
+             if "standpoint" not in h and "authority" not in h]
+    if hints:
+        lines.append("House style: " + "; ".join(hints) + ".")
+
+    if not lines:
+        return ""
+    return ("Officer context for this DRAFT — use it ONLY to set the letterhead "
+            "authority, tone and house style. It is NOT evidence: never treat it "
+            "as a fact on record, and rely solely on the case documents for every "
+            "figure, date, name, jurisdiction and finding:\n"
+            + "\n".join(f"- {ln}" for ln in lines))
+
+
 def build_context(db: Session, user: User, query: str, *, max_items: int = 8) -> str:
     """Compact personalization preamble for the self-hosted model. Empty string
     when there's nothing to add or the user turned memory off."""

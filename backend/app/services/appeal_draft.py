@@ -23,7 +23,9 @@ from app.core.db import SessionLocal
 from app.core.enums import Domain
 from app.core.logging import get_logger
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
+from app.models.org import User
 from app.services import llm as llm_mod
+from app.services import personalization
 
 
 class _RunCancelled(Exception):
@@ -424,13 +426,20 @@ def _precedent(db: Session, query: str, *, k: int = _PRECEDENT_K) -> tuple[str, 
 _LAST = threading.local()
 
 
-def _complete(user: str, *, max_tokens: int = 900) -> str:
+def _sys(persona: str = "") -> str:
+    """OFFICER_SYSTEM, optionally prefixed with a compact officer persona
+    (letterhead/tone/house-style — never evidence). persona="" reproduces the
+    original prompt exactly, so drafting is unchanged when nothing is set."""
+    return (persona + "\n\n" + OFFICER_SYSTEM) if persona else OFFICER_SYSTEM
+
+
+def _complete(user: str, *, max_tokens: int = 900, persona: str = "") -> str:
     # llama-3.1-8b-instruct on the gateway has a 6K context window; keep the
     # output budget low so the *input* prompt has room to fit the docs +
     # retrieved law. Pass a bigger max_tokens explicitly for assembly.
     client = _appeal_llm()
     _LAST.client = client
-    return client.complete(OFFICER_SYSTEM, user, max_tokens=max_tokens)
+    return client.complete(_sys(persona), user, max_tokens=max_tokens)
 
 
 def _last_llm_meta() -> dict | None:
@@ -444,7 +453,7 @@ def _last_llm_meta() -> dict | None:
     }
 
 
-def _complete_json(user: str, *, max_tokens: int = 1500) -> dict:
+def _complete_json(user: str, *, max_tokens: int = 1500, persona: str = "") -> dict:
     # JSON-mode calls are extraction tasks — route them to the faster/cheaper
     # tier (Flash-Lite by default) via a dedicated client instance. Falls back
     # to the standard drafting client when GEMINI_JSON_MODELS is unset.
@@ -457,11 +466,11 @@ def _complete_json(user: str, *, max_tokens: int = 1500) -> dict:
     _LAST.client = client
     if isinstance(client, (GeminiLLM, FallbackLLM)):
         txt = client.complete(
-            OFFICER_SYSTEM + "\n\nReturn ONLY a single valid JSON object.",
+            _sys(persona) + "\n\nReturn ONLY a single valid JSON object.",
             user, max_tokens=max_tokens, json_mode=True)
     else:
         txt = client.complete(
-            OFFICER_SYSTEM + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.",
+            _sys(persona) + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.",
             user, max_tokens=max_tokens)
     s = txt.strip()
     if s.startswith("```"):
@@ -511,7 +520,7 @@ def _raw_cat(case, *cats) -> str:
     return "\n\n".join(out)
 
 
-def _extract_case(case, docs_text: str) -> dict:
+def _extract_case(case, docs_text: str, persona: str = "") -> dict:
     """Extract the appellant's REAL case — the numbered Grounds of Appeal from Form 35,
     the Statement of Facts and the written submissions — so the order addresses the
     actual grievances and never fabricates an issue. Reads the RAW Form 35 (grounds
@@ -547,7 +556,7 @@ def _extract_case(case, docs_text: str) -> dict:
         "- submissions: a faithful summary of the appellant's written submissions/arguments (6-12 "
         "sentences).\n"
         'Return {"grounds": ["..."], "facts": "...", "submissions": "..."}\n\n' + src,
-        max_tokens=3500)
+        max_tokens=3500, persona=persona)
     if not isinstance(j, dict):
         j = {}
     grounds = [str(g).strip() for g in (j.get("grounds") or [])
@@ -746,7 +755,7 @@ def document_compliance(case: AppealCase) -> dict:
 
 
 # --- per-issue drafting (reused by run + regenerate) ---
-def draft_issue(db: Session, case: AppealCase, issue: dict) -> tuple[str, list]:
+def draft_issue(db: Session, case: AppealCase, issue: dict, persona: str = "") -> tuple[str, list]:
     q = issue.get("issue", "")
     docs_text = _issue_doc_context(case, q)
     ctx, cites = _ground(db, q, domain=None)   # statutes (Act & Rules)
@@ -797,7 +806,7 @@ def draft_issue(db: Session, case: AppealCase, issue: dict) -> tuple[str, list]:
             f"=== RETRIEVED PRECEDENTS (decided cases) ===\n"
             f"{prec_text or '(no closely matching precedent retrieved — decide on the statute and the facts on record; do NOT name any case.)'}")
     try:
-        block = _complete(user, max_tokens=1600)
+        block = _complete(user, max_tokens=1600, persona=persona)
     except Exception as e:  # one issue must not fail the order
         block = f"_[Drafting failed for this issue: {type(e).__name__}. Retry.]_"
     return _clean(block), cites
@@ -864,7 +873,7 @@ def _build_intro(understanding: dict, docs_text: str) -> str:
 
 
 def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "",
-             intro: str | None = None) -> str:
+             intro: str | None = None, persona: str = "") -> str:
     """Stitch the drafted parts into a complete, properly-structured order. Grounds,
     Facts and Submissions sections are always populated; each finding gets ONE clean
     'Ground No. N' heading (leading duplicates stripped); the operative Result is
@@ -881,7 +890,7 @@ def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "
             intro = facts[:1200]
     try:
         result = _clean(_appeal_llm().complete(
-            OFFICER_SYSTEM,
+            _sys(persona),
             "Write ONLY the concluding OPERATIVE portion of the appellate order, in 4-8 sentences. "
             "State the outcome of EACH AND EVERY numbered ground in one sentence each, in order and "
             "omitting none, consistent with the finding recorded for that ground (e.g. 'Ground No. 1 is allowed / "
@@ -972,6 +981,15 @@ def run_case(run_id: int) -> None:
         # started the run (via run.created_by), so the token spend shows up
         # per-user in the admin console.
         owner_id = run.created_by
+        # Officer persona (letterhead/tone/house-style only — never evidence) so
+        # the order reads in the officer's authority + house style. Empty when no
+        # personalization is set → byte-for-byte identical drafting to before.
+        persona = ""
+        try:
+            _officer = db.get(User, owner_id) if owner_id else None
+            persona = personalization.drafting_persona(db, _officer) if _officer else ""
+        except Exception:  # noqa: BLE001
+            persona = ""
         _cap_snap = {"user_id": owner_id, "case_id": case.id, "run_id": run.id}
         try:
             capture.set_context(**_cap_snap)
@@ -1111,7 +1129,7 @@ def run_case(run_id: int) -> None:
             mdb = SessionLocal()
             try:
                 tcase = mdb.get(AppealCase, _case_id)
-                return ("extract", _extract_case(tcase, docs_text), None, _last_llm_meta())
+                return ("extract", _extract_case(tcase, docs_text, persona), None, _last_llm_meta())
             except Exception:  # fall back to heuristic grounds below
                 return ("extract", {"grounds": [], "facts": "", "submissions": "",
                                     "institution_date": ""}, None, None)
@@ -1152,7 +1170,7 @@ def run_case(run_id: int) -> None:
             tdb = SessionLocal()  # own session per thread (SQLAlchemy sessions aren't shared-safe)
             try:
                 tcase = tdb.get(AppealCase, _case_id)  # case bound to THIS thread's session
-                block, cites = draft_issue(tdb, tcase, iss)
+                block, cites = draft_issue(tdb, tcase, iss, persona)
                 meta = _last_llm_meta()
             finally:
                 tdb.close()
@@ -1197,7 +1215,7 @@ def run_case(run_id: int) -> None:
 
         progress("Module 6: Assembling draft order")
         draft = assemble(understanding, blocks, docs_text,
-                         intro=_intro_box.get("intro"))
+                         intro=_intro_box.get("intro"), persona=persona)
         _bill_meta("appeal.module6.intro", _intro_box.get("meta"))
         _bill("appeal.module6")
         db.add(AppealOutput(run_id=run.id, kind="draft", content=draft))

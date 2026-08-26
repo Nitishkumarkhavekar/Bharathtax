@@ -36,7 +36,9 @@ from app.core.logging import get_logger
 from app.models.assessment import (
     AssessmentCase, AssessmentDocument, AssessmentOutput, AssessmentRun,
 )
+from app.models.org import User
 from app.services import capture
+from app.services import personalization
 from app.services import tokens
 
 # Reuse the appeals engine's low-level building blocks so the two drafters
@@ -93,16 +95,24 @@ ASSESSMENT_SYSTEM = (
 _LAST = threading.local()
 
 
-def _complete(user: str, *, max_tokens: int = 1100) -> str:
-    client = ad._appeal_llm()
-    _LAST.client = client
-    return client.complete(ASSESSMENT_SYSTEM, user, max_tokens=max_tokens)
+def _sys(persona: str = "") -> str:
+    """The assessment system prompt, optionally prefixed with a compact officer
+    persona (letterhead/tone/house-style — never evidence). persona="" (the
+    default) reproduces the original prompt byte-for-byte, so the drafting
+    behaviour is unchanged when no personalization is set."""
+    return (persona + "\n\n" + ASSESSMENT_SYSTEM) if persona else ASSESSMENT_SYSTEM
 
 
-def _complete_json(user: str, *, max_tokens: int = 3000) -> dict:
+def _complete(user: str, *, max_tokens: int = 1100, persona: str = "") -> str:
     client = ad._appeal_llm()
     _LAST.client = client
-    sys = ASSESSMENT_SYSTEM + "\n\nRespond with ONLY a single valid JSON object, no prose, no code fences."
+    return client.complete(_sys(persona), user, max_tokens=max_tokens)
+
+
+def _complete_json(user: str, *, max_tokens: int = 3000, persona: str = "") -> dict:
+    client = ad._appeal_llm()
+    _LAST.client = client
+    sys = _sys(persona) + "\n\nRespond with ONLY a single valid JSON object, no prose, no code fences."
     if isinstance(client, (ad.GeminiLLM, ad.FallbackLLM)):
         txt = client.complete(sys, user, max_tokens=max_tokens, json_mode=True)
     else:
@@ -223,7 +233,7 @@ def _detect_issues(text: str) -> list[dict]:
     return [{"issue": name} for name, pat in pats if re.search(pat, text, re.I)]
 
 
-def _extract_understanding(case: AssessmentCase, docs_text: str) -> dict:
+def _extract_understanding(case: AssessmentCase, docs_text: str, persona: str = "") -> dict:
     """Extract the case skeleton the order is framed on: return particulars,
     selection reason, notices issued, and the ISSUES to be examined — each as a
     short title plus the discrepancy/query and the amount involved (if stated)."""
@@ -256,7 +266,7 @@ def _extract_understanding(case: AssessmentCase, docs_text: str) -> dict:
         "documents; do NOT invent an issue. If none can be identified, return an empty array.\n"
         'Return {"return_income": "...", "filing_date": "...", "selection_reason": "...", '
         '"notices": ["..."], "issues": [{"issue": "...", "query": "...", "amount": "..."}]}\n\n' + src,
-        max_tokens=3500)
+        max_tokens=3500, persona=persona)
     if not isinstance(j, dict):
         j = {}
     issues = []
@@ -277,7 +287,7 @@ def _extract_understanding(case: AssessmentCase, docs_text: str) -> dict:
 
 
 # --------------------------------------------------------- per-issue drafting
-def draft_issue(db: Session, case: AssessmentCase, issue: dict) -> tuple[str, list]:
+def draft_issue(db: Session, case: AssessmentCase, issue: dict, persona: str = "") -> tuple[str, list]:
     """Draft the AO's issue-wise Discussion & Finding for one issue, grounded on
     the primary-law corpus and factually-similar decided cases. Returns
     (markdown_block, citations)."""
@@ -315,14 +325,14 @@ def draft_issue(db: Session, case: AssessmentCase, issue: dict) -> tuple[str, li
         f"=== RETRIEVED LAW ===\n{ad._trim(law_ctx, 3000)}\n\n"
         f"=== RETRIEVED PRECEDENTS ===\n{ad._trim(prec_ctx, 3000) if prec_ctx else '(none retrieved)'}"
     )
-    block = _clean(_complete(prompt, max_tokens=1600))
+    block = _clean(_complete(prompt, max_tokens=1600, persona=persona))
     cites = (law_cites or []) + (prec_cites or [])
     return block, cites
 
 
 # --------------------------------------------------------- computation + assemble
 def _build_computation(db: Session, case: AssessmentCase, understanding: dict,
-                       findings: list[str]) -> tuple[str, list]:
+                       findings: list[str], persona: str = "") -> tuple[str, list]:
     """Draft the Computation of Total Income from the returned income and the
     additions made in the issue findings. Figures come only from the record."""
     q = "computation of total income assessment additions 115BBE interest 234A 234B 234C"
@@ -343,10 +353,10 @@ def _build_computation(db: Session, case: AssessmentCase, understanding: dict,
         f"=== ISSUE FINDINGS ===\n{ad._trim(joined, 18000 if ad._BIG_CTX else 8000)}\n\n"
         f"=== RETRIEVED LAW ===\n{ad._trim(law_ctx, 2500)}"
     )
-    return _clean(_complete(prompt, max_tokens=1200)), (cites or [])
+    return _clean(_complete(prompt, max_tokens=1200, persona=persona)), (cites or [])
 
 
-def _build_intro(understanding: dict) -> str:
+def _build_intro(understanding: dict, persona: str = "") -> str:
     notices = understanding.get("notices") or []
     prompt = (
         "Draft the OPENING PARAGRAPH(S) of an assessment order (before the issue-wise discussion). "
@@ -360,7 +370,7 @@ def _build_intro(understanding: dict) -> str:
         f"SELECTION / REOPENING REASON: {understanding.get('selection_reason') or '[not on record]'}\n"
         f"NOTICES: {'; '.join(notices) if notices else '[not on record]'}\n"
     )
-    return _clean(_complete(prompt, max_tokens=700))
+    return _clean(_complete(prompt, max_tokens=700, persona=persona))
 
 
 def assemble(understanding: dict, findings_blocks: list[str], *,
@@ -422,7 +432,8 @@ _CASS_SYSTEM = (
 
 
 def draft_cass_questionnaire(selection_reasons: str, *, assessee: str | None = None,
-                             pan: str | None = None, ay: str | None = None) -> str:
+                             pan: str | None = None, ay: str | None = None,
+                             persona: str = "") -> str:
     """Draft a 142(1) questionnaire tailored to the CASS selection reason(s).
     Self-contained (no case/DB needed). Returns markdown text."""
     header = []
@@ -441,7 +452,8 @@ def draft_cass_questionnaire(selection_reasons: str, *, assessee: str | None = N
     )
     client = ad._appeal_llm()
     _LAST.client = client
-    return _clean(client.complete(_CASS_SYSTEM, prompt, max_tokens=1600))
+    sys = (persona + "\n\n" + _CASS_SYSTEM) if persona else _CASS_SYSTEM
+    return _clean(client.complete(sys, prompt, max_tokens=1600))
 
 
 # --------------------------------------------------------------- orchestration
@@ -474,6 +486,16 @@ def run_case(run_id: int) -> None:
             db.commit()
 
         owner_id = run.created_by
+        # Officer persona (letterhead/tone/house-style only — never evidence) so
+        # the draft is framed for the right authority in the officer's house
+        # style. Empty when the officer has set no personalization → identical
+        # behaviour to before. Computed once; the parallel workers close over it.
+        persona = ""
+        try:
+            _officer = db.get(User, owner_id) if owner_id else None
+            persona = personalization.drafting_persona(db, _officer) if _officer else ""
+        except Exception:
+            persona = ""
         _cap_snap = {"user_id": owner_id, "case_id": case.id, "run_id": run.id}
         try:
             capture.set_context(**_cap_snap)
@@ -512,7 +534,7 @@ def run_case(run_id: int) -> None:
         docs_text = _docs_text(case)
 
         progress("Reading the file: return, notices, information")
-        understanding = _extract_understanding(case, docs_text)
+        understanding = _extract_understanding(case, docs_text, persona)
         _bill("assessment.extract", _last_meta())
         issues = understanding.get("issues") or []
         if not issues:
@@ -535,7 +557,7 @@ def run_case(run_id: int) -> None:
             tdb = SessionLocal()
             try:
                 tcase = tdb.get(AssessmentCase, _case_id)
-                block, cites = draft_issue(tdb, tcase, iss)
+                block, cites = draft_issue(tdb, tcase, iss, persona)
                 meta = _last_meta()
             finally:
                 tdb.close()
@@ -549,7 +571,7 @@ def run_case(run_id: int) -> None:
             except Exception:
                 pass
             try:
-                intro_box["intro"] = _build_intro(understanding)
+                intro_box["intro"] = _build_intro(understanding, persona)
                 intro_box["meta"] = _last_meta()
             except Exception:
                 intro_box["intro"] = ""
@@ -576,7 +598,7 @@ def run_case(run_id: int) -> None:
         _bill("assessment.intro", intro_box.get("meta"))
 
         progress("Computing total income")
-        computation, comp_cites = _build_computation(db, case, understanding, blocks)
+        computation, comp_cites = _build_computation(db, case, understanding, blocks, persona)
         _bill("assessment.computation", _last_meta())
         db.add(AssessmentOutput(run_id=run.id, kind="computation",
                                 content=computation, citations=comp_cites))
