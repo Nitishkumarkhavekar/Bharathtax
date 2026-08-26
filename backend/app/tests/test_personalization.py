@@ -122,3 +122,26 @@ def test_build_context_uses_wing_when_designation_blank(db, user_factory):
     u.workspace_profile = "ca"
     db.commit()
     assert "assessee" in pers.build_context(db, u, "reply to a 142(1)")
+
+
+# ---- Wing-role-wise: seniority tier within a wing ---------------------------
+def test_role_tier_maps_designation_to_seniority():
+    assert wing.role_tier("Addl. CIT, Range-7") == "range"
+    assert wing.role_tier("Joint Commissioner of Income Tax") == "range"
+    assert wing.role_tier("Pr. CIT, Delhi-3") == "commissioner"
+    assert wing.role_tier("Income Tax Officer, Ward 2(1)") == "field"
+    assert wing.role_tier("DCIT, Circle 4") == "field"          # Deputy Commr = an AO
+    assert wing.role_tier("") == "" and wing.role_tier(None) == ""
+
+
+def test_build_context_refines_standpoint_for_supervisory_officer(db, user_factory):
+    u = user_factory(8)
+    u.workspace_profile = "officer"
+    u.designation = "Addl. CIT, Range-7"
+    db.commit()
+    ctx = pers.build_context(db, u, "approval under 153D")
+    assert "supervisory Range authority" in ctx      # tier nuance injected
+    # A field officer gets no supervisory nuance (default behaviour).
+    u.designation = "Income Tax Officer, Ward 2(1)"
+    db.commit()
+    assert "supervisory Range" not in pers.build_context(db, u, "draft an order")

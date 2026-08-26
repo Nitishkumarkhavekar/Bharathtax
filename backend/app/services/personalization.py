@@ -225,6 +225,11 @@ def build_context(db: Session, user: User, query: str, *, max_items: int = 8) ->
     stand = _profiles.wing_standpoint(wing, wings)
     if stand:
         lines.append(f"They work as {stand}; answer from that standpoint where it applies.")
+    # Seniority tier within the wing — a Range head / Commissioner reviews and
+    # approves rather than drafts, so refine the standpoint accordingly.
+    role_line = _profiles.role_standpoint(user.designation)
+    if role_line:
+        lines.append(role_line)
 
     if s and (s.about_me or "").strip():
         lines.append(f"About their work: {s.about_me.strip()}")

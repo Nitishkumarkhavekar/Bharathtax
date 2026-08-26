@@ -19,9 +19,11 @@ def test_recovery_sees_its_templates_first():
 
 
 def test_officer_leads_with_ao_and_universal():
-    # An AO's own + the universal notices rank above other wings' templates.
+    # An AO's own (incl. supervisory approvals) + the universal notices rank
+    # above other wings' templates.
     ordered = _kinds("officer")
-    officer_and_universal = {"notice_143_2", "order_154", "notice_142_1", "show_cause"}
+    officer_and_universal = {"notice_143_2", "order_154", "approval_153D", "sanction_151",
+                             "notice_142_1", "show_cause"}
     lead = set(ordered[:len(officer_and_universal)])
     assert lead == officer_and_universal
     # A recovery-only template ranks after them.
@@ -41,3 +43,11 @@ def test_custom_profile_unions_chosen_wings():
 
 def test_no_profile_is_natural_order():
     assert _kinds(None)[0] == "notice_142_1"      # first defined, unranked
+
+
+def test_supervisory_approval_templates_exist_in_officer_wing():
+    officer = set(_kinds("officer"))
+    assert {"approval_153D", "sanction_151"} <= officer
+    # They're AO-wing, so they rank in the officer's own group, not last.
+    ordered = _kinds("officer")
+    assert ordered.index("approval_153D") < ordered.index("notice_226_3")  # before recovery's
