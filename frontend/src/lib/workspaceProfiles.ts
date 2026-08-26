@@ -37,6 +37,103 @@ export const PROFILES: ProfileConfig[] = [
 
 const BY_KEY = new Map(PROFILES.map((p) => [p.key, p]));
 
+// Per-wing chat starter prompts — the officer's own core tasks, so the new-chat
+// hero reads as built for their desk instead of a generic tax chatbot. Kept
+// separate from PROFILES so the content stays legible and easy to extend.
+export interface WingStarter { category: string; text: string; }
+
+export const WING_STARTERS: Record<string, WingStarter[]> = {
+  officer: [
+    { category: "Assessment", text: "When is an addition under section 68 for an unexplained cash credit sustainable?" },
+    { category: "Limitation", text: "What is the limitation date to pass a 143(3) order for AY 2022-23?" },
+    { category: "Draft", text: "Draft a show-cause notice for a large unexplained cash deposit" },
+    { category: "Reassessment", text: "Section 148 — what must the reasons recorded establish before reopening?" },
+    { category: "Interest", text: "Compute interest under section 234B on an addition to income" },
+    { category: "Penalty", text: "Section 270A — underreporting vs misreporting and the penalty rates" },
+  ],
+  cita: [
+    { category: "Appeals", text: "Section 249(4) — condonation of delay in filing an appeal" },
+    { category: "Powers", text: "Scope of the CIT(A)'s power of enhancement under section 251" },
+    { category: "Draft", text: "Draft a ground-wise finding sustaining an addition under section 69A" },
+    { category: "Procedure", text: "When can the CIT(A) admit additional evidence under Rule 46A?" },
+    { category: "Appeals", text: "Burden of proof on the appellant in an unexplained-investment appeal" },
+    { category: "Limitation", text: "Time limit for the CIT(A) to dispose of an appeal after the 2023 amendment" },
+  ],
+  drp: [
+    { category: "Directions", text: "Section 144C — the DRP's powers and timeline for issuing directions" },
+    { category: "Transfer pricing", text: "How should the DRP deal with an objection to a transfer-pricing adjustment?" },
+    { category: "Limitation", text: "Final assessment limitation after DRP directions under section 144C(13)" },
+    { category: "Draft", text: "Draft DRP directions on a comparables-selection objection" },
+    { category: "Procedure", text: "Can the DRP enhance the variation proposed in the draft assessment order?" },
+  ],
+  tp: [
+    { category: "ALP", text: "Compute the arm's-length price range and the 35% proviso adjustment" },
+    { category: "Method", text: "When is TNMM the most appropriate method over CUP?" },
+    { category: "Reference", text: "Section 92CA — the TPO's jurisdiction on a reference from the AO" },
+    { category: "Draft", text: "Draft a show-cause proposing a transfer-pricing adjustment" },
+    { category: "Comparables", text: "Filters and adjustments for selecting comparables in a TNMM study" },
+  ],
+  investigation: [
+    { category: "Peak credit", text: "Compute the peak credit from a series of unexplained deposits and withdrawals" },
+    { category: "Search", text: "Evidentiary value of a statement recorded under section 132(4)" },
+    { category: "Unexplained", text: "Section 69 vs 69A — when does each apply to unexplained assets?" },
+    { category: "115BBE", text: "Tax rate under section 115BBE on income assessed under sections 68 to 69D" },
+    { category: "Draft", text: "Draft an appraisal note summarising the seized material on one issue" },
+  ],
+  ici: [
+    { category: "SFT", text: "Reconcile SFT / high-value transaction data against the return of income" },
+    { category: "Reporting", text: "Section 285BA — reporting obligations and the SFT thresholds" },
+    { category: "Information", text: "Verifying a high-value transaction flagged in the AIS" },
+    { category: "Draft", text: "Draft a verification letter on an unexplained high-value transaction" },
+    { category: "Penalty", text: "Section 271FA — penalty for failure to furnish the SFT" },
+  ],
+  recovery: [
+    { category: "Interest", text: "Compute interest under section 220(2) on an outstanding demand" },
+    { category: "Recovery", text: "Section 226(3) garnishee notice — when and how it is issued" },
+    { category: "Installments", text: "Frame an installment plan for a disputed demand under section 220(6)" },
+    { category: "Attachment", text: "Procedure for attachment and sale under the Second Schedule" },
+    { category: "Stay", text: "CBDT guidelines for granting stay of demand pending first appeal" },
+  ],
+  tds: [
+    { category: "TDS default", text: "Section 201 — when is a deductor treated as an assessee-in-default?" },
+    { category: "Disallowance", text: "Section 40(a)(ia) — disallowance for non-deduction of TDS" },
+    { category: "Exemption", text: "Conditions for registration of a trust under section 12A / 12AB" },
+    { category: "80G", text: "Requirements for approval of a charitable institution under section 80G" },
+    { category: "Draft", text: "Draft a show-cause for a short-deduction default under section 201" },
+  ],
+  ca: [
+    { category: "Reply", text: "Draft a reply to a scrutiny notice under section 142(1)" },
+    { category: "Appeal", text: "Draft the grounds of appeal against an addition under section 68" },
+    { category: "Submission", text: "Prepare a written submission explaining a large cash deposit" },
+    { category: "Deductions", text: "Maximum deduction available under section 80C with examples" },
+    { category: "Capital gains", text: "Exemption under section 54 on sale of a residential house" },
+  ],
+};
+
+// The starter prompts to show for a resolved profile. Empty for "all"/"none"
+// (the caller falls back to the global trending starters). For "custom" it
+// round-robins the chosen wings' prompts so each is represented, capped at 6.
+export function resolveStarters(
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): WingStarter[] {
+  if (!profile || profile === "all") return [];
+  if (profile === "custom") {
+    const lists = (wings ?? []).map((k) => WING_STARTERS[k]).filter(Boolean) as WingStarter[][];
+    if (!lists.length) return [];
+    const out: WingStarter[] = [];
+    for (let i = 0; out.length < 6; i++) {
+      let added = false;
+      for (const list of lists) {
+        if (i < list.length) { out.push(list[i]); added = true; if (out.length >= 6) break; }
+      }
+      if (!added) break;
+    }
+    return out;
+  }
+  return WING_STARTERS[profile] ?? [];
+}
+
 export function profileConfig(key: string | null | undefined): ProfileConfig | null {
   return key ? BY_KEY.get(key) ?? null : null;
 }

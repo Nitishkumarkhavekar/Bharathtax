@@ -17,6 +17,7 @@ import {
 import { ApiError, api } from "../api";
 import { toast } from "@/lib/toast";
 import { useAuth } from "../auth";
+import { resolveStarters } from "../lib/workspaceProfiles";
 import {
   ChatThread,
   ChatMessage,
@@ -810,8 +811,20 @@ function EmptyHero(props: {
   onEditQueued: () => void;
   onCancelQueued: () => void;
 }) {
+  // Wing-aware starters: an officer with a chosen function sees the prompts of
+  // their own desk (instant + stable); "all"/unset users get the global
+  // trending starters as before.
+  const { session } = useAuth();
+  const wingStarters = useMemo(
+    () => resolveStarters(session?.workspaceProfile, session?.workspaceWings),
+    [session?.workspaceProfile, session?.workspaceWings],
+  );
   const [cards, setCards] = useState<Suggestion[]>(SUGGESTIONS);
   useEffect(() => {
+    if (wingStarters.length) {
+      setCards(wingStarters.map(toSuggestion));
+      return;
+    }
     let alive = true;
     api
       .askStarters()
@@ -822,7 +835,7 @@ function EmptyHero(props: {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [wingStarters]);
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto chat-scrollbar">
       <div className="min-h-full flex items-center justify-center px-4 py-10 sm:py-16">
