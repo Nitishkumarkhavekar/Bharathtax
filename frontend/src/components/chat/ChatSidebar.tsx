@@ -6,7 +6,6 @@ import {
   Trash2,
   LogOut,
   X,
-  Gavel,
   BookOpen,
   ScrollText,
   Clock,
@@ -30,8 +29,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 // Tools available to officers / auditors alongside the chat.
 const TOOLS = [
-  { to: "/appeals", label: "Appeals", icon: Gavel, tone: "amber" as const },
-  { to: "/drafts", label: "Drafting", icon: ScrollText, tone: "teal" as const },
+  { to: "/drafting", label: "Drafting", icon: ScrollText, tone: "teal" as const },
   { to: "/rulings", label: "Rulings", icon: BookOpen, tone: "violet" as const },
   { to: "/history", label: "History", icon: Clock, tone: "emerald" as const },
   { to: "/tokens", label: "Token Usage", icon: Coins, tone: "rose" as const },

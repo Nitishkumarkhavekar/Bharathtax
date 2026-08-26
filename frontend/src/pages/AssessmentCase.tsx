@@ -219,7 +219,7 @@ export default function AssessmentCase() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
-      <Link to="/assessments" className="inline-flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-primary">
+      <Link to="/drafting/assessments" className="inline-flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-primary">
         <ArrowLeft className="size-4" /> All assessment cases
       </Link>
 
