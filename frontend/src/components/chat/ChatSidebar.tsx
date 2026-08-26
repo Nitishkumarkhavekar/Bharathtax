@@ -13,7 +13,6 @@ import {
   CalendarClock,
   MessageSquareText,
   SquarePen,
-  Coins,
   ChevronDown,
   PanelLeft,
   MoreHorizontal,
@@ -36,7 +35,6 @@ const TOOLS = [
   { to: "/drafting", label: "Drafting", icon: ScrollText },
   { to: "/rulings", label: "Rulings", icon: BookOpen },
   { to: "/history", label: "History", icon: Clock },
-  { to: "/tokens", label: "Token Usage", icon: Coins },
 ];
 
 interface ChatSidebarProps {

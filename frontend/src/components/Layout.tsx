@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   MessageSquareText,
+  SquarePen,
   Clock,
   ShieldCheck,
   LogOut,
@@ -39,8 +40,10 @@ const NAV: {
   hint: string;
   group?: "tools";    // renders under a "Tools" subheader
 }[] = [
+  // Chat is the flagship — it gets a prominent "New chat" button at the very
+  // top of the sidebar (rendered separately), so it's the hero action rather
+  // than one row in a list.
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tone: "primary", hint: "Your caseload at a glance" },
-  { to: "/ask", label: "Chat", icon: MessageSquareText, feature: "chat", tone: "primary", hint: "Citation-grounded chat" },
   { to: "/workspace", label: "Calendar", icon: CalendarClock, tone: "primary", hint: "Matters, deadlines & reminders" },
   { to: "/drafting", label: "Drafting", icon: ScrollText, tone: "rose", hint: "Orders, appeals & notices" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
@@ -98,6 +101,7 @@ function SidebarBody({
   const loc = useLocation();
   const isAdmin = !!session && ["super_admin", "wing_admin"].includes(session.role);
   const feats = session?.features ?? null; // null = all modules
+  const hasChat = isAdmin || !feats || feats.includes("chat");
   const nav = NAV.filter(
     (n) =>
       n.to !== "/profile" && // account lives in the footer card, not the nav
@@ -118,7 +122,7 @@ function SidebarBody({
   if (scoped) {
     // Officer's function first: Dashboard, their wing tools, then Chat/Calendar,
     // then any remaining primary pages. Tools stay in the Tools group below.
-    const order = ["/dashboard", ...ws.tools.filter((p) => !toolPaths.has(p)), "/ask", "/workspace"];
+    const order = ["/dashboard", ...ws.tools.filter((p) => !toolPaths.has(p)), "/workspace"];
     const seen = new Set<string>();
     primaryList = order
       .map((p) => nav.find((n) => n.to === p))
@@ -221,6 +225,27 @@ function SidebarBody({
           </button>
         )}
       </div>
+
+      {/* New chat — the flagship action, top of the sidebar. A dark pill
+          (ChatGPT style) that starts a fresh chat from anywhere; collapses to
+          an icon on the rail. Hidden only if the user lacks chat access. */}
+      {hasChat && (
+        <div className={cn("relative", collapsed ? "px-2 pt-3" : "px-2.5 pt-3")}>
+          <Link
+            to="/ask"
+            onClick={onNavigate}
+            title="New chat"
+            aria-label="New chat"
+            className={cn(
+              "inline-flex items-center justify-center gap-2 rounded-lg text-white bg-slate-900 hover:bg-slate-800 shadow-sm ring-1 ring-black/30 transition-colors font-semibold",
+              collapsed ? "size-9 mx-auto" : "w-full h-10 text-[13.5px]",
+            )}
+          >
+            <SquarePen className="size-4" strokeWidth={1.9} />
+            {!collapsed && <span>New chat</span>}
+          </Link>
+        </div>
+      )}
 
       {/* Slot — feature pages inject a panel here (e.g. "Your drafts").
           When populated it takes the flex-1 area so the panel scrolls; the
