@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why BharatTax Wins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#f4f7fc; --surface:#ffffff; --surface-2:#eef2f9;
+    --ink:#0f1d34; --muted:#54648a; --line:#dce4f0; --line-strong:#c4d0e4;
+    --primary:#183a6d; --primary-ink:#183a6d; --primary-tint:#e6edf8;
+    --accent:#b07b25; --accent-tint:#f6ecd8;
+    --good:#127a54; --good-tint:#e2f2ea; --bad:#a6304a; --bad-tint:#fbe9ec;
+    --shadow:0 1px 2px rgba(15,29,52,.05), 0 10px 30px rgba(15,29,52,.06);
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
+    --bg:#0b1220; --surface:#131d2e; --surface-2:#1a2537;
+    --ink:#e8eef8; --muted:#9fb0cc; --line:#26324b; --line-strong:#35476a;
+    --primary:#7ea6e0; --primary-ink:#bcd3f4; --primary-tint:#182741;
+    --accent:#d7a24e; --accent-tint:#2a2211;
+    --good:#4fc79a; --good-tint:#122820; --bad:#f0899c; --bad-tint:#2b1720;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.4);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0b1220; --surface:#131d2e; --surface-2:#1a2537;
+    --ink:#e8eef8; --muted:#9fb0cc; --line:#26324b; --line-strong:#35476a;
+    --primary:#7ea6e0; --primary-ink:#bcd3f4; --primary-tint:#182741;
+    --accent:#d7a24e; --accent-tint:#2a2211;
+    --good:#4fc79a; --good-tint:#122820; --bad:#f0899c; --bad-tint:#2b1720;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600}
+
+  /* hero */
+  .hero{padding:52px 0 30px}
+  h1{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:clamp(34px,5.4vw,58px);line-height:1.03;letter-spacing:-.015em;margin:12px 0 0;text-wrap:balance;max-width:16ch}
+  h1 em{font-style:italic;color:var(--primary-ink)}
+  .thesis{font-size:19px;color:var(--muted);margin:18px 0 0;max-width:60ch}
+  .oneliner{margin-top:26px;padding:18px 22px;border-left:3px solid var(--accent);background:var(--surface);border-radius:0 14px 14px 0;box-shadow:var(--shadow);font-family:Newsreader,serif;font-size:21px;line-height:1.4;font-style:italic}
+  .oneliner b{font-style:normal;font-weight:600;color:var(--primary-ink)}
+
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:Newsreader,serif;font-weight:600;font-size:27px;letter-spacing:-.01em;margin:0 0 4px;text-wrap:balance}
+  .lede{color:var(--muted);margin:6px 0 20px;max-width:72ch}
+
+  /* category reframe */
+  .cats{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:14px}
+  @media(max-width:720px){.cats{grid-template-columns:1fr}}
+  .cat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow)}
+  .cat.us{border-color:var(--primary);background:linear-gradient(180deg,var(--primary-tint),var(--surface))}
+  .cat .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+  .cat.us .tag{color:var(--primary-ink)}
+  .cat h3{margin:6px 0 6px;font-size:17px;font-weight:600}
+  .cat p{margin:0;font-size:13.5px;color:var(--muted)}
+  .cat .who{margin-top:12px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+
+  /* matrix */
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
+  thead th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:13px 16px;border-bottom:1px solid var(--line-strong);background:var(--surface-2)}
+  thead th.us{color:var(--primary-ink)}
+  tbody td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  td.feat{font-weight:600}
+  td.us{background:color-mix(in srgb,var(--primary-tint) 55%,transparent);font-weight:600}
+  .yes{color:var(--good);font-weight:700}.no{color:var(--bad);font-weight:700}.mid{color:var(--accent);font-weight:700}
+
+  /* three pillars */
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:720px){.pillars{grid-template-columns:1fr}}
+  .pillar{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+  .pillar .n{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--primary-ink);font-size:13px}
+  .pillar h3{margin:8px 0 6px;font-size:17px;font-weight:600;text-wrap:balance}
+  .pillar p{margin:0;font-size:13.5px;color:var(--muted)}
+
+  /* objections */
+  .obj{display:flex;flex-direction:column;gap:12px}
+  .qa{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .qa .q{font-weight:600;color:var(--ink)}
+  .qa .q::before{content:"“";color:var(--muted)}
+  .qa .q::after{content:"”";color:var(--muted)}
+  .qa .a{margin-top:7px;font-size:14px;color:var(--muted)}
+  .qa .a b{color:var(--ink);font-weight:600}
+
+  .callout{background:var(--accent-tint);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:16px;padding:18px 22px;margin-top:8px}
+  .callout b{color:var(--ink)}
+
+  ul.clean{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+  ul.clean li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px}
+  ul.clean li svg{flex:none;margin-top:3px;color:var(--good)}
+
+  footer{border-top:1px solid var(--line);margin-top:24px;padding:24px 0 60px;color:var(--muted);font-size:13px}
+  @media print{body{background:#fff}.cat,.qa,.pillar,.tablewrap,.oneliner,.callout{box-shadow:none}section{break-inside:avoid}thead th{position:static}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">BharatTax · Positioning &amp; strategy</div>
+    <h1>Why an officer picks <em>us</em> over ChatGPT, Gemini &amp; Taxmann.</h1>
+    <p class="thesis">The honest one, that survives scrutiny: we're not competing to be a better chatbot or a bigger library. We're a different thing — the one that does the work.</p>
+    <div class="oneliner">ChatGPT guesses. Taxmann is a library. <b>BharatTax does the officer's job — cited.</b></div>
+  </header>
+
+  <section>
+    <h2>The reframe: three categories, and we're the third</h2>
+    <p class="lede">Your boss is comparing tools that aren't in the same category. Don't fight to be a better version of theirs — own the category they can't enter.</p>
+    <div class="cats">
+      <div class="cat">
+        <div class="tag">General AI</div>
+        <h3>Answers anything</h3>
+        <p>Grounded in nothing Indian-tax-specific. Confident, and confidently wrong.</p>
+        <div class="who">ChatGPT · Gemini</div>
+      </div>
+      <div class="cat">
+        <div class="tag">Research library</div>
+        <h3>You read it, then do the work yourself</h3>
+        <p>Authoritative content — acts, commentary, case law. A reference, not an output.</p>
+        <div class="who">Taxmann · CCH</div>
+      </div>
+      <div class="cat us">
+        <div class="tag">Working desk</div>
+        <h3>Produces the officer's actual output</h3>
+        <p>Drafts the order, computes the calendar &amp; interest, tracks the demand — cited, editable, deadline-aware.</p>
+        <div class="who">BharatTax</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Head to head</h2>
+    <p class="lede">What an officer actually needs on a file — and who delivers it.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>What the officer needs</th><th>ChatGPT / Gemini</th><th>Taxmann</th><th class="us">BharatTax</th></tr></thead>
+      <tbody>
+        <tr><td class="feat">Cited to the exact section / judgment</td><td><span class="no">✗</span> invents citations</td><td><span class="yes">✓</span> its own content</td><td class="us"><span class="yes">✓</span> primary law + case law</td></tr>
+        <tr><td class="feat">Refuses when the source is silent</td><td><span class="no">✗</span> hallucinates</td><td><span class="mid">n/a</span></td><td class="us"><span class="yes">✓</span> says "not on record"</td></tr>
+        <tr><td class="feat">Drafts the assessment / appellate order</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td class="us"><span class="yes">✓</span> cited, editable, to DOCX</td></tr>
+        <tr><td class="feat">Computes the limitation calendar &amp; interest</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td class="us"><span class="yes">✓</span> 153/149/263/144C/275 + 220(2)</td></tr>
+        <tr><td class="feat">Tracks the officer's own caseload</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td class="us"><span class="yes">✓</span> matters, deadlines, demand</td></tr>
+        <tr><td class="feat">Built for the department's wings (AO/TPO/DRP…)</td><td><span class="no">✗</span></td><td><span class="mid">practitioner-first</span></td><td class="us"><span class="yes">✓</span> every wing, tailored</td></tr>
+        <tr><td class="feat">Data can stay on government infrastructure</td><td><span class="no">✗</span> foreign cloud</td><td><span class="no">✗</span> SaaS</td><td class="us"><span class="yes">✓</span> sovereign / on-prem capable</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>The three things only we do</h2>
+    <div class="pillars">
+      <div class="pillar"><div class="n">01</div><h3>Grounded &amp; honest</h3><p>Every claim cited to primary law; refuses to invent when the source is silent. The difference between a draft you can sign and one you can't.</p></div>
+      <div class="pillar"><div class="n">02</div><h3>It does the work</h3><p>A cited order in minutes, a limitation calendar from one date, interest/TDS/ALP/penalty with workings. Neither a chatbot nor a library produces the deliverable.</p></div>
+      <div class="pillar"><div class="n">03</div><h3>Built for the department</h3><p>Tailored to every IT wing, with a daily desk — and deployable so the data stays under the government's control.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>"They already pay for Taxmann / ChatGPT" — how to answer</h2>
+    <div class="obj">
+      <div class="qa">
+        <div class="q">We already subscribe to Taxmann.</div>
+        <div class="a">Keep it — we're not a replacement. Taxmann tells you what the law <b>says</b>; BharatTax <b>drafts your order, watches your limitation dates, and computes your interest</b>. Different purchase, different job. And for the assessment / recovery / investigation side, Taxmann doesn't serve you at all — we do.</div>
+      </div>
+      <div class="qa">
+        <div class="q">Why not just use ChatGPT?</div>
+        <div class="a">Because it will confidently cite a section that's been amended or doesn't exist — you can't put that before a bench — and it won't draft your 143(3) order or flag a time-bar. Ours is <b>cited, and honest when it doesn't know</b>.</div>
+      </div>
+      <div class="qa">
+        <div class="q">How do we trust an AI with our case data?</div>
+        <div class="a">Because <b>your case data stays on your infrastructure</b>. Taxmann never had to solve this — it doesn't hold your case files. ChatGPT can't — it's a foreign cloud. Only we can keep the working data under your control.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Data stays with the government — without a server in every office</h2>
+    <p class="lede">Sovereignty doesn't mean a box in every ward. It means the data sits on government-controlled infrastructure and the government controls it — one central instance, exactly like ITBA / Insight / TRACES already run.</p>
+    <div class="callout">
+      <ul class="clean">
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Managed sovereign instance (default for govt):</b> a dedicated, isolated instance on gov-approved Indian infrastructure — their tenant, their keys — that <b>we operate</b>. On-prem-grade control, SaaS-grade convenience, zero ops burden on any office.</span></li>
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Central gov-hosted or air-gapped on-prem:</b> for the highest-control wings, the full stack + a local AI model runs inside the department's own network. Nothing leaves.</span></li>
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Officers manage nothing</b> — a browser or a signed desktop app connects to the central instance over the department network.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>The pricing edge</h2>
+    <p class="lede">A single annual license — <b style="color:var(--ink)">₹45,999 + GST</b>, with a generous usage allowance — versus per-seat research subscriptions. Department-friendly and predictable, not a per-head meter.</p>
+  </section>
+
+  <footer>
+    <b style="color:var(--ink)">One line for the top of the deck:</b> “A private AI that lives inside the department, drafts the officer's orders and computes their deadlines — every line cited — and never sends a byte outside the network. ChatGPT can't be private. Taxmann can't draft. That sentence is true only of BharatTax.”
+  </footer>
+</div>
+
+</body>
+</html>
