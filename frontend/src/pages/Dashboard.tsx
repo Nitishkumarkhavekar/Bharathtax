@@ -5,7 +5,7 @@ import { api, WsWorkload, WsWorkloadRow } from "../api";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
-import { resolveWorkspace } from "@/lib/workspaceProfiles";
+import { resolveWorkspace, resolveTiles } from "@/lib/workspaceProfiles";
 
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
@@ -40,7 +40,7 @@ function urgency(days: number): { tag: string; tone: string } {
   return { tag: `${days}d`, tone: "bg-emerald-50 text-emerald-700 ring-emerald-200" };
 }
 
-function Tile({ label, value, tone }: { label: string; value: number; tone: string }) {
+function Tile({ label, value, tone }: { label: string; value: string | number; tone: string }) {
   return (
     <div className={cn("rounded-2xl ring-1 p-4", tone)}>
       <div className="text-2xl font-bold leading-none tabular-nums">{value}</div>
@@ -48,6 +48,24 @@ function Tile({ label, value, tone }: { label: string; value: number; tone: stri
     </div>
   );
 }
+
+const inrCompact = (n: number) =>
+  "₹" + new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+
+interface DeskStats {
+  total_matters: number; open_deadlines: number; overdue: number;
+  due_7: number; due_30: number; demand: number;
+}
+
+// The tile vocabulary the per-wing tile sets (resolveTiles) pick from.
+const TILE_DEFS: Record<string, { label: string; tone: string; get: (s: DeskStats) => string | number }> = {
+  matters: { label: "Matters", tone: "bg-white text-slate-900 ring-slate-200", get: (s) => s.total_matters },
+  open: { label: "Open deadlines", tone: "bg-white text-slate-900 ring-slate-200", get: (s) => s.open_deadlines },
+  overdue: { label: "Overdue", tone: "bg-rose-50 text-rose-700 ring-rose-200", get: (s) => s.overdue },
+  due7: { label: "Next 7 days", tone: "bg-amber-50 text-amber-700 ring-amber-200", get: (s) => s.due_7 },
+  due30: { label: "Next 30 days", tone: "bg-emerald-50 text-emerald-700 ring-emerald-200", get: (s) => s.due_30 },
+  demand: { label: "Demand outstanding", tone: "bg-rose-50 text-rose-700 ring-rose-200", get: (s) => inrCompact(s.demand) },
+};
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -113,13 +131,16 @@ export default function Dashboard() {
 
   // Tiles reflect the CURRENT filter (your desk), not the whole department's
   // caseload — so the numbers always agree with the list below.
-  const s = useMemo(() => ({
+  const s: DeskStats = useMemo(() => ({
     total_matters: rows.length,
     open_deadlines: rows.reduce((n, m) => n + m.open_count, 0),
     overdue: rows.reduce((n, m) => n + m.overdue_count, 0),
     due_7: rows.reduce((n, m) => n + m.urgent_count, 0),
     due_30: rows.reduce((n, m) => n + (m.due30_count ?? 0), 0),
+    demand: rows.reduce((n, m) => n + (m.demand_due ?? 0), 0),
   }), [rows]);
+  // Which tiles this desk leads with (Recovery/AO surface outstanding demand).
+  const tiles = resolveTiles(session?.workspaceProfile, session?.workspaceWings);
 
   return (
     <div className="space-y-5">
@@ -139,13 +160,12 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Summary tiles */}
+      {/* Summary tiles — the set is tailored to the officer's function. */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <Tile label="Matters" value={s?.total_matters ?? 0} tone="bg-white text-slate-900 ring-slate-200" />
-        <Tile label="Open deadlines" value={s?.open_deadlines ?? 0} tone="bg-white text-slate-900 ring-slate-200" />
-        <Tile label="Overdue" value={s?.overdue ?? 0} tone="bg-rose-50 text-rose-700 ring-rose-200" />
-        <Tile label="Next 7 days" value={s?.due_7 ?? 0} tone="bg-amber-50 text-amber-700 ring-amber-200" />
-        <Tile label="Next 30 days" value={s?.due_30 ?? 0} tone="bg-emerald-50 text-emerald-700 ring-emerald-200" />
+        {tiles.map((k) => {
+          const d = TILE_DEFS[k];
+          return d ? <Tile key={k} label={d.label} value={d.get(s)} tone={d.tone} /> : null;
+        })}
       </div>
 
       {/* Controls */}
