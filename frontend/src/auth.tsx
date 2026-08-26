@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { api, ApiError, TokenResponse } from "./api";
+import { api, ApiError, TokenResponse, API_BASE } from "./api";
 
 interface Session {
   username: string;
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const id = setInterval(async () => {
       const tok = localStorage.getItem(KEY);
       if (!tok) return;
-      const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const base = API_BASE;
       try {
         const res = await fetch(`${base}/auth/heartbeat`, {
           method: "POST", headers: { Authorization: `Bearer ${tok}` },

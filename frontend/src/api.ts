@@ -2,24 +2,35 @@
 // token clears the local session and bounces the user to /login so they never
 // see a stale "Signature has expired" error in the middle of the app.
 
-// Base URL resolution:
-//   1. When served through a VS Code / Microsoft dev tunnel
-//      (*.devtunnels.ms), route through the same origin so Vite's
-//      proxy forwards /ask, /rulings, /chats, … to the local backend.
-//      This means a single tunnel URL exposes both the UI and the API
-//      to remote testers — no second tunnel needed.
-//   2. Otherwise honour VITE_API_BASE_URL from build env (production).
-//   3. Fall back to localhost:8000 for direct dev.
+// Base URL resolution (first match wins):
+//   1. Dev tunnel (*.devtunnels.ms) → same origin (Vite proxies the API).
+//   2. RUNTIME config — `window.__BHARATTAX_CONFIG__` set by /config.js, which
+//      the container serves and a deployment edits WITHOUT rebuilding. This is
+//      the on-prem / sovereign-instance hook: point the same build at the
+//      department's own backend (`{ apiBase: "https://itd.internal" }`) or the
+//      same host it's served from (`{ sameOrigin: true }`).
+//   3. Build-time VITE_API_BASE_URL (our SaaS build).
+//   4. localhost:8000 for direct dev.
 function _resolveApiBase(): string {
   try {
     if (typeof window !== "undefined") {
       const host = window.location.hostname || "";
       if (host.endsWith(".devtunnels.ms")) return window.location.origin;
+      const cfg = (window as any).__BHARATTAX_CONFIG__;
+      if (cfg && typeof cfg === "object") {
+        if (cfg.sameOrigin === true) return window.location.origin;
+        if (typeof cfg.apiBase === "string" && cfg.apiBase.trim()) {
+          return cfg.apiBase.trim().replace(/\/+$/, "");
+        }
+      }
     }
   } catch { /* SSR / non-browser envs */ }
   return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 }
 const BASE = _resolveApiBase();
+// Exported so other modules (auth heartbeat) resolve the SAME base — including
+// any runtime on-prem override — instead of re-reading the build env.
+export const API_BASE = BASE;
 
 const TOKEN_KEY = "bharathtax_token";
 const SESSION_KEY = "bharathtax_session";
