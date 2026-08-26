@@ -23,11 +23,13 @@ from app.models.org import User
 from app.models.workspace import (
     Deadline, Demand, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
 )
+from app.models.personalization import UserMemory, UserSettings
 
 _TABLES = [
     User.__table__, Matter.__table__, Deadline.__table__, Reminder.__table__,
     StickyNote.__table__, WorkspaceTemplate.__table__, Watchlist.__table__,
     MatterShare.__table__, Demand.__table__,
+    UserSettings.__table__, UserMemory.__table__,
 ]
 
 

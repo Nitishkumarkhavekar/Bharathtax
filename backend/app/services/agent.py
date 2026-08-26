@@ -735,17 +735,34 @@ def _apply_continuation_intent(contents: list, question: str) -> tuple[list, str
     return new_contents, instruction
 
 
+def _persona_system(db: Session, user_id: int, question: str) -> str:
+    """The dated base system prompt, augmented with the user's PERSISTENT
+    personalization — charge/posting, designation, custom instructions,
+    'about your work', style, and cross-chat long-term memory — so every chat
+    answer is tailored to the officer, not only the legacy fallback path."""
+    base = _dated(_SYSTEM)
+    try:
+        from app.models.org import User
+        from app.services import personalization as _pers
+        u = db.get(User, user_id)
+        ctx = _pers.build_context(db, u, question) if u is not None else ""
+        return base + "\n\n" + ctx if ctx else base
+    except Exception:  # personalization is best-effort — never break the answer
+        return base
+
+
 def answer_agentic(db: Session, question: str, *, user_id: int, chat_id=None, domain=None):
     """Run the tool-calling loop. Returns (text, meta)."""
     contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": question}]}]
     contents, question = _apply_continuation_intent(contents, question)
+    _psys = _persona_system(db, user_id, question)
     tools_used, all_sources, usage_calls = [], [], []
     law_refs: list[dict] = []   # statutory passages search_tax_law actually returned
     # Temperature 0: the same question must route through the same tools and yield
     # the same answer every time — an officer re-asking a case should not get a
     # different verdict. Non-determinism here was the demo's "50-50" behaviour.
     cfg = {"temperature": 0.0, "maxOutputTokens": 4096, "thinkingConfig": {"thinkingBudget": 0}}
-    base = {"systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]}, "tools": _TOOLS, "generationConfig": cfg}
+    base = {"systemInstruction": {"parts": [{"text": _psys}]}, "tools": _TOOLS, "generationConfig": cfg}
     for _ in range(_MAX_ITERS):
         t0 = time.time()
         with _tx.gate(), httpx.Client(timeout=httpx.Timeout(60.0)) as c:
@@ -944,6 +961,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     _q_for_model = question + _tdir if _tdir else question
     contents = _recent_history(db, chat_id=chat_id, user_id=user_id) + [{"role": "user", "parts": [{"text": _q_for_model}]}]
     contents, question = _apply_continuation_intent(contents, question)
+    _psys = _persona_system(db, user_id, question)
     tools_used, all_sources, usage_calls, law_refs = [], [], [], []
     # 8192 mirrors the composer budget in multi_agent — a Template-B opinion
     # with a decision table, both-sides arguments, and a case-law table
@@ -953,7 +971,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     # rely on the auto-continue block below to finish anything that STILL
     # trips MAX_TOKENS.
     cfg = {"temperature": 0.0, "maxOutputTokens": 8192, "thinkingConfig": {"thinkingBudget": 0}}
-    base = {"systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]}, "tools": _TOOLS, "generationConfig": cfg}
+    base = {"systemInstruction": {"parts": [{"text": _psys}]}, "tools": _TOOLS, "generationConfig": cfg}
     final_text = ""
     # True when the final answer text has already been streamed via deltas.
     # Prevents the safety-net "yield final_text as delta" from double-writing
@@ -1021,7 +1039,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
                 # Also drop for flash-latest which doesn't need it.
                 if "flash-latest" in _mdl or "pro" in _mdl:
                     _cfg = {k: v for k, v in _cfg.items() if k != "thinkingConfig"}
-                _base_body = {"systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]},
+                _base_body = {"systemInstruction": {"parts": [{"text": _psys}]},
                               "generationConfig": _cfg}
                 if not _no_more_tools_end:
                     _base_body["tools"] = _TOOLS
@@ -1248,7 +1266,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             _cfg = dict(cfg)
             _cfg.pop("thinkingConfig", None)
             _cont_body = {
-                "systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]},
+                "systemInstruction": {"parts": [{"text": _psys}]},
                 "generationConfig": _cfg,
                 "contents": _cont_contents,
             }
@@ -1294,7 +1312,7 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
             # picky and this call must NOT fail silently.
             _cfg.pop("thinkingConfig", None)
             _synth_body = {
-                "systemInstruction": {"parts": [{"text": _dated(_SYSTEM)}]},
+                "systemInstruction": {"parts": [{"text": _psys}]},
                 "generationConfig": _cfg,
                 "contents": contents + [{
                     "role": "user",

@@ -2989,8 +2989,21 @@ def _classify_persona(question: str) -> tuple[str, str, int, str]:
     ), 6144, "")
 
 
+def _persona_ctx(db, user_id: int, question: str) -> str:
+    """The user's personalization preamble (charge, style, cross-chat memory),
+    or '' — so the multi-agent composer also tailors to the officer."""
+    try:
+        from app.models.org import User
+        from app.services import personalization as _pers
+        u = db.get(User, user_id)
+        return _pers.build_context(db, u, question) if u is not None else ""
+    except Exception:
+        return ""
+
+
 def _stream_composer(question: str, packet: str, history: list, plan: dict | None = None,
-                     coverage_bullets: list[str] | None = None, resume_hint: str = ""):
+                     coverage_bullets: list[str] | None = None, resume_hint: str = "",
+                     persona_ctx: str = ""):
     """Stream the composer's final answer. Yields {'delta': str} for each
     text chunk from Gemini. `history` gives conversational context for
     follow-ups; `resume_hint` (set for 'continue' turns) tells it to resume
@@ -3155,7 +3168,8 @@ def _stream_composer(question: str, packet: str, history: list, plan: dict | Non
     log.info("composer persona=%s max_tokens=%d model=%s q=%r",
              persona, persona_max_tokens, persona_model or "default",
              (question or "")[:80])
-    base = {"systemInstruction": {"parts": [{"text": _dated(_COMPOSER_SYSTEM)}]},
+    _comp_sys = _dated(_COMPOSER_SYSTEM) + ("\n\n" + persona_ctx if persona_ctx else "")
+    base = {"systemInstruction": {"parts": [{"text": _comp_sys}]},
             "generationConfig": cfg}
 
     # Merged: master added the `_tx` (Vertex-ready) transport + cost-fix
@@ -3470,7 +3484,8 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
     _resolved = _apply_continuation_intent(_probe, question)[1]
     _resume_hint = _resolved if _resolved != question else ""
     for ev in _stream_composer(question, packet, history=_comp_history, plan=plan,
-                               coverage_bullets=coverage_bullets, resume_hint=_resume_hint):
+                               coverage_bullets=coverage_bullets, resume_hint=_resume_hint,
+                               persona_ctx=_persona_ctx(db, user_id, question)):
         if "delta" in ev:
             final_text += ev["delta"]
         yield ev
@@ -3945,8 +3960,9 @@ def answer_native_pdf_stream(db: Session, question: str, *, user_id, doc_ids: li
     })
     contents = [{"role": "user", "parts": parts}]
 
+    _pdf_sys = _dated(_COMPOSER_SYSTEM) + (lambda c: "\n\n" + c if c else "")(_persona_ctx(db, user_id, question))
     body = {
-        "systemInstruction": {"parts": [{"text": _dated(_COMPOSER_SYSTEM)}]},
+        "systemInstruction": {"parts": [{"text": _pdf_sys}]},
         "contents": contents,
         "generationConfig": {
             "temperature": 0.0,
@@ -4124,7 +4140,8 @@ def answer_attached_file_stream(db: Session, question: str, *, user_id,
     final_text = ""
     for ev in _stream_composer(question, packet="",
                                history=_comp_history, plan=_plan,
-                               coverage_bullets=[], resume_hint=_resume_hint):
+                               coverage_bullets=[], resume_hint=_resume_hint,
+                               persona_ctx=_persona_ctx(db, user_id, question)):
         if "delta" in ev:
             final_text += ev["delta"]
         yield ev
