@@ -16,23 +16,23 @@ export interface ProfileConfig {
 // (the sidebar always keeps them in the workspace section).
 export const PROFILES: ProfileConfig[] = [
   { key: "officer", label: "Assessing Officer", categories: ["officer", "recovery"],
-    tools: ["/assessments", "/calculators", "/templates", "/rulings", "/drafts"], calcTab: "interest", templateGroup: "Assessment & notices" },
+    tools: ["/drafting", "/calculators", "/templates", "/rulings"], calcTab: "interest", templateGroup: "Assessment & notices" },
   { key: "cita", label: "CIT(A) / NFAC", categories: ["cita"],
-    tools: ["/appeals", "/rulings", "/templates", "/drafts"], calcTab: "interest", templateGroup: "Assessment & notices" },
+    tools: ["/drafting", "/rulings", "/templates"], calcTab: "interest", templateGroup: "Assessment & notices" },
   { key: "drp", label: "DRP", categories: ["drp"],
-    tools: ["/appeals", "/calculators", "/templates", "/rulings"], calcTab: "alp", templateGroup: "DRP" },
+    tools: ["/drafting", "/calculators", "/templates", "/rulings"], calcTab: "alp", templateGroup: "DRP" },
   { key: "tp", label: "Transfer Pricing (TPO)", categories: ["tp"],
-    tools: ["/calculators", "/templates", "/rulings"], calcTab: "alp", templateGroup: "Transfer Pricing" },
+    tools: ["/drafting", "/calculators", "/templates", "/rulings"], calcTab: "alp", templateGroup: "Transfer Pricing" },
   { key: "investigation", label: "Investigation", categories: ["investigation"],
-    tools: ["/calculators", "/reconcile", "/templates"], calcTab: "peak", templateGroup: "Investigation" },
+    tools: ["/drafting", "/calculators", "/reconcile", "/templates"], calcTab: "peak", templateGroup: "Investigation" },
   { key: "ici", label: "I&CI", categories: ["ici"],
-    tools: ["/reconcile", "/calculators", "/templates"], calcTab: "peak", templateGroup: "Investigation" },
+    tools: ["/drafting", "/reconcile", "/calculators", "/templates"], calcTab: "peak", templateGroup: "Investigation" },
   { key: "recovery", label: "Recovery / TRO", categories: ["recovery"],
-    tools: ["/calculators", "/templates", "/drafts"], calcTab: "recovery", templateGroup: "Recovery" },
+    tools: ["/drafting", "/calculators", "/templates"], calcTab: "recovery", templateGroup: "Recovery" },
   { key: "tds", label: "TDS / Exemptions", categories: ["tds"],
-    tools: ["/calculators", "/templates", "/drafts"], calcTab: "tds", templateGroup: "Exemptions" },
+    tools: ["/drafting", "/calculators", "/templates"], calcTab: "tds", templateGroup: "Exemptions" },
   { key: "ca", label: "CA / Advocate", categories: ["ca"],
-    tools: ["/appeals", "/assessments", "/calculators", "/templates", "/rulings", "/reconcile"], calcTab: "interest", templateGroup: "Assessee replies" },
+    tools: ["/drafting", "/calculators", "/templates", "/rulings", "/reconcile"], calcTab: "interest", templateGroup: "Assessee replies" },
 ];
 
 const BY_KEY = new Map(PROFILES.map((p) => [p.key, p]));

@@ -297,7 +297,7 @@ export default function AppealCase() {
   return (
     <div className="space-y-3">
       {confirmDialog}
-      <Link to="/appeals" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"><ArrowLeft className="size-4" /> All cases</Link>
+      <Link to="/drafting/appeals" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"><ArrowLeft className="size-4" /> All cases</Link>
       {c && (
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">{c.title}</h2>

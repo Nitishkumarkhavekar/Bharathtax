@@ -14,12 +14,10 @@ const ReleasesLanding = lazy(() => import("./pages/Releases"));
 const Ask = lazy(() => import("./pages/Ask"));
 const ProfilePage = lazy(() => import("./pages/Profile"));
 const History = lazy(() => import("./pages/History"));
-const Appeals = lazy(() => import("./pages/Appeals"));
 const AppealCase = lazy(() => import("./pages/AppealCase"));
-const Assessments = lazy(() => import("./pages/Assessments"));
 const AssessmentCase = lazy(() => import("./pages/AssessmentCase"));
 const Rulings = lazy(() => import("./pages/Rulings"));
-const Drafting = lazy(() => import("./pages/Drafting"));
+const DraftingHub = lazy(() => import("./pages/DraftingHub"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Calculators = lazy(() => import("./pages/Calculators"));
@@ -113,11 +111,16 @@ export default function App() {
       {/* Chat + user-facing tools are not for admin accounts — admins are
           bounced to the admin console. */}
       <Route path="/ask" element={<NonAdminOnly raw><Ask /></NonAdminOnly>} />
-      <Route path="/appeals" element={<NonAdminOnly><Appeals /></NonAdminOnly>} />
+      {/* Unified Drafting hub — assessment orders, appellate orders & notices
+          under one item, switched by tabs. The old list routes redirect in so
+          existing links/bookmarks keep working; the case-detail pages stay. */}
+      <Route path="/drafting" element={<NonAdminOnly><DraftingHub /></NonAdminOnly>} />
+      <Route path="/drafting/:tab" element={<NonAdminOnly><DraftingHub /></NonAdminOnly>} />
+      <Route path="/appeals" element={<Navigate to="/drafting/appeals" replace />} />
+      <Route path="/assessments" element={<Navigate to="/drafting/assessments" replace />} />
+      <Route path="/drafts" element={<Navigate to="/drafting/notices" replace />} />
       <Route path="/appeals/:id" element={<NonAdminOnly><AppealCase /></NonAdminOnly>} />
-      <Route path="/assessments" element={<NonAdminOnly><Assessments /></NonAdminOnly>} />
       <Route path="/assessments/:id" element={<NonAdminOnly><AssessmentCase /></NonAdminOnly>} />
-      <Route path="/drafts" element={<NonAdminOnly><Drafting /></NonAdminOnly>} />
       <Route path="/dashboard" element={<NonAdminOnly><Dashboard /></NonAdminOnly>} />
       <Route path="/workspace" element={<NonAdminOnly><Workspace /></NonAdminOnly>} />
       <Route path="/calculators" element={<NonAdminOnly><Calculators /></NonAdminOnly>} />
