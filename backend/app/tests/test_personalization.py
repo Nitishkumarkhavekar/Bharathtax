@@ -4,6 +4,7 @@ multi-agent), not just the legacy fallback."""
 from app.services import personalization as pers
 from app.services import agent, multi_agent
 from app.services import assessment_draft, appeal_draft
+from app.core import profiles as wing
 
 
 def _officer(db, user_factory):
@@ -98,3 +99,26 @@ def test_persona_is_additive_default_is_unchanged():
     assert a.startswith("PERSONA-LINE") and a.endswith(assessment_draft.ASSESSMENT_SYSTEM)
     b = appeal_draft._sys("PERSONA-LINE")
     assert b.startswith("PERSONA-LINE") and b.endswith(appeal_draft.OFFICER_SYSTEM)
+
+
+# ---- Wing-aware chat persona (per-function standpoint) -----------------------
+def test_wing_helpers_map_key_to_label_and_standpoint():
+    assert wing.wing_label("tp") == "Transfer Pricing (TPO)"
+    assert "arm's-length" in wing.wing_standpoint("tp")
+    assert "assessee" in wing.wing_standpoint("ca")          # CA argues the other side
+    # custom → first recognised chosen wing wins
+    assert wing.wing_label("custom", ["nonsense", "recovery"]) == "Recovery / TRO"
+    assert wing.wing_standpoint("all") == "" and wing.wing_standpoint(None) == ""
+
+
+def test_build_context_uses_wing_when_designation_blank(db, user_factory):
+    u = user_factory(7)                     # no designation set
+    u.workspace_profile = "tp"
+    db.commit()
+    ctx = pers.build_context(db, u, "which method for benchmarking?")
+    assert "Transfer Pricing" in ctx        # wing label fills the blank designation
+    assert "arm's-length" in ctx            # standpoint injected
+    # A CA user is framed on the assessee's side, not the department's.
+    u.workspace_profile = "ca"
+    db.commit()
+    assert "assessee" in pers.build_context(db, u, "reply to a 142(1)")

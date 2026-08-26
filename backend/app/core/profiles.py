@@ -18,6 +18,46 @@ WORKSPACE_PROFILES: list[dict] = [
 ]
 
 WORKSPACE_PROFILE_KEYS = {p["key"] for p in WORKSPACE_PROFILES}
+_LABEL_BY_KEY = {p["key"]: p["label"] for p in WORKSPACE_PROFILES}
+
+# The standpoint each function argues from. Fed to the model (chat preamble) so
+# an answer adopts the officer's perspective even when their free-text
+# designation is blank — a TPO reasons as a TPO, a CA argues for the assessee.
+WING_STANDPOINT: dict[str, str] = {
+    "officer": "the Assessing Officer, framing the assessment on the material on record",
+    "cita": "the first appellate authority (CIT(A) / NFAC), deciding the appeal ground-wise",
+    "drp": "the Dispute Resolution Panel, issuing directions on a draft assessment order",
+    "tp": "the Transfer Pricing Officer, determining the arm's-length price",
+    "investigation": "the Investigation wing, appraising seized and gathered material",
+    "ici": "the Intelligence & Criminal Investigation (I&CI) wing, verifying reported financial information",
+    "recovery": "the Tax Recovery Officer, enforcing an outstanding demand",
+    "tds": "the TDS / Exemptions officer, examining deduction compliance and exemption claims",
+    "ca": "a Chartered Accountant / Advocate, representing the assessee",
+}
+
+
+def wing_label(profile: str | None, wings: list[str] | None = None) -> str | None:
+    """Human label for a resolved profile — the single function's label, or the
+    first chosen function for a 'custom' profile. None for all/none/unknown."""
+    if not profile or profile in META_PROFILES:
+        if profile == "custom" and wings:
+            for k in wings:
+                if k in _LABEL_BY_KEY:
+                    return _LABEL_BY_KEY[k]
+        return None
+    return _LABEL_BY_KEY.get(profile)
+
+
+def wing_standpoint(profile: str | None, wings: list[str] | None = None) -> str:
+    """The perspective phrase for a resolved profile (or the first chosen
+    function of a 'custom' profile). Empty string when there's nothing to add."""
+    if not profile or profile in META_PROFILES:
+        if profile == "custom" and wings:
+            for k in wings:
+                if k in WING_STANDPOINT:
+                    return WING_STANDPOINT[k]
+        return ""
+    return WING_STANDPOINT.get(profile, "")
 
 # Meta profile values (not a single function):
 #   "all"    -> explicit "show everything" (no scoping, no first-run prompt)

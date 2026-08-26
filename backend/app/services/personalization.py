@@ -207,11 +207,24 @@ def build_context(db: Session, user: User, query: str, *, max_items: int = 8) ->
 
     lines: list[str] = []
 
-    # Profile
-    who = (user.designation or (user.role.value if hasattr(user.role, "value") else str(user.role))).strip()
+    # Profile — prefer the officer's own designation; fall back to their chosen
+    # function's label so a wing-only user still gets a meaningful role line.
+    from app.core import profiles as _profiles
+    wing = getattr(user, "workspace_profile", None)
+    wings = getattr(user, "workspace_wings", None)
+    wlabel = _profiles.wing_label(wing, wings)
+    role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
+    who = (user.designation or wlabel or role_val).strip()
     posting = (user.charge or "").strip()
     prof = f"Role: {who}" + (f", posted at {posting}" if posting else "")
     lines.append(prof + ".")
+
+    # Wing standpoint — so the answer is reasoned from the officer's perspective
+    # (AO frames the assessment; a CA argues for the assessee) even absent a
+    # free-text designation.
+    stand = _profiles.wing_standpoint(wing, wings)
+    if stand:
+        lines.append(f"They work as {stand}; answer from that standpoint where it applies.")
 
     if s and (s.about_me or "").strip():
         lines.append(f"About their work: {s.about_me.strip()}")
