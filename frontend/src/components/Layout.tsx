@@ -149,6 +149,7 @@ function SidebarBody({
       <Link
         key={n.to}
         to={n.to}
+        data-tour={n.to}
         onClick={onNavigate}
         title={collapsed ? n.label : undefined}
         aria-label={n.label}
@@ -233,6 +234,7 @@ function SidebarBody({
         <div className={cn("relative", collapsed ? "px-2 pt-3" : "px-2.5 pt-3")}>
           <Link
             to="/ask"
+            data-tour="new-chat"
             onClick={onNavigate}
             title="New chat"
             aria-label="New chat"
@@ -470,7 +472,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
             >
               <HelpCircle className="size-[18px]" />
             </button>
-            <NotificationBell />
+            <span data-tour="bell" className="inline-flex"><NotificationBell /></span>
           </div>
         </header>
         <main className="flex-1 min-h-0 overflow-auto bt-app-bg">
