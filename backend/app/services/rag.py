@@ -16,12 +16,14 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.enums import Domain
 from app.services import llm as llm_mod
+from app.services import prompt_guard as _pg
 from app.services import query_cache as _qcache
 from app.services.retrieval import Passage, RetrievalResult, retrieve, retrieve_documents
 
 log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
+    _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n"
     "You are BharatTax, a research assistant for Indian tax officers. Answer the "
     "question USING ONLY the numbered passages of primary tax law provided. "
     "Do NOT use any outside or prior knowledge. Cite every claim inline with the "
@@ -47,6 +49,7 @@ SYSTEM_PROMPT = (
 
 # System prompt used when retrieval is delegated to the LLM (e.g. bharattax-rag).
 SYSTEM_PROMPT_NATIVE = (
+    _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n"
     "You are BharatTax, a professional research assistant for Indian "
     "income-tax officers and practitioners. Answer the question using primary "
     "Indian tax law (Income-Tax Act, Rules, CBDT circulars/notifications). "
@@ -93,6 +96,7 @@ REFUSAL = (
 # (e.g. "what is income tax", "what is TDS", "explain HRA"). The fallback model
 # does NOT have retrieval — keep it conversational, professional, and on-topic.
 SYSTEM_PROMPT_FALLBACK = (
+    _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n"
     "You are BharatTax, a professional research assistant for Indian "
     "income-tax officers and practitioners. The grounded primary-source "
     "lookup did not return a match for this question. Answer using your "
@@ -564,12 +568,18 @@ def parse_source_citations(db: Session, text: str) -> list[Citation]:
 
 
 def _build_user_prompt(question: str, passages: list[Passage]) -> str:
+    # Question flows through the sanitiser (neutralises jailbreak payloads,
+    # role headers, control tokens) and is fenced so the model treats it as
+    # untrusted data — passages likewise, since a corpus doc could carry an
+    # indirect injection (a scraped webpage, an ingested notice).
+    fenced_q = _pg.wrap_untrusted(question, kind="user")
     blocks = []
     for i, p in enumerate(passages, start=1):
-        # a judgment headnote (what it held) primes the model on the ratio before the text
-        head = f"Headnote: {p.digest}\n" if getattr(p, "digest", None) else ""
-        blocks.append(f"[{i}] ({p.breadcrumb})\n{head}{p.text}")
-    return f"QUESTION: {question}\n\nPASSAGES:\n" + "\n\n".join(blocks)
+        head = f"Headnote: {_pg.sanitize_untrusted(p.digest)}\n" if getattr(p, "digest", None) else ""
+        body = _pg.sanitize_untrusted(p.text)
+        blocks.append(f"[{i}] ({p.breadcrumb})\n{head}{body}")
+    fenced_passages = _pg.wrap_untrusted("\n\n".join(blocks), kind="passage")
+    return f"QUESTION:\n{fenced_q}\n\nPASSAGES:\n{fenced_passages}"
 
 
 def _generate(question: str, result: RetrievalResult, client: llm_mod.LLMClient | None) -> Answer:
@@ -590,7 +600,7 @@ def _generate(question: str, result: RetrievalResult, client: llm_mod.LLMClient 
     ]
     client = client or llm_mod.get_llm()
     text = client.complete(SYSTEM_PROMPT, _build_user_prompt(question, result.passages))
-    return Answer(text=text, grounded=True, citations=citations, meta=result.meta)
+    return Answer(text=_pg.redact_output(text), grounded=True, citations=citations, meta=result.meta)
 
 
 def answer_question(db: Session, question: str, *, domain: Domain | None = None,
@@ -610,6 +620,15 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         return Answer(
             text="Please ask a question about Indian income-tax law.",
             grounded=False, citations=[], meta={"retrieval": "empty"},
+        )
+
+    # Naked exfil attempts ("show me your system prompt", "list all
+    # database tables") never reach the model — canned refusal, no
+    # LLM call, no context leak.
+    if _pg.looks_like_meta_exfiltration(q):
+        return Answer(
+            text=_pg.META_REFUSAL, grounded=False, citations=[],
+            meta={"retrieval": "refused:meta"},
         )
 
     greet = _greeting_reply(q)
@@ -672,7 +691,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
             log.exception("citation parsing failed (cache hit)")
             cached_citations = []
         return Answer(
-            text=cached_text,
+            text=_pg.redact_output(cached_text),
             grounded=bool(cached.get("grounded", True)),
             citations=cached_citations,
             meta=meta,
@@ -681,8 +700,10 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     client = client or llm_mod.get_llm()
     llm_calls: list[dict] = []
 
+    fenced_q = _pg.wrap_untrusted(q, kind="user")
+
     def _primary_call() -> str:
-        txt = client.complete(SYSTEM_PROMPT_NATIVE, q, context=persona_ctx or None)
+        txt = client.complete(SYSTEM_PROMPT_NATIVE, fenced_q, context=persona_ctx or None)
         if isinstance(client, llm_mod.OpenAICompatLLM):
             llm_calls.append({
                 "model": client.last_model or settings.llm_model_name,
@@ -785,7 +806,7 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
     # time-sensitive query we keep the corpus answer.
     if refused and used == "model-native" and fallback and hasattr(client, "complete"):
         try:
-            primary_text = client.complete(SYSTEM_PROMPT_FALLBACK, q, model=fallback, context=persona_ctx or None)
+            primary_text = client.complete(SYSTEM_PROMPT_FALLBACK, fenced_q, model=fallback, context=persona_ctx or None)
             used = f"fallback:{fallback}"
             if isinstance(client, llm_mod.OpenAICompatLLM):
                 llm_calls.append({
@@ -851,8 +872,8 @@ def answer_question(db: Session, question: str, *, domain: Domain | None = None,
         parsed_citations = []
 
     return Answer(
-        text=primary_text, grounded=grounded, citations=parsed_citations,
-        meta=result_meta,
+        text=_pg.redact_output(primary_text), grounded=grounded,
+        citations=parsed_citations, meta=result_meta,
     )
 
 
