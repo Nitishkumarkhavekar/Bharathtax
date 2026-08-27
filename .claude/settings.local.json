@@ -32,7 +32,10 @@
       "Bash(curl -sS -o /tmp/s.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/CauseList/court-structure/states)",
       "Bash(curl -sS -o /tmp/c.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024)",
       "Bash(curl -sS -o /tmp/d.json -w 'http=%{http_code}\\\\n' -H 'Authorization: Bearer eci_live_8tqi6gxhc2gzu7g738zgo99xdr0mkb6q' -H 'User-Agent: BharatTax/1.0' https://webapi.ecourtsindia.com/api/partner/causelist/available-dates)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(python -c \"import py_compile; [py_compile.compile\\(f, doraise=True\\) for f in ['app/services/prompt_guard.py','app/services/rag.py','app/services/agent.py','app/services/multi_agent.py','app/services/personalization.py','app/services/chat_memory.py','app/api/routes/ask.py']]\")",
+      "PowerShell(docker compose exec -T api ls -la /app/app/services/prompt_guard.py)",
+      "PowerShell(docker compose exec -T api grep -c \"prompt_guard\\\\|INSTRUCTION_HIERARCHY\" /app/app/services/rag.py /app/app/services/agent.py /app/app/services/multi_agent.py /app/app/services/personalization.py /app/app/services/chat_memory.py /app/app/api/routes/ask.py)"
     ]
   }
 }
