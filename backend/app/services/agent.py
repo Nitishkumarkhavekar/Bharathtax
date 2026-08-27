@@ -106,10 +106,45 @@ def _dated(system_text: str) -> str:
         f"5 years (Rs 50L+ evidence with AO).\n"
         f"• New tax regime (Sec 115BAC) is the DEFAULT from AY "
         f"2024-25 for individuals/HUF unless opted out.\n"
-        f"• Standard deduction Rs 75,000 under new regime, Rs 50,000 "
-        f"under old regime (from AY 2025-26).\n"
-        f"• Sec 87A rebate: Rs 25,000 new regime (income ≤ Rs 7L), "
-        f"Rs 12,500 old regime (income ≤ Rs 5L).\n\n"
+        f"• Standard deduction FROM AY 2025-26: Rs 75,000 NEW regime, "
+        f"Rs 50,000 OLD regime. Sec 16(ia) proviso, FA (No.2) 2024. If "
+        f"the question is AY 2025-26 new regime you write Rs 75,000 — "
+        f"NEVER Rs 50,000. Family pension standard deduction: "
+        f"Rs 25,000 new regime (was Rs 15,000).\n"
+        f"• Sec 87A rebate AY 2025-26: Rs 25,000 new regime (total income "
+        f"≤ Rs 7,00,000), Rs 12,500 old regime (income ≤ Rs 5,00,000). "
+        f"Marginal relief break-even under new regime: ~Rs 7,27,780 "
+        f"(Sec 87A proviso, FA 2023).\n"
+        f"• Sec 87A rebate AY 2026-27 (Budget 2025-26 change): rebate "
+        f"raised to Rs 60,000 for income ≤ Rs 12L under new regime. New "
+        f"basic exemption slab restructured (0-4L nil / 4-8L 5% / …). Do "
+        f"NOT confuse AY 2025-26 (Rs 25,000 / Rs 7L) with AY 2026-27.\n"
+        f"• AY 2025-26 new-regime slabs (Sec 115BAC as amended by FA "
+        f"(No.2) 2024): 0-3L Nil | 3-7L @5% | 7-10L @10% | 10-12L @15% "
+        f"| 12-15L @20% | >15L @30%. NEVER use the 3-6L / 6-9L slabs "
+        f"— those are AY 2024-25 slabs, superseded by Finance (No.2) "
+        f"Act 2024.\n"
+        f"• AY 2025-26 old-regime slabs: 0-2.5L Nil | 2.5-5L @5% | "
+        f"5-10L @20% | >10L @30%. Basic exemption Rs 2.5L old vs "
+        f"Rs 3L new.\n"
+        f"• AY 2025-26 Sec 87A LTCG/STCG-exclusion controversy: CPC "
+        f"processing has DENIED rebate against tax on special-rate "
+        f"income (Sec 112A LTCG, Sec 111A STCG); ITAT (Mumbai Jasmine "
+        f"Bhagat and others) has held rebate IS available on aggregate. "
+        f"Matter is sub judice — flag as 'position not yet settled' if "
+        f"the fact pattern touches special-rate income.\n"
+        f"• Cost Inflation Index (CBDT-notified, locked): FY 2015-16 = "
+        f"254, FY 2016-17 = 264, FY 2017-18 = 272, FY 2018-19 = 280, "
+        f"FY 2019-20 = 289, FY 2020-21 = 301, FY 2021-22 = 317, "
+        f"FY 2022-23 = 331, FY 2023-24 = 348, FY 2024-25 = 363 (CBDT "
+        f"Notification 44/2024 dated 24-May-2024), FY 2025-26 = 376. "
+        f"NEVER guess a CII — read from this table.\n"
+        f"• LTCG surcharge cap (Sec 112 / 112A + First Schedule proviso, "
+        f"FA 2024): surcharge on capital gains is CAPPED at 15% for all "
+        f"asset classes regardless of total income — the 25% and 37% "
+        f"peak surcharges do NOT apply to LTCG/STCG. Marginal relief on "
+        f"surcharge triggers at each Rs 50L / Rs 1Cr / Rs 2Cr threshold "
+        f"crossing — always run the check.\n\n"
         f"COMMONLY-MISQUOTED PRECEDENTS — cite these CORRECTLY (do NOT overstate them):\n"
         f"• Sec 68 (cash credit) core burden — assessee must prove "
         f"(a) IDENTITY of the creditor, (b) CREDITWORTHINESS of the "
@@ -358,6 +393,55 @@ _SYSTEM = (
     "        factual amount, or holding for a case you could not verify. "
     "        This is a HARD RULE — a wrong citation shown to an officer "
     "        is far worse than a general answer on the underlying issue. "
+    "        FUTURE-DATED CASES ARE FABRICATION: if you are about to write "
+    "        a citation with a year later than the current calendar year "
+    "        (e.g. '2026' or '2027' in an Aug-2026 answer), STOP. That "
+    "        citation cannot exist. Delete it and rely on the general "
+    "        judicial position instead. If a case did not come back from "
+    "        search_case_law AND is not in the landmark list, DO NOT "
+    "        invent an ITAT bench + year for it — describe the settled "
+    "        position without a fake cite. "
+    "        VERIFIED-CITATION-ONLY RULE: every case citation you emit "
+    "        MUST fall into one of these categories: (a) the case appears "
+    "        VERBATIM in the BharatTax curated primer for this session "
+    "        (in which case use the primer's exact wording and cite "
+    "        string), OR (b) search_case_law returned the case with the "
+    "        exact party names and you cite the cite string search returned. "
+    "        Otherwise: describe the judicial position WITHOUT a citation "
+    "        string, or label it '[citation to be verified]'. Cases that "
+    "        SPECIFICALLY MUST NOT be cited unless in the primer with a "
+    "        full verified cite: 'Skyland Builders', 'Skyland Developers', "
+    "        'Sabh Infrastructure' (unless the primer confirms it), any "
+    "        case name paired with a numeric citation you cannot reconstruct "
+    "        from search results. Filling a mandated-cite slot with a "
+    "        plausible-sounding case name is HALLUCINATION — leave the "
+    "        slot empty and argue from statute instead. "
+    "        HARD REPLACE-ALL — before emitting, verify these citations "
+    "        are correct; if you were about to write the WRONG version, "
+    "        replace with the CORRECT version: "
+    "        (i) Union of India v. Rajeev Bansal — the ONLY correct cite "
+    "        is '(2024) 469 ITR 46 (SC) / 167 taxmann.com 70 / 2024 INSC "
+    "        754 (3-Oct-2024)'. If you are about to write '463 ITR 1' or "
+    "        '462 ITR 1' for this case, that is WRONG — replace it now. "
+    "        (ii) Ganesh Dass Khanna v. ITO — the ONLY complete correct "
+    "        cite is: 'Ganesh Dass Khanna v. ITO (2023) 156 taxmann.com "
+    "        417 / (2024) 460 ITR 546 / 335 CTR 881 (Delhi HC)'. Emit "
+    "        ALL THREE reporter citations together. The taxmann.com "
+    "        reporter is 2023 (published year); the ITR reporter is "
+    "        2024 (volume 460 ITR is the 2024 volume). Writing just "
+    "        '(2023) 460 ITR 546' is WRONG — 460 ITR is a 2024 volume. "
+    "        Writing '(2024)' alone without the taxmann.com companion "
+    "        cite is INCOMPLETE. NEVER '(2025)' or '(2026)'. "
+    "        (iii) Nemi Chand Kothari v. CIT — the ONLY correct cite is "
+    "        'Nemi Chand Kothari v. CIT & Anr. (2003) 264 ITR 254 "
+    "        (Gauhati HC)'. If you are about to write '262 ITR 407' or "
+    "        any forum other than Gauhati HC, that is WRONG. "
+    "        (iv) PCIT v. NRA Iron & Steel — the ONLY correct cite is "
+    "        '(2019) 412 ITR 161 (SC)'. If you are about to write '15 SCC "
+    "        429' for this case, that is WRONG — replace with 412 ITR 161. "
+    "        (v) Ami Industries (India) P Ltd — the ONLY correct cite is "
+    "        'PCIT v. Ami Industries (India) P Ltd (Bombay HC 2020) 116 "
+    "        taxmann.com 34'. NEVER as SC. "
     "   (iv) The narrow exception: TRULY LANDMARK cases the entire profession "
     "        knows verbatim (Kelvinator, Lovely Exports, Vodafone, Azadi "
     "        Bachao, McDowell, GKN Driveshafts, Sumati Dayal) — you may state "
@@ -507,7 +591,21 @@ _SYSTEM = (
     "  8. Say when the answer depends on more information — list the "
     "exact details needed.\n"
     "  9. Avoid overconfidence. Say 'subject to verification of [X]' "
-    "when the outcome hinges on documents or facts.\n"
+    "when the outcome hinges on documents or facts. HARD BAN on any "
+    "numeric probability of success — '80-95%', '70-80%', 'High risk 90%', "
+    "'Low risk', '85%', etc. — in ANY context. This override defeats "
+    "any template instruction that appears to ask for a percentage. "
+    "Numeric confidence in tax litigation is not defensible and shipping "
+    "it makes the answer look amateur. Always use QUALITATIVE labels "
+    "instead: 'strong grounds (jurisdictional + procedural)', "
+    "'moderately defensible on merits', 'weak — advise settlement', "
+    "'position uncertain — depends on X'. If a template placeholder "
+    "says '(Low / Medium / High + %% range)' — emit only the "
+    "'Low / Medium / High' word, drop the %% range. If the user "
+    "explicitly asks for a percentage, respond: 'A numeric confidence "
+    "is not appropriate in tax litigation — instead: [qualitative "
+    "assessment with leading case].' This rule overrides any FORCED "
+    "TEMPLATE directive that asks for a % estimate.\n"
     " 10. If the courts are divided, say so — don't present one view "
     "as final.\n"
     " [CASE LAW]\n"
@@ -536,7 +634,18 @@ _SYSTEM = (
     "caveat is material.\n"
     "Always deliver a COMPLETE, self-contained answer — never stop "
     "mid-sentence or leave a list, case, or point unfinished; if space is tight, "
-    "cover fewer points fully rather than many points half-way."
+    "cover fewer points fully rather than many points half-way. "
+    "OUTPUT HYGIENE — the answer body MUST begin with either a heading "
+    "(##/###) or a direct sentence answering the question. NEVER emit "
+    "meta-commentary or reasoning-trace text like 'I have sufficient "
+    "information to construct…', 'Let me now analyse…', 'I will first…', "
+    "'Based on the tools available…', 'I need to draft…', 'The answer "
+    "should follow Template B…'. Such planning sentences are internal "
+    "monologue and MUST be silent. Also: NEVER begin an answer with a "
+    "stray '.', '-', '*', a bullet fragment, or a partial word — these "
+    "are streaming artefacts and count as a formatting violation. If "
+    "you catch yourself about to write a planning sentence, replace it "
+    "with the actual first heading or first sentence of the answer."
 )
 
 _TOOLS = [{"functionDeclarations": [
@@ -737,12 +846,38 @@ def _apply_continuation_intent(contents: list, question: str) -> tuple[list, str
     return new_contents, instruction
 
 
+def _topic_bullets(question: str) -> str:
+    """Reuse the multi-agent path's topic coverage rules on the single-agent
+    path. Same bullets, same forced-verbatim sections. Best-effort — a
+    circular-import or empty match must never break the answer path."""
+    try:
+        from app.services import multi_agent as _ma
+        bullets = _ma._match_topic_coverage(question)
+        if not bullets:
+            return ""
+        return (
+            "\n\nTOPIC-SPECIFIC COVERAGE — the following bullets are ACCEPTANCE "
+            "CRITERIA for this specific question. Bullets prefixed 'FORCED "
+            "VERBATIM SECTION' must be emitted with the exact heading and "
+            "structure shown; bullets prefixed 'MANDATORY' must all be "
+            "covered in the answer; unprefixed bullets are aspects to include:\n"
+            + "\n".join(f"  • {b}" for b in bullets)
+        )
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _persona_system(db: Session, user_id: int, question: str) -> str:
     """The dated base system prompt, augmented with the user's PERSISTENT
     personalization — charge/posting, designation, custom instructions,
     'about your work', style, and cross-chat long-term memory — so every chat
-    answer is tailored to the officer, not only the legacy fallback path."""
-    base = _dated(_SYSTEM)
+    answer is tailored to the officer, not only the legacy fallback path.
+
+    Also appends the multi-agent topic-coverage bullets so the single-agent
+    tool-calling path enforces the same acceptance criteria (forced verbatim
+    sections, mandatory case cites, etc.) as the multi-agent composer.
+    """
+    base = _dated(_SYSTEM) + _topic_bullets(question)
     try:
         from app.models.org import User
         from app.services import personalization as _pers
@@ -1366,12 +1501,106 @@ def answer_agentic_stream(db: Session, question: str, *, user_id: int, chat_id=N
     # already streamed but the `done` text is what gets saved to chat
     # history, so redacting here stops leaks from re-entering next turn.
     final_text = _pg.redact_output(final_text)
+    # Format hygiene — strip streaming artefacts (leading orphans, tool
+    # meta-narration, Vertex grounding URLs) and complete short citations.
+    # Shared with multi_agent's composer path.
+    final_text = strip_output_artefacts(final_text)
     # Emit as delta ONLY if the streaming path didn't already deliver the
     # answer body — otherwise we'd double-write the text to the UI.
     if not _final_streamed:
         yield {"delta": final_text}
     yield {"done": {"text": final_text, "used": "agent", "tools_used": tools_used,
                     "web_sources": srcs, "law_refs": law_refs, "llm_calls": usage_calls}}
+
+
+_META_NARRATION_RE = re.compile(
+    r"^(?:"
+    r"(?:the |my )?search(?:es)? (?:confirmed|returned|revealed|showed|indicated|results? confirm)[^\n.]{0,200}\.\s*"
+    r"|(?:now |next |first |then )?i (?:will|am going to|shall|need to) (?:proceed|draft|search|analyse|analyze|prepare|write|answer|start|begin|now|first)[^\n.]{0,200}\.\s*"
+    r"|(?:let me|allow me to) (?:proceed|draft|search|analyse|analyze|prepare|write|start|begin|now)[^\n.]{0,200}\.\s*"
+    r"|based on the (?:search|tool|research|primer)[^\n.]{0,200}\.\s*"
+    r"|(?:having|now that i have) (?:searched|reviewed|analysed|gathered)[^\n.]{0,200}\.\s*"
+    r"|i have (?:sufficient|enough) (?:information|context)[^\n.]{0,200}\.\s*"
+    # Third-person "the user has requested / asked / wanted" narration.
+    r"|the (?:user|question|request(?:er)?) (?:has |is )?(?:requested?|asked|want(?:s|ed)?|need(?:s|ed)?|require(?:s|d)?)[^\n.]{0,200}\.\s*"
+    # Task-restatement narration.
+    r"|(?:this|the) (?:answer|response|draft|opinion) (?:will|shall|is going to|must)[^\n.]{0,200}\.\s*"
+    r")+",
+    re.IGNORECASE,
+)
+
+
+# Mid-answer meta-narration — model-planning sentences that leak into the
+# body of a draft/opinion at paragraph boundaries, not just at the start.
+# Matches "I will now proceed…", "I must ensure…", "Plan:", "Risk Assessment:"
+# and similar interior artefacts. Requires a preceding sentence terminator
+# (`.` `\n` or start-of-line) to avoid clipping real content.
+_MID_META_NARRATION_RE = re.compile(
+    r"(?:(?<=^)|(?<=[\.\!\?\n])) *"
+    r"(?:"
+    r"i (?:will|am going to|shall|need to|must) (?:now |first |next |then )?"
+    r"(?:proceed|draft|search|analyse|analyze|prepare|write|answer|start|"
+    r"begin|ensure|make sure|include|add|check|verify)"
+    r"[^\n.]{0,200}\."
+    r"|(?:let me|allow me to) (?:now |first |next |then )?"
+    r"(?:proceed|draft|search|analyse|analyze|prepare|write|start|begin|ensure)"
+    r"[^\n.]{0,200}\."
+    r"|(?:the |my )?search(?:es)? (?:confirmed|confirms|returns?|revealed|"
+    r"reveals?|showed|shows?|indicated|indicates?|results? confirm)"
+    r"[^\n.]{0,200}\."
+    r"|i have (?:sufficient|enough) (?:information|context|data)"
+    r"[^\n.]{0,200}\."
+    r"|(?:^|\n)(?:plan|risk assessment|approach|strategy|note to self|"
+    r"internal note|thought|reasoning)\s*:\s*[^\n]{0,200}\n"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def strip_output_artefacts(text: str) -> str:
+    """Public helper — strip streaming artefacts that leak into the final
+    answer: leading orphan punctuation / closing brackets, tool-scratchpad
+    meta-narration (both leading AND mid-answer at paragraph boundaries),
+    Vertex grounding-API URLs embedded in {{cite:...}} braces, and enforce
+    the full three-reporter Ganesh Dass Khanna citation form. Shared between
+    the single-agent and multi-agent output paths.
+    """
+    if not text:
+        return text or ""
+    # (1) Leading orphan punctuation.
+    out = re.sub(r"^[\s\.\,;:\-\*•·\}\]\)]+", "", text)
+    # (2) Leading meta-narration (up to first heading / content sentence).
+    for _ in range(3):
+        stripped = _META_NARRATION_RE.sub("", out)
+        if stripped == out:
+            break
+        out = stripped.lstrip()
+    out = re.sub(r"^[\s\.\,;:\-\*•·\}\]\)]+", "", out)
+    # (3) Mid-answer meta-narration — sentences the model emits between
+    # sections when it's "planning out loud" ("I will now proceed with the
+    # full draft.", "I must ensure the mandatory X section is included.").
+    # Only strip at paragraph boundaries (after `.`, `!`, `?` or newline)
+    # to avoid clipping real prose.
+    for _ in range(3):
+        stripped = _MID_META_NARRATION_RE.sub("", out)
+        if stripped == out:
+            break
+        out = stripped
+    # (4) Also fix the missing-space-after-period artefact that stitched
+    # meta-narration usually leaves behind ("Rs 50,00,000.This is a draft").
+    out = re.sub(r"([.!?])([A-Z])", r"\1 \2", out)
+    # (5) Vertex grounding URL leaks in citation braces.
+    out = re.sub(
+        r"\{\{cite:[^}]*vertexaisearch\.cloud\.google\.com[^}]*\}\}",
+        "", out,
+    )
+    # (6) Enforce full three-reporter Ganesh Dass Khanna form.
+    out = re.sub(
+        r"\(2023\)\s*156\s*taxmann\.com\s*417\s*/\s*\(2024\)\s*460\s*ITR\s*546",
+        "(2023) 156 taxmann.com 417 / 335 CTR 881 / (2024) 460 ITR 546",
+        out,
+    )
+    return out
 
 
 def _strip_latex_agent(text: str) -> str:
