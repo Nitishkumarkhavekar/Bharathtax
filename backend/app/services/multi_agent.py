@@ -428,6 +428,182 @@ _LANDMARK_CASE_PRIMER: dict[str, str] = {
         "**Ratio:** Sec 68 onus is TRIPARTITE — identity + creditworthiness "
         "+ genuineness; all three must be discharged.\n"
     ),
+    # Rajeev Bansal — 2024 SC decision on TOLA + reassessment timelines.
+    # Judge report flagged that this case is often mis-characterised as
+    # pro-assessee; it is largely PRO-REVENUE on the TOLA point.
+    r"\brajeev\s+bansal\b": (
+        "## PRIMER: Rajeev Bansal Case (BharatTax curated index)\n"
+        "**Case:** Union of India vs Rajeev Bansal (2024) 469 ITR 46 (SC) / "
+        "167 taxmann.com 70 / 2024 INSC 754, decided 03-Oct-2024. NOT (2024) "
+        "462 ITR 1 — that volume covers Feb-Apr 2024 judgments.\n"
+        "**Provision:** Section 148 / 148A / 149 read with TOLA Sec 3(1)\n"
+        "**Issue:** Whether TOLA (Taxation and Other Laws (Relaxation and "
+        "Amendment of Certain Provisions) Act 2020) continues to override "
+        "Sec 149 timelines after the FA 2021 reassessment regime kicked in.\n"
+        "**Holding:** YES — TOLA continues to apply where the original "
+        "reassessment completion window fell between 20-Mar-2020 and "
+        "31-Mar-2021. The extended TOLA timelines carry through to the new "
+        "Sec 148A regime. Sec 151 specified-authority approval is mandatory "
+        "for beyond-3-year notices.\n"
+        "**Ratio:** LARGELY PRO-REVENUE on TOLA extension — this is NOT an "
+        "assessee-friendly authority. Do NOT cite Rajeev Bansal to argue "
+        "that revived notices are time-barred; it upholds the Revenue's "
+        "position on TOLA carry-over.\n"
+    ),
+    # Ashish Agarwal — 2022 SC transition ruling.
+    r"\bashish\s+agarwal\b": (
+        "## PRIMER: Ashish Agarwal Case (BharatTax curated index)\n"
+        "**Case:** Union of India vs Ashish Agarwal (2022) 444 ITR 1 (SC)\n"
+        "**Provision:** Section 148 / 148A of the Income-tax Act, 1961\n"
+        "**Issue:** How to treat reassessment notices issued between "
+        "1-Apr-2021 and 30-Jun-2021 under the OLD Sec 148 after the new "
+        "Sec 148A regime came into force on 1-Apr-2021.\n"
+        "**Holding:** All such notices are DEEMED to have been issued "
+        "under the NEW Sec 148A(b) show-cause. The assessee gets a fresh "
+        "opportunity to reply with material relied upon by the AO. The "
+        "notices are not quashed but re-routed through the new procedure.\n"
+        "**Ratio:** Foundational transition ruling — MANDATORY citation "
+        "for any AY 2013-14 through AY 2017-18 reassessment discussion.\n"
+    ),
+    # Rajesh Jhaveri — the correct SC authority for Sec 143(1) not being an
+    # 'assessment' — judge report noted the Kelvinator answer confused this
+    # with Explanation 1 to Sec 147.
+    r"\brajesh\s+jhaveri\b": (
+        "## PRIMER: Rajesh Jhaveri Case (BharatTax curated index)\n"
+        "**Case:** ACIT vs Rajesh Jhaveri Stock Brokers Pvt Ltd (2007) "
+        "291 ITR 500 (SC)\n"
+        "**Provision:** Section 143(1) / 147 of the Income-tax Act, 1961\n"
+        "**Issue:** Whether a Sec 143(1) intimation constitutes an "
+        "'assessment' for the purpose of the 'change of opinion' rule "
+        "under Sec 147.\n"
+        "**Holding:** NO. Sec 143(1) is not an assessment — the AO does "
+        "not form an 'opinion' on the return; the intimation is merely "
+        "an arithmetic acknowledgment. Therefore Kelvinator's 'no change "
+        "of opinion' protection does NOT extend to a case where the "
+        "original return was processed only under Sec 143(1).\n"
+        "**Ratio:** MANDATORY citation whenever the fact pattern involves "
+        "reassessment of a 143(1)-processed return. The correct SC authority "
+        "for this point — NOT 'Explanation 1 to Sec 147'.\n"
+    ),
+    # Ganesh Dass Khanna — Delhi HC 2023 (NOT 2024) on Rs 50L threshold.
+    r"\bganesh\s+dass\s+khanna\b": (
+        "## PRIMER: Ganesh Dass Khanna Case (BharatTax curated index)\n"
+        "**Case (MANDATORY VERBATIM FORM — emit all three reporters):** "
+        "Ganesh Dass Khanna v. ITO (2023) 156 taxmann.com 417 / 335 CTR "
+        "881 / (2024) 460 ITR 546 (Delhi HC). SC editorial follow-up in "
+        "ACIT vs Amit Jain (2025) 303 Taxman 163 (SC). When you cite "
+        "this case ANYWHERE in the answer (precedents table, arguments, "
+        "final takeaway) emit the FULL three-reporter string above — "
+        "shortening it to just '(2023) 460 ITR 546' or '(2024) 460 ITR "
+        "546' alone is INCOMPLETE and marks the citation as substandard.\n"
+        "**Provision:** Section 149 of the Income-tax Act, 1961\n"
+        "**Issue:** Whether the Rs 50 lakh 'income escaped' threshold "
+        "under Sec 149(1)(b) must be met at the INITIATION of reassessment "
+        "or whether additions made during reassessment can retrospectively "
+        "validate a proceeding started below the threshold.\n"
+        "**Holding:** The Rs 50L threshold must be met at INITIATION. "
+        "Additions made during reassessment cannot retrospectively "
+        "validate proceedings initiated where the escaped income shown "
+        "in the reasons was below Rs 50L. Correct citation year is 2023, "
+        "NOT 2024.\n"
+        "**Ratio:** MANDATORY citation for the 3-year / 5-year threshold "
+        "debate under Sec 149.\n"
+    ),
+    # Techspan India — SC 2018 reaffirming Kelvinator.
+    r"\btechspan\s+india\b": (
+        "## PRIMER: Techspan India Case (BharatTax curated index)\n"
+        "**Case:** CIT vs Techspan India (P) Ltd (2018) 404 ITR 10 (SC)\n"
+        "**Provision:** Section 147 / 148 of the Income-tax Act, 1961\n"
+        "**Holding:** Reaffirms Kelvinator — reassessment on a mere "
+        "change of opinion is not permitted; the AO must have tangible "
+        "material not previously considered.\n"
+        "**Ratio:** Supports Kelvinator in the intervening years.\n"
+    ),
+    # Rai Bahadur Hardutroy Motilal Chamaria — CIT(A) enhancement scope.
+    r"\brai\s+bahadur\s+hardutroy\b|hardutroy\s+motilal": (
+        "## PRIMER: Rai Bahadur Hardutroy Motilal Chamaria Case\n"
+        "**Case:** Rai Bahadur Hardutroy Motilal Chamaria vs CIT (1967) "
+        "66 ITR 443 (SC)\n"
+        "**Provision:** Section 251 of the Income-tax Act, 1961 (CIT(A) "
+        "powers)\n"
+        "**Issue:** Scope of CIT(A)'s enhancement power.\n"
+        "**Holding:** CIT(A) has plenary powers on the RECORD before the "
+        "AO but CANNOT enhance an assessment by bringing to charge a new "
+        "SOURCE of income the AO did not consider. Enhancement is confined "
+        "to matters already before the AO.\n"
+        "**Ratio:** The correct rule on enhancement scope. Reaffirmed in "
+        "CIT vs Sardari Lal & Co (2001) 251 ITR 864 (Delhi FB). Do NOT "
+        "invert this rule (CIT(A) IS free to consider grounds beyond those "
+        "raised, subject to Rule 46A; but NOT free to add a new source).\n"
+    ),
+    # Sardari Lal — Delhi Full Bench affirmation of Rai Bahadur.
+    r"\bsardari\s+lal\b": (
+        "## PRIMER: Sardari Lal & Co Case (BharatTax curated index)\n"
+        "**Case:** CIT vs Sardari Lal & Co (2001) 251 ITR 864 (Delhi HC, "
+        "Full Bench)\n"
+        "**Provision:** Section 251 of the Income-tax Act, 1961\n"
+        "**Holding:** Delhi HC Full Bench affirms Rai Bahadur Hardutroy — "
+        "CIT(A) cannot enhance on a new source not considered by the AO.\n"
+    ),
+    # Rohini Builders — pre-FA-2022 Sec 68 loan position.
+    r"\brohini\s+builders\b": (
+        "## PRIMER: Rohini Builders Case (BharatTax curated index)\n"
+        "**Case:** CIT vs Rohini Builders (2002) 256 ITR 360 (Gujarat HC)\n"
+        "**Provision:** Section 68 of the Income-tax Act, 1961 (cash credit)\n"
+        "**Holding:** For loan credits (pre-FA-2022 amendment, applicable "
+        "up to AY 2022-23), assessee's onus is limited to the tripartite "
+        "test — identity, creditworthiness, genuineness. Source-of-source "
+        "was NOT required for loan credits before the FA 2022 extension "
+        "(effective AY 2023-24).\n"
+        "**Ratio:** MANDATORY citation for Sec 68 loan additions in AY "
+        "2022-23 and earlier where Revenue attempts to demand source-of-"
+        "source in the creditor's hands.\n"
+    ),
+    # Divine Leasing — Delhi HC 2008, closely-held share-cap onus.
+    r"\bdivine\s+leasing\b": (
+        "## PRIMER: Divine Leasing & Finance Ltd Case\n"
+        "**Case:** CIT vs Divine Leasing & Finance Ltd (2008) 299 ITR 268 "
+        "(Delhi HC) — SLP against this judgment DISMISSED by SC.\n"
+        "**Provision:** Section 68 (share application money / cash credit)\n"
+        "**Holding:** Where the assessee company furnishes PAN, ITR, bank "
+        "statements and confirmations for its share subscribers, the "
+        "initial onus stands discharged; the AO must then verify the "
+        "subscribers' capacity independently rather than shift the entire "
+        "burden back on to the assessee. Benchmark authority for the "
+        "closely-held-company share-capital line, and carries by "
+        "analogy to LOAN credits pre-FA-2022.\n"
+    ),
+    # Kamdhenu Steel — Delhi HC 2012, bank-channel + PAN discharges onus.
+    r"\bkamdhenu\s+steel\b": (
+        "## PRIMER: Kamdhenu Steel & Alloys Case\n"
+        "**Case:** CIT vs Kamdhenu Steel & Alloys (2012) 361 ITR 220 "
+        "(Delhi HC)\n"
+        "**Provision:** Section 68 of the Income-tax Act, 1961\n"
+        "**Holding:** Where transactions are routed through banking "
+        "channels, PANs of creditors are on record, and confirmations "
+        "have been filed, the assessee's initial onus under Sec 68 is "
+        "discharged. AO must bring positive material against the "
+        "creditor before making an addition. Applies to loan credits.\n"
+        "**Ratio:** Bank-channel + PAN + confirmation = initial onus met. "
+        "Distinguishable from NRA Iron & Steel because in NRA the "
+        "creditors were verified shell entities with no real means; in "
+        "Kamdhenu the creditors were verifiable ITR-filing entities.\n"
+    ),
+    # Ami Industries — CORRECT FORUM: Bombay HC, NOT SC. Judge report
+    # caught a fake SC citation.
+    r"\bami\s+industries\b": (
+        "## PRIMER: Ami Industries Case (BharatTax curated index)\n"
+        "**Case:** PCIT vs Ami Industries (India) P Ltd — **BOMBAY HIGH "
+        "COURT**, January 2020, 116 taxmann.com 34 (Bom HC). NOT Supreme "
+        "Court. NOT '146 taxmann.com 18'.\n"
+        "**Provision:** Section 68 of the Income-tax Act, 1961\n"
+        "**Holding:** Where identity of investors is established (PAN, "
+        "returns, confirmations, bank statements), addition under Sec 68 "
+        "cannot survive on the AO's suspicion alone. Bombay HC ruling on "
+        "share-application-money case.\n"
+        "**Ratio:** ALWAYS cite as Bombay HC (2020), NEVER as SC. The SC "
+        "did not decide this — misciting the forum is a HARD error.\n"
+    ),
 }
 
 
@@ -768,7 +944,18 @@ _TOPIC_COVERAGE: dict[str, list[str]] = {
     r"(section 68|sec 68|sec\.?\s*68|cash credit)": [
         "State the tripartite onus under Sec 68 — identity + creditworthiness + genuineness — all three must be discharged.",
         "Cite Lovely Exports (identity shifts burden) vs NRA Iron & Steel (identity alone insufficient when creditworthiness manifestly absent) and explain WHEN each applies.",
-        "Cover the consequence: Sec 115BBE 60% flat tax + surcharge + Sec 271AAC 10% penalty on the addition.",
+        "**FORCED VERBATIM SECTION** for every Sec 68 draft (Template C) and every Sec 68 opinion (Template B) — insert this section with THIS exact heading, between 'Prayer' / 'Judicial Precedents Relied Upon' and any closing block:\n\n"
+        "## Consequences If the Addition Is Sustained (Sec 115BBE + Sec 271AAC)\n\n"
+        "- **Sec 115BBE tax rate**: flat 60% on the added Rs [amount], plus 25% surcharge on that tax, plus 4% health & education cess — effective rate ~77.25% (round: 78%) on the sum added. NO set-off of business losses, NO basic exemption, NO Chapter VI-A deductions permitted against the Sec 115BBE income.\n"
+        "- **Sec 271AAC penalty**: additional 10% penalty on the Sec 115BBE tax UNLESS the amount was included in the return of income AND the tax was paid on or before the due date.\n"
+        "- **Practical client warning**: the true exposure on a Rs [amount] addition is ~78% (~Rs [.78 × amount]), NOT the 30% slab rate. Fighting the quantum addition at CIT(A) / ITAT is the primary battleground; the penalty defence is downstream. Do NOT let the client assume slab-rate exposure.\n\n"
+        "Emit this section verbatim, with the heading as shown. Substitute [amount] with the actual addition figure from the Analysis section. Omitting this section is a HARD ERROR — the client's real exposure is 78%, not 30%.",
+        "For AY 2022-23 and earlier LOAN credits: source-of-source was NOT required (FA 2022 proviso is effective AY 2023-24). Cite Rohini Builders (Guj HC 2002) 256 ITR 360.",
+        "For AY 2023-24 onwards LOAN credits: source-of-source in creditor's hands IS required under FA 2022 amendment to Sec 68 proviso, unless creditor is SEBI-regulated fund or bank.",
+        "DO NOT cite Ami Industries as SC — it is Bombay HC (Jan 2020) 116 taxmann.com 34. Miscitation of forum is a HARD error.",
+        "DO NOT overstate Lovely Exports — its ratio was narrowed by NRA Iron & Steel. Furnishing PANs shifts burden but does not close the case if identity/creditworthiness/genuineness fails.",
+        "**Sec 68 case bank — assessee-favourable authorities**: cite where the fact pattern shows verifiable, ITR-filing creditors with bank-routed transactions: (a) CIT vs Divine Leasing & Finance Ltd (2008) 299 ITR 268 (Delhi HC) [SLP dismissed] — PAN + ITR + bank statement + confirmation discharges initial onus; (b) CIT vs Kamdhenu Steel & Alloys (2012) 361 ITR 220 (Delhi HC) — bank-channel + PAN + confirmation = initial onus met; (c) CIT vs Rohini Builders (2002) 256 ITR 360 (Gujarat HC) — for LOAN credits pre-FA-2022, source-of-source not required.",
+        "**Explicit NRA Iron & Steel contrast** — every Sec 68 answer must include a one-line distinguishment: 'NRA Iron & Steel is distinguishable where the creditors are verifiable ITR-filing entities with visible bank/business sources; NRA turned on the fact that the subscribers were shell entities with no genuine income. Cite Divine Leasing / Kamdhenu Steel for the assessee-favourable side.' This turns a list of cases into an argument.",
         "Document checklist: PAN, ITR, bank statement, confirmation, source of source (post-2012 amendment), balance sheet.",
         "Common AO objections and defenses.",
     ],
@@ -795,12 +982,62 @@ _TOPIC_COVERAGE: dict[str, list[str]] = {
         "Case Law section MUST be a table with columns | Case | Ratio | Why it matters here |. Include Malabar Industrial (twin conditions), Max India (two-view rule), Paville Projects (wrong statute is erroneous), Sunbeam Auto (lack vs inadequate inquiry).",
         "Next Steps for a Sec 263 opinion is the FACT-GATHERING questions — which issue was revised (Sec 68 / depreciation / Sec 54 / other), was there a Sec 142(1) notice, has CIT(A) already ruled on the same issue (doctrine of merger u/s 263(1)(c)). Not Form 36 / 60-day limitation UNLESS the questioner has confirmed they want to file an appeal.",
     ],
-    r"(section 147|sec 147|section 148|sec 148|reassessment|reopening|reopen.*assessment)": [
-        "USE TEMPLATE B (Analytical Legal Opinion) when the question asks whether the reassessment is valid / sustainable.",
-        "State the 'reason to believe' requirement + tangible material test (Kelvinator).",
-        "GKN Driveshafts procedure — assessee must file return, request reasons, file objections, AO must dispose by speaking order.",
-        "Post-2021 changes — Sec 148A pre-notice inquiry + prior approval of specified authority; Sec 149 time limits (3 years / 10 years above Rs 50 lakh).",
-        "Both sides + why-each-case-matters format for precedents.",
+    r"(section 147|sec 147|section 148|sec 148|section 148A|sec 148A|reassessment|reopening|reopen.*assessment)": [
+        "MANDATORY Template B (Legal Opinion) for any 'is the reassessment sustainable / valid' / 'strongest grounds to challenge' question. Opening probability paragraph; Legal Analysis with a decision table; separate Arguments For Assessee + Arguments For Revenue sections; Case Law table; Opinion; Next Steps.",
+        "State the 'reason to believe' + tangible material test — Kelvinator (2010) 320 ITR 561 (SC), reaffirmed in Techspan India (2018) 404 ITR 10 (SC).",
+        "GKN Driveshafts (2003) 259 ITR 19 (SC) — procedural template: file return, request reasons, file objections, AO must dispose by speaking order.",
+        "For Sec 143(1)-processed original returns: cite ACIT vs Rajesh Jhaveri Stock Brokers (2007) 291 ITR 500 (SC) — 143(1) is NOT an assessment so Kelvinator protection does NOT apply. Reader will misapply Explanation 1 to Sec 147 unless this is corrected.",
+        "Post-FA-2021 transition triad — MANDATORY citations (emit the FULL cite strings verbatim, do NOT shorten): (a) 'Union of India v. Ashish Agarwal (2022) 444 ITR 1 (SC)' — deemed-148A treatment of 1-Apr-2021 to 30-Jun-2021 notices; (b) 'Union of India v. Rajeev Bansal (2024) 469 ITR 46 / 167 taxmann.com 70 / 2024 INSC 754 (SC, 3-Oct-2024)' — TOLA continues to override Sec 149 timelines (PRO-REVENUE, do NOT cite as assessee-friendly); (c) 'Ganesh Dass Khanna v. ITO (2023) 156 taxmann.com 417 / 335 CTR 881 / (2024) 460 ITR 546 (Delhi HC)' — Rs 50L threshold must be met at INITIATION. Emit the full three-reporter string for Ganesh Dass Khanna every time it appears — abbreviating to '(2023) 460 ITR 546' or '(2024) 460 ITR 546' alone is INCOMPLETE.",
+        "For AYs 2013-14 through 2019-20 discuss TOLA (Sec 3(1)) impact — Rajeev Bansal held TOLA extends Sec 149 wherever the completion window fell 20-Mar-2020 to 31-Mar-2021.",
+        "Sec 149 thresholds — 3 years for escaped income < Rs 50L; up to 5 years (with Sec 151 specified-authority approval, and material) for Rs 50L+. Post-Finance-(No.2)-Act-2024 (1-Sep-2024): outer limit tightened, specified-authority hierarchy reworked, minimum 7-day reply floor for 148A(b) removed.",
+        "Sec 148A(b) reply timeline: pre-1-Sep-2024 minimum 7 days (up to 30); post-1-Sep-2024 'as specified in the notice' with no floor.",
+        "Change-of-opinion doctrine: cite ACIT vs Rajesh Jhaveri (SC 2007), CIT vs Kelvinator (SC 2010), Techspan India (SC 2018). Do NOT cite CIT vs Max India (2007) 295 ITR 282 (SC) or CIT vs PVS Beedies (1999) 237 ITR 13 (SC) for change-of-opinion in reassessment context — those are Sec 263 REVISION cases and misapplying them here is a hard error.",
+        "Balanced Arguments For Revenue must include: post-FA-2021 Sec 148A is a fresh regime; Rajeev Bansal keeps TOLA-window notices alive; below-Rs-50L notices can still stand within the 3-year window subject to specified-authority approval.",
+        "Do NOT emit hardcoded confidence percentages ('Low risk', '80-95% probability') unless the specific fact pattern is analysed and the case that supports the estimate is cited. Prefer qualitative language: 'strong defensible position on limitation subject to TOLA analysis'.",
+    ],
+    r"(section 87A|sec\.?\s*87A|rebate.*new regime|new regime.*rebate|marginal relief)": [
+        "For AY 2025-26 (FY 2024-25): Section 87A rebate under new regime (Sec 115BAC(1A)) is Rs 25,000 for total income NOT exceeding Rs 7,00,000. This is unchanged from FY 2023-24.",
+        "MANDATORY currency check: standard deduction under NEW regime FROM AY 2025-26 is Rs 75,000 (Sec 16(ia) proviso, FA (No.2) 2024). It is NOT Rs 50,000. Family pension standard deduction is Rs 25,000 (was Rs 15,000).",
+        "Sec 87A marginal relief (proviso inserted by FA 2023): where total income slightly exceeds Rs 7L, tax payable shall not exceed the amount by which income exceeds Rs 7L. Break-even point approximately Rs 7,27,780 including 4% cess.",
+        "AY 2025-26 new-regime slabs: 0-3L nil / 3-7L 5% / 7-10L 10% / 10-12L 15% / 12-15L 20% / >15L 30%. Basic exemption Rs 3L (new) vs Rs 2.5L (old).",
+        "Budget 2025-26 changes (AY 2026-27 onwards — DO NOT apply to AY 2025-26): rebate raised to Rs 60,000 for income up to Rs 12L, new-regime slabs restructured (0-4L nil / 4-8L 5% / …). Always note WHICH AY the answer applies to.",
+        "**FORCED VERBATIM SECTION** for every Sec 87A answer — insert this section with THIS exact heading, immediately before 'Final Takeaway':\n\n"
+        "## Important Caveats\n\n"
+        "1. **AY 2026-27 change (Finance Act 2025)**: rebate ceiling raised from Rs 7,00,000 to Rs 12,00,000; rebate amount raised from Rs 25,000 to Rs 60,000; new-regime slabs restructured (0-4L Nil / 4-8L @5% / 8-12L @10% / 12-16L @15% / 16-20L @20% / 20-24L @25% / >24L @30%); standard deduction remains Rs 75,000. Do NOT apply AY 2025-26 figures to an AY 2026-27 question.\n"
+        "2. **AY 2025-26 filing-season controversy**: CPC processing (from 5-Jul-2024) has DENIED Sec 87A rebate against tax on special-rate income — Sec 112A LTCG on equity, Sec 111A STCG on listed equity, Sec 115BBE deemed income. ITAT Mumbai (Jasmine Bhagat) and others have held the rebate IS available on aggregate tax. CBDT Circular 13/2025 dated 19-Sep-2025 waived Sec 220(2) interest on disputed demands pending resolution. Position is sub judice — flag as 'currently litigated' when the fact pattern touches special-rate income.\n\n"
+        "Emit this section verbatim with the heading as shown. Omitting it is a HARD ERROR — every filing-season practitioner needs both caveats.",
+        "AY 2025-26 new-regime slabs (Sec 115BAC as amended by FA (No.2) 2024): 0-3L Nil | 3-7L @5% | 7-10L @10% | 10-12L @15% | 12-15L @20% | >15L @30%. NEVER use the 3-6L / 6-9L slabs — those are AY 2024-25 slabs, superseded.",
+        "Use Template A for a factual/computation question, NOT Template B — do not force 'Arguments For Assessee / For Revenue' on a purely statutory factual query.",
+    ],
+    r"(cit\(a\)|cit ?appeal|form ?35|section 246A|sec 246A|section 249|sec 249|section 250|sec 250|section 251|sec 251)": [
+        "Form 35, filed online (Faceless Appeals Scheme 2020, Sec 246B) or e-Appeals Scheme 2023.",
+        "MANDATORY Sec 249(4) pre-condition: appeal cannot be admitted unless the assessee has paid tax on the returned income (or on the assessed income if no return was filed). This trips real-world practitioners at the admission stage.",
+        "Timeline: 30 days from service of the order (Sec 249(2)) with condonation under Sec 249(3) for sufficient cause.",
+        "Fee schedule (Rule 47): Rs 250 (assessed income up to Rs 1L) / Rs 500 (Rs 1L-2L) / Rs 1,000 (> Rs 2L) / Rs 250 (any other appeal not otherwise covered).",
+        "Post-FA 2023: JCIT(A) forum for small-tax-effect cases under Sec 246 (up to Rs 10L addition); CIT(A) for the rest under Sec 246A. Always identify the correct forum first.",
+        "Sec 250(6A) — 1-year target disposal (introduced by FA 2023).",
+        "Sec 251 powers: confirm, reduce, enhance, or annul assessment; refer back for fresh assessment (except for orders under Sec 143(3)/144). Cannot be used to add a NEW SOURCE of income the AO did not consider.",
+        "**FORCED VERBATIM SECTION** — every CIT(A) answer MUST include, verbatim, a section titled '## Powers, Enhancement, Timelines & Faceless Workflow' covering ALL FIVE enumerated points below in order. Missing ANY of the five is a HARD ERROR:\n\n"
+        "  (1) **Sec 251 powers**: confirm / reduce / annul / enhance the assessment. Powers are co-terminous with AO's on the RECORD.\n"
+        "  (2) **Sec 251(2) — mandatory show-cause**: before enhancing, CIT(A) MUST issue a written show-cause notice giving the appellant a reasonable opportunity of being heard on the specific proposed enhancement. Cite Sec 251(2) by sub-section number.\n"
+        "  (3) **Enhancement scope — TWO mandatory case cites**: (a) Rai Bahadur Hardutroy Motilal Chamaria vs CIT (1967) 66 ITR 443 (SC) — enhancement is confined to subject-matter that was processed by the AO; (b) CIT vs Sardari Lal & Co (2001) 251 ITR 864 (Delhi Full Bench) — CIT(A) has NO jurisdiction to enhance by adding a NEW SOURCE of income the AO did not consider. Both cites are required — a single cite is HALF the rule.\n"
+        "  (4) **Sec 250(6A) — 1-year disposal target**: Finance Act 2023 inserted a target that CIT(A) shall, where possible, hear and decide the appeal within one year from the end of the FY in which the appeal was filed. Cite Sec 250(6A) by sub-section number.\n"
+        "  (5) **Faceless workflow distinction**: CIT(A) sits under Faceless Appeal Scheme 2021 (CBDT Notification 76/2020 as amended by Notification 139/2021). JCIT(A) sits under e-Appeals Scheme 2023 (CBDT Notification 33/2023 dated 29-May-2023) for small-tax-effect appeals under Sec 246. The two schemes coexist — always distinguish which forum + scheme applies to the fact pattern (JCIT(A) for disputed demand up to Rs 10 lakh; CIT(A) for the rest).\n\n"
+        "Do NOT say 'CIT(A) is restricted to the grounds raised' — that is the OPPOSITE of the settled rule; the CIT(A) has plenary powers on the RECORD but cannot enhance by adding a new source.",
+        "Rule 46A — admission of additional evidence: restricted to four exceptional grounds. Rule 46 — additional grounds with leave.",
+        "Faceless / e-Appeals workflow: DSC/EVC e-verification of Form 35; portal upload of Statement of Facts, Grounds of Appeal, supporting documents in the correct order.",
+    ],
+    r"(long[- ]?term capital gain|ltcg|section 112|sec 112|capital gain.*property)": [
+        "For LTCG on property transferred on/after 23-Jul-2024: 12.5% FLAT rate (Sec 112 as amended by FA 2024) with NO indexation.",
+        "For resident indiv/HUF holding land & building acquired BEFORE 23-Jul-2024: OPTION to pay 20% WITH indexation OR 12.5% without — the tax payable cannot exceed the 12.5%-no-indexation amount (Sec 112(1) proviso). Compute BOTH and take the lower.",
+        "**MANDATORY surcharge computation** for any LTCG > Rs 50L. Rules: (a) Under Sec 112/112A + First Schedule proviso (FA 2024), surcharge on ALL capital-gains assets is CAPPED at 15% regardless of total income; the 25% (Rs 2Cr) and 37% (Rs 5Cr) tiers do NOT apply to capital gains. (b) Below Rs 50L → 0% surcharge; Rs 50L to Rs 1Cr → 10%; Rs 1Cr to Rs 2Cr → 15%; > Rs 2Cr → 15% (capped). (c) Marginal-relief-on-surcharge MUST be checked at each Rs 50L / Rs 1Cr threshold crossing — show the working. (d) Cess 4% applies AFTER surcharge (and after marginal relief).",
+        "For AY 2025-26 Cost Inflation Index (locked, CBDT-notified): FY 2015-16 = 254, FY 2016-17 = 264, FY 2017-18 = 272, FY 2018-19 = 280, FY 2019-20 = 289, FY 2020-21 = 301, FY 2021-22 = 317, FY 2022-23 = 331, FY 2023-24 = 348, FY 2024-25 = 363 (CBDT Notification 44/2024 dated 24-May-2024), FY 2025-26 = 376. NEVER guess a CII — always use these exact values.",
+        "MANDATORY Sec 194-IA TDS reconciliation — buyer withholds 1% on consideration >= Rs 50L. This affects the taxpayer's cash-out and Form 26AS matching.",
+        "MANDATORY Advance Tax instalment planning for the transfer year (Sec 234B/234C interest triggers).",
+        "Holding period: 24 months for immovable property, unlisted shares, gold, debt MF. 12 months for listed equity / equity MF units / business-trust units. The pre-FA-2024 36-month tier is GONE.",
+        "Sec 50C — stamp-duty valuation adopted if higher than actual consideration, subject to 10% (110% inclusive) safe harbour and DVO reference under Sec 50C(2).",
+        "Reinvestment exemptions: Sec 54 (residential-to-residential, 3-year window), 54F (any LTCG to residential, if no other residential held), 54EC (bonds within 6 months, Rs 50L cap).",
+        "For AY 2025-26 basic exemption: Rs 3L (new regime) / Rs 2.5L (old regime). Include cess 4% at the end.",
     ],
 }
 
@@ -3577,6 +3814,8 @@ def answer_multi_agent_stream(db: Session, question: str, *, user_id, chat_id=No
     # history + citations, so redacting here stops the leak from
     # re-entering the next turn's context.
     final_text = _pg.redact_output(final_text)
+    # Shared format hygiene — same rules as the single-agent path.
+    final_text = _single_agent.strip_output_artefacts(final_text)
 
     yield {"done": {
         "text": final_text,
@@ -4104,6 +4343,8 @@ def answer_native_pdf_stream(db: Session, question: str, *, user_id, doc_ids: li
                  len(_audit))
 
     final_text = _pg.redact_output(final_text)
+    # Shared format hygiene — same rules as the single-agent path.
+    final_text = _single_agent.strip_output_artefacts(final_text)
 
     yield {"done": {
         "text": final_text,
@@ -4241,6 +4482,8 @@ def answer_attached_file_stream(db: Session, question: str, *, user_id,
                  "CRITICAL " if _is_critical else "", len(_audit))
 
     final_text = _pg.redact_output(final_text)
+    # Shared format hygiene — same rules as the single-agent path.
+    final_text = _single_agent.strip_output_artefacts(final_text)
 
     yield {"done": {
         "text": final_text,

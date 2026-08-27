@@ -375,50 +375,73 @@ function _inlineHtml(text: string): string {
   return s;
 }
 
+// Word paste is finicky. What actually survives desktop Word on Windows:
+//  - HTML attributes on <table> ('border', 'cellpadding', 'cellspacing') —
+//    CSS border-collapse alone gets stripped by Word's HTML sanitizer, so a
+//    borderless table shows the "----- -----" style plain-text fallback.
+//  - Legacy tags <b> / <i> alongside <strong> / <em>.
+//  - Calibri 11pt as the base font (Word's default). Anything else pastes as
+//    "Web preview" formatting that later requires manual "Clear Formatting".
+//  - Full <html> document with <meta charset> — a bare <div> fragment makes
+//    some Word builds fall back to text/plain from the same clipboard item.
 function _blockHtml(b: Block): string {
   if (b.type === "h") {
     const lvl = Math.min(Math.max(b.level || 2, 1), 4);
-    return `<h${lvl} style="margin:16px 0 8px;font-weight:600;line-height:1.3">${_inlineHtml(b.lines[0])}</h${lvl}>`;
+    // Word-visible font sizes: h1=18pt, h2=15pt, h3=13pt, h4=12pt bold.
+    const sz = { 1: "18pt", 2: "15pt", 3: "13pt", 4: "12pt" }[lvl] || "13pt";
+    return `<h${lvl} style="margin:14pt 0 6pt;font-family:Calibri,Arial,sans-serif;font-size:${sz};font-weight:bold;color:#0f172a;line-height:1.25;page-break-after:avoid"><b>${_inlineHtml(b.lines[0])}</b></h${lvl}>`;
   }
   if (b.type === "ul") {
-    return `<ul style="margin:8px 0;padding-left:24px">${b.lines.map((li) => `<li style="margin:4px 0">${_inlineHtml(li)}</li>`).join("")}</ul>`;
+    return `<ul style="margin:6pt 0;padding-left:28px;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.4">${b.lines.map((li) => `<li style="margin:2pt 0">${_inlineHtml(li)}</li>`).join("")}</ul>`;
   }
   if (b.type === "ol") {
     const start = b.start ?? 1;
-    return `<ol start="${start}" style="margin:8px 0;padding-left:24px">${b.lines.map((li) => `<li style="margin:4px 0">${_inlineHtml(li)}</li>`).join("")}</ol>`;
+    return `<ol start="${start}" style="margin:6pt 0;padding-left:28px;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.4">${b.lines.map((li) => `<li style="margin:2pt 0">${_inlineHtml(li)}</li>`).join("")}</ol>`;
   }
   if (b.type === "quote") {
-    return `<blockquote style="margin:10px 0;padding:8px 12px;border-left:3px solid #cbd5e1;color:#475569;background:#f8fafc">${_inlineHtml(b.lines[0])}</blockquote>`;
+    return `<blockquote style="margin:8pt 0;padding:6pt 10pt;border-left:3pt solid #94a3b8;color:#475569;background:#f8fafc;font-family:Calibri,Arial,sans-serif;font-size:11pt;font-style:italic"><i>${_inlineHtml(b.lines[0])}</i></blockquote>`;
   }
   if (b.type === "code") {
-    return `<pre style="margin:10px 0;padding:12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55;color:#1e293b;white-space:pre;overflow-x:auto"><code>${_esc(b.lines.join("\n"))}</code></pre>`;
+    return `<pre style="margin:8pt 0;padding:8pt;background:#f8fafc;border:1pt solid #e2e8f0;font-family:Consolas,'Courier New',monospace;font-size:10pt;line-height:1.4;color:#1e293b;white-space:pre">${_esc(b.lines.join("\n"))}</pre>`;
   }
   if (b.type === "table") {
     const aligns = b.aligns || [];
-    const cellStyle = (i: number) =>
-      `padding:6px 10px;border:1px solid #e2e8f0;text-align:${aligns[i] || "left"};vertical-align:top`;
+    // Explicit HTML `border`/`cellpadding`/`cellspacing` attributes are what
+    // Word actually respects when it decides whether to render a real table
+    // (vs. an ASCII-looking dashed layout). Keep the CSS border-collapse
+    // alongside for Google Docs / Notion which prefer CSS.
+    const cellStyle = (i: number, header: boolean) =>
+      `padding:4pt 8pt;border:1pt solid #64748b;text-align:${aligns[i] || "left"};vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:11pt` +
+      (header ? ";background:#e2e8f0;font-weight:bold" : "");
     const inlineCell = (c: string) =>
       c.split(/<br\s*\/?>/i).map(_inlineHtml).join("<br>");
     const thead = (b.headers || [])
-      .map((h, k) =>
-        `<th style="${cellStyle(k)};background:#f1f5f9;font-weight:600;color:#1e293b">${inlineCell(h)}</th>`,
-      )
+      .map((h, k) => `<th style="${cellStyle(k, true)}"><b>${inlineCell(h)}</b></th>`)
       .join("");
     const tbody = (b.rows || [])
       .map(
-        (row, r) =>
-          `<tr style="background:${r % 2 ? "#ffffff" : "#f8fafc"}">${row.map((c, k) => `<td style="${cellStyle(k)}">${inlineCell(c)}</td>`).join("")}</tr>`,
+        (row) =>
+          `<tr>${row.map((c, k) => `<td style="${cellStyle(k, false)}">${inlineCell(c)}</td>`).join("")}</tr>`,
       )
       .join("");
-    return `<table style="border-collapse:collapse;margin:12px 0;font-size:13px;width:100%"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
+    return (
+      `<table border="1" cellpadding="4" cellspacing="0" ` +
+      `style="border-collapse:collapse;margin:8pt 0;font-family:Calibri,Arial,sans-serif;font-size:11pt">` +
+      `<thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`
+    );
   }
-  // paragraph
+  // paragraph — no forced <br> between empty lines; Word treats <br> as a soft
+  // line-break which pastes tightly and prevents the reader from selecting a
+  // whole paragraph with a triple-click.
   const html = b.lines.map(_inlineHtml).join("<br>");
-  return `<p style="margin:8px 0;line-height:1.55">${html}</p>`;
+  return `<p style="margin:6pt 0;font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#0f172a;line-height:1.4">${html}</p>`;
 }
 
-/** Convert a raw assistant markdown answer into inline-styled HTML that
- *  pastes cleanly into Word / Google Docs / Notion / Gmail. */
+/** Convert a raw assistant markdown answer into a full HTML document that
+ *  pastes cleanly into Word / Google Docs / Notion / Gmail. We wrap the body
+ *  in `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>` so
+ *  Word's HTML importer treats the clipboard payload as a document (rather
+ *  than falling back to the text/plain variant on the same clipboard item). */
 export function markdownToHtml(src: string): string {
   const blocks = parseBlocks(src);
   // Continuous-numbering pass, same rules as the on-screen renderer.
@@ -432,7 +455,16 @@ export function markdownToHtml(src: string): string {
     }
   }
   const body = blocks.map(_blockHtml).join("\n");
-  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55">${body}</div>`;
+  return (
+    `<!DOCTYPE html><html><head><meta charset="utf-8">` +
+    `<title>BharatTax answer</title>` +
+    // Word reads xmlns:o / xmlns:w cues to keep our styling in "Web layout"
+    // rather than dropping to plain text.
+    `<meta name="ProgId" content="Word.Document">` +
+    `<meta name="Generator" content="BharatTax">` +
+    `<style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#0f172a} table,th,td{border-color:#64748b}</style>` +
+    `</head><body>${body}</body></html>`
+  );
 }
 
 /** Strip markdown syntax to a clean plain-text version — headings become
@@ -506,13 +538,70 @@ export function markdownToPlain(src: string): string {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+// execCommand fallback that ALSO writes HTML (not just plain text). Some
+// browsers/desktop shells reject `navigator.clipboard.write(ClipboardItem)`
+// for permission reasons even when we're inside a user gesture; in those
+// cases we still want Word to paste a formatted answer rather than the ugly
+// ASCII table plain-text version. Building a hidden contenteditable with the
+// HTML, selecting it, then execCommand('copy') puts CF_HTML on the Windows
+// clipboard so Word picks up the formatted table.
+function _execCommandCopyHtml(html: string, plain: string): boolean {
+  try {
+    const el = document.createElement("div");
+    el.contentEditable = "true";
+    el.style.position = "fixed";
+    el.style.left = "-9999px";
+    el.style.top = "0";
+    el.style.opacity = "0";
+    el.style.pointerEvents = "none";
+    el.innerHTML = html;
+    document.body.appendChild(el);
+
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    if (!sel) {
+      document.body.removeChild(el);
+      return false;
+    }
+    const prev = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // Attach a one-shot copy listener so the browser writes BOTH text/html
+    // (from our fragment) AND text/plain (our own stripped version) to the
+    // OS clipboard. Without this, Chrome writes text/plain as the SELECTED
+    // text of the hidden node, which lacks table alignment.
+    const onCopy = (ev: ClipboardEvent) => {
+      if (ev.clipboardData) {
+        ev.clipboardData.setData("text/html", html);
+        ev.clipboardData.setData("text/plain", plain);
+        ev.preventDefault();
+      }
+    };
+    document.addEventListener("copy", onCopy);
+    const ok = document.execCommand("copy");
+    document.removeEventListener("copy", onCopy);
+
+    sel.removeAllRanges();
+    if (prev) sel.addRange(prev);
+    document.body.removeChild(el);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Copy an answer to the clipboard in BOTH styled HTML and clean plain text.
  *  Rich editors (Word/Docs/Notion/Gmail) paste the HTML with formatting
- *  intact; plain-text targets get the stripped version. Falls back to a
- *  plain-text writeText on browsers without ClipboardItem. */
+ *  intact; plain-text targets get the stripped version. If the async
+ *  ClipboardItem API rejects (permission race, Safari quirks), we fall back
+ *  to an execCommand copy that still writes HTML — never a plain-text-only
+ *  fallback, because that's what turned tables into ASCII dashes in Word. */
 export async function copyMarkdownRich(src: string): Promise<void> {
   const html = markdownToHtml(src);
   const plain = markdownToPlain(src);
+  // Preferred: async Clipboard API.
   try {
     if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
       const item = new ClipboardItem({
@@ -523,8 +612,13 @@ export async function copyMarkdownRich(src: string): Promise<void> {
       return;
     }
   } catch {
-    // fall through to plain-text writeText
+    // fall through — execCommand path handles Word correctly too
   }
+  // execCommand fallback with HTML. Runs synchronously inside the user
+  // gesture, so it works in older Safari and locked-down enterprise builds.
+  if (_execCommandCopyHtml(html, plain)) return;
+  // Absolute last resort — plain text only. The user will see the ASCII
+  // table but at least gets *something*.
   await navigator.clipboard.writeText(plain);
 }
 
