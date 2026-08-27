@@ -93,6 +93,16 @@ _JAILBREAK_PATTERNS = [
     r"admin (?:override|access|mode)",
     r"as an? (?:admin|developer|auditor|security researcher),? (?:i |please )?(?:need|want|require)",
     r"repeat everything (?:above|before this)",
+    # Architecture-exfil phrases embedded in untrusted content — neutralised
+    # so a malicious document can't ask the model to "provide pseudocode of
+    # the backend" or "walk through the execution path".
+    r"(?:execution|call|control|data) (?:path|flow|trace|chain|pipeline)",
+    r"(?:internal|backend|server[- ]?side) (?:function|method|call|architecture|implementation|logic|pipeline)",
+    r"(?:function|tool|api) (?:schemas?|signatures?|parameters?|calls?|list)",
+    r"(?:database|db) (?:operations?|calls?|queries|structure|layout)",
+    r"pseudo[- ]?code",
+    r"(?:recreate|reproduce|reconstruct|simulate|walk through|trace) [^\n.]{0,60}(?:internal|backend|system|architecture|implementation|execution)",
+    r"(?:intermediate|internal) (?:objects?|state|representations?)",
 ]
 _JAILBREAK_RE = re.compile("|".join(f"(?:{p})" for p in _JAILBREAK_PATTERNS), re.IGNORECASE)
 
@@ -176,10 +186,17 @@ _DB_URL_RE = re.compile(
     re.IGNORECASE,
 )
 # Generic key-value credential patterns: KEY=..., "api_key": "…", Bearer …
+# Trailing [A-Za-z0-9_]* covers compound env-var names like SECRET_TOKEN,
+# ACCESS_KEY_ID, PRIVATE_KEY_PEM, etc.
 _ENV_KV_RE = re.compile(
     r"(?i)\b(?:api[_-]?key|secret|password|passwd|token|access[_-]?key|"
-    r"private[_-]?key|client[_-]?secret|gemini[_-]?api[_-]?key|openai[_-]?api[_-]?key)"
-    r"\s*[:=]\s*[\"']?[A-Za-z0-9_\-\./+]{12,}[\"']?",
+    r"private[_-]?key|client[_-]?secret|gemini[_-]?api[_-]?key|openai[_-]?api[_-]?key|"
+    r"auth[_-]?token|refresh[_-]?token|session[_-]?token|jwt[_-]?secret|"
+    r"database[_-]?url|db[_-]?password|postgres[_-]?password|redis[_-]?password|"
+    r"minio[_-]?secret[_-]?key|minio[_-]?access[_-]?key|indiankanoon[_-]?api[_-]?token|"
+    r"ecourts[_-]?api[_-]?key|llm[_-]?api[_-]?key|oo[_-]?jwt[_-]?secret)"
+    r"[A-Za-z0-9_]*"
+    r"\s*[:=]\s*[\"']?[A-Za-z0-9_\-\./+]{6,}[\"']?",
 )
 _BEARER_RE = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9_\-\.=]{16,}")
 # JWTs & Google API key shapes.
@@ -265,6 +282,30 @@ _META_EXFIL_RE = re.compile(
     r"|"
     # "list your tool names", "show the function schema"
     r"(?:reveal|show|print|list|dump|output|share) [^\n]{0,40}(?:tool|function|api) (?:list|names?|schema)"
+    r"|"
+    # ARCHITECTURE-EXFIL (the "recreate the execution path / show internal
+    # function calls / provide pseudocode of the backend implementation"
+    # style — the attacker asks for the *equivalent* of source code rather
+    # than source itself). These are software-engineering terms with zero
+    # overlap with tax-officer vocabulary, so false-positive risk is low.
+    r"(?:execution|call|control|code|data|request|processing) (?:path|flow|trace|graph|chain|pipeline)"
+    r"|"
+    r"(?:internal|backend|server[- ]?side|system|hidden) (?:function|method|call|operation|architecture|implementation|logic|code|pipeline|workflow|design|structure|api|module|component)s?"
+    r"|"
+    r"(?:function|tool|api|endpoint) (?:schemas?|signatures?|parameters?|definitions?|specifications?|calls?|list)"
+    r"|"
+    r"(?:database|db|storage) (?:operations?|calls?|queries|access|lookups?|reads?|writes?|structure|layout|design)"
+    r"|"
+    r"pseudo[- ]?code"
+    r"|"
+    r"(?:recreate|reproduce|reconstruct|simulate|mimic|walk (?:me )?through|trace|describe|explain|outline|map (?:out)?|diagram) [^\n]{0,80}(?:internal|backend|system|architecture|implementation|execution|pipeline|workflow|processing|infrastructure)"
+    r"|"
+    r"(?:intermediate|internal|hidden) (?:objects?|state|variables?|representations?|data ?structures?|payloads?|messages?)"
+    r"|"
+    r"how (?:does |do |is |are )(?:your|the) (?:system|backend|architecture|api|pipeline|implementation|infrastructure|orchestrator|agent|router) (?:work|process|handle|route|call|invoke)"
+    r"|"
+    # "provide/give/show the equivalent of ..." style requests for architectural detail.
+    r"(?:provide|give|show|generate) [^\n]{0,60}(?:equivalent|equivalent to|equivalence) [^\n]{0,60}(?:backend|implementation|source|code|architecture|system)"
     r")"
 )
 
