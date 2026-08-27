@@ -22,6 +22,7 @@ import { useAuth } from "@/auth";
 import { PlanUsage } from "@/components/PlanUsage";
 import { PersonalizationTab } from "@/components/Personalization";
 import { cn } from "@/lib/utils";
+import PageHelp from "@/components/PageHelp";
 
 export default function ProfilePage() {
   const { session } = useAuth();
@@ -82,6 +83,7 @@ export default function ProfilePage() {
               {profile.organisation && <Pill>{profile.organisation}</Pill>}
             </div>
           </div>
+          <PageHelp id="profile" className="shrink-0 bg-white/15 ring-white/25 text-white hover:bg-white/25 hover:text-white hover:ring-white/40" />
         </div>
       </div>
 

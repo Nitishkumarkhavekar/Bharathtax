@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { AdminDashboard, api } from "@/api";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   BarChart,
   DonutChart,
@@ -303,11 +304,23 @@ export function Header({
 }
 
 export function Loading({ label }: { label?: string }) {
+  // A generic "stats + list" skeleton — used by every admin page's initial
+  // load, so they share one calm, consistent loading state.
   return (
-    <div className="text-sm text-slate-600 py-12 text-center">
-      <div className="inline-flex items-center gap-2 font-medium">
-        <span className="size-2 rounded-full bg-primary animate-pulse" />
-        {label ?? "Loading…"}
+    <div className="space-y-4 py-1" role="status" aria-label={label ?? "Loading"}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Skeleton className="h-20 rounded-2xl" />
+        <Skeleton className="h-20 rounded-2xl" />
+        <Skeleton className="h-20 rounded-2xl" />
+      </div>
+      <div className="rounded-2xl ring-1 ring-slate-200 bg-white p-4 space-y-3.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="size-9 rounded-lg shrink-0" />
+            <Skeleton className="h-3.5 flex-1" style={{ maxWidth: `${58 - i * 6}%` }} />
+            <Skeleton className="h-5 w-16 rounded-full shrink-0" />
+          </div>
+        ))}
       </div>
     </div>
   );
