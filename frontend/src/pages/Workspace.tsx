@@ -14,6 +14,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace } from "@/lib/workspaceProfiles";
+import PageHelp from "@/components/PageHelp";
 
 type MatterDetail = WsMatter & { deadlines: WsDeadline[]; demands: WsDemand[] };
 
@@ -442,6 +443,7 @@ export default function Workspace() {
         <div className="ml-auto flex items-center gap-2">
           <StatPill label="Next 30 days" value={stats.soon} tone="amber" />
           <StatPill label="Overdue" value={stats.overdue} tone="rose" />
+          <PageHelp id="calendar" className="shrink-0" />
         </div>
       </div>
 

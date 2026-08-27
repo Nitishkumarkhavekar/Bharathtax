@@ -6,6 +6,7 @@ import { useAuth } from "../auth";
 import Assessments from "./Assessments";
 import Appeals from "./Appeals";
 import DraftingPage from "./Drafting";
+import PageHelp from "@/components/PageHelp";
 
 // The unified "Drafting" hub. Every kind of drafting an officer does —
 // assessment orders, appellate orders, and notices — lives here under one item,
@@ -59,6 +60,7 @@ export default function DraftingHub() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Drafting</h1>
           <p className="text-[13px] text-slate-500">Assessment &amp; appellate orders and notices — every draft in one place.</p>
         </div>
+        <PageHelp id="drafting" className="ml-auto shrink-0" />
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
