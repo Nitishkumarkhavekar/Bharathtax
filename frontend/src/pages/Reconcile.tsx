@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import PageHelp from "@/components/PageHelp";
 
 const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n));
 
@@ -51,6 +52,7 @@ export default function Reconcile() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Reconciliation & SFT scan</h1>
           <p className="text-[13px] text-slate-500">AIS / 26AS matching, and a Rule 114E high-value transaction scan.</p>
         </div>
+        <PageHelp id="reconcile" className="ml-auto shrink-0" />
       </div>
 
       <div className="inline-flex rounded-lg bg-slate-100 p-1">

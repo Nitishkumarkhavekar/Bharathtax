@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace, resolveTiles } from "@/lib/workspaceProfiles";
 import { Skeleton, SkeletonRows } from "@/components/ui/Skeleton";
+import PageHelp from "@/components/PageHelp";
 
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
@@ -155,8 +156,9 @@ export default function Dashboard() {
             {myCats.length ? "Tailored to your function — sorted by what's due next." : "Your whole caseload, sorted by what's due next."}
           </p>
         </div>
+        <PageHelp id="dashboard" className="ml-auto shrink-0" />
         <button onClick={() => { setLoading(true); load(); }} title="Refresh"
-          className="ml-auto p-2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+          className="p-2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
           <RefreshCw className="size-4" />
         </button>
       </div>

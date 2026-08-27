@@ -8,6 +8,7 @@ import { SkeletonRows } from "@/components/ui/Skeleton";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import PageHelp from "@/components/PageHelp";
 
 const KINDS = [
   { v: "section", l: "Section" }, { v: "topic", l: "Topic" }, { v: "assessee", l: "Assessee" },
@@ -60,7 +61,8 @@ export default function Watchlists() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Watchlists</h1>
           <p className="text-[13px] text-slate-500">Track a section, topic or assessee — jump to fresh rulings in one click.</p>
         </div>
-        <Button className="ml-auto" onClick={() => setShowNew((s) => !s)}>
+        <PageHelp id="watchlists" className="ml-auto shrink-0" />
+        <Button onClick={() => setShowNew((s) => !s)}>
           {showNew ? <X className="size-4 mr-1" /> : <Plus className="size-4 mr-1" />}{showNew ? "Close" : "New"}
         </Button>
       </div>

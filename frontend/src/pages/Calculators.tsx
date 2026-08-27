@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace } from "@/lib/workspaceProfiles";
+import PageHelp from "@/components/PageHelp";
 
 const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n));
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -685,6 +686,7 @@ export default function Calculators() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Calculators</h1>
           <p className="text-[13px] text-slate-500">Statutory interest and special-rate tax — with the workings shown.</p>
         </div>
+        <PageHelp id="calculators" className="ml-auto shrink-0" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

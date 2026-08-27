@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/lib/markdown";
+import PageHelp from "@/components/PageHelp";
 
 const POPULAR = ["68", "14A", "37", "40", "271", "148", "147", "69A", "54", "10", "80IB", "263"];
 
@@ -305,13 +306,16 @@ export default function Rulings() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
-          <BookOpen className="size-5 text-primary" /> Case Law
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Search income-tax judgments (HC / SC) with AI headnotes, or browse everything on a section.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
+            <BookOpen className="size-5 text-primary" /> Case Law
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Search income-tax judgments (HC / SC) with AI headnotes, or browse everything on a section.
+          </p>
+        </div>
+        <PageHelp id="rulings" className="shrink-0" />
       </div>
 
       <div className="inline-flex rounded-lg border border-input bg-background p-0.5 text-sm">
