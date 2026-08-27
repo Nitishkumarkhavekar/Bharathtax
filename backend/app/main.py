@@ -99,7 +99,16 @@ settings.assert_prod_safe()
 _ensure_admin_tables()
 _patch_user_columns()
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+# In production the interactive API docs and the OpenAPI schema are DISABLED —
+# publishing the full route/parameter/schema map is free reconnaissance for an
+# attacker, even though every endpoint is auth-gated. /docs, /redoc and
+# /openapi.json therefore return 404 in prod for everyone, logged-in or not;
+# they stay available in dev for local development.
+_docs = None if settings.is_production else "/docs"
+_redoc = None if settings.is_production else "/redoc"
+_openapi = None if settings.is_production else "/openapi.json"
+app = FastAPI(title=settings.app_name, version="0.1.0",
+              docs_url=_docs, redoc_url=_redoc, openapi_url=_openapi)
 
 # CORS origins come from config (CORS_ALLOWED_ORIGINS); "*" only in dev.
 # allow_credentials must be False when origins is "*" (browsers reject the combo).
