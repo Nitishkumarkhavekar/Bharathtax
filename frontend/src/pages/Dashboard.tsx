@@ -6,6 +6,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace, resolveTiles } from "@/lib/workspaceProfiles";
+import { Skeleton, SkeletonRows } from "@/components/ui/Skeleton";
 
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
@@ -162,10 +163,12 @@ export default function Dashboard() {
 
       {/* Summary tiles — the set is tailored to the officer's function. */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {tiles.map((k) => {
-          const d = TILE_DEFS[k];
-          return d ? <Tile key={k} label={d.label} value={d.get(s)} tone={d.tone} /> : null;
-        })}
+        {loading
+          ? tiles.map((k) => <Skeleton key={k} className="h-[76px] rounded-2xl" />)
+          : tiles.map((k) => {
+              const d = TILE_DEFS[k];
+              return d ? <Tile key={k} label={d.label} value={d.get(s)} tone={d.tone} /> : null;
+            })}
       </div>
 
       {/* Controls */}
@@ -189,7 +192,7 @@ export default function Dashboard() {
 
       {/* Matters list */}
       <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm divide-y divide-slate-100">
-        {loading && <div className="text-[13px] text-slate-400 py-10 text-center">Loading your caseload…</div>}
+        {loading && <SkeletonRows rows={6} />}
         {!loading && rows.length === 0 && (
           <div className="py-12 text-center">
             <FolderOpen className="size-7 mx-auto text-slate-300 mb-2" />

@@ -4,6 +4,7 @@ import { Bookmark, Plus, Trash2, Search, X } from "lucide-react";
 import { api, WsWatchlist } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,7 @@ export default function Watchlists() {
       )}
 
       <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm divide-y divide-slate-100">
-        {loading && <div className="text-[13px] text-slate-400 py-8 text-center">Loading…</div>}
+        {loading && <SkeletonRows rows={5} />}
         {!loading && items.length === 0 && (
           <div className="text-[13px] text-slate-400 py-10 text-center">No watchlists yet. Add one to track it.</div>
         )}
