@@ -21,6 +21,7 @@ import { ApiError, HistoryItem, HistoryKind, HistoryCounts, api } from "../api";
 import { toast } from "@/lib/toast";
 import { useAuth } from "../auth";
 import { Card, CardContent } from "@/components/ui/card";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -232,7 +233,7 @@ export default function History() {
       <FilterChips value={kind} onChange={setKind} counts={counts} />
 
       {loading && (
-        <p className="text-sm text-muted-foreground">Loading your history…</p>
+        <div className="rounded-2xl bg-white ring-1 ring-slate-200"><SkeletonRows rows={6} /></div>
       )}
 
       {items.length > 0 && (

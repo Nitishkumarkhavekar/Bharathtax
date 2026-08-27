@@ -8,6 +8,7 @@ import { api, WsMatter, WsDeadline, WsDemand, WsRuleCatalogue, WsNote, WsShare }
 import { formatPan, formatAy, isPan, isAy, optional } from "@/lib/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -486,7 +487,7 @@ export default function Workspace() {
           )}
 
           <div className="space-y-1 max-h-[60vh] overflow-y-auto chat-scrollbar">
-            {loading && <div className="text-[13px] text-slate-400 px-1 py-6 text-center">Loading…</div>}
+            {loading && <SkeletonRows rows={5} />}
             {!loading && matters.length === 0 && (
               <div className="text-[12.5px] text-slate-400 px-2 py-6 text-center">
                 No matters yet. Add one to start tracking deadlines.

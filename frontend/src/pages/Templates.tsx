@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Plus, Trash2, Copy, LayoutTemplate, X, Search } from "lucide-react";
 import { api, WsTemplate, WsLibraryTemplate } from "../api";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -104,7 +105,7 @@ export default function Templates() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 items-start">
         <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-2">
-          {loading && <div className="text-[13px] text-slate-400 py-6 text-center">Loading…</div>}
+          {loading && <SkeletonRows rows={5} />}
           {!loading && items.length === 0 && (
             <div className="text-[12.5px] text-slate-400 py-6 px-2 text-center">No templates yet. Create one on the right.</div>
           )}
