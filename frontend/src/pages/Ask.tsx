@@ -33,6 +33,7 @@ import LicenseGate from "@/components/chat/LicenseGate";
 import ArchivedDialog from "@/components/chat/ArchivedDialog";
 import { ServerChat } from "../api";
 import { cn } from "@/lib/utils";
+import PageHelp from "@/components/PageHelp";
 
 type Suggestion = {
   text: string;
@@ -868,6 +869,9 @@ function EmptyHero(props: {
               Ask anything on the Income-tax Act, Rules, or CBDT circulars.
               Every answer is footnoted with its source.
             </p>
+            <div className="flex justify-center pt-1">
+              <PageHelp id="chat" />
+            </div>
           </div>
 
           {/* Composer */}

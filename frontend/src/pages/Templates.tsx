@@ -9,6 +9,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace } from "@/lib/workspaceProfiles";
+import PageHelp from "@/components/PageHelp";
 
 const CATS = [
   { v: "notice", l: "Notice" }, { v: "order", l: "Order" },
@@ -97,7 +98,8 @@ export default function Templates() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Templates</h1>
           <p className="text-[13px] text-slate-500">Reusable notice, order and appeal boilerplate — save once, reuse anywhere.</p>
         </div>
-        <Button variant="outline" className="ml-auto" onClick={openLibrary}>
+        <PageHelp id="templates" className="ml-auto shrink-0" />
+        <Button variant="outline" onClick={openLibrary}>
           <LayoutTemplate className="size-4 mr-1" /> Library
         </Button>
         <Button onClick={startNew}><Plus className="size-4 mr-1" /> New</Button>

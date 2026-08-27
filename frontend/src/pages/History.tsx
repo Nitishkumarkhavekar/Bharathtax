@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { FilePreviewModal } from "@/components/FilePreviewModal";
+import PageHelp from "@/components/PageHelp";
 
 export default function History() {
   const { session } = useAuth();
@@ -216,18 +217,21 @@ export default function History() {
             </div>
           )}
         </div>
-        {items.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearAll}
-            disabled={busyClear}
-            className="text-rose-700 hover:bg-rose-50 hover:text-rose-800 border-rose-200"
-          >
-            <Eraser className="size-4" />
-            {busyClear ? "Clearing…" : kind === "all" ? "Clear my history" : `Clear ${kind}`}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <PageHelp id="history" />
+          {items.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAll}
+              disabled={busyClear}
+              className="text-rose-700 hover:bg-rose-50 hover:text-rose-800 border-rose-200"
+            >
+              <Eraser className="size-4" />
+              {busyClear ? "Clearing…" : kind === "all" ? "Clear my history" : `Clear ${kind}`}
+            </Button>
+          )}
+        </div>
       </div>
 
       <FilterChips value={kind} onChange={setKind} counts={counts} />

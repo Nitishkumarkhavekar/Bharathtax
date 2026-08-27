@@ -103,4 +103,35 @@ export const PAGE_HELP: Record<string, HelpContent> = {
       "Remove entries you no longer need.",
     ],
   },
+  templates: {
+    title: "Templates",
+    what: "Your reusable text snippets — standard paragraphs for notices, orders, replies and letters — organised by group, so you don't retype boilerplate.",
+    when: "When you draft the same wording repeatedly: a standard opening, a limitation paragraph, a stock direction to the AO.",
+    how: [
+      "Browse the library by group, or search for a snippet.",
+      "Copy a template into your draft — or save your own with 'New template'.",
+      "Edit or delete your saved templates anytime.",
+    ],
+  },
+  history: {
+    title: "History",
+    what: "A log of your past questions and drafts, so you can find and reopen earlier work.",
+    when: "To pick up where you left off, or to reuse a prior answer or draft.",
+    how: [
+      "Filter by type (chat, draft, and more) using the chips.",
+      "Search to find a specific past query.",
+      "Click any entry to reopen it.",
+    ],
+  },
+  profile: {
+    title: "Profile & personalisation",
+    what: "Your account and personalisation — name, designation and jurisdiction, custom instructions, cross-chat memory, your workspace function, and your plan & usage.",
+    when: "Set it once so every answer and draft is tailored to you; revisit to update instructions, check usage, or manage memory.",
+    how: [
+      "Set your designation and charge so drafts are correctly headed and answers take your standpoint.",
+      "Add custom instructions and an 'about me' to shape every answer.",
+      "Pick your workspace function to tailor the dashboard and tools.",
+      "Check your plan and token usage under the Plan tab.",
+    ],
+  },
 };
