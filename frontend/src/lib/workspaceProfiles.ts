@@ -37,6 +37,32 @@ export const PROFILES: ProfileConfig[] = [
 
 const BY_KEY = new Map(PROFILES.map((p) => [p.key, p]));
 
+// The Drafting template GROUPS (from the backend `group` field) that belong to
+// each function — so the Drafting library shows an officer ONLY their own
+// function's templates by default, with everything else behind an "other
+// functions" expander. A wing not listed → no division (everything shown).
+const WING_GROUPS: Record<string, string[]> = {
+  officer: ["Assessment", "Reassessment", "Penalty"],
+  cita: ["Appeals & Revision"],
+  drp: ["Transfer Pricing"],
+  tp: ["Transfer Pricing"],
+  investigation: ["Investigation", "I&CI"],
+  ici: ["I&CI", "Investigation"],
+  recovery: ["Recovery"],
+  tds: ["TDS", "Exemptions"],
+  ca: ["Assessee replies"],
+};
+
+/** The drafting groups this officer leads with (empty = show everything). */
+export function resolveDraftingGroups(
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): Set<string> {
+  if (!profile || profile === "all") return new Set();
+  if (profile === "custom") return new Set((wings ?? []).flatMap((k) => WING_GROUPS[k] ?? []));
+  return new Set(WING_GROUPS[profile] ?? []);
+}
+
 // Per-wing chat starter prompts — the officer's own core tasks, so the new-chat
 // hero reads as built for their desk instead of a generic tax chatbot. Kept
 // separate from PROFILES so the content stays legible and easy to extend.
