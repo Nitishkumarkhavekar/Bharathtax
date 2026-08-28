@@ -468,7 +468,8 @@ function DraftEditor({
     try {
       if (dirty) await save();
       const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
-      await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+      const m = await api.appealDownload(`/drafts/${draft.id}/export.docx`, `${name}.docx`);
+      if (m !== "cancelled") toast.success("Saved to your computer.");
     } catch (e: any) { toast.error(e?.message ?? "Word export failed"); }
   }
   async function del() {

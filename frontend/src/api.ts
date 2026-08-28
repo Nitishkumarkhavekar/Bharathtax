@@ -27,6 +27,8 @@ function _resolveApiBase(): string {
   } catch { /* SSR / non-browser envs */ }
   return import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 }
+import { saveBlob, type SaveResult } from "./lib/saveFile";
+
 const BASE = _resolveApiBase();
 // Exported so other modules (auth heartbeat) resolve the SAME base — including
 // any runtime on-prem override — instead of re-reading the build env.
@@ -1698,11 +1700,11 @@ export const api = {
       { method: "POST", body: JSON.stringify({ instruction, selection, base_version }) },
     ),
   appealDraftVersions: (id: string | number) => req<any[]>(`/appeal/cases/${id}/draft-versions`),
-  async appealDownload(path: string, filename: string) {
+  async appealDownload(path: string, filename: string): Promise<SaveResult> {
     const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token()}` } });
     if (!res.ok) throw new ApiError(res.status, "Download failed");
-    const url = URL.createObjectURL(await res.blob());
-    const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    // Save straight to the officer's own machine (Chromium) or download (else).
+    return saveBlob(await res.blob(), filename);
   },
   // Fetch the rendered PDF preview of the draft, returning a blob URL the
   // caller drops into an <iframe src>. Caller is responsible for revoking
@@ -1764,11 +1766,10 @@ export const api = {
     req<any>(`/assessment/cases/${id}/issues/${seq}/regenerate`, { method: "POST" }),
   asmtReassemble: (id: string | number) =>
     req<any>(`/assessment/cases/${id}/reassemble`, { method: "POST" }),
-  async asmtDownload(path: string, filename: string) {
+  async asmtDownload(path: string, filename: string): Promise<SaveResult> {
     const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${token()}` } });
     if (!res.ok) throw new ApiError(res.status, "Download failed");
-    const url = URL.createObjectURL(await res.blob());
-    const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    return saveBlob(await res.blob(), filename);
   },
   async asmtOpenDoc(cid: string | number, did: number) {
     const res = await fetch(`${BASE}/assessment/cases/${cid}/documents/${did}/file`, { headers: { Authorization: `Bearer ${token()}` } });
