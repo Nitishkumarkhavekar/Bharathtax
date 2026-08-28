@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
-import { resolveWorkspace } from "@/lib/workspaceProfiles";
+import { resolveWorkspace, resolveCalcTabs } from "@/lib/workspaceProfiles";
 import PageHelp from "@/components/PageHelp";
 
 const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n));
@@ -669,6 +669,12 @@ function AlpCalc() {
 }
 
 type CalcTab = "interest" | "bbe" | "234c" | "slab" | "capgains" | "penalty" | "tds" | "recovery" | "trust" | "peak" | "alp";
+const ALL_CALC_TABS: [CalcTab, string][] = [
+  ["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"],
+  ["trust", "Trust"], ["peak", "Peak credit"], ["alp", "ALP / TP"], ["bbe", "115BBE"],
+  ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"],
+];
+
 export default function Calculators() {
   const { session } = useAuth();
   const defaultTab = (resolveWorkspace(session?.workspaceProfile, session?.workspaceWings).calcTab || "interest") as CalcTab;
@@ -676,6 +682,17 @@ export default function Calculators() {
   // Bumping this remounts the active calculator, resetting its inputs + result.
   const [resetKey, setResetKey] = useState(0);
   const clear = () => setResetKey((k) => k + 1);
+  // Role-divided: lead with the calculators the officer's function actually
+  // uses; the rest sit behind "More" (empty ownTabs → show all).
+  const ownTabs = resolveCalcTabs(session?.workspaceProfile, session?.workspaceWings);
+  const scoped = ownTabs.length > 0;
+  const [showMore, setShowMore] = useState(false);
+  const primary = scoped
+    ? ALL_CALC_TABS.filter(([k]) => ownTabs.includes(k)).sort((a, b) => ownTabs.indexOf(a[0]) - ownTabs.indexOf(b[0]))
+    : ALL_CALC_TABS;
+  const rest = scoped ? ALL_CALC_TABS.filter(([k]) => !ownTabs.includes(k)) : [];
+  const showRest = showMore || rest.some(([k]) => k === tab);
+  const visibleTabs = showRest ? [...primary, ...rest] : primary;
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -691,13 +708,20 @@ export default function Calculators() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 w-fit">
-          {([["interest", "Interest"], ["234c", "234C"], ["tds", "TDS"], ["recovery", "Recovery"], ["trust", "Trust"], ["peak", "Peak credit"], ["alp", "ALP / TP"], ["bbe", "115BBE"], ["slab", "Slab tax"], ["capgains", "Cap. gains"], ["penalty", "Penalty"]] as const).map(([k, l]) => (
+          {visibleTabs.map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)}
               className={cn("px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors",
                 tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800")}>
               {l}
             </button>
           ))}
+          {scoped && rest.length > 0 && (
+            <button onClick={() => setShowMore((s) => !s)}
+              title={showMore ? "Show fewer calculators" : "Show all calculators"}
+              className="px-3 py-1.5 rounded-md text-[13px] font-semibold text-slate-400 hover:text-slate-700 transition-colors">
+              {showRest ? "Less −" : `More +${rest.length}`}
+            </button>
+          )}
         </div>
         <button onClick={clear} title="Clear this calculator"
           className="ml-auto inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors">

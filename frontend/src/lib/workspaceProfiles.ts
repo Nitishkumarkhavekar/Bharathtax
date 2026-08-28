@@ -53,6 +53,35 @@ const WING_GROUPS: Record<string, string[]> = {
   ca: ["Assessee replies"],
 };
 
+// The calculators each function actually uses — so the Calculators page leads
+// with those and tucks the rest behind "more". Keys are the calc tab ids.
+const WING_CALC_TABS: Record<string, string[]> = {
+  officer: ["interest", "234c", "bbe", "slab", "capgains", "penalty"],
+  cita: ["interest", "bbe", "penalty"],
+  drp: ["alp", "interest"],
+  tp: ["alp"],
+  investigation: ["peak", "bbe", "interest"],
+  ici: ["peak"],
+  recovery: ["interest", "recovery", "penalty"],
+  tds: ["tds", "interest"],
+  ca: ["interest", "slab", "capgains", "tds"],
+};
+
+/** The calculators this officer leads with (empty = show everything). */
+export function resolveCalcTabs(
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): string[] {
+  if (!profile || profile === "all") return [];
+  if (profile === "custom") {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const k of wings ?? []) for (const c of WING_CALC_TABS[k] ?? []) if (!seen.has(c)) { seen.add(c); out.push(c); }
+    return out;
+  }
+  return WING_CALC_TABS[profile] ?? [];
+}
+
 /** The drafting groups this officer leads with (empty = show everything). */
 export function resolveDraftingGroups(
   profile: string | null | undefined,
