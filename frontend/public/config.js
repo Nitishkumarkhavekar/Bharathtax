@@ -8,4 +8,9 @@
 //   window.__BHARATTAX_CONFIG__ = { apiBase: "https://itd-bharattax.internal" };
 // or, when the UI and API are served from the same host/nginx:
 //   window.__BHARATTAX_CONFIG__ = { sameOrigin: true };
+//
+// LOCAL-FIRST mode — for sovereign / government deployments. When true, saving a
+// drafted order to the officer's computer also removes the case and its
+// documents from this server, so nothing is retained on the cloud:
+//   window.__BHARATTAX_CONFIG__ = { localFirst: true };
 window.__BHARATTAX_CONFIG__ = window.__BHARATTAX_CONFIG__ || {};

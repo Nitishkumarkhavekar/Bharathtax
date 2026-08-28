@@ -42,6 +42,24 @@ window.__BHARATTAX_CONFIG__ = { sameOrigin: true };
 The **same production build** therefore serves SaaS and every on-prem/sovereign
 deployment — only this file differs.
 
+## Local-first mode (data stays on the officer's machine)
+
+For a government / sovereign deployment, set one more flag in the same
+`/config.js` — no rebuild:
+
+```js
+window.__BHARATTAX_CONFIG__ = { localFirst: true };
+```
+
+With **local-first** on, when an officer saves a drafted order to their own
+computer, BharatTax **removes that case and its uploaded documents from the
+server** at the same time — so the officer's machine holds the only lasting
+copy and nothing of the case is retained on the cloud. (The AI still *processes*
+the documents on the server to draft the order; local-first governs
+**retention**, not processing. For a fully in-network install, combine it with
+the local-LLM option below so processing stays on the department's hardware
+too.) Off by default: the managed SaaS keeps the persistent workspace.
+
 ## Keeping the AI model local (no data to any external cloud)
 
 The one component that would otherwise call out is the LLM. The backend already

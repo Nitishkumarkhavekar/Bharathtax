@@ -34,6 +34,18 @@ const BASE = _resolveApiBase();
 // any runtime on-prem override — instead of re-reading the build env.
 export const API_BASE = BASE;
 
+// Local-first mode is a DEPLOYMENT posture, set per-instance in /config.js
+// (window.__BHARATTAX_CONFIG__.localFirst = true) — no rebuild. When on, the
+// finished work-product is saved to the officer's own machine and then removed
+// from this server, so nothing is retained on our cloud. Off by default (the
+// managed SaaS keeps the workspace persistent).
+export function isLocalFirst(): boolean {
+  try {
+    return !!(window as unknown as { __BHARATTAX_CONFIG__?: { localFirst?: boolean } })
+      .__BHARATTAX_CONFIG__?.localFirst;
+  } catch { return false; }
+}
+
 const TOKEN_KEY = "bharathtax_token";
 const SESSION_KEY = "bharathtax_session";
 

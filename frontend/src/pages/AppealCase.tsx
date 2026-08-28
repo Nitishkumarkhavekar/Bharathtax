@@ -1,9 +1,9 @@
 import { ChangeEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles, Undo2, Redo2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Play, Loader2, RefreshCw, FileDown, BookOpen, Eye, Pencil, AlertCircle, Check, X as XIcon, ChevronRight, ClipboardList, ClipboardCheck, ScrollText, Gavel, ListChecks, FileSignature, Square, Trash2, Send, Sparkles, Undo2, Redo2 } from "lucide-react";
 import { StarRating } from "../components/ui/StarRating";
-import { api } from "../api";
+import { api, isLocalFirst } from "../api";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -592,7 +592,6 @@ function DraftSection({
   onSave: () => void | Promise<void>;
 }) {
   const nav = useNavigate();
-  const { confirm, dialog: purgeDialog } = useConfirm();
   const [mode, setMode] = useState<"preview" | "edit" | "text">("preview");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -700,8 +699,6 @@ function DraftSection({
   }
 
   return (
-    <>
-    {purgeDialog}
     <Section
       title="Module 6 — Draft Appellate Order"
       icon={<FileSignature className="size-4" />}
@@ -861,44 +858,27 @@ function DraftSection({
         </Button>
         <Button
           variant="outline"
-          title="Save the order straight to a folder on your own computer"
-          onClick={() =>
-            api
-              .appealDownload(
-                `/appeal/cases/${cid}/export.docx`,
-                `draft_order_case_${cid}.docx`,
-              )
-              .then((m) => { if (m !== "cancelled") toast.success("Saved to your computer."); })
-              .catch((e) => toast.error(e?.message ?? "Save failed"))
-          }
-        >
-          <FileDown className="size-4" /> Save to computer
-        </Button>
-        <Button
-          variant="outline"
-          className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
-          title="Save the order to your computer, then delete this case and its documents from our servers"
+          title={isLocalFirst()
+            ? "Save to your own computer — in local-first mode nothing is kept on our servers"
+            : "Save the order straight to a folder on your own computer"}
           onClick={async () => {
             try {
               const m = await api.appealDownload(`/appeal/cases/${cid}/export.docx`, `draft_order_case_${cid}.docx`);
               if (m === "cancelled") return;
-              const ok = await confirm({
-                title: "Remove this case from our servers?",
-                description: "The order and its uploaded documents will be permanently deleted from our servers. Make sure you've saved everything you need to your computer — this can't be undone.",
-                tone: "danger", confirmLabel: "Remove from server",
-              });
-              if (!ok) { toast.success("Saved to your computer."); return; }
-              await api.appealDeleteCase(cid);
-              toast.success("Saved to your computer and removed from our servers.");
-              nav("/drafting/appeals");
-            } catch (e: any) { toast.error(e?.message ?? "Could not complete."); }
+              if (isLocalFirst()) {
+                await api.appealDeleteCase(cid);
+                toast.success("Saved to your computer. Nothing is kept on our servers.");
+                nav("/drafting/appeals");
+              } else {
+                toast.success("Saved to your computer.");
+              }
+            } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
           }}
         >
-          <ShieldCheck className="size-4" /> Save &amp; remove from server
+          <FileDown className="size-4" /> Save to computer
         </Button>
       </div>
     </Section>
-    </>
   );
 }
 

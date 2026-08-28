@@ -11,7 +11,6 @@ import {
   Play,
   Square,
   Download,
-  ShieldCheck,
   RefreshCw,
   Pencil,
   Check,
@@ -26,7 +25,7 @@ import {
   Calculator,
   ScrollText,
 } from "lucide-react";
-import { api } from "../api";
+import { api, isLocalFirst } from "../api";
 
 const CATEGORY_LABELS: Record<string, string> = {
   unclassified: "Unclassified",
@@ -251,36 +250,27 @@ export default function AssessmentCase() {
               </button>
             )}
             {order && (
-              <>
               <button
-                title="Save the order straight to a folder on your own computer"
-                onClick={() => api.asmtDownload(`/assessment/cases/${id}/export.docx`, `assessment_order_${cse?.pan || id}.docx`).then((m) => { if (m !== "cancelled") toast.success("Saved to your computer."); }).catch((e) => toast.error(e?.message ?? "Save failed."))}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-semibold ring-1 ring-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              >
-                <Download className="size-4" /> Save to computer
-              </button>
-              <button
-                title="Save the order to your computer, then delete this case and its documents from our servers"
+                title={isLocalFirst()
+                  ? "Save to your own computer — in local-first mode nothing is kept on our servers"
+                  : "Save the order straight to a folder on your own computer"}
                 onClick={async () => {
                   try {
                     const m = await api.asmtDownload(`/assessment/cases/${id}/export.docx`, `assessment_order_${cse?.pan || id}.docx`);
                     if (m === "cancelled") return;
-                    const ok = await confirm({
-                      title: "Remove this case from our servers?",
-                      description: "The order and its uploaded documents will be permanently deleted from our servers. Make sure you've saved everything you need to your computer — this can't be undone.",
-                      tone: "danger", confirmLabel: "Remove from server",
-                    });
-                    if (!ok) { toast.success("Saved to your computer."); return; }
-                    await api.asmtDeleteCase(id);
-                    toast.success("Saved to your computer and removed from our servers.");
-                    nav("/drafting/assessments");
-                  } catch (e: any) { toast.error(e?.message ?? "Could not complete."); }
+                    if (isLocalFirst()) {
+                      await api.asmtDeleteCase(id);
+                      toast.success("Saved to your computer. Nothing is kept on our servers.");
+                      nav("/drafting/assessments");
+                    } else {
+                      toast.success("Saved to your computer.");
+                    }
+                  } catch (e: any) { toast.error(e?.message ?? "Save failed."); }
                 }}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-semibold ring-1 ring-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-semibold ring-1 ring-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               >
-                <ShieldCheck className="size-4" /> Save &amp; remove from server
+                <Download className="size-4" /> Save to computer
               </button>
-              </>
             )}
           </div>
         </div>
