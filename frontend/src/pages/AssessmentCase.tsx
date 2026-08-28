@@ -250,10 +250,11 @@ export default function AssessmentCase() {
             )}
             {order && (
               <button
-                onClick={() => api.asmtDownload(`/assessment/cases/${id}/export.docx`, `assessment_order_${cse?.pan || id}.docx`).catch((e) => toast.error(e?.message ?? "Download failed."))}
+                title="Save the order straight to a folder on your own computer"
+                onClick={() => api.asmtDownload(`/assessment/cases/${id}/export.docx`, `assessment_order_${cse?.pan || id}.docx`).then((m) => { if (m !== "cancelled") toast.success("Saved to your computer."); }).catch((e) => toast.error(e?.message ?? "Save failed."))}
                 className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-semibold ring-1 ring-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               >
-                <Download className="size-4" /> DOCX
+                <Download className="size-4" /> Save to computer
               </button>
             )}
           </div>

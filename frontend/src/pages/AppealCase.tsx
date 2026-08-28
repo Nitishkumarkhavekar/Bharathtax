@@ -857,16 +857,18 @@ function DraftSection({
         </Button>
         <Button
           variant="outline"
+          title="Save the order straight to a folder on your own computer"
           onClick={() =>
             api
               .appealDownload(
                 `/appeal/cases/${cid}/export.docx`,
                 `draft_order_case_${cid}.docx`,
               )
-              .catch((e) => toast.error(e?.message ?? "Download failed"))
+              .then((m) => { if (m !== "cancelled") toast.success("Saved to your computer."); })
+              .catch((e) => toast.error(e?.message ?? "Save failed"))
           }
         >
-          <FileDown className="size-4" /> Download .docx
+          <FileDown className="size-4" /> Save to computer
         </Button>
       </div>
     </Section>
