@@ -352,6 +352,255 @@ TEMPLATES: dict[str, dict] = {
             "appropriate, and the authorised representative's details. Written from the ASSESSEE's side."
         ),
     },
+
+    # ==== Batch 1 — high-frequency, cross-wing =================================
+    "notice_156": {
+        "label": "Notice of Demand u/s 156",
+        "category": "Notice",
+        "section": "156",
+        "wings": ["officer", "recovery"],
+        "fields": _COMMON + [
+            Field("order_ref", "Order raising the demand", placeholder="Assessment order u/s 143(3) dated 20.03.2025"),
+            Field("amount", "Sum payable", placeholder="Rs. 12,45,600 (tax Rs. 9,80,000 + interest Rs. 2,65,600)"),
+            Field("pay_by", "Payable by (date)", required=False, placeholder="within 30 days of service"),
+        ],
+        "structure": (
+            "a Notice of Demand under section 156 of the Income-tax Act, 1961: office heading, notice "
+            "number and date, assessee + PAN + AY, reference to the order under which the sum has become "
+            "payable, the amount payable broken into tax / interest / penalty / fee as given, a direction "
+            "to pay within 30 days of service (or the stated date) at the specified mode, the consequences "
+            "of non-payment (interest u/s 220(2), penalty u/s 221 and recovery proceedings), the right of "
+            "appeal, and the officer's designation and charge. Use ONLY the figures provided."
+        ),
+    },
+    "notice_148A": {
+        "label": "Show-cause before reopening u/s 148A(1)",
+        "category": "Notice",
+        "section": "148A(1)",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("information", "Information suggesting escapement", textarea=True,
+                  placeholder="Insight/AIS information: cash deposits of Rs. 45,00,000 not reconciled with the return for AY 2021-22"),
+            Field("escaped", "Income alleged to have escaped", placeholder="Rs. 45,00,000"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 148A(1) (as substituted by the Finance (No. 2) Act, 2024) "
+            "before issue of a notice u/s 148: heading, DIN, number and date, assessee + PAN + AY, a "
+            "statement that information as per section 148/149 suggests income chargeable to tax has "
+            "escaped assessment, the SUBSTANCE of that information and the amount, a call to show cause "
+            "within the period specified why a notice u/s 148 should not be issued, a note that the reply "
+            "and material will be considered before any order u/s 148A(3), and the officer's designation "
+            "and charge. Use only the information provided; do NOT invent figures."
+        ),
+    },
+    "order_148A": {
+        "label": "Order u/s 148A(3) — fit case for reopening",
+        "category": "Order",
+        "section": "148A(3)",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("scn_ref", "Show-cause notice reference", placeholder="Notice u/s 148A(1) dated 01.08.2026"),
+            Field("reply_gist", "Assessee's reply (gist)", textarea=True, required=False,
+                  placeholder="Reply dated 12.08.2026: deposits stated to be business receipts; no evidence filed"),
+            Field("decision", "Decision", placeholder="Fit case — notice u/s 148 to be issued"),
+        ],
+        "structure": (
+            "an order under section 148A(3) deciding whether it is a fit case to issue a notice u/s 148: "
+            "heading, DIN, number and date, assessee + PAN + AY, reference to the 148A(1) notice and the "
+            "information relied on, a fair summary of the assessee's reply, a REASONED consideration of "
+            "the reply against the information, the decision (fit / not a fit case) with the sanction of "
+            "the specified authority u/s 151, and the officer's designation and charge. Record "
+            "application of mind — do not merely conclude."
+        ),
+    },
+    "notice_148": {
+        "label": "Notice u/s 148 (reassessment)",
+        "category": "Notice",
+        "section": "148",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("order_148a_ref", "Order u/s 148A(3) + sanction", required=False,
+                  placeholder="Order u/s 148A(3) dated 20.08.2026; sanction of Addl. CIT, Range-7 dated 20.08.2026"),
+            Field("file_by", "Return to be filed by", placeholder="within 3 months"),
+        ],
+        "structure": (
+            "a notice under section 148: heading, DIN, number and date, assessee + PAN + AY, a statement "
+            "that the Assessing Officer has information suggesting income chargeable to tax has escaped "
+            "assessment and that a notice is issued after the order u/s 148A(3) and the sanction of the "
+            "specified authority u/s 151, a requirement to furnish a return of income for the assessment "
+            "year within the period stated, and the officer's designation and charge. Reference the "
+            "148A(3) order and sanction where provided."
+        ),
+    },
+    "sc_270A": {
+        "label": "Penalty show-cause u/s 274 r.w. 270A",
+        "category": "Notice",
+        "section": "270A",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("addition", "Addition / variation attracting penalty", textarea=True,
+                  placeholder="Addition of Rs. 45,00,000 u/s 69A as unexplained money in the order u/s 143(3)"),
+            Field("nature", "Under-reporting or mis-reporting", required=False, placeholder="mis-reporting u/s 270A(9)(a)"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 270A: heading, DIN, number "
+            "and date, assessee + PAN + AY, reference to the assessment order and the addition/variation, "
+            "a statement that it amounts to under-reporting (50% of tax) or mis-reporting (200% of tax) "
+            "of income with the limb of 270A(9) invoked where mis-reporting is alleged, a call to show "
+            "cause why penalty u/s 270A should not be levied, a note of the immunity available u/s 270AA "
+            "on payment and non-appeal, the reply-by date, and the officer's designation and charge."
+        ),
+    },
+    "order_201": {
+        "label": "Order u/s 201(1)/201(1A) — assessee-in-default (TDS)",
+        "category": "Order",
+        "section": "201",
+        "wings": ["tds"],
+        "fields": [
+            Field("assessee", "Deductor name", placeholder="M/s ABC Pvt. Ltd."),
+            Field("pan", "TAN / PAN", placeholder="DELA12345A"),
+            Field("ay", "Financial year", placeholder="2022-23"),
+            Field("default", "Default + amount", textarea=True,
+                  placeholder="Short deduction of TDS u/s 194C on contractor payments of Rs. 50,00,000; tax short-deducted Rs. 1,00,000"),
+            Field("interest", "Interest u/s 201(1A)", required=False, placeholder="Rs. 24,000"),
+        ],
+        "structure": (
+            "an order under section 201(1)/201(1A) treating the deductor as an assessee-in-default: "
+            "heading, DIN, number and date, deductor + TAN/PAN + financial year, a reasoned finding of "
+            "the default (non-deduction / short-deduction / non-payment) with the amount and the section "
+            "under which tax was deductible, the tax held short u/s 201(1), interest u/s 201(1A) "
+            "(1%/month for non-deduction, 1.5%/month for deducted-not-paid), the total demand, a note "
+            "that a demand notice u/s 156 follows, and the officer's designation and charge. Use only the "
+            "figures provided; consider the payee-return proviso to 201(1) if the record shows it."
+        ),
+    },
+    "order_92CA": {
+        "label": "Order u/s 92CA(3) — arm's-length price",
+        "category": "Order",
+        "section": "92CA(3)",
+        "wings": ["tp"],
+        "fields": _COMMON + [
+            Field("transaction", "International / specified domestic transaction", textarea=True,
+                  placeholder="Provision of software development services to AE — Rs. 45,00,00,000"),
+            Field("method", "Most appropriate method + comparables", textarea=True,
+                  placeholder="TNMM; comparables' arm's-length margin 18% vs 11% shown by the assessee"),
+            Field("adjustment", "Adjustment to ALP", placeholder="Rs. 3,15,00,000"),
+        ],
+        "structure": (
+            "an order under section 92CA(3) by the Transfer Pricing Officer determining the arm's-length "
+            "price: heading of the office of the TPO, DIN, number and date, assessee + PAN + AY, "
+            "identification of the international/specified domestic transaction, the most appropriate "
+            "method chosen with reasons, the comparables and the arm's-length margin, dealing with the "
+            "assessee's objections to the show-cause, the ALP determined and the adjustment computed "
+            "exactly, and the TPO's designation and charge. Use only the figures provided; do NOT invent "
+            "comparables."
+        ),
+    },
+    "order_281B": {
+        "label": "Provisional attachment order u/s 281B",
+        "category": "Order",
+        "section": "281B",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("property", "Property to be attached", textarea=True,
+                  placeholder="Bank account no. 001234 with SBI, XYZ Branch; immovable property at ..."),
+            Field("proceeding", "Pending proceeding", required=False, placeholder="Assessment u/s 143(3) for AY 2024-25 pending"),
+            Field("approval", "Approval of PCIT/CIT", required=False, placeholder="Approval of PCIT, Delhi-3 dated 10.08.2026"),
+        ],
+        "structure": (
+            "an order of provisional attachment under section 281B to protect the interests of revenue: "
+            "heading, DIN, number and date, assessee + PAN + AY, a statement that assessment/reassessment "
+            "proceedings are pending and that provisional attachment is necessary to protect revenue, the "
+            "prior approval of the PCCIT/CCIT/PCIT/CIT, the property attached (specified), a note that the "
+            "attachment is valid for six months (extendable to two years), and the officer's designation "
+            "and charge. Record the reason to believe; use only the particulars provided."
+        ),
+    },
+    "notice_245": {
+        "label": "Intimation of set-off of refund u/s 245",
+        "category": "Notice",
+        "section": "245",
+        "wings": ["recovery", "officer"],
+        "fields": _COMMON + [
+            Field("refund", "Refund proposed to be set off", placeholder="Refund of Rs. 3,20,000 for AY 2024-25"),
+            Field("demand", "Outstanding demand", textarea=True,
+                  placeholder="Demand of Rs. 5,10,000 for AY 2021-22 (order u/s 143(3) dated 15.03.2024)"),
+            Field("respond_by", "Respond by (date)", placeholder="within 21 days"),
+        ],
+        "structure": (
+            "an intimation under section 245 proposing to set off a refund against an outstanding demand: "
+            "heading, DIN, number and date, assessee + PAN, the refund determined and the assessment year "
+            "it relates to, the outstanding demand proposed to be adjusted (amount, AY and the order it "
+            "arises from), a call to the assessee to respond/agree or object within the period stated "
+            "before the adjustment is made, and the officer's designation and charge. Use only the "
+            "figures provided."
+        ),
+    },
+    "sc_263": {
+        "label": "Show-cause for revision u/s 263",
+        "category": "Notice",
+        "section": "263",
+        "wings": ["cita"],
+        "fields": _COMMON + [
+            Field("order_ref", "Order sought to be revised", placeholder="Assessment order u/s 143(3) dated 20.03.2024 passed by the ITO, Ward 2(1)"),
+            Field("error", "Error / prejudice to revenue", textarea=True,
+                  placeholder="AO allowed a deduction of Rs. 30,00,000 u/s 80-IA without verifying the audit report — order erroneous and prejudicial to revenue"),
+            Field("hearing_on", "Hearing on (date)", placeholder="20.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 263(1) by the Principal Commissioner / Commissioner: "
+            "heading of the office of the PCIT/CIT, DIN, number and date, assessee + PAN + AY, reference "
+            "to the order proposed to be revised, a reasoned statement of why the order is considered "
+            "erroneous IN SO FAR AS it is prejudicial to the interests of revenue (the specific error and "
+            "the lack of enquiry/verification), a call to show cause why the order should not be revised "
+            "u/s 263, the date/mode of hearing, and the revising authority's designation. Record the "
+            "twin conditions (erroneous AND prejudicial)."
+        ),
+    },
+    "notice_285BA5": {
+        "label": "Notice u/s 285BA(5) — furnish / rectify SFT",
+        "category": "Notice",
+        "section": "285BA(5)",
+        "wings": ["ici"],
+        "fields": [
+            Field("entity", "Reporting entity", placeholder="XYZ Co-operative Bank Ltd."),
+            Field("pan", "PAN / ITDREIN", required=False, placeholder="AAACX1234A / ITDREIN ..."),
+            Field("fy", "Financial year", placeholder="2024-25"),
+            Field("defect", "Default / defect", textarea=True,
+                  placeholder="SFT for cash deposits (Rule 114E) not furnished by the due date of 31 May 2025"),
+        ],
+        "structure": (
+            "a notice under section 285BA(5) to a reporting person/entity to furnish or rectify a "
+            "Statement of Financial Transactions: heading of the office of the Director/Jt. Director "
+            "(Intelligence & Criminal Investigation) / prescribed authority, number and date, the "
+            "reporting entity + PAN/ITDREIN + financial year, a statement that the SFT has not been "
+            "furnished or is defective/inaccurate (specifying the defect), a direction to furnish or "
+            "rectify it within 30 days, the consequence of non-compliance (penalty u/s 271FA rising from "
+            "Rs. 500 to Rs. 1,000 per day, and 271FAA for inaccuracy), and the authority's designation."
+        ),
+    },
+    "summons_131_1A": {
+        "label": "Summons u/s 131(1A) (investigation)",
+        "category": "Notice",
+        "section": "131(1A)",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("attend_on", "Date & time to attend", placeholder="20.08.2026 at 11:30 AM"),
+            Field("purpose", "Matter under enquiry / documents to produce", textarea=True,
+                  placeholder="Enquiry into unaccounted cash transactions; produce bank statements and books for FY 2023-24, and give evidence on oath"),
+        ],
+        "structure": (
+            "a summons under section 131(1A) by the Investigation authority: heading of the office of the "
+            "DDIT/ADIT (Investigation), number and date, the name + PAN of the person summoned, a "
+            "statement that the authority is making an enquiry/investigation in respect of the matter "
+            "even though no proceeding is pending, a direction to attend in person on the stated date and "
+            "time to give evidence on oath and/or produce the documents specified, a note of the civil-"
+            "court powers and the consequences of non-attendance, and the officer's designation. Do NOT "
+            "invent case facts beyond what is provided."
+        ),
+    },
 }
 
 

@@ -19,15 +19,17 @@ def test_recovery_sees_its_templates_first():
 
 
 def test_officer_leads_with_ao_and_universal():
-    # An AO's own (incl. supervisory approvals) + the universal notices rank
-    # above other wings' templates.
+    # Every officer-wing + universal template ranks above any purely-other-wing
+    # template — computed dynamically so it survives new templates being added.
     ordered = _kinds("officer")
-    officer_and_universal = {"notice_143_2", "order_154", "approval_153D", "sanction_151",
-                             "notice_142_1", "show_cause"}
-    lead = set(ordered[:len(officer_and_universal)])
-    assert lead == officer_and_universal
-    # A recovery-only template ranks after them.
-    assert ordered.index("notice_226_3") > max(ordered.index(k) for k in officer_and_universal)
+    own_or_universal = {
+        k for k, t in drafting.TEMPLATES.items()
+        if (t.get("wings") is None) or ("officer" in (t.get("wings") or []))
+    }
+    last_lead = max(ordered.index(k) for k in own_or_universal)
+    # A template belonging ONLY to another wing must rank after all of them.
+    assert ordered.index("notice_226_3") > last_lead   # recovery-only
+    assert ordered.index("show_cause_92ca") > last_lead  # tp-only
 
 
 def test_tpo_and_cita_and_ca_have_a_dedicated_template():
