@@ -972,6 +972,191 @@ TEMPLATES: dict[str, dict] = {
             "show-cause, not a warrant."
         ),
     },
+
+    # ==== Batch 4 — TDS / TCS =================================================
+    "sc_206C": {
+        "label": "Show-cause u/s 206C(6A) (TCS default)",
+        "category": "Notice",
+        "section": "206C(6A)",
+        "wings": ["tds"],
+        "fields": [
+            Field("assessee", "Collector name", placeholder="M/s ABC Traders Pvt. Ltd."),
+            Field("pan", "TAN / PAN", placeholder="DELA12345A"),
+            Field("ay", "Financial year", placeholder="2023-24"),
+            Field("default", "TCS default + amount", textarea=True,
+                  placeholder="Failure to collect TCS u/s 206C(1H) on sale of goods of Rs. 2,10,00,000; tax not collected Rs. 21,000"),
+            Field("comply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 206C(6A) before treating the collector as an assessee-in-"
+            "default: heading, DIN, number and date, the collector + TAN/PAN + financial year, the TCS "
+            "default (non-collection / short-collection / non-payment) with the amount and the sub-"
+            "section under which tax was collectible, a call to show cause why he should not be deemed in "
+            "default with interest u/s 206C(7), the reply-by date, and the officer's designation."
+        ),
+    },
+    "sc_271C": {
+        "label": "Penalty show-cause u/s 271C / 271CA (TDS/TCS)",
+        "category": "Notice",
+        "section": "271C",
+        "wings": ["tds"],
+        "fields": [
+            Field("assessee", "Deductor / collector", placeholder="M/s ABC Pvt. Ltd."),
+            Field("pan", "TAN / PAN", placeholder="DELA12345A"),
+            Field("ay", "Financial year", placeholder="2022-23"),
+            Field("default", "Default + amount", textarea=True,
+                  placeholder="Failure to deduct TDS u/s 194J of Rs. 1,00,000 on professional fees"),
+            Field("comply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 271C (TDS non-deduction) or "
+            "271CA (TCS non-collection): heading, DIN, number and date, the deductor/collector + TAN/PAN "
+            "+ financial year, the default and the amount of tax not deducted/collected, a statement that "
+            "penalty equal to that tax is attracted (levied by the Joint Commissioner), the reasonable-"
+            "cause defence u/s 273B, a call to show cause, the reply-by date, and the officer's "
+            "designation."
+        ),
+    },
+    "order_271H": {
+        "label": "Penalty order u/s 271H (TDS/TCS statement)",
+        "category": "Order",
+        "section": "271H",
+        "wings": ["tds"],
+        "fields": [
+            Field("assessee", "Deductor / collector", placeholder="M/s ABC Pvt. Ltd."),
+            Field("pan", "TAN / PAN", placeholder="DELA12345A"),
+            Field("ay", "Financial year + quarter", placeholder="Q2 FY 2023-24"),
+            Field("default", "Default", textarea=True,
+                  placeholder="TDS statement in Form 26Q for Q2 FY 2023-24 not furnished within one year of the due date"),
+        ],
+        "structure": (
+            "a penalty order under section 271H for failure to furnish, or furnishing an incorrect, "
+            "TDS/TCS statement: heading, DIN, number and date, the deductor/collector + TAN/PAN + period, "
+            "a reasoned finding of the default, the penalty of Rs. 10,000 to Rs. 1,00,000 imposed, a note "
+            "that no penalty is imposable if the statement is filed within a year with tax, interest and "
+            "fee paid, and the officer's designation. Use only the figures provided."
+        ),
+    },
+    "cert_197": {
+        "label": "Certificate u/s 197 (lower / nil TDS)",
+        "category": "Certificate",
+        "section": "197",
+        "wings": ["tds"],
+        "fields": _COMMON + [
+            Field("nature", "Nature of payment", placeholder="Contract receipts u/s 194C / rent u/s 194-I"),
+            Field("rate", "Rate / amount certified", placeholder="TDS @ 0.5% (or nil) on receipts up to Rs. 2,00,00,000"),
+            Field("valid", "Valid for", required=False, placeholder="FY 2026-27"),
+        ],
+        "structure": (
+            "a certificate under section 197 for deduction of tax at a lower rate or no deduction: "
+            "heading, certificate number and date, the applicant (payee) + PAN, the nature of the "
+            "payment and the payer (if specified), a statement that on the application in Form 13 and the "
+            "existing/estimated total income the tax may be deducted at the certified lower rate or nil, "
+            "the rate/amount and the ceiling, the validity period and conditions (Rule 28AA), and the "
+            "officer's designation. Use only the particulars provided."
+        ),
+    },
+    "notice_133A_2A": {
+        "label": "TDS verification survey u/s 133A(2A)",
+        "category": "Letter",
+        "section": "133A(2A)",
+        "wings": ["tds"],
+        "fields": [
+            Field("assessee", "Deductor", placeholder="M/s ABC Pvt. Ltd."),
+            Field("pan", "TAN / PAN", placeholder="DELA12345A"),
+            Field("premises", "Premises", required=False, placeholder="Registered office at ..."),
+            Field("scope", "Scope of verification", textarea=True, required=False,
+                  placeholder="Verify TDS compliance on contractor, rent and professional payments for FY 2023-24"),
+        ],
+        "structure": (
+            "a communication for a TDS/TCS verification survey under section 133A(2A): heading of the "
+            "office of the AO(TDS)/ITO(TDS), number and date, the deductor + TAN/PAN, a statement that "
+            "the authority may enter the place of business to verify that tax has been deducted/collected "
+            "and paid in accordance with Chapter XVII, the scope of verification, the books/records to be "
+            "kept ready, the powers under 133A, and the officer's designation. Not a search — no seizure."
+        ),
+    },
+
+    # ==== Batch 4 — Exemptions (Trusts & Institutions) ========================
+    "notice_12AB_docs": {
+        "label": "Call for documents on registration u/s 12AB",
+        "category": "Notice",
+        "section": "12AB(1)(b)",
+        "wings": ["tds"],
+        "fields": _COMMON + [
+            Field("application", "Registration application", placeholder="Application in Form 10AB dated 30.06.2026 for regular registration"),
+            Field("documents", "Documents / information required", textarea=True,
+                  placeholder="Trust deed, activity report and accounts for 3 years, details of donations, and compliance with other laws"),
+            Field("furnish_by", "Furnish by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a notice under section 12AB(1)(b)(i) by the Commissioner (Exemptions) calling for documents "
+            "on a registration application: heading of the office of the CIT (Exemptions), number and "
+            "date, the applicant trust/institution + PAN, reference to the Form 10AB application, a "
+            "numbered list of the documents/information required to verify the genuineness of activities "
+            "and compliance with the requirements of any other law, the date to furnish them, and the "
+            "authority's designation. Use only the particulars provided."
+        ),
+    },
+    "sc_12AB_cancel": {
+        "label": "Show-cause for cancellation of registration u/s 12AB(4)",
+        "category": "Notice",
+        "section": "12AB(4)",
+        "wings": ["tds"],
+        "fields": _COMMON + [
+            Field("violation", "Specified violation", textarea=True,
+                  placeholder="Income applied for the benefit of a specified person u/s 13(1)(c); activities not carried on in accordance with the objects"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 12AB(4) before cancellation of registration: heading of "
+            "the office of the CIT (Exemptions), number and date, the trust/institution + PAN, a "
+            "statement of the specified violation noticed (or referred by the AO) — e.g. a section 13 "
+            "breach, non-genuine activity, or non-compliance with the requirements of other laws — a "
+            "call to show cause why the registration should not be cancelled, the reply-by date, and the "
+            "authority's designation."
+        ),
+    },
+    "sc_115TD": {
+        "label": "Show-cause on exit tax u/s 115TD (accreted income)",
+        "category": "Notice",
+        "section": "115TD",
+        "wings": ["tds"],
+        "fields": _COMMON + [
+            Field("trigger", "Trigger event", placeholder="Registration u/s 12AB cancelled on 20.03.2026 / trust converted / dissolved"),
+            Field("assets", "Assets & liabilities (for accreted income)", textarea=True, required=False,
+                  placeholder="FMV of total assets Rs. 8,50,00,000 less liabilities Rs. 1,00,00,000 as on the specified date"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under section 115TD on tax on accreted income (exit tax): heading of the "
+            "office of the AO (Exemptions), DIN, number and date, the trust/institution + PAN, the "
+            "trigger event (cancellation of registration / conversion into a non-eligible form / merger / "
+            "failure to transfer assets on dissolution within 12 months), a statement that additional "
+            "income-tax at the maximum marginal rate on the accreted income (FMV of assets less "
+            "liabilities on the specified date) is chargeable, a call to show cause with the computation, "
+            "the reply-by date, and the officer's designation. Use only the figures provided."
+        ),
+    },
+    "sc_13": {
+        "label": "Show-cause denying exemption u/s 13 r.w. 11",
+        "category": "Notice",
+        "section": "13",
+        "wings": ["tds"],
+        "fields": _COMMON + [
+            Field("violation", "§13 violation", textarea=True,
+                  placeholder="Loan of Rs. 20,00,000 given to a trustee (specified person u/s 13(3)) without adequate security/interest"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice proposing to deny exemption u/s 11/12 by virtue of section 13: heading, "
+            "DIN, number and date, the trust/institution + PAN + AY, the violation under section 13(1)(c)/"
+            "(d) (income or property applied for the benefit of a specified person, or funds invested in "
+            "contravention), a statement that the relevant income is therefore not exempt and is proposed "
+            "to be brought to tax (at the maximum marginal rate where applicable), a call to show cause, "
+            "the reply-by date, and the officer's designation. Use only the facts provided."
+        ),
+    },
 }
 
 
@@ -995,8 +1180,12 @@ _TEMPLATE_GROUP: dict[str, str] = {
     "order_179": "Recovery", "order_167C": "Recovery", "cert_222": "Recovery",
     "notice_226_2": "Recovery", "itcp1_demand": "Recovery", "itcp_attach": "Recovery",
     "itcp13_sale": "Recovery", "itcp25_arrest": "Recovery",
-    # TDS
-    "notice_201": "TDS", "order_201": "TDS",
+    # TDS / TCS
+    "notice_201": "TDS", "order_201": "TDS", "sc_206C": "TDS", "sc_271C": "TDS",
+    "order_271H": "TDS", "cert_197": "TDS", "notice_133A_2A": "TDS",
+    # Exemptions (trusts & institutions)
+    "notice_12AB_docs": "Exemptions", "sc_12AB_cancel": "Exemptions",
+    "sc_115TD": "Exemptions", "sc_13": "Exemptions",
     # Transfer Pricing & DRP
     "show_cause_92ca": "Transfer Pricing", "order_92CA": "Transfer Pricing",
     # Appeals & Revision
