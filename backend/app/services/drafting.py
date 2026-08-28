@@ -1157,6 +1157,185 @@ TEMPLATES: dict[str, dict] = {
             "the reply-by date, and the officer's designation. Use only the facts provided."
         ),
     },
+
+    # ==== Batch 5 — Transfer Pricing / DRP ====================================
+    "order_92CA_1": {
+        "label": "Reference to TPO u/s 92CA(1)",
+        "category": "Order",
+        "section": "92CA(1)",
+        "wings": ["tp"],
+        "fields": _COMMON + [
+            Field("transactions", "International / specified domestic transactions", textarea=True,
+                  placeholder="Provision of software development services to AE Rs. 45 cr; intra-group services Rs. 8 cr"),
+            Field("approval", "Approval of PCIT/CIT", required=False, placeholder="Approval of PCIT-1 dated 10.08.2026"),
+        ],
+        "structure": (
+            "a reference under section 92CA(1) by the Assessing Officer to the Transfer Pricing Officer: "
+            "heading, DIN, number and date, assessee + PAN + AY, a statement that the assessee has "
+            "entered into international transactions / specified domestic transactions (listed), that the "
+            "AO considers it necessary/expedient to refer the computation of the arm's-length price to "
+            "the TPO, the prior approval of the PCIT/CIT, and the AO's designation. Use only the "
+            "particulars provided."
+        ),
+    },
+    "notice_92D": {
+        "label": "Notice u/s 92D — TP documentation",
+        "category": "Notice",
+        "section": "92D",
+        "wings": ["tp"],
+        "fields": _COMMON + [
+            Field("documents", "Documents / information required", textarea=True,
+                  placeholder="Rule 10D documentation, FAR analysis, comparables study and the Master File for the international transactions"),
+            Field("furnish_by", "Furnish within", placeholder="30 days"),
+        ],
+        "structure": (
+            "a notice under section 92D read with Rule 10D requiring the assessee to furnish transfer-"
+            "pricing documentation: heading of the office of the TPO/AO, DIN, number and date, assessee + "
+            "PAN + AY, a direction to furnish the prescribed information and documents maintained in "
+            "respect of the international/specified domestic transactions (including the Master File where "
+            "applicable) within the period (30 days, extendable by 30), the consequence of failure "
+            "(penalty u/s 271AA/271G), and the officer's designation. Use only the particulars provided."
+        ),
+    },
+    "order_144C_1": {
+        "label": "Draft assessment order u/s 144C(1)",
+        "category": "Order",
+        "section": "144C(1)",
+        "wings": ["drp"],
+        "fields": _COMMON + [
+            Field("variation", "Proposed variation", textarea=True,
+                  placeholder="Transfer-pricing adjustment of Rs. 3,15,00,000 per the TPO's order; disallowance of Rs. 40,00,000"),
+            Field("returned", "Returned income", required=False, placeholder="Rs. 12,00,00,000"),
+        ],
+        "structure": (
+            "a DRAFT assessment order under section 144C(1) for an eligible assessee (a foreign company / "
+            "any case with a TP variation): heading, DIN, number and date, assessee + PAN + AY, the "
+            "returned income, an issue-wise discussion of each proposed variation prejudicial to the "
+            "assessee (incorporating the TPO's 92CA(3) adjustment where any), the draft computed income, "
+            "and a clear statement that this is a DRAFT and the assessee may, within 30 days, either "
+            "accept the variations or file objections with the Dispute Resolution Panel and the AO. The "
+            "officer's designation and charge. Use only the figures provided."
+        ),
+    },
+    "order_144C_5": {
+        "label": "DRP directions u/s 144C(5)",
+        "category": "Order",
+        "section": "144C(5)",
+        "wings": ["drp"],
+        "fields": _COMMON + [
+            Field("objections", "Objections considered", textarea=True,
+                  placeholder="Objection to comparables selection and to the disallowance u/s 14A"),
+            Field("directions", "Directions", textarea=True,
+                  placeholder="Exclude comparable X; re-work the margin; sustain the 14A disallowance to the extent of exempt income"),
+        ],
+        "structure": (
+            "binding directions under section 144C(5) by the Dispute Resolution Panel: heading of the "
+            "DRP (three PCIT/CIT), DIN, number and date, assessee + PAN + AY, reference to the draft "
+            "order and the objections filed, an objection-wise reasoned consideration, the DIRECTIONS "
+            "issued to the Assessing Officer (confirm / reduce / vary — the DRP cannot set aside or "
+            "remand), a note that the directions are binding and the AO shall complete the assessment in "
+            "conformity within one month, and the Panel's designation. Use only the material provided."
+        ),
+    },
+
+    # ==== Batch 5 — Appeals & Revision ========================================
+    "notice_251": {
+        "label": "Notice of enhancement u/s 251(2)",
+        "category": "Notice",
+        "section": "251(2)",
+        "wings": ["cita"],
+        "fields": _COMMON + [
+            Field("appeal_no", "Appeal number", required=False, placeholder="CIT(A)/NFAC/12345/2024-25"),
+            Field("enhancement", "Proposed enhancement", textarea=True,
+                  placeholder="Proposed to enhance the assessment by Rs. 20,00,000 on account of an unexamined capital gain"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a notice of enhancement under section 251(2) by the CIT(A)/NFAC: heading, appeal number, "
+            "date, the appellant + PAN + AY, a statement of the proposed enhancement of the assessment / "
+            "penalty and the basis for it, that no enhancement shall be made without a reasonable "
+            "opportunity, a call to show cause why the assessment should not be enhanced, the reply-by "
+            "date, and the appellate authority's designation. Use only the facts provided."
+        ),
+    },
+    "letter_46A": {
+        "label": "Remand-report / additional-evidence call (Rule 46A)",
+        "category": "Letter",
+        "section": "250(4) r.w. 46A",
+        "wings": ["cita"],
+        "fields": _COMMON + [
+            Field("appeal_no", "Appeal number", required=False, placeholder="CIT(A)/NFAC/12345/2024-25"),
+            Field("evidence", "Additional evidence / matter for remand", textarea=True,
+                  placeholder="Bank confirmations and ledger filed as additional evidence under Rule 46A — remand report called"),
+            Field("report_by", "Report by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a communication from the CIT(A)/NFAC to the Assessing Officer calling a remand report on "
+            "additional evidence under section 250(4) read with Rule 46A: heading, appeal number, date, "
+            "the appellant + PAN + AY, a description of the additional evidence admitted / the matter on "
+            "which enquiry is directed, a direction to the AO to examine it and submit a remand report by "
+            "the stated date after allowing the appellant an opportunity, and the appellate authority's "
+            "designation."
+        ),
+    },
+    "order_263": {
+        "label": "Revision order u/s 263",
+        "category": "Order",
+        "section": "263",
+        "wings": ["cita"],
+        "fields": _COMMON + [
+            Field("order_ref", "Order revised", placeholder="Assessment order u/s 143(3) dated 20.03.2024 by the ITO, Ward 2(1)"),
+            Field("error", "Error + prejudice", textarea=True,
+                  placeholder="Deduction of Rs. 30,00,000 u/s 80-IA allowed without verifying the audit report — erroneous and prejudicial to revenue"),
+            Field("direction", "Direction", required=False, placeholder="Set aside and remit for fresh assessment on this issue"),
+        ],
+        "structure": (
+            "a revision order under section 263(1) by the Principal Commissioner / Commissioner: heading "
+            "of the office of the PCIT/CIT, DIN, number and date, assessee + PAN + AY, reference to the "
+            "order revised and the show-cause, a reasoned finding that the order is erroneous IN SO FAR "
+            "AS it is prejudicial to the interests of revenue (the twin conditions), consideration of the "
+            "assessee's reply, and the direction (modify / enhance / set aside and direct a fresh "
+            "assessment on the specified issue), and the revising authority's designation. Record both "
+            "limbs — erroneous AND prejudicial."
+        ),
+    },
+    "order_264": {
+        "label": "Order on revision application u/s 264",
+        "category": "Order",
+        "section": "264",
+        "wings": ["cita"],
+        "fields": _COMMON + [
+            Field("application", "Application + order sought to be revised", textarea=True,
+                  placeholder="Application dated 10.05.2026 against the intimation u/s 143(1) — relief for TDS credit of Rs. 1,20,000 not allowed"),
+            Field("decision", "Relief", required=False, placeholder="Allow the TDS credit; direct rectification"),
+        ],
+        "structure": (
+            "an order under section 264(1) on an assessee's revision application: heading of the office of "
+            "the PCIT/CIT, DIN, number and date, assessee + PAN + AY, reference to the application and "
+            "the order sought to be revised, a reasoned consideration of the grievance, the relief "
+            "granted (the order cannot be revised prejudicially to the assessee), a direction to the AO "
+            "to give effect, and the authority's designation. Use only the facts provided."
+        ),
+    },
+    "order_oge": {
+        "label": "Order Giving Effect (appellate / ITAT / revision)",
+        "category": "Order",
+        "section": "143(3) r.w. 250/254",
+        "wings": ["officer", "cita"],
+        "fields": _COMMON + [
+            Field("appellate_ref", "Appellate / ITAT / revisional order", placeholder="CIT(A) order in appeal no. 12345 dated 10.06.2026"),
+            Field("directions", "Directions to give effect to", textarea=True,
+                  placeholder="Addition of Rs. 45,00,000 u/s 69A deleted; disallowance of Rs. 5,00,000 restricted to Rs. 2,00,000"),
+        ],
+        "structure": (
+            "an Order Giving Effect to an appellate / ITAT / revisional order (u/s 143(3) read with "
+            "250/254/263): heading, DIN, number and date, assessee + PAN + AY, reference to the order to "
+            "be given effect to, the directions in it, the recomputation of the total income and tax "
+            "accordingly (each figure only as flowing from the directions), the revised demand or refund, "
+            "a note that a fresh demand notice u/s 156 / refund follows, and the officer's designation. "
+            "Do NOT re-adjudicate — only give effect to the directions."
+        ),
+    },
 }
 
 
@@ -1188,8 +1367,13 @@ _TEMPLATE_GROUP: dict[str, str] = {
     "sc_115TD": "Exemptions", "sc_13": "Exemptions",
     # Transfer Pricing & DRP
     "show_cause_92ca": "Transfer Pricing", "order_92CA": "Transfer Pricing",
+    "order_92CA_1": "Transfer Pricing", "notice_92D": "Transfer Pricing",
+    "order_144C_1": "Transfer Pricing", "order_144C_5": "Transfer Pricing",
     # Appeals & Revision
     "notice_250": "Appeals & Revision", "sc_263": "Appeals & Revision",
+    "notice_251": "Appeals & Revision", "letter_46A": "Appeals & Revision",
+    "order_263": "Appeals & Revision", "order_264": "Appeals & Revision",
+    "order_oge": "Appeals & Revision",
     # Investigation
     "summons_131": "Investigation", "summons_131_1A": "Investigation", "notice_133_6": "Investigation",
     # I&CI / e-Verification
