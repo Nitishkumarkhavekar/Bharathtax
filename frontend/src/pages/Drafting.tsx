@@ -9,6 +9,8 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth";
+import { resolveDraftingGroups } from "@/lib/workspaceProfiles";
 import { useSidebarPanel } from "@/components/SidebarSlot";
 
 // ---------------------------------------------------------------------------
@@ -236,11 +238,23 @@ function TemplatePicker({ templates, onPick }: {
     return m;
   }, [templates, q]);
   const groupNames = Object.keys(byGroup);
-  // The officer's own function (the first group) opens by default; others
-  // collapse to keep a 75-template library navigable. Search expands all.
+  // Role-divided: show the officer ONLY their own function's groups; everything
+  // else sits behind one "other functions" expander (never hidden — just not
+  // dumped on them). No profile → no division (all groups are "own").
+  const { session } = useAuth();
+  const ownSet = useMemo(
+    () => resolveDraftingGroups(session?.workspaceProfile, session?.workspaceWings),
+    [session?.workspaceProfile, session?.workspaceWings],
+  );
+  const scoped = ownSet.size > 0;
+  const ownGroups = scoped ? groupNames.filter((g) => ownSet.has(g)) : groupNames;
+  const otherGroups = scoped ? groupNames.filter((g) => !ownSet.has(g)) : [];
+  const [showOther, setShowOther] = useState(false);
+  // The officer's first own group opens by default; others in that set collapse.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
-  const isOpen = (g: string) => searching || (g in overrides ? overrides[g] : g === groupNames[0]);
+  const isOpen = (g: string) => searching || (g in overrides ? overrides[g] : g === ownGroups[0]);
   const toggle = (g: string) => setOverrides((o) => ({ ...o, [g]: !isOpen(g) }));
+  const otherCount = otherGroups.reduce((n, g) => n + byGroup[g].length, 0);
 
   return (
     <div className="space-y-6">
@@ -289,29 +303,56 @@ function TemplatePicker({ templates, onPick }: {
           <div className="text-[12.5px] text-slate-500 mt-1">Try a different search term.</div>
         </div>
       ) : (
-        Object.entries(byGroup).map(([group, ts]) => {
-          const open = isOpen(group);
-          return (
-            <section key={group}>
-              <button type="button" onClick={() => toggle(group)}
-                className="w-full flex items-center gap-2 mb-3 group text-left">
-                <div className="text-[12px] uppercase tracking-[0.16em] text-slate-500 font-semibold group-hover:text-slate-800 transition-colors">{group}</div>
+        <>
+          {(searching ? groupNames : ownGroups).map((group) => renderGroup(group, byGroup[group], isOpen(group), () => toggle(group), onPick))}
+
+          {/* Everything outside the officer's function — one click away, never dumped. */}
+          {scoped && !searching && otherGroups.length > 0 && (
+            <div>
+              <button type="button" onClick={() => setShowOther((s) => !s)}
+                className="w-full flex items-center gap-2 py-2 rounded-lg text-left group">
+                <span className="text-[12.5px] font-semibold text-slate-500 group-hover:text-primary transition-colors">
+                  {showOther ? "Hide" : "Show"} templates for other functions
+                </span>
+                <span className="text-[11px] text-slate-400 tabular-nums">{otherCount}</span>
                 <div className="flex-1 h-px bg-slate-200/70" />
-                <span className="text-[11px] text-slate-400 tabular-nums">{ts.length}</span>
-                <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center text-slate-500 transition-transform", open ? "rotate-180" : "")}>
+                <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center text-slate-500 transition-transform", showOther ? "rotate-180" : "")}>
                   <ChevronDown className="size-3.5" />
                 </span>
               </button>
-              {open && (
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {ts.map((t) => <TemplateCard key={t.kind} t={t} onPick={() => onPick(t)} />)}
+              {showOther && (
+                <div className="mt-4 space-y-6">
+                  {otherGroups.map((group) => renderGroup(group, byGroup[group], isOpen(group), () => toggle(group), onPick))}
                 </div>
               )}
-            </section>
-          );
-        })
+            </div>
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+function renderGroup(
+  group: string, ts: DraftTemplate[], open: boolean,
+  onToggle: () => void, onPick: (t: DraftTemplate) => void,
+) {
+  return (
+    <section key={group}>
+      <button type="button" onClick={onToggle} className="w-full flex items-center gap-2 mb-3 group text-left">
+        <div className="text-[12px] uppercase tracking-[0.16em] text-slate-500 font-semibold group-hover:text-slate-800 transition-colors">{group}</div>
+        <div className="flex-1 h-px bg-slate-200/70" />
+        <span className="text-[11px] text-slate-400 tabular-nums">{ts.length}</span>
+        <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center text-slate-500 transition-transform", open ? "rotate-180" : "")}>
+          <ChevronDown className="size-3.5" />
+        </span>
+      </button>
+      {open && (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {ts.map((t) => <TemplateCard key={t.kind} t={t} onPick={() => onPick(t)} />)}
+        </div>
+      )}
+    </section>
   );
 }
 
