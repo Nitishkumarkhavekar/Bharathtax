@@ -793,6 +793,185 @@ TEMPLATES: dict[str, dict] = {
             "and charge."
         ),
     },
+
+    # ==== Batch 3 — Recovery / TRO ============================================
+    "order_stay_220": {
+        "label": "Order of stay of demand u/s 220(6)",
+        "category": "Order",
+        "section": "220(6)",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("demand", "Disputed demand", placeholder="Rs. 50,00,000 (order u/s 143(3) dated 15.03.2025)"),
+            Field("appeal", "Appeal pending", required=False, placeholder="Appeal before CIT(A) filed on 10.04.2025"),
+            Field("deposit", "Deposit / condition", required=False, placeholder="20% (Rs. 10,00,000) paid on 12.04.2025"),
+        ],
+        "structure": (
+            "an order under section 220(6) treating the assessee as not being in default and staying "
+            "recovery of the demand pending the first appeal: heading, DIN, number and date, assessee + "
+            "PAN + AY, reference to the demand and the pending appeal, the officer's consideration in "
+            "light of CBDT Instruction No. 1914 as modified by O.M. dated 31.07.2017 (ordinarily 20% "
+            "deposit), the amount stayed and the conditions imposed (deposit paid / to be paid, no "
+            "further stay of coercive recovery), the period of stay (till disposal of appeal or a stated "
+            "date), and the officer's designation and charge. Use only the figures provided."
+        ),
+    },
+    "order_179": {
+        "label": "Order u/s 179 — director's joint liability",
+        "category": "Order",
+        "section": "179",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("company", "Private company + arrears", textarea=True,
+                  placeholder="Tax arrears of Rs. 42,00,000 of M/s ABC Pvt. Ltd. (PAN AAACA1234A) for AY 2020-21 could not be recovered"),
+            Field("director", "Director sought to be made liable", placeholder="Shri XYZ, director during the relevant previous year"),
+        ],
+        "structure": (
+            "an order under section 179 holding a director of a private company jointly and severally "
+            "liable for the company's tax arrears: heading, DIN, number and date, the director + PAN, "
+            "the company + PAN + AY, a finding that the tax due from the private company for the relevant "
+            "previous year cannot be recovered from the company, that the person was a director during "
+            "that year, a reasoned rejection of any plea that the non-recovery is not attributable to his "
+            "gross neglect/misfeasance/breach of duty, the amount for which he is held liable, and the "
+            "officer's designation and charge."
+        ),
+    },
+    "order_167C": {
+        "label": "Order u/s 167C — LLP partner's joint liability",
+        "category": "Order",
+        "section": "167C",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("llp", "LLP + arrears", textarea=True,
+                  placeholder="Tax arrears of Rs. 18,00,000 of M/s ABC LLP for AY 2021-22 not recoverable from the LLP"),
+            Field("partner", "Partner sought to be made liable", placeholder="Shri XYZ, partner during the relevant previous year"),
+        ],
+        "structure": (
+            "an order under section 167C holding a partner of a limited liability partnership jointly and "
+            "severally liable for the LLP's tax arrears: heading, DIN, number and date, the partner + PAN, "
+            "the LLP + PAN + AY, a finding that the tax due from the LLP cannot be recovered from it, that "
+            "the person was a partner during the relevant year, a reasoned dealing with any plea of "
+            "non-attribution to gross neglect/breach, the amount for which he is held liable, and the "
+            "officer's designation and charge."
+        ),
+    },
+    "cert_222": {
+        "label": "Tax Recovery Certificate u/s 222",
+        "category": "Certificate",
+        "section": "222",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("arrears", "Arrears (tax + interest + penalty)", textarea=True,
+                  placeholder="Rs. 62,45,000 (tax Rs. 50,00,000 + interest u/s 220(2) Rs. 8,45,000 + penalty Rs. 4,00,000)"),
+            Field("order_ref", "Order(s) creating the demand", required=False, placeholder="Order u/s 143(3) dated 15.03.2024; demand notice u/s 156"),
+        ],
+        "structure": (
+            "a Tax Recovery Certificate drawn up by the Tax Recovery Officer under section 222: heading of "
+            "the office of the TRO, certificate number and date, the defaulter + PAN + AY, a statement "
+            "that the assessee is in default (or deemed in default) in respect of the arrears specified, "
+            "the amount of arrears broken into tax / interest / penalty, a statement that the TRO shall "
+            "proceed to recover the amount by the modes in the Second Schedule (attachment & sale of "
+            "movable/immovable property, arrest & detention, appointment of receiver), and the TRO's "
+            "signature and designation. Use only the figures provided."
+        ),
+    },
+    "notice_226_2": {
+        "label": "Notice u/s 226(2) — attachment of salary",
+        "category": "Notice",
+        "section": "226(2)",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("employer", "Employer / disbursing officer", placeholder="The DDO, XYZ Ltd., Delhi"),
+            Field("arrears", "Arrears outstanding", placeholder="Rs. 3,20,000"),
+            Field("amount", "Amount to deduct", required=False, placeholder="Rs. 25,000 per month until recovered"),
+        ],
+        "structure": (
+            "a notice under section 226(2) requiring an employer to deduct arrears from the defaulter's "
+            "salary: heading, number and date, the employer/DDO addressed, the assessee-employee + PAN, "
+            "the arrears outstanding, a direction to deduct the stated amount from the salary payable and "
+            "remit it to the credit of the Central Government until the arrears are cleared (subject to "
+            "the exemptions under the Code of Civil Procedure), the consequence of non-compliance, and "
+            "the officer's designation and charge."
+        ),
+    },
+    "itcp1_demand": {
+        "label": "Second Schedule — notice of demand (ITCP-1)",
+        "category": "Notice",
+        "section": "Sch.II r.2",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("cert_ref", "Recovery certificate reference", placeholder="TRC No. 45/2026 dated 01.08.2026"),
+            Field("arrears", "Arrears payable", placeholder="Rs. 62,45,000"),
+        ],
+        "structure": (
+            "a notice of demand under rule 2 of the Second Schedule (Form ITCP-1) issued by the Tax "
+            "Recovery Officer on drawing up the certificate: heading of the TRO's office, number and "
+            "date, the defaulter + PAN, reference to the recovery certificate and the arrears specified, "
+            "a requirement to pay the amount within 15 days of service, a warning that on default the "
+            "TRO shall proceed to realise the amount by attachment and sale of property or by arrest and "
+            "detention, and the TRO's signature and designation."
+        ),
+    },
+    "itcp_attach": {
+        "label": "Second Schedule — order of attachment (movable/immovable)",
+        "category": "Order",
+        "section": "Sch.II r.20/48",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("property", "Property to be attached", textarea=True,
+                  placeholder="Immovable property: plot no. 12, Sector 5, ... / Movable: stock, vehicle no. DL-1C-1234"),
+            Field("arrears", "Arrears", placeholder="Rs. 62,45,000"),
+        ],
+        "structure": (
+            "an order of attachment under the Second Schedule (Form ITCP-2 for movable / ITCP-16 for "
+            "immovable property) by the Tax Recovery Officer: heading of the TRO's office, number and "
+            "date, the defaulter + PAN, reference to the certificate and the arrears, the property "
+            "attached (fully described), a prohibition on the defaulter from transferring or charging the "
+            "property and on any person from taking any benefit under such transfer, that the attachment "
+            "continues until further order, and the TRO's signature and designation. Use only the "
+            "particulars provided."
+        ),
+    },
+    "itcp13_sale": {
+        "label": "Second Schedule — proclamation of sale (ITCP-13)",
+        "category": "Notice",
+        "section": "Sch.II r.38/52",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("property", "Property to be sold", textarea=True,
+                  placeholder="Immovable property attached vide order dated 01.08.2026 — plot no. 12, Sector 5, ..."),
+            Field("sale_on", "Date, time & place of sale", placeholder="20.09.2026 at 11:00 AM at the office of the TRO"),
+            Field("reserve", "Arrears / reserve price", required=False, placeholder="Arrears Rs. 62,45,000; reserve price Rs. 80,00,000"),
+        ],
+        "structure": (
+            "a proclamation of sale under the Second Schedule (Form ITCP-13) by the Tax Recovery Officer: "
+            "heading of the TRO's office, number and date, the defaulter + PAN, the property to be sold "
+            "(fully described), the arrears for which it is sold, the date, time and place of the public "
+            "auction, the reserve price and terms/conditions of sale (deposit, encumbrances known), a "
+            "note of the right to have the sale set aside on deposit/irregularity, and the TRO's "
+            "signature and designation. Use only the particulars provided."
+        ),
+    },
+    "itcp25_arrest": {
+        "label": "Second Schedule — show-cause before arrest (ITCP-25)",
+        "category": "Notice",
+        "section": "Sch.II r.73",
+        "wings": ["recovery"],
+        "fields": _COMMON + [
+            Field("arrears", "Arrears outstanding", placeholder="Rs. 62,45,000"),
+            Field("grounds", "Grounds (means / dissipation)", textarea=True, required=False,
+                  placeholder="Defaulter has the means to pay but is dishonestly transferring assets to defeat recovery"),
+            Field("appear_on", "Appear on (date)", placeholder="20.08.2026 at 11:00 AM"),
+        ],
+        "structure": (
+            "a notice under rule 73 of the Second Schedule (Form ITCP-25) calling upon the defaulter to "
+            "show cause why he should not be committed to civil prison: heading of the TRO's office, "
+            "number and date, the defaulter + PAN, the arrears outstanding, the grounds (that he has, or "
+            "has had since the certificate, the means to pay and refuses/neglects, or is dishonestly "
+            "dissipating assets), a direction to appear before the TRO on the stated date to show cause "
+            "against arrest and detention, and the TRO's signature and designation. This is a "
+            "show-cause, not a warrant."
+        ),
+    },
 }
 
 
@@ -812,7 +991,10 @@ _TEMPLATE_GROUP: dict[str, str] = {
     "sc_271D_E": "Penalty", "sc_271DA": "Penalty", "sc_272A": "Penalty", "order_273B": "Penalty",
     # Recovery & TRO
     "notice_226_3": "Recovery", "notice_221": "Recovery", "order_220_6": "Recovery",
-    "order_281B": "Recovery", "notice_245": "Recovery",
+    "order_281B": "Recovery", "notice_245": "Recovery", "order_stay_220": "Recovery",
+    "order_179": "Recovery", "order_167C": "Recovery", "cert_222": "Recovery",
+    "notice_226_2": "Recovery", "itcp1_demand": "Recovery", "itcp_attach": "Recovery",
+    "itcp13_sale": "Recovery", "itcp25_arrest": "Recovery",
     # TDS
     "notice_201": "TDS", "order_201": "TDS",
     # Transfer Pricing & DRP
