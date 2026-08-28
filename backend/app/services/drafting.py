@@ -601,6 +601,230 @@ TEMPLATES: dict[str, dict] = {
             "invent case facts beyond what is provided."
         ),
     },
+
+    # ==== Batch 2 — Penalty family ============================================
+    "order_270A": {
+        "label": "Penalty order u/s 270A",
+        "category": "Order",
+        "section": "270A",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("scn_ref", "Show-cause notice reference", placeholder="Notice u/s 274 r.w. 270A dated 01.08.2026"),
+            Field("addition", "Under/mis-reported income + tax", textarea=True,
+                  placeholder="Under-reported income Rs. 45,00,000; tax payable thereon Rs. 13,50,000"),
+            Field("reply_gist", "Assessee's reply (gist)", required=False, textarea=True),
+            Field("nature", "Under-reporting or mis-reporting", placeholder="mis-reporting u/s 270A(9)(a) — misrepresentation of facts"),
+        ],
+        "structure": (
+            "a penalty order under section 270A: heading, DIN, number and date, assessee + PAN + AY, "
+            "reference to the show-cause and the assessment addition, a reasoned finding of under-"
+            "reporting or mis-reporting (with the limb of 270A(9)), consideration of the assessee's "
+            "reply, the tax on the under-reported income, the penalty computed at 50% (under-reporting) "
+            "or 200% (mis-reporting) of that tax, a note that a demand notice u/s 156 follows, and the "
+            "officer's designation and charge. Use only the figures provided."
+        ),
+    },
+    "order_270AA": {
+        "label": "Order on immunity u/s 270AA",
+        "category": "Order",
+        "section": "270AA",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("application_ref", "Immunity application (Form 68)", placeholder="Application in Form 68 dated 20.04.2026"),
+            Field("conditions", "Conditions verified", required=False, textarea=True,
+                  placeholder="Tax + interest per the order paid on 15.04.2026; no appeal filed against the assessment order"),
+            Field("decision", "Decision", placeholder="Immunity granted from penalty u/s 270A and prosecution u/s 276C/276CC"),
+        ],
+        "structure": (
+            "an order under section 270AA on an immunity application: heading, DIN, number and date, "
+            "assessee + PAN + AY, reference to the Form 68 application, verification that the tax and "
+            "interest in the demand notice are paid within the period and that no appeal has been filed, "
+            "that the case is not one of mis-reporting u/s 270A(9), the decision granting (or refusing) "
+            "immunity from penalty u/s 270A and prosecution u/s 276C/276CC, and the officer's "
+            "designation and charge."
+        ),
+    },
+    "sc_271AAC": {
+        "label": "Penalty show-cause u/s 271AAC",
+        "category": "Notice",
+        "section": "271AAC",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("income", "Income u/s 68/69/69A-D + tax u/s 115BBE", textarea=True,
+                  placeholder="Unexplained money Rs. 45,00,000 added u/s 69A, taxed u/s 115BBE (Rs. 27,90,000)"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 271AAC: heading, DIN, "
+            "number and date, assessee + PAN + AY, reference to the assessed income that includes income "
+            "referred to in sections 68/69/69A-69D taxed u/s 115BBE, a statement that penalty at 10% of "
+            "the tax payable u/s 115BBE is attracted (where not covered by 271AAB), a call to show cause "
+            "within the stated period, the reply-by date, and the officer's designation and charge."
+        ),
+    },
+    "sc_271AAB": {
+        "label": "Penalty show-cause u/s 271AAB (search)",
+        "category": "Notice",
+        "section": "271AAB",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("search_date", "Date of search u/s 132", placeholder="12.09.2024"),
+            Field("undisclosed", "Undisclosed income of the specified year", textarea=True,
+                  placeholder="Undisclosed income of Rs. 1,20,00,000 admitted in the statement u/s 132(4) / found in seized material"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 271AAB: heading, DIN, "
+            "number and date, assessee + PAN + AY, reference to the search u/s 132 and the undisclosed "
+            "income of the specified previous year (from the 132(4) statement / seized material), a "
+            "statement of the penalty attracted (30% where admitted, substantiated and tax paid; 60% "
+            "otherwise, under 271AAB(1A) for searches on/after 15.12.2016), a call to show cause, the "
+            "reply-by date, and the officer's designation and charge. Use only figures on record."
+        ),
+    },
+    "sc_271AAD": {
+        "label": "Penalty show-cause u/s 271AAD (false entries)",
+        "category": "Notice",
+        "section": "271AAD",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("entries", "False / omitted entries", textarea=True,
+                  placeholder="Bogus purchase invoices of Rs. 60,00,000 from non-existent parties found in the books"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 271AAD: heading, DIN, "
+            "number and date, assessee + PAN + AY, a statement that the books of account contain a false "
+            "entry or omit an entry relevant to evade tax (describe the entry), that penalty equal to the "
+            "aggregate amount of such false/omitted entries is attracted, a call to show cause within the "
+            "stated period, the reply-by date, and the officer's designation and charge."
+        ),
+    },
+    "sc_271B": {
+        "label": "Penalty show-cause u/s 271B (audit)",
+        "category": "Notice",
+        "section": "271B",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("turnover", "Turnover / gross receipts", placeholder="Rs. 4,20,00,000 (exceeds the §44AB threshold)"),
+            Field("default", "Default", required=False, placeholder="Tax-audit report u/s 44AB not obtained / not furnished by the due date"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 271B: heading, DIN, number "
+            "and date, assessee + PAN + AY, a statement that the assessee was required to get the "
+            "accounts audited u/s 44AB (turnover/receipts exceeding the threshold) and failed to obtain / "
+            "furnish the report by the due date, that penalty of 0.5% of turnover (max Rs. 1,50,000) is "
+            "attracted, a call to show cause, the reply-by date, and the officer's designation. Note the "
+            "reasonable-cause defence u/s 273B."
+        ),
+    },
+    "sc_271D_E": {
+        "label": "Penalty show-cause u/s 271D / 271E (cash loan/repayment)",
+        "category": "Notice",
+        "section": "271D/271E",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("provision", "Provision contravened", placeholder="269SS (acceptance) — penalty u/s 271D  /  269T (repayment) — penalty u/s 271E"),
+            Field("transaction", "Cash transaction", textarea=True,
+                  placeholder="Loan of Rs. 8,00,000 accepted in cash from XYZ on 10.06.2024 in contravention of §269SS"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice (levied by the Joint Commissioner) under section 274 read with "
+            "section 271D (for §269SS acceptance) or 271E (for §269T repayment): heading, DIN, number and "
+            "date, assessee + PAN + AY, the cash transaction and the provision contravened, that penalty "
+            "equal to the amount of the loan/deposit/repayment is attracted, a call to show cause, the "
+            "reply-by date, the reasonable-cause defence u/s 273B, and the officer's designation."
+        ),
+    },
+    "sc_271DA": {
+        "label": "Penalty show-cause u/s 271DA (cash receipt ≥ ₹2 lakh)",
+        "category": "Notice",
+        "section": "271DA",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("receipt", "Cash receipt in contravention of §269ST", textarea=True,
+                  placeholder="Cash of Rs. 3,50,000 received from a single person in a day against one bill on 05.07.2024"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 271DA: heading, DIN, number "
+            "and date, assessee + PAN + AY, a statement that the assessee received Rs. 2,00,000 or more "
+            "in cash in contravention of section 269ST (in aggregate from a person in a day / for a "
+            "single transaction / for transactions relating to one event), that penalty equal to the "
+            "amount received is attracted, a call to show cause, the reply-by date, and the officer's "
+            "designation."
+        ),
+    },
+    "sc_272A": {
+        "label": "Penalty show-cause u/s 272A (non-compliance)",
+        "category": "Notice",
+        "section": "272A",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("default", "Non-compliance", textarea=True,
+                  placeholder="Failure to comply with the notice u/s 142(1) dated 01.07.2026 despite reminders"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 274 read with section 272A: heading, DIN, number "
+            "and date, assessee + PAN + AY, a statement of the non-compliance (failure to answer / sign / "
+            "attend / comply with a notice u/s 142(1)/143(2)/142(2A) under 272A(1)(d), or a 272A(2) "
+            "failure), the penalty attracted (Rs. 10,000 per default under 272A(1); Rs. 100–500/day under "
+            "272A(2)), a call to show cause, the reply-by date, and the officer's designation."
+        ),
+    },
+    "order_273B": {
+        "label": "Order dropping penalty (reasonable cause) u/s 273B",
+        "category": "Order",
+        "section": "273B",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("penalty_ref", "Penalty proceeding", placeholder="Penalty u/s 271B initiated vide notice dated 01.08.2026"),
+            Field("cause", "Reasonable cause shown", textarea=True,
+                  placeholder="Delay in audit due to the sudden demise of the accountant; report obtained and filed within a month"),
+        ],
+        "structure": (
+            "an order dropping penalty under section 273B: heading, DIN, number and date, assessee + PAN "
+            "+ AY, reference to the penalty proceeding, the reasonable cause shown by the assessee, a "
+            "reasoned finding that reasonable cause is established for the failure (a specified default "
+            "covered by 273B), the decision that no penalty is imposable, and the officer's designation "
+            "and charge."
+        ),
+    },
+}
+
+
+# Function-group each template belongs to — the primary organising axis in the
+# Drafting UI once the library grows past a handful. (Category — Notice/Order/
+# etc. — becomes a secondary tag.) A template not listed falls into "Other".
+_TEMPLATE_GROUP: dict[str, str] = {
+    # Assessment & scrutiny
+    "notice_142_1": "Assessment", "notice_143_2": "Assessment", "show_cause": "Assessment",
+    "notice_156": "Assessment", "order_154": "Assessment",
+    # Reassessment & search
+    "notice_148A": "Reassessment", "order_148A": "Reassessment", "notice_148": "Reassessment",
+    "sanction_151": "Reassessment", "approval_153D": "Reassessment",
+    # Penalty
+    "sc_270A": "Penalty", "order_270A": "Penalty", "order_270AA": "Penalty",
+    "sc_271AAC": "Penalty", "sc_271AAB": "Penalty", "sc_271AAD": "Penalty", "sc_271B": "Penalty",
+    "sc_271D_E": "Penalty", "sc_271DA": "Penalty", "sc_272A": "Penalty", "order_273B": "Penalty",
+    # Recovery & TRO
+    "notice_226_3": "Recovery", "notice_221": "Recovery", "order_220_6": "Recovery",
+    "order_281B": "Recovery", "notice_245": "Recovery",
+    # TDS
+    "notice_201": "TDS", "order_201": "TDS",
+    # Transfer Pricing & DRP
+    "show_cause_92ca": "Transfer Pricing", "order_92CA": "Transfer Pricing",
+    # Appeals & Revision
+    "notice_250": "Appeals & Revision", "sc_263": "Appeals & Revision",
+    # Investigation
+    "summons_131": "Investigation", "summons_131_1A": "Investigation", "notice_133_6": "Investigation",
+    # I&CI / e-Verification
+    "notice_285BA5": "I&CI",
+    # Assessee side
+    "reply_notice": "Assessee replies",
 }
 
 
@@ -633,6 +857,7 @@ def list_templates(profile: str | None = None, wings: list[str] | None = None) -
     items = [
         (rank(t), {"kind": k, "label": t["label"], "category": t["category"],
                    "section": t["section"], "wings": t.get("wings") or [],
+                   "group": _TEMPLATE_GROUP.get(k, "Other"),
                    "fields": [f.as_dict() for f in t["fields"]]})
         for k, t in TEMPLATES.items()
     ]

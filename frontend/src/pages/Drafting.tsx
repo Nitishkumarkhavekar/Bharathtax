@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FileText, Plus, Loader2, Sparkles, Copy, Check, RefreshCw, Save,
   Trash2, ArrowLeft, ScrollText, Download, Search, FileSignature,
-  Gavel, Scale as ScaleIcon, ChevronRight, ShieldCheck, Clock,
+  Gavel, Scale as ScaleIcon, ChevronRight, ChevronDown, ShieldCheck, Clock,
 } from "lucide-react";
 import { api, DraftDoc, DraftListItem, DraftTemplate } from "../api";
 import { toast } from "@/lib/toast";
@@ -223,15 +223,24 @@ function TemplatePicker({ templates, onPick }: {
   templates: DraftTemplate[]; onPick: (t: DraftTemplate) => void;
 }) {
   const [q, setQ] = useState("");
-  const byCat = useMemo(() => {
+  const searching = q.trim().length > 0;
+  // Group by FUNCTION (the templates arrive ranked, so the officer's own
+  // function's group comes first). Category becomes the per-card tag.
+  const byGroup = useMemo(() => {
     const t = q.trim().toLowerCase();
     const filtered = t
       ? templates.filter((x) => x.label.toLowerCase().includes(t) || (x.section || "").toLowerCase().includes(t))
       : templates;
     const m: Record<string, DraftTemplate[]> = {};
-    filtered.forEach((x) => (m[x.category] ??= []).push(x));
+    filtered.forEach((x) => (m[x.group || "Other"] ??= []).push(x));
     return m;
   }, [templates, q]);
+  const groupNames = Object.keys(byGroup);
+  // The officer's own function (the first group) opens by default; others
+  // collapse to keep a 75-template library navigable. Search expands all.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const isOpen = (g: string) => searching || (g in overrides ? overrides[g] : g === groupNames[0]);
+  const toggle = (g: string) => setOverrides((o) => ({ ...o, [g]: !isOpen(g) }));
 
   return (
     <div className="space-y-6">
@@ -271,7 +280,7 @@ function TemplatePicker({ templates, onPick }: {
         </div>
       </div>
 
-      {Object.keys(byCat).length === 0 ? (
+      {groupNames.length === 0 ? (
         <div className="rounded-2xl bg-white ring-1 ring-slate-200 p-10 text-center">
           <div className="mx-auto size-12 rounded-xl bg-slate-100 grid place-items-center text-slate-400 mb-3">
             <ScrollText className="size-6" />
@@ -280,21 +289,27 @@ function TemplatePicker({ templates, onPick }: {
           <div className="text-[12.5px] text-slate-500 mt-1">Try a different search term.</div>
         </div>
       ) : (
-        Object.entries(byCat).map(([cat, ts]) => (
-          <section key={cat}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className={cn("size-6 rounded-md grid place-items-center", catStyle(cat).chip)}>
-                {catIcon(cat)}
-              </div>
-              <div className="text-[12px] uppercase tracking-[0.16em] text-slate-500 font-semibold">{cat}s</div>
-              <div className="flex-1 h-px" />
-              <span className="text-[11px] text-slate-400 tabular-nums">{ts.length}</span>
-            </div>
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {ts.map((t) => <TemplateCard key={t.kind} t={t} onPick={() => onPick(t)} />)}
-            </div>
-          </section>
-        ))
+        Object.entries(byGroup).map(([group, ts]) => {
+          const open = isOpen(group);
+          return (
+            <section key={group}>
+              <button type="button" onClick={() => toggle(group)}
+                className="w-full flex items-center gap-2 mb-3 group text-left">
+                <div className="text-[12px] uppercase tracking-[0.16em] text-slate-500 font-semibold group-hover:text-slate-800 transition-colors">{group}</div>
+                <div className="flex-1 h-px bg-slate-200/70" />
+                <span className="text-[11px] text-slate-400 tabular-nums">{ts.length}</span>
+                <span className={cn("size-5 rounded-md bg-white ring-1 ring-slate-200 flex items-center justify-center text-slate-500 transition-transform", open ? "rotate-180" : "")}>
+                  <ChevronDown className="size-3.5" />
+                </span>
+              </button>
+              {open && (
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {ts.map((t) => <TemplateCard key={t.kind} t={t} onPick={() => onPick(t)} />)}
+                </div>
+              )}
+            </section>
+          );
+        })
       )}
     </div>
   );

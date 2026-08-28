@@ -975,6 +975,8 @@ export interface DraftTemplate {
   label: string;
   category: string;
   section: string;
+  group?: string;
+  wings?: string[];
   fields: DraftField[];
 }
 export interface DraftDoc {
