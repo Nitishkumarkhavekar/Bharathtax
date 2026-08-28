@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "@/lib/toast";
 import { Markdown } from "@/lib/markdown";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -11,6 +11,7 @@ import {
   Play,
   Square,
   Download,
+  ShieldCheck,
   RefreshCw,
   Pencil,
   Check,
@@ -47,6 +48,7 @@ const ACTIVE = (s?: string | null) => s === "queued" || s === "running";
 
 export default function AssessmentCase() {
   const { id = "" } = useParams();
+  const nav = useNavigate();
   const { confirm, dialog } = useConfirm();
   const [cse, setCse] = useState<any>(null);
   const [docs, setDocs] = useState<any[]>([]);
@@ -249,6 +251,7 @@ export default function AssessmentCase() {
               </button>
             )}
             {order && (
+              <>
               <button
                 title="Save the order straight to a folder on your own computer"
                 onClick={() => api.asmtDownload(`/assessment/cases/${id}/export.docx`, `assessment_order_${cse?.pan || id}.docx`).then((m) => { if (m !== "cancelled") toast.success("Saved to your computer."); }).catch((e) => toast.error(e?.message ?? "Save failed."))}
@@ -256,6 +259,28 @@ export default function AssessmentCase() {
               >
                 <Download className="size-4" /> Save to computer
               </button>
+              <button
+                title="Save the order to your computer, then delete this case and its documents from our servers"
+                onClick={async () => {
+                  try {
+                    const m = await api.asmtDownload(`/assessment/cases/${id}/export.docx`, `assessment_order_${cse?.pan || id}.docx`);
+                    if (m === "cancelled") return;
+                    const ok = await confirm({
+                      title: "Remove this case from our servers?",
+                      description: "The order and its uploaded documents will be permanently deleted from our servers. Make sure you've saved everything you need to your computer — this can't be undone.",
+                      tone: "danger", confirmLabel: "Remove from server",
+                    });
+                    if (!ok) { toast.success("Saved to your computer."); return; }
+                    await api.asmtDeleteCase(id);
+                    toast.success("Saved to your computer and removed from our servers.");
+                    nav("/drafting/assessments");
+                  } catch (e: any) { toast.error(e?.message ?? "Could not complete."); }
+                }}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-semibold ring-1 ring-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+              >
+                <ShieldCheck className="size-4" /> Save &amp; remove from server
+              </button>
+              </>
             )}
           </div>
         </div>
