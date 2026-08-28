@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drafting Templates Master Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --paper:#faf9f5; --card:#fff; --card-2:#f2f0ea; --ink:#101f38; --muted:#55637e; --faint:#8592a8;
+    --line:#e2ddd1; --line-2:#d3ccbc; --navy:#173f70; --navy-tint:#e9eff7; --accent:#a6742a; --accent-tint:#f5ecd9;
+    --good:#0f7a52; --good-tint:#e2f1ea; --todo:#7a5a12; --todo-tint:#f6edd6;
+    --shadow:0 1px 2px rgba(16,31,56,.05), 0 8px 26px rgba(16,31,56,.055);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,"Segoe UI",sans-serif;font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .sheet{max-width:1000px;margin:0 auto;padding:0 26px}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:600}
+  header.top{padding:46px 0 20px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand .name{font-family:Newsreader,serif;font-weight:600;font-size:22px}
+  .brand .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);transform:translateY(-3px)}
+  h1{font-family:Newsreader,serif;font-weight:600;font-size:clamp(28px,4.4vw,42px);line-height:1.06;letter-spacing:-.015em;margin:16px 0 0;text-wrap:balance;max-width:24ch}
+  .sub{font-size:16.5px;color:var(--muted);margin:12px 0 0;max-width:70ch}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 6px}
+  @media(max-width:680px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .stat .n{font-family:Newsreader,serif;font-size:30px;font-weight:600;color:var(--navy);line-height:1}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:4px}
+
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:Newsreader,serif;font-weight:600;font-size:25px;letter-spacing:-.01em;margin:0 0 4px;text-wrap:balance}
+  h3{font-size:15px;font-weight:700;margin:22px 0 8px;display:flex;align-items:center;gap:8px}
+  h3 .g{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);font-weight:600}
+  .lede{color:var(--muted);margin:6px 0 16px;max-width:78ch}
+  p.body{margin:0 0 12px;max-width:80ch}
+  p.body b{color:var(--ink)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);background:var(--card);margin-bottom:14px}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:600px}
+  th,td{text-align:left;padding:8px 13px;vertical-align:top;border-bottom:1px solid var(--line)}
+  thead th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:700;background:var(--card-2)}
+  tbody tr:last-child td{border-bottom:0}
+  td.doc{font-weight:600}
+  td.sec{white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--navy)}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .b-live{background:var(--good-tint);color:var(--good)}
+  .b-todo{background:var(--todo-tint);color:var(--todo)}
+  .b-star{color:var(--accent);font-weight:700}
+  .type{font-size:11px;color:var(--muted)}
+
+  .batch{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:10px}
+  .batch .h{display:flex;align-items:center;gap:10px}
+  .batch .num{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#fff;background:var(--navy);border-radius:8px;padding:3px 9px}
+  .batch .t{font-weight:700}
+  .batch .c{margin-left:auto;font-size:12px;color:var(--faint)}
+  .batch p{margin:8px 0 0;font-size:13px;color:var(--muted)}
+  .batch.done{border-color:var(--good)}
+  .batch.done .num{background:var(--good)}
+
+  .note{background:var(--accent-tint);border:1px solid color-mix(in srgb,var(--accent) 38%,transparent);border-radius:12px;padding:14px 18px;margin:8px 0;font-size:13.5px;color:var(--muted)}
+  .note b{color:var(--ink)}
+  ul.clean{margin:0 0 12px;padding-left:18px;color:var(--muted);font-size:13.5px}
+  ul.clean li{margin:4px 0}
+  ul.clean b{color:var(--ink)}
+  footer{border-top:1px solid var(--line);margin-top:24px;padding:20px 0 50px;color:var(--faint);font-size:12.5px}
+  @media print{ body{background:#fff;font-size:10.5pt} .sheet{max-width:100%;padding:0} .stat,.batch,.tablewrap,.note{box-shadow:none} section,.batch,.tablewrap{break-inside:avoid} thead th{position:static} .badge,.b-live,.b-todo,.stat .n,.batch .num{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="top">
+    <div class="brand"><span class="dot"></span><span class="name">BharatTax</span><span class="eyebrow" style="margin-left:auto">Drafting · master plan</span></div>
+    <h1>The complete notices &amp; orders catalogue — and how we build it.</h1>
+    <p class="sub">One-time research across every Income-Tax wing, compiled into a single organised plan: the full set of officer-drafted documents, a better way to organise a 75-template library in the app, and the batch sequence to add them all.</p>
+    <div class="stats">
+      <div class="stat"><div class="n">~85</div><div class="l">documents mapped (6 wings)</div></div>
+      <div class="stat"><div class="n">75</div><div class="l">curated officer-drafted templates</div></div>
+      <div class="stat"><div class="n">27</div><div class="l">live now (incl. Batch 1)</div></div>
+      <div class="stat"><div class="n">~48</div><div class="l">to add (Batches 2–6)</div></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>How we organise a 75-template library</h2>
+    <p class="body">At 15 templates a flat <b>Notices / Orders / Approvals / Letters</b> grouping works. At 75 it doesn't — the "Notices" pile becomes unusable. The fix: <b>group by the officer's function</b>, with category as a secondary tag.</p>
+    <ul class="clean">
+      <li><b>Add a <span class="mono">group</span> field</b> to each template — the function it belongs to (Assessment, Reassessment, Penalty, Recovery, TDS, Exemptions, Transfer Pricing &amp; DRP, Appeals &amp; Revision, Investigation, I&amp;CI / e-Verification, Prosecution).</li>
+      <li><b>The Drafting page shows collapsible function sections</b>, the officer's <em>own</em> function expanded first (we already know the wing), the rest collapsed — so a TRO sees Recovery open, an AO sees Assessment open.</li>
+      <li><b>Category becomes an icon/tag</b> (Notice · Show-cause · Order · Approval · Certificate · Summons · Letter) inside each group, not the top-level split.</li>
+      <li><b>Search stays</b> (already there) for jumping straight to "148A" or "garnishee".</li>
+    </ul>
+    <div class="note"><b>Backend:</b> the ranking logic already tags each template with <span class="mono">wings</span>; adding a <span class="mono">group</span> label and grouping in the UI is a small change shipped alongside Batch 2, so the growing library stays navigable from the first big tranche.</div>
+  </section>
+
+  <section>
+    <h2>The complete catalogue</h2>
+    <p class="lede">Every genuine officer-drafted document, by function. <span class="badge b-live">LIVE</span> = already in the app · <span class="badge b-todo">TO ADD</span> · <span class="b-star">★</span> = highest frequency. Taxpayer-filed forms, auto-generated CPC intimations, DGIT-level search warrants and the rigid fill-in ITCP forms (beyond the key recovery ones) are deliberately excluded — they aren't drafted by the officer.</p>
+
+    <h3>1 · Assessment &amp; Scrutiny <span class="g">group: assessment</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Notice to file return / produce accounts</td><td class="sec">142(1)</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Scrutiny selection notice</td><td class="sec">143(2)</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Show-cause notice (generic)</td><td class="sec">—</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Notice of Demand <span class="b-star">★</span></td><td class="sec">156</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Rectification order</td><td class="sec">154</td><td class="type">Order</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Defective-return notice</td><td class="sec">139(9)</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Direction for special audit (+ show-cause)</td><td class="sec">142(2A)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Show-cause before best-judgment</td><td class="sec">144</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Faceless SCN-cum-draft assessment order</td><td class="sec">144B</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Show-cause of proposed rectification</td><td class="sec">154(3)</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Consequential-amendment order</td><td class="sec">155</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Order Giving Effect (OGE) <span class="b-star">★</span></td><td class="sec">143(3) r.w. appeal</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>2 · Reassessment &amp; Search <span class="g">group: reassessment</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Show-cause before reopening <span class="b-star">★</span></td><td class="sec">148A(1)</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Order deciding fit case <span class="b-star">★</span></td><td class="sec">148A(3)</td><td class="type">Order</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Reassessment notice <span class="b-star">★</span></td><td class="sec">148</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Sanction for reopening</td><td class="sec">151</td><td class="type">Approval</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Approval of search-assessment order</td><td class="sec">153D</td><td class="type">Approval</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Notice for search assessment (pre-2021)</td><td class="sec">153A</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Satisfaction note + notice to other person</td><td class="sec">153C</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+    <div class="note"><b>Current-law flag:</b> the reassessment templates use the <b>Finance (No. 2) Act 2024</b> procedure — §148A(1) show-cause → §148A(3) order → §148 notice, with sanction by the Addl./Jt. CIT and an outer limit of ~5 years. §153A/153C survive only for searches initiated before 1 Apr 2021 (later searches use §147/148).</div>
+
+    <h3>3 · Penalty <span class="g">group: penalty</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Show-cause — under/mis-reporting <span class="b-star">★</span></td><td class="sec">274 r.w. 270A</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Penalty order — 270A</td><td class="sec">270A</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Immunity order</td><td class="sec">270AA</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC + order — §68-69 income (115BBE)</td><td class="sec">271AAC</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC + order — undisclosed income (search)</td><td class="sec">271AAB</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC + order — false entries</td><td class="sec">271AAD</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC + order — audit not done</td><td class="sec">271B</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC — cash loan / repayment</td><td class="sec">271D / 271E</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC — cash receipt ≥ ₹2 lakh</td><td class="sec">271DA</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC + order — non-compliance</td><td class="sec">272A(1)/(2)</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">SC — TP documentation default</td><td class="sec">271AA / 271G</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+    <div class="note"><b>Legal flag:</b> 270A applies from AY 2017-18; the old 271(1)(c) concealment penalty is legacy (up to AY 2016-17) — we tag by AY. §273B (reasonable-cause drop order) is the common defence.</div>
+
+    <h3>4 · Recovery &amp; TRO <span class="g">group: recovery</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Garnishee notice</td><td class="sec">226(3)</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Show-cause penalty for default</td><td class="sec">221</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Order allowing instalments</td><td class="sec">220(6)</td><td class="type">Order</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Provisional attachment</td><td class="sec">281B</td><td class="type">Order</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Set-off of refund</td><td class="sec">245</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Stay of demand (20% rule) <span class="b-star">★</span></td><td class="sec">220(6)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Interest for late payment</td><td class="sec">220(2)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Director's joint liability <span class="b-star">★</span></td><td class="sec">179</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">LLP partner's joint liability</td><td class="sec">167C</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Recovery certificate</td><td class="sec">222</td><td class="type">Certificate</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Notice to employer (salary attachment)</td><td class="sec">226(2)</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Second Schedule — demand notice (ITCP-1)</td><td class="sec">Sch.II r.2</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Attachment of movable / immovable property</td><td class="sec">ITCP-2 / 16</td><td class="type">Warrant/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Proclamation of sale</td><td class="sec">ITCP-13</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Show-cause / warrant of arrest</td><td class="sec">ITCP-25 / 26</td><td class="type">Warrant</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>5 · TDS / TCS <span class="g">group: tds</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Show-cause — TDS default</td><td class="sec">201</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Order — assessee-in-default (TDS) <span class="b-star">★</span></td><td class="sec">201(1)/(1A)</td><td class="type">Order</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">SC + order — TCS default</td><td class="sec">206C(6A)/(7)</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Penalty — TDS/TCS non-deduction</td><td class="sec">271C / 271CA</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Penalty — late/incorrect statement</td><td class="sec">271H</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Certificate — lower/nil deduction</td><td class="sec">197</td><td class="type">Certificate</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">TDS verification survey</td><td class="sec">133A(2A)</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>6 · Exemptions (Trusts &amp; Institutions) <span class="g">group: exemptions</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Call for documents on registration</td><td class="sec">12AB(1)(b)</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Order refusing registration</td><td class="sec">12AB(1)(b)(ii)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Cancellation of registration <span class="b-star">★</span></td><td class="sec">12AB(4)/(5)</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Withdrawal of 10(23C) approval</td><td class="sec">10(23C)</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">80G approval — refusal / cancellation</td><td class="sec">80G(5)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Exit-tax on accreted income</td><td class="sec">115TD</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Denial of exemption (§13 breach)</td><td class="sec">13 r.w. 11</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>7 · Transfer Pricing &amp; DRP <span class="g">group: tp</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Show-cause proposing TP adjustment</td><td class="sec">92CA(3)</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Order determining ALP <span class="b-star">★</span></td><td class="sec">92CA(3)</td><td class="type">Order</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Reference to TPO</td><td class="sec">92CA(1)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Notice for TP documentation</td><td class="sec">92D</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Draft assessment order <span class="b-star">★</span></td><td class="sec">144C(1)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">DRP directions</td><td class="sec">144C(5)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">GAAR reference</td><td class="sec">144BA</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>8 · Appeals &amp; Revision <span class="g">group: appeals</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Notice of hearing of appeal</td><td class="sec">250(1)</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Show-cause for revision <span class="b-star">★</span></td><td class="sec">263</td><td class="type">Show-cause</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Notice of enhancement</td><td class="sec">251(2)</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Remand-report / additional-evidence call</td><td class="sec">250(4) r.w. 46A</td><td class="type">Letter</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Revision order</td><td class="sec">263</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Order on revision application</td><td class="sec">264</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>9 · Investigation, Search &amp; Survey <span class="g">group: investigation</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Summons (proceeding pending)</td><td class="sec">131(1)</td><td class="type">Summons</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Summons — pre-proceeding investigation <span class="b-star">★</span></td><td class="sec">131(1A)</td><td class="type">Summons</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Notice calling for information</td><td class="sec">133(6)</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Survey (entry / impounding)</td><td class="sec">133A</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Statement on oath (search) — proforma</td><td class="sec">132(4)</td><td class="type">Statement</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Prohibitory / restraint order</td><td class="sec">132(3)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Appraisal / satisfaction note to AO</td><td class="sec">132 admin.</td><td class="type">Report</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>10 · I&amp;CI / SFT / e-Verification <span class="g">group: ici</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Notice to furnish / rectify SFT <span class="b-star">★</span></td><td class="sec">285BA(5)</td><td class="type">Notice</td><td><span class="badge b-live">LIVE</span></td></tr>
+      <tr><td class="doc">Penalty — SFT not furnished</td><td class="sec">271FA</td><td class="type">Show-cause/Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Penalty — inaccurate SFT</td><td class="sec">271FAA</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">e-Verification mismatch communication <span class="b-star">★</span></td><td class="sec">135A scheme</td><td class="type">Letter</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Notice to source to verify transaction</td><td class="sec">133(6)</td><td class="type">Notice</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Information-dissemination note to AO</td><td class="sec">admin.</td><td class="type">Letter</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+
+    <h3>11 · Prosecution <span class="g">group: prosecution</span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Document</th><th>Section</th><th>Type</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="doc">Pre-prosecution show-cause</td><td class="sec">276 series</td><td class="type">Show-cause</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Sanction for prosecution</td><td class="sec">279(1)</td><td class="type">Sanction</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      <tr><td class="doc">Compounding order</td><td class="sec">279(2)</td><td class="type">Order</td><td><span class="badge b-todo">TO ADD</span></td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section>
+    <h2>The build sequence</h2>
+    <p class="lede">Six batches. Each is one reviewable PR — properly sectioned, wing-tagged, current-law wording. Batch 2 also ships the <b>group-by-function UI</b> so the library stays navigable as it grows.</p>
+
+    <div class="batch done"><div class="h"><span class="num">✓ 1</span><span class="t">Cross-wing high-frequency</span><span class="c">12 templates · LIVE</span></div>
+      <p>156 · 148A(1)/(3) · 148 · 270A SCN · 201 order · 92CA(3) order · 281B · 245 · 263 SCN · 285BA(5) · 131(1A).</p></div>
+    <div class="batch"><div class="h"><span class="num">2</span><span class="t">Penalty family + group-by-function UI</span><span class="c">~10 templates + UI</span></div>
+      <p>270A order · 271AAC · 271AAB · 271AAD · 271B · 271D/E · 271DA · 272A · 273B — plus the collapsible function-group organisation in the Drafting page.</p></div>
+    <div class="batch"><div class="h"><span class="num">3</span><span class="t">Recovery / TRO</span><span class="c">~10 templates</span></div>
+      <p>Stay of demand 220(6) · 220(2) interest · 179 · 167C · 222 certificate · 226(2) · Second-Schedule set (demand, attachment movable/immovable, sale proclamation, arrest).</p></div>
+    <div class="batch"><div class="h"><span class="num">4</span><span class="t">TDS + Exemptions</span><span class="c">~12 templates</span></div>
+      <p>TDS: 206C TCS · 271C/271CA · 271H · 197 certificate · 133A(2A). Exemptions: 12AB cancellation/refusal · 10(23C) · 80G · 115TD exit-tax · §13 denial.</p></div>
+    <div class="batch"><div class="h"><span class="num">5</span><span class="t">TP · DRP · Appeals · Revision</span><span class="c">~10 templates</span></div>
+      <p>92CA(1) reference · 92D · 144C(1) draft order · 144C(5) DRP directions · 144BA · 251 enhancement · Rule 46A remand · 263 order · 264 order · OGE.</p></div>
+    <div class="batch"><div class="h"><span class="num">6</span><span class="t">Investigation · I&amp;CI · Prosecution</span><span class="c">~12 templates</span></div>
+      <p>133A survey · 132(4) statement · 132(3) restraint · appraisal note · 271FA/FAA · e-Verification mismatch · 133(6)-to-source · dissemination note · 276-series SCN · 279 sanction · compounding · assessment odds-and-ends (139(9), 142(2A), 144, 144B, 155).</p></div>
+  </section>
+
+  <section>
+    <h2>Ground rules baked into every template</h2>
+    <ul class="clean">
+      <li><b>Current law only</b> — reassessment on the FA-2024 §148A(1)/(3) flow; penalty 270A for AY 2017-18+ (271(1)(c) legacy); 12AB (not 12AA); stay-of-demand's 20% guideline.</li>
+      <li><b>Correctly wing-tagged</b> — each template surfaces first for its function's officers; nothing hidden (soft emphasis).</li>
+      <li><b>Grounded, never invented</b> — the drafting engine uses only the figures/dates/names the officer enters; it writes "[not on record]" for anything missing, exactly like the order engine.</li>
+      <li><b>A CA validation pass</b> is worth doing on the section sub-clauses once the full set is in — this plan is our best reading of the Act, verified against public sources.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <b>BharatTax</b> · Wenvia Global Solutions — Drafting templates master plan. Compiled from a six-stream one-time research across the Income-tax Act, 1961. 27 of ~75 live; Batches 2–6 sequenced above.
+  </footer>
+</div>
+</body>
+</html>
