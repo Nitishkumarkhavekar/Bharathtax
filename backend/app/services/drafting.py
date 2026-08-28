@@ -1336,6 +1336,264 @@ TEMPLATES: dict[str, dict] = {
             "Do NOT re-adjudicate — only give effect to the directions."
         ),
     },
+
+    # ==== Batch 6 — Investigation / Survey ====================================
+    "notice_133A": {
+        "label": "Survey u/s 133A",
+        "category": "Letter",
+        "section": "133A",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("premises", "Business/profession premises", placeholder="Registered office / godown at ..."),
+            Field("scope", "Purpose / records to inspect", textarea=True, required=False,
+                  placeholder="Verify stock, cash and books; impound documents if found relevant to undisclosed income"),
+        ],
+        "structure": (
+            "a communication recording a survey under section 133A: heading of the office of the "
+            "authority, number and date, the assessee + PAN, a statement of entry into the place of "
+            "business/profession during business hours to inspect books, cash and stock and to record "
+            "statements, the powers exercised (inspection, impounding of books u/s 133A(3)(ia) with "
+            "reasons, verification of cash/stock), a note that it is a SURVEY not a search (no seizure of "
+            "assets; statements are not on oath), and the officer's designation. Use only the facts "
+            "provided."
+        ),
+    },
+    "statement_132_4": {
+        "label": "Statement on oath u/s 132(4) (proforma)",
+        "category": "Statement",
+        "section": "132(4)",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("deponent", "Person examined", placeholder="Shri XYZ, Director, found in control of the premises"),
+            Field("questions", "Matters to be examined", textarea=True, required=False,
+                  placeholder="Ownership of the cash of Rs. 45,00,000 found; source of the jewellery; nature of the seized documents"),
+        ],
+        "structure": (
+            "a proforma for recording a statement on oath under section 132(4) during a search: heading, "
+            "number, date, time and place, the name + PAN + designation of the person examined, the "
+            "authorised officer administering the oath, a preamble that the statement is recorded on oath "
+            "and may be used in evidence, and a question-and-answer structure covering the matters to be "
+            "examined (ownership, source and nature of the assets/documents found). Leave the answers for "
+            "the deponent; do NOT fabricate admissions."
+        ),
+    },
+    "order_132_3": {
+        "label": "Prohibitory / restraint order u/s 132(3)",
+        "category": "Order",
+        "section": "132(3)",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("property", "Property restrained", textarea=True,
+                  placeholder="Almirah / locker no. 45 / stock lying at the godown — not practicable to seize"),
+            Field("premises", "Premises", required=False, placeholder="Business premises at ..."),
+        ],
+        "structure": (
+            "a prohibitory (restraint) order under section 132(3): heading, number and date, the person "
+            "in possession + PAN, a statement that during the search it is not practicable to seize the "
+            "specified books/assets, an order that the person shall not remove, part with or deal with "
+            "them except with prior permission of the authorised officer, a note that the order does not "
+            "amount to seizure and shall not remain in force beyond sixty days (s.132(8A)), and the "
+            "authorised officer's designation. Use only the particulars provided."
+        ),
+    },
+    "note_appraisal": {
+        "label": "Appraisal / satisfaction note to the AO",
+        "category": "Letter",
+        "section": "132 admin.",
+        "wings": ["investigation"],
+        "fields": _COMMON + [
+            Field("seized", "Seized material / findings", textarea=True,
+                  placeholder="Seized documents A-1 to A-12; cash Rs. 45,00,000; statement u/s 132(4) admitting Rs. 1.2 cr undisclosed income"),
+            Field("estimate", "Estimated undisclosed income / issues", textarea=True, required=False,
+                  placeholder="Estimated undisclosed income Rs. 1,20,00,000 across AY 2020-21 to 2024-25; bogus purchases and on-money"),
+        ],
+        "structure": (
+            "an appraisal / satisfaction note from the Investigation wing to the jurisdictional/Central "
+            "Circle Assessing Officer: heading, number and date, the searched person + PAN, a summary of "
+            "the seized material and the modus operandi, the key admissions and evidence, an issue-wise "
+            "analysis with the estimated undisclosed income for each assessment year, and (where the "
+            "material relates to another person) the satisfaction recorded for handing it over. For "
+            "internal transmission to the AO — record findings, do NOT frame the assessment."
+        ),
+    },
+
+    # ==== Batch 6 — I&CI / e-Verification =====================================
+    "sc_271FA": {
+        "label": "Penalty show-cause u/s 271FA (SFT)",
+        "category": "Notice",
+        "section": "271FA",
+        "wings": ["ici"],
+        "fields": [
+            Field("entity", "Reporting entity", placeholder="XYZ Co-operative Bank Ltd."),
+            Field("pan", "PAN / ITDREIN", required=False, placeholder="AAACX1234A"),
+            Field("fy", "Financial year", placeholder="2024-25"),
+            Field("default", "Default", textarea=True,
+                  placeholder="SFT (Rule 114E) not furnished by 31 May 2025; not furnished within the 30-day period allowed u/s 285BA(5)"),
+        ],
+        "structure": (
+            "a penalty show-cause notice under section 271FA for failure to furnish the Statement of "
+            "Financial Transactions: heading of the office of the Director/Jt. Director (I&CI) / "
+            "prescribed authority, number and date, the reporting entity + PAN/ITDREIN + financial year, "
+            "the default, a statement that penalty of Rs. 500 per day (rising to Rs. 1,000 per day after "
+            "the 285BA(5) notice period) is attracted, a call to show cause, the reply-by date, and the "
+            "authority's designation."
+        ),
+    },
+    "letter_everify": {
+        "label": "e-Verification — AIS mismatch communication",
+        "category": "Letter",
+        "section": "135A scheme",
+        "wings": ["ici"],
+        "fields": _COMMON + [
+            Field("mismatch", "Information mismatch", textarea=True,
+                  placeholder="AIS shows interest income of Rs. 2,10,000 and securities sale of Rs. 18,00,000 not reflected in the return for AY 2024-25"),
+            Field("respond_by", "Respond by (date)", placeholder="within 15 days on the compliance portal"),
+        ],
+        "structure": (
+            "a communication under the e-Verification Scheme, 2021 (section 135A) seeking the taxpayer's "
+            "explanation of a mismatch between the information available (AIS/SFT) and the return of "
+            "income: heading of the office of the prescribed authority (e-Verification), reference number "
+            "and date, the taxpayer + PAN + AY, the specific mismatch (source, amount and nature), a "
+            "request to review the information and submit a response/feedback on the compliance portal by "
+            "the stated date, a note that non-response may lead to further action including reopening, "
+            "and the authority's designation. Use only the figures provided."
+        ),
+    },
+    "letter_dissemination": {
+        "label": "Information dissemination note to the AO",
+        "category": "Letter",
+        "section": "admin. (I&CI)",
+        "wings": ["ici"],
+        "fields": _COMMON + [
+            Field("information", "Verified information", textarea=True,
+                  placeholder="Verified high-value cash deposits of Rs. 45,00,000 (SFT) with no corresponding return; source unexplained on e-verification"),
+        ],
+        "structure": (
+            "an information-dissemination note from the I&CI Directorate to the jurisdictional Assessing "
+            "Officer: heading, reference number and date, the taxpayer + PAN + AY, a concise statement of "
+            "the verified information / intelligence (the transaction, amount, source and the "
+            "verification outcome), the potential escapement, and a request that the AO examine it and "
+            "take appropriate action. For internal transmission — state the facts, do NOT direct the "
+            "assessment."
+        ),
+    },
+
+    # ==== Batch 6 — Prosecution ===============================================
+    "sc_prosecution": {
+        "label": "Pre-prosecution show-cause notice",
+        "category": "Notice",
+        "section": "276 series",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("offence", "Offence proposed", textarea=True,
+                  placeholder="Wilful attempt to evade tax u/s 276C(1) — concealment of Rs. 1,20,00,000 detected in the assessment"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a pre-prosecution show-cause notice: heading, number and date, the person + PAN + AY, a "
+            "statement of the offence proposed to be prosecuted (e.g. 276B failure to pay TDS, 276C(1)/"
+            "(2) wilful evasion, 276CC failure to furnish return, 277 false statement) with the facts and "
+            "amount, a call to show cause why prosecution should not be launched, the reply-by date, and "
+            "the proposing authority's designation. State only the facts on record."
+        ),
+    },
+    "sanction_279": {
+        "label": "Sanction for prosecution u/s 279(1)",
+        "category": "Approval",
+        "section": "279(1)",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("offence", "Offence + facts", textarea=True,
+                  placeholder="Offence u/s 276C(1) — wilful attempt to evade tax; concealment of Rs. 1,20,00,000 confirmed in appeal"),
+            Field("proposal_ref", "Proposal / SCN reference", required=False, placeholder="Proposal of the AO dated 01.08.2026; show-cause reply considered"),
+        ],
+        "structure": (
+            "a sanction for prosecution under section 279(1) by the specified sanctioning authority "
+            "(Pr. CIT/CIT or higher): heading of the sanctioning authority's office, DIN, number and "
+            "date, the person + PAN + AY, the offence and the facts constituting it, reference to the "
+            "proposal and the show-cause reply considered, a reasoned satisfaction that it is a fit case "
+            "for launching prosecution, the sanction accorded to institute the complaint, and the "
+            "sanctioning authority's designation. Record application of mind — a bare 'sanctioned' will "
+            "not do."
+        ),
+    },
+
+    # ==== Batch 6 — Assessment (remaining) ====================================
+    "notice_139_9": {
+        "label": "Defective-return notice u/s 139(9)",
+        "category": "Notice",
+        "section": "139(9)",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("defect", "Defect(s)", textarea=True,
+                  placeholder="Return filed without the audit report u/s 44AB / tax on returned income not paid / Part-A of the P&L not filled"),
+            Field("rectify_by", "Rectify within", placeholder="15 days"),
+        ],
+        "structure": (
+            "a notice under section 139(9) intimating a defective return: heading, DIN, number and date, "
+            "assessee + PAN + AY, the specific defect(s) in the return, a direction to rectify the defect "
+            "within 15 days (extendable) of service, a note that on failure the return shall be treated "
+            "as invalid (as if no return had been furnished), and the officer's designation. Use only the "
+            "particulars provided."
+        ),
+    },
+    "order_142_2A": {
+        "label": "Direction for special audit u/s 142(2A)",
+        "category": "Order",
+        "section": "142(2A)",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("reasons", "Reasons (complexity etc.)", textarea=True,
+                  placeholder="Volume and complexity of the accounts, multiplicity of transactions and doubts on correctness warrant a special audit"),
+            Field("auditor", "Nominated accountant", required=False, placeholder="M/s PQR & Co., Chartered Accountants, nominated by the PCIT"),
+            Field("report_by", "Report by", placeholder="within 90 days"),
+        ],
+        "structure": (
+            "a direction for special audit under section 142(2A): heading, DIN, number and date, assessee "
+            "+ PAN + AY, the reasons (nature/complexity/volume of accounts, doubts about correctness, "
+            "multiplicity of transactions, interests of revenue) after affording the assessee an "
+            "opportunity, the prior approval of the PCCIT/CCIT/PCIT/CIT, the nominated accountant, the "
+            "particulars to be reported and the time to furnish the report (90 days), and the officer's "
+            "designation. Record the reasons — a special audit is not routine."
+        ),
+    },
+    "sc_144": {
+        "label": "Show-cause before best-judgment u/s 144",
+        "category": "Notice",
+        "section": "144",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("default", "Default", textarea=True,
+                  placeholder="Non-compliance with the notices u/s 142(1)/143(2) despite repeated opportunities; no return furnished"),
+            Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
+        ],
+        "structure": (
+            "a show-cause notice under the proviso to section 144 before a best-judgment (ex-parte) "
+            "assessment: heading, DIN, number and date, assessee + PAN + AY, a statement of the default "
+            "(failure to file the return u/s 139/142(1), or to comply with 142(1)/143(2)/142(2A)), a "
+            "call to show cause why the assessment should not be completed to the best of the AO's "
+            "judgment u/s 144, the reply-by date, and the officer's designation. State only the facts on "
+            "record."
+        ),
+    },
+    "order_155": {
+        "label": "Consequential-amendment order u/s 155",
+        "category": "Order",
+        "section": "155",
+        "wings": ["officer"],
+        "fields": _COMMON + [
+            Field("event", "Event requiring amendment", textarea=True,
+                  placeholder="Partner's share of firm income finally assessed; TDS credit later matched in 26AS; capital-gains recomputation"),
+            Field("effect", "Recomputed effect", required=False, placeholder="Total income enhanced/reduced by Rs. ...; demand/refund revised"),
+        ],
+        "structure": (
+            "an amendment order under section 155: heading, DIN, number and date, assessee + PAN + AY, "
+            "reference to the completed assessment and the specified later event that requires amendment "
+            "(partner's share, TDS credit, capital-gains recomputation, etc.), the amendment made and the "
+            "recomputed income/tax (only as flowing from the event), the revised demand or refund, and "
+            "the officer's designation. Do NOT reopen other issues — amend only for the specified event."
+        ),
+    },
 }
 
 
@@ -1345,7 +1603,8 @@ TEMPLATES: dict[str, dict] = {
 _TEMPLATE_GROUP: dict[str, str] = {
     # Assessment & scrutiny
     "notice_142_1": "Assessment", "notice_143_2": "Assessment", "show_cause": "Assessment",
-    "notice_156": "Assessment", "order_154": "Assessment",
+    "notice_156": "Assessment", "order_154": "Assessment", "notice_139_9": "Assessment",
+    "order_142_2A": "Assessment", "sc_144": "Assessment", "order_155": "Assessment",
     # Reassessment & search
     "notice_148A": "Reassessment", "order_148A": "Reassessment", "notice_148": "Reassessment",
     "sanction_151": "Reassessment", "approval_153D": "Reassessment",
@@ -1376,8 +1635,13 @@ _TEMPLATE_GROUP: dict[str, str] = {
     "order_oge": "Appeals & Revision",
     # Investigation
     "summons_131": "Investigation", "summons_131_1A": "Investigation", "notice_133_6": "Investigation",
+    "notice_133A": "Investigation", "statement_132_4": "Investigation",
+    "order_132_3": "Investigation", "note_appraisal": "Investigation",
     # I&CI / e-Verification
-    "notice_285BA5": "I&CI",
+    "notice_285BA5": "I&CI", "sc_271FA": "I&CI", "letter_everify": "I&CI",
+    "letter_dissemination": "I&CI",
+    # Prosecution
+    "sc_prosecution": "Prosecution", "sanction_279": "Prosecution",
     # Assessee side
     "reply_notice": "Assessee replies",
 }
