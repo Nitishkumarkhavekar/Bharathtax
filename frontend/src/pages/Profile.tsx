@@ -61,9 +61,8 @@ export default function ProfilePage() {
     <div className="space-y-4">
       {/* Header banner — full width */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-primary text-white shadow-md">
-        <div className="absolute inset-0 opacity-40 pointer-events-none" aria-hidden>
-          <div className="absolute -top-16 -right-12 size-56 rounded-full bg-sky-400/30 blur-3xl" />
-          <div className="absolute -bottom-20 -left-10 size-56 rounded-full bg-violet-400/20 blur-3xl" />
+        <div className="absolute inset-0 opacity-20 pointer-events-none" aria-hidden>
+          <div className="absolute -top-16 -right-12 size-56 rounded-full bg-white/40 blur-3xl" />
         </div>
         <div className="relative px-5 py-5 sm:px-7 sm:py-6 flex flex-wrap items-center gap-4">
           <div className="size-14 rounded-2xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center text-xl font-semibold uppercase">

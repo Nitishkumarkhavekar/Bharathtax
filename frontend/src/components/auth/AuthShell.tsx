@@ -62,7 +62,7 @@ export default function AuthShell({
         </div>
 
         <div className="w-full">
-          <div className="mx-auto max-w-[440px] bg-white rounded-2xl ring-1 ring-slate-200 shadow-xl shadow-slate-400/10 p-8">
+          <div className="mx-auto max-w-[440px] bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-[0_2px_24px_rgba(15,23,42,0.05)] p-8">
             {badge && (
               <div className="mb-3">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11.5px] font-semibold ring-1 ring-emerald-200">
