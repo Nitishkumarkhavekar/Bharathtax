@@ -53,6 +53,7 @@ def _patch_user_columns() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS workspace_profile VARCHAR(20)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS workspace_wings TEXT[]",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) NOT NULL DEFAULT 'en'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS digest_optout BOOLEAN NOT NULL DEFAULT FALSE",
         # Pin a chat to the top of the sidebar. Same idempotent boot-patch route.
         "ALTER TABLE chats ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT FALSE",
         # Internal read-only share link token.

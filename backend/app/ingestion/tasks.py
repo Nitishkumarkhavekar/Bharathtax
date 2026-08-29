@@ -52,6 +52,124 @@ celery_app.conf.beat_schedule = {
     },
 }
 
+# Weekly deadline digest — the retention hook. OFF by default; a deployment opts
+# in with WEEKLY_DIGEST_ENABLED=1 (so the shared/demo instance never emails real
+# officers unsolicited). Default: Monday 03:00 UTC.
+if os.getenv("WEEKLY_DIGEST_ENABLED", "0") == "1":
+    celery_app.conf.beat_schedule["weekly-digest"] = {
+        "task": "app.ingestion.tasks.weekly_digest",
+        "schedule": _crontab_from_str(os.getenv("WEEKLY_DIGEST_CRON", "0 3 * * 1")),
+    }
+
+
+def _send_html_email(to: str, subject: str, html: str) -> bool:
+    """Best-effort HTML email via the same SMTP env vars password-reset uses."""
+    import smtplib
+    from email.message import EmailMessage
+    host = os.getenv("SMTP_HOST")
+    if not host:
+        log.warning("SMTP not configured — digest to %s not sent", to)
+        return False
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user, pw = os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD")
+    sender = os.getenv("SMTP_FROM", user or "no-reply@bharattax.local")
+    msg = EmailMessage()
+    msg["Subject"], msg["From"], msg["To"] = subject, sender, to
+    msg.set_content("Your BharatTax weekly deadline digest — open the app to view your desk.")
+    msg.add_alternative(html, subtype="html")
+    try:
+        with smtplib.SMTP(host, port, timeout=20) as s:
+            s.starttls()
+            if user and pw:
+                s.login(user, pw)
+            s.send_message(msg)
+        return True
+    except Exception as e:  # noqa: BLE001
+        log.warning("digest email to %s failed: %s", to, e)
+        return False
+
+
+def _digest_html(name: str, wl: dict, app_url: str) -> str | None:
+    """Compose the digest HTML from a user's workload; None if nothing is due."""
+    s = wl.get("summary", {})
+    overdue, week = s.get("overdue", 0), s.get("due_7", 0)
+    if overdue == 0 and week == 0 and s.get("due_30", 0) == 0:
+        return None
+    rows = sorted((m for m in wl.get("matters", []) if m.get("next_due_date")),
+                  key=lambda m: m["next_due_date"])[:8]
+    def _row(m: dict) -> str:
+        from datetime import date
+        try:
+            d = date.fromisoformat(m["next_due_date"])
+            days = (d - date.today()).days
+            when = d.strftime("%d %b %Y")
+            tag = ("OVERDUE" if days < 0 else f"{days}d" if days <= 30 else "")
+            tone = "#b91c1c" if days < 0 else "#b45309" if days <= 7 else "#475569"
+        except Exception:
+            when, tag, tone = m.get("next_due_date", ""), "", "#475569"
+        label = (m.get("next_label") or "Deadline")
+        sec = f" · {m['next_section']}" if m.get("next_section") else ""
+        return (f'<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#0f172a">'
+                f'<b>{m.get("title","")}</b><div style="color:#64748b;font-size:12px">{label}{sec}</div></td>'
+                f'<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;text-align:right;color:{tone};white-space:nowrap">'
+                f'{when}{" · <b>"+tag+"</b>" if tag else ""}</td></tr>')
+    table = "".join(_row(m) for m in rows)
+    hdr = []
+    if overdue:
+        hdr.append(f'<span style="color:#b91c1c;font-weight:600">{overdue} overdue</span>')
+    if week:
+        hdr.append(f'<span style="color:#b45309;font-weight:600">{week} due this week</span>')
+    return f"""\
+<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto">
+  <div style="padding:20px 4px 12px"><span style="font-size:18px;font-weight:700;color:#173f70">BharatTax</span>
+    <span style="color:#64748b;font-size:12px"> · your week ahead</span></div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px">
+    <div style="font-size:15px;color:#0f172a">Hello {name},</div>
+    <div style="font-size:13.5px;color:#475569;margin-top:6px">On your desk: {" · ".join(hdr) or "upcoming deadlines"}.
+      Here's what needs you — don't let a case go time-barred.</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:14px">{table}</table>
+    <div style="margin-top:18px">
+      <a href="{app_url}/workspace" style="display:inline-block;background:#173f70;color:#fff;text-decoration:none;
+        font-weight:600;font-size:13.5px;padding:10px 18px;border-radius:10px">Open my desk →</a>
+    </div>
+  </div>
+  <div style="color:#94a3b8;font-size:11px;padding:12px 4px">You get this because you have upcoming deadlines in BharatTax.
+    Manage it in your profile.</div>
+</div>"""
+
+
+@celery_app.task
+def weekly_digest() -> dict:
+    """Email each active officer their upcoming deadlines. Opt-out honoured."""
+    from sqlalchemy import select
+    from app.core.db import SessionLocal
+    from app.models.org import User
+    from app.services import workspace as ws
+    app_url = os.getenv("APP_BASE_URL", "https://bharattax.wenvia.global")
+    db = SessionLocal()
+    sent = skipped = failed = 0
+    try:
+        users = list(db.scalars(select(User).where(
+            User.is_active.is_(True), User.email.isnot(None), User.digest_optout.is_(False))))
+        for u in users:
+            try:
+                wl = ws.workload(db, u.id)
+                html = _digest_html(u.full_name or u.username or "Officer", wl, app_url)
+                if not html:
+                    skipped += 1
+                    continue
+                if _send_html_email(u.email, "Your BharatTax week — deadlines ahead", html):
+                    sent += 1
+                else:
+                    failed += 1
+            except Exception as e:  # noqa: BLE001
+                failed += 1
+                log.warning("weekly_digest for user %s failed: %s", u.id, e)
+    finally:
+        db.close()
+    log.info("weekly_digest done: sent=%d skipped=%d failed=%d", sent, skipped, failed)
+    return {"sent": sent, "skipped": skipped, "failed": failed}
+
 
 # Every ITAT order is income-tax, so one broad catch-all query + doctypes:itat +
 # sortby:mostrecent (embedded in acquire._search) surfaces the recent tribunal
