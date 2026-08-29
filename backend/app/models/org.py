@@ -89,6 +89,8 @@ class User(Base):
     workspace_wings: Mapped[list[str] | None] = mapped_column(
         ARRAY(String).with_variant(JSON, "sqlite"), nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(10), default="en")
+    # Officer has opted OUT of the weekly deadline digest email (default: in).
+    digest_optout: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Self-service registrations land as 'pending' and cannot log in until an
     # admin moves them to 'approved'. 'rejected' is terminal.
