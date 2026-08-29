@@ -49,6 +49,7 @@ def _validate_ay(v: str | None) -> str | None:
 from app.api.deps import Principal, get_principal
 from app.core.db import get_db
 from app.services import limitation
+from app.services import watchlist as watch_svc
 from app.services import workspace as svc
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
@@ -616,6 +617,16 @@ def remove_watchlist(wl_id: int, p: Principal = Depends(get_principal),
                      db: Session = Depends(get_db)) -> None:
     if not svc.delete_watchlist(db, wl_id, p.user.id):
         raise HTTPException(404, "Not found")
+
+
+# ------------------------------------------------------------------ ruling alerts
+@router.get("/ruling-alerts")
+def ruling_alerts(p: Principal = Depends(get_principal),
+                  db: Session = Depends(get_db)) -> dict:
+    """Fresh case law on the sections THIS officer works on — auto-inferred from
+    their footprint (chat, cases, docket), with a wing-based fallback. Powers the
+    "fresh law for you" card on the chat landing. Read-only, safe to poll."""
+    return watch_svc.ruling_alerts_for_user(db, p.user, limit=6)
 
 
 # ------------------------------------------------------------------ collaboration

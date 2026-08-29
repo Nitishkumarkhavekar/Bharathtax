@@ -727,6 +727,16 @@ export interface WsWorkload {
   summary: { total_matters: number; open_deadlines: number; overdue: number; due_7: number; due_30: number };
   matters: WsWorkloadRow[];
 }
+export interface RulingAlert {
+  id: number; title: string; digest: string; source_url: string | null;
+  matched: string[]; date: string | null; fresh: boolean;
+}
+export interface RulingAlerts {
+  sections: string[];
+  source: "usage" | "function" | "none";
+  items: RulingAlert[];
+  fresh_count: number;
+}
 export interface WsNote {
   id: number;
   matter_id: number | null;
@@ -1279,6 +1289,7 @@ export const api = {
   wsReminders: (pendingOnly = true) =>
     req<WsReminder[]>(`/workspace/reminders?pending_only=${pendingOnly}`),
   wsWorkload: () => req<WsWorkload>("/workspace/workload"),
+  rulingAlerts: () => req<RulingAlerts>("/workspace/ruling-alerts"),
   wsDueReminders: () => req<WsReminder[]>("/workspace/reminders/due"),
   wsUpdateReminder: (id: number, body: { status?: string; title?: string; due_at?: string; notes?: string }) =>
     req<WsReminder>(`/workspace/reminders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),

@@ -19,6 +19,7 @@ import { toast } from "@/lib/toast";
 import { useAuth } from "../auth";
 import { resolveStarters } from "../lib/workspaceProfiles";
 import TodayBriefing from "@/components/TodayBriefing";
+import RulingAlerts from "@/components/RulingAlerts";
 import {
   ChatThread,
   ChatMessage,
@@ -845,6 +846,10 @@ function EmptyHero(props: {
           {/* Daily hook — what needs the officer today (deadlines), shown only
               when something is due. The reason to open BharatTax each morning. */}
           <TodayBriefing />
+          {/* Fresh law for you — newly ingested case law on the sections this
+              officer works on. The daily reason to return that ChatGPT/Taxmann
+              can't personalise; shown only when there's a match. */}
+          <RulingAlerts />
           {/* Logo mark — the BharatTax "h" mark from /favicon.png. White
               background lets the logo's own navy/orange/green show cleanly. */}
           <div className="flex justify-center">
