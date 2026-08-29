@@ -23,6 +23,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Calculators = lazy(() => import("./pages/Calculators"));
 const Templates = lazy(() => import("./pages/Templates"));
 const Watchlists = lazy(() => import("./pages/Watchlists"));
+const Library = lazy(() => import("./pages/Library"));
 const Reconcile = lazy(() => import("./pages/Reconcile"));
 const SharedChat = lazy(() => import("./pages/SharedChat"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -126,6 +127,7 @@ export default function App() {
       <Route path="/calculators" element={<NonAdminOnly><Calculators /></NonAdminOnly>} />
       <Route path="/templates" element={<NonAdminOnly><Templates /></NonAdminOnly>} />
       <Route path="/watchlists" element={<NonAdminOnly><Watchlists /></NonAdminOnly>} />
+      <Route path="/library" element={<NonAdminOnly><Library /></NonAdminOnly>} />
       <Route path="/reconcile" element={<NonAdminOnly><Reconcile /></NonAdminOnly>} />
       {/* Read-only shared chat — any signed-in user with the link can view. */}
       <Route path="/shared/:shareId" element={<Protected raw><SharedChat /></Protected>} />

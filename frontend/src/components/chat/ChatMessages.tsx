@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, BookOpen, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BookOpen, Bookmark, BookmarkCheck, Brain, Check, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, Globe, Image as ImageIcon, Languages, Loader2, Pencil, RotateCcw, Square, Sparkles, ThumbsDown, ThumbsUp, User2, Volume2 } from "lucide-react";
 import { StarRating } from "../ui/StarRating";
 import { Markdown, copyMarkdownRich } from "@/lib/markdown";
 import { ChatMessage } from "@/lib/chatStore";
@@ -855,6 +855,11 @@ function Message({
               onRegenerate={onRegenerate}
             />
             <LanguageMenu current={xlate?.lang ?? "English"} busy={xbusy} onPick={translateTo} />
+            {/* Save the answer into My Library — the switching-cost hook. Not on
+                refusals (nothing worth keeping there). */}
+            {!isRefusal && (
+              <SaveAnswerButton question={question} answer={msg.content} citations={msg.citations} />
+            )}
             {/* Feedback + rating on every real answer, including web-sourced
                 ones. Only genuine refusals hide it because there's nothing
                 to rate there. */}
@@ -917,6 +922,57 @@ function MessageActions({
         </button>
       )}
     </div>
+  );
+}
+
+// Save an answer into My Library. A stable ref (hash of question+answer) makes
+// re-saving idempotent server-side. Sections come from the answer's citations
+// so a saved answer also sharpens the ruling watchlist.
+function _hashRef(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return "ans:" + h.toString(36);
+}
+function SaveAnswerButton({
+  question, answer, citations,
+}: {
+  question?: string;
+  answer: string;
+  citations?: { section_number?: string | null }[];
+}) {
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const btn =
+    "inline-flex items-center justify-center size-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors";
+  async function save() {
+    if (saved || busy) return;
+    setBusy(true);
+    try {
+      const sections = Array.from(new Set(
+        (citations || []).map((c) => (c.section_number || "").trim()).filter(Boolean))) as string[];
+      const q = (question || "").trim();
+      await api.librarySave({
+        kind: "answer",
+        title: q ? q.slice(0, 160) : "Saved answer",
+        content: answer,
+        sections,
+        ref_id: _hashRef(q + "|" + (answer || "").slice(0, 200)),
+      });
+      setSaved(true);
+      toast.success("Saved to Library");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not save to Library.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button onClick={save} disabled={busy}
+      className={cn(btn, saved && "text-primary bg-primary/10 hover:text-primary")}
+      title={saved ? "Saved to Library" : "Save to Library"}
+      aria-label="Save answer to Library">
+      {saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+    </button>
   );
 }
 

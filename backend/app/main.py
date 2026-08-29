@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin, personalization, drafting, contact
+from app.api.routes import library
 from app.api.routes import assessment
 from app.api.routes import workspace
 from app.api.routes import support as support_routes
@@ -150,6 +151,9 @@ app.include_router(workspace.router)
 # Officer drafting suite (notices/orders). Authenticated; a dedicated "drafting"
 # entitlement can be added to require_feature later.
 app.include_router(drafting.router)
+# My Library — an officer's saved answers / rulings / drafts. Authenticated;
+# switching-cost layer, available to any signed-in user.
+app.include_router(library.router)
 app.include_router(contact.router)
 # Auto-update feed for the packaged desktop app. Unauthenticated on purpose —
 # electron-updater cannot carry a JWT and the artefacts already live behind

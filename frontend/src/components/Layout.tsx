@@ -19,6 +19,7 @@ import {
   HelpCircle,
   UserCircle2,
   PanelLeft,
+  BookMarked,
 } from "lucide-react";
 import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
@@ -51,6 +52,7 @@ const NAV: {
   { to: "/calculators", label: "Calculators", icon: Calculator, tone: "primary", hint: "Interest & tax", group: "tools" },
   { to: "/templates", label: "Templates", icon: FileText, tone: "amber", hint: "Reusable drafts", group: "tools" },
   { to: "/watchlists", label: "Watchlists", icon: Bookmark, tone: "emerald", hint: "Track sections & rulings", group: "tools" },
+  { to: "/library", label: "Library", icon: BookMarked, tone: "amber", hint: "Your saved answers & rulings", group: "tools" },
   { to: "/reconcile", label: "Reconcile", icon: Scale, tone: "primary", hint: "AIS / 26AS matching", group: "tools" },
   { to: "/profile", label: "Profile", icon: UserCircle2, tone: "indigo", hint: "Account settings" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, roles: ["super_admin", "wing_admin"], tone: "slate", hint: "Console" },

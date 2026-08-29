@@ -737,6 +737,26 @@ export interface RulingAlerts {
   items: RulingAlert[];
   fresh_count: number;
 }
+export type SavedKind = "answer" | "ruling" | "draft" | "note";
+export interface LibraryItem {
+  id: number;
+  kind: SavedKind;
+  title: string;
+  content: string;
+  source_url: string | null;
+  sections: string[];
+  ref_id: string | null;
+  created_at: string | null;
+}
+export interface SaveItemBody {
+  kind: SavedKind;
+  title?: string;
+  content?: string;
+  source_url?: string | null;
+  sections?: string[];
+  ref_id?: string | null;
+  meta?: Record<string, unknown>;
+}
 export interface WsNote {
   id: number;
   matter_id: number | null;
@@ -1290,6 +1310,16 @@ export const api = {
     req<WsReminder[]>(`/workspace/reminders?pending_only=${pendingOnly}`),
   wsWorkload: () => req<WsWorkload>("/workspace/workload"),
   rulingAlerts: () => req<RulingAlerts>("/workspace/ruling-alerts"),
+  // My Library — saved answers / rulings / drafts.
+  libraryList: (kind?: SavedKind) =>
+    req<LibraryItem[]>(`/library${kind ? `?kind=${kind}` : ""}`),
+  librarySavedRefs: (kind?: SavedKind) =>
+    req<string[]>(`/library/refs${kind ? `?kind=${kind}` : ""}`),
+  librarySave: (body: SaveItemBody) =>
+    req<LibraryItem>("/library", { method: "POST", body: JSON.stringify(body) }),
+  libraryDelete: (id: number) => req<void>(`/library/${id}`, { method: "DELETE" }),
+  libraryUnsaveRef: (kind: SavedKind, refId: string) =>
+    req<void>(`/library/by-ref/${kind}/${encodeURIComponent(refId)}`, { method: "DELETE" }),
   wsDueReminders: () => req<WsReminder[]>("/workspace/reminders/due"),
   wsUpdateReminder: (id: number, body: { status?: string; title?: string; due_at?: string; notes?: string }) =>
     req<WsReminder>(`/workspace/reminders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
