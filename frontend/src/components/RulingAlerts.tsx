@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Scale, ArrowRight, X } from "lucide-react";
-import { api, RulingAlerts as TRulingAlerts } from "../api";
+import { Scale, ArrowRight, X, Bookmark, BookmarkCheck } from "lucide-react";
+import { api, RulingAlerts as TRulingAlerts, RulingAlert } from "../api";
+import { toast } from "@/lib/toast";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -24,11 +25,36 @@ export default function RulingAlerts() {
     try { return localStorage.getItem(dayKey) === "1"; } catch { return false; }
   });
 
+  const [saved, setSaved] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     let alive = true;
     api.rulingAlerts().then((d) => { if (alive) setData(d); }).catch(() => {});
+    api.librarySavedRefs("ruling").then((refs) => { if (alive) setSaved(new Set(refs)); }).catch(() => {});
     return () => { alive = false; };
   }, []);
+
+  const refOf = (it: RulingAlert) => "corpus:" + it.id;
+  const toggleSave = async (it: RulingAlert) => {
+    const ref = refOf(it);
+    const isSaved = saved.has(ref);
+    // optimistic
+    setSaved((s) => { const n = new Set(s); isSaved ? n.delete(ref) : n.add(ref); return n; });
+    try {
+      if (isSaved) {
+        await api.libraryUnsaveRef("ruling", ref);
+      } else {
+        await api.librarySave({
+          kind: "ruling", title: it.title, content: it.digest,
+          source_url: it.source_url, sections: it.matched, ref_id: ref,
+        });
+        toast.success("Saved to Library");
+      }
+    } catch (e: any) {
+      setSaved((s) => { const n = new Set(s); isSaved ? n.add(ref) : n.delete(ref); return n; });  // revert
+      toast.error(e?.message || "Could not update Library.");
+    }
+  };
 
   if (dismissed || !data || data.items.length === 0) return null;
 
@@ -69,10 +95,12 @@ export default function RulingAlerts() {
 
       {/* rulings */}
       <ul className="divide-y divide-slate-100">
-        {items.map((it) => (
-          <li key={it.id}>
+        {items.map((it) => {
+          const isSaved = saved.has(refOf(it));
+          return (
+          <li key={it.id} className="relative">
             <a href={it.source_url ?? undefined} target="_blank" rel="noreferrer"
-              className="block px-4 py-2.5 hover:bg-slate-50 transition-colors">
+              className="block px-4 py-2.5 pr-11 hover:bg-slate-50 transition-colors">
               <div className="flex items-center gap-2">
                 <span className="text-[12.5px] font-semibold text-slate-800 truncate">{it.title}</span>
                 {it.fresh && (
@@ -92,8 +120,17 @@ export default function RulingAlerts() {
                 {it.date && <span className="ml-auto tabular-nums text-slate-400">{fmtDate(it.date)}</span>}
               </div>
             </a>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSave(it); }}
+              title={isSaved ? "Saved — remove from Library" : "Save to Library"}
+              aria-label={isSaved ? "Remove from Library" : "Save to Library"}
+              className={"absolute top-2.5 right-2.5 p-1.5 rounded-md transition-colors " +
+                (isSaved ? "text-primary hover:bg-primary/10" : "text-slate-300 hover:text-slate-600 hover:bg-slate-100")}>
+              {isSaved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+            </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {more > 0 && (

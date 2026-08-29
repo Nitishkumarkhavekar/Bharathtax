@@ -34,6 +34,7 @@ from app.models.appeal import AppealCase
 from app.models.assessment import AssessmentCase
 from app.models.chat import ChatMessage
 from app.models.corpus import CorpusDocument
+from app.models.library import SavedItem
 from app.models.workspace import Deadline, Demand, StickyNote
 from app.core.profiles import WORKSPACE_PROFILE_KEYS
 
@@ -150,6 +151,16 @@ def infer_user_sections(db: Session, user, *, limit: int = _MAX_SECTIONS) -> dic
     ):
         for s in _sections_from_field(sec):
             weights[s] += 1
+
+    # 4. rulings the officer saved to their Library — an explicit "this matters
+    # to me" signal; use the sections we already stamped on the saved item.
+    for secs in db.scalars(
+        select(SavedItem.sections).where(
+            SavedItem.user_id == uid, SavedItem.kind == "ruling",
+            SavedItem.sections.isnot(None))
+    ):
+        for s in (secs or []):
+            weights[s] += 2
 
     if weights:
         top = [s for s, _ in weights.most_common(limit)]
