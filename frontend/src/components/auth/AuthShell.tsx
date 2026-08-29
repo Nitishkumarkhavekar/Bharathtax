@@ -15,22 +15,26 @@ export default function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen w-full bt-marketing-bg text-slate-900 antialiased">
-      <div className="mx-auto max-w-6xl px-6 h-28 flex items-center">
+    <div className="min-h-screen flex flex-col w-full bt-marketing-bg text-slate-900 antialiased">
+      <header className="shrink-0 mx-auto w-full max-w-6xl px-6 h-24 flex items-center">
         <Link to="/" className="flex items-center">
           <img
             src="/bharattax-logo.png"
             alt="BharatTax"
-            className="h-20 w-auto select-none mix-blend-multiply"
+            className="h-16 w-auto select-none mix-blend-multiply"
             draggable={false}
           />
         </Link>
         <div className="ml-auto text-[13px] text-slate-600">
           <Link to="/" className="hover:text-slate-900">← Back to home</Link>
         </div>
-      </div>
+      </header>
 
-      <div className="mx-auto max-w-6xl px-6 pt-6 pb-16 grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
+      {/* flex-1 + items-center centres the form in the space below the header,
+          so small content never forces a scrollbar; it only scrolls if the form
+          genuinely can't fit a very short viewport. */}
+      <main className="flex-1 flex items-center px-6 py-6">
+      <div className="mx-auto w-full max-w-6xl grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
         <div className="hidden lg:block max-w-lg">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[12px] font-semibold ring-1 ring-primary/20">
             <Sparkles className="size-3.5" /> AI-Powered Tax Research & Drafting
@@ -75,6 +79,7 @@ export default function AuthShell({
           </div>
         </div>
       </div>
+      </main>
     </div>
   );
 }
