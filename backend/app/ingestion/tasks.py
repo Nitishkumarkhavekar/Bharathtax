@@ -255,6 +255,17 @@ def daily_case_law_update() -> dict:
         except Exception as e:  # noqa: BLE001  (one bad query must not abort the sweep)
             log.warning("daily_case_law_update: query %r failed: %s", q, str(e)[:150])
     total["approx_billable_pages"] = total["search_pages"] + total["docs_fetched"]
+
+    # Backfill sections_cited on the rows just ingested (they land with it NULL),
+    # so today's fresh judgments are immediately matchable by the ruling
+    # watchlist / "every case on s.68". Idempotent — touches only NULL rows.
+    if total["ingested"]:
+        try:
+            from app.ingestion.pipeline import backfill_section_cites
+            backfill_section_cites()
+        except Exception as e:  # noqa: BLE001  (backfill must not fail the ingest)
+            log.warning("daily_case_law_update: section backfill failed: %s", str(e)[:150])
+
     log.info("daily_case_law_update DONE %s (window %s..%s)", total, fromdate, todate)
     return total
 
