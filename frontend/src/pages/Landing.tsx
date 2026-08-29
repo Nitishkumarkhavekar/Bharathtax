@@ -21,6 +21,7 @@ import {
   CalendarClock,
   Bell,
   StickyNote,
+  BookMarked,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
@@ -330,12 +331,14 @@ function Features() {
 // ============================================================== Daily workspace
 function WorkspaceFeatures() {
   const cards = [
+    { icon: <Sparkles className="size-5" />, title: "Fresh law, for you", desc: "BharatTax learns the sections you actually work on — from your questions, cases and diary — and surfaces new ITAT and court rulings on exactly those, the morning they land. No search, no setup. The one thing a generic chatbot can't do." },
     { icon: <CalendarClock className="size-5" />, title: "Limitation calendar", desc: "Enter one trigger date; every statutory deadline — §153 time-barring, §149 reopening, §263/264 revision, the §144C DRP clock, §275 penalty — is computed, section-cited and dropped onto your calendar." },
+    { icon: <Users className="size-5" />, title: "Tuned to you, not just your wing", desc: "Pick your function — AO, CIT(A), DRP, TPO, Investigation, I&CI, Recovery, Exemptions or CA — and the whole desk re-arranges around it. Then it sharpens as you work: the more you use it, the more it's tuned to your sections." },
+    { icon: <BookMarked className="size-5" />, title: "Your library", desc: "Save any grounded answer or ruling to your own library in one click — always at hand, and every save quietly sharpens the fresh-law feed above." },
     { icon: <Bell className="size-5" />, title: "Reminders & notifications", desc: "A notification bell surfaces due reminders the moment they fire, with escalating nudges — so nothing goes time-barred on your watch." },
-    { icon: <Users className="size-5" />, title: "Tailored to your wing", desc: "Pick your function — AO, CIT(A), DRP, TPO, Investigation, I&CI, Recovery, Exemptions or CA — and your dashboard, sidebar, calculators and templates re-arrange around the work you actually do." },
     { icon: <Calculator className="size-5" />, title: "Statutory calculators", desc: "Interest (234A/B/C, 220(2)), TDS defaults (201(1A)/234E), 115BBE, slab & 87A, capital gains, penalty (270A/271AAC), recovery instalments, peak credit and ALP benchmarking — each with the workings shown." },
     { icon: <Scale className="size-5" />, title: "Reconciliation & SFT scan", desc: "Match 26AS against AIS or the books and flag genuine mismatches — plus a Rule 114E high-value scan that ranks and flags SFT/AIS transactions by PAN." },
-    { icon: <StickyNote className="size-5" />, title: "36 wing templates", desc: "Ready-made notices, orders and applications grouped by wing — assessment, penalty, recovery, exemptions, revision, prosecution, investigation, TP and DRP — plus matters, sticky notes and matter-sharing." },
+    { icon: <StickyNote className="size-5" />, title: "77 wing templates", desc: "Ready-made notices, orders and applications grouped by wing — assessment, penalty, recovery, exemptions, revision, prosecution, investigation, TP and DRP — plus matters, sticky notes and matter-sharing." },
   ];
   return (
     <section className="bg-slate-50/60 border-y border-slate-100">
@@ -343,7 +346,7 @@ function WorkspaceFeatures() {
         <div className="text-center max-w-2xl mx-auto">
           <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold">Your daily workspace</div>
           <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">Not just a chatbot — your desk.</h2>
-          <p className="mt-3 text-slate-600">BharatTax organises your working life around the dates that matter — and tailors the whole desk to your wing: matters, deadlines, reminders, a suite of calculators, reconciliation and a wing-wise template library, in one place.</p>
+          <p className="mt-3 text-slate-600">BharatTax organises your working life around the dates that matter — and learns the sections you work on, so fresh case law and the whole desk arrange themselves around <em>your</em> work: matters, deadlines, reminders, calculators, reconciliation, a wing-wise template library and your own saved collection, in one place.</p>
         </div>
         <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map((c, i) => {
