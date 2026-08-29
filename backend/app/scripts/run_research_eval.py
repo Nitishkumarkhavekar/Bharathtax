@@ -81,7 +81,7 @@ def score_case(gold: dict, text: str, meta: dict) -> dict:
     }
 
 
-def run(golden_path: str) -> dict:
+def run(golden_path: str, delay: float = 4.0) -> dict:
     from app.core.db import SessionLocal
     from app.services import multi_agent as _ma
 
@@ -91,7 +91,9 @@ def run(golden_path: str) -> dict:
     db = SessionLocal()
     rows, passed = [], 0
     try:
-        for c in cases:
+        for i, c in enumerate(cases):
+            if i and delay:
+                time.sleep(delay)  # pace to avoid rate-limiting the primary model
             t0 = time.time()
             text, meta = "", {}
             for ev in _ma.answer_multi_agent_stream(db, c["question"], user_id=0, chat_id=None):
@@ -130,10 +132,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--golden", default=DEFAULT_GOLDEN)
     ap.add_argument("--json", dest="out", default=None, help="write full results to this file")
+    ap.add_argument("--delay", type=float, default=4.0,
+                    help="seconds between questions (paces the primary model; 0 to disable)")
     args = ap.parse_args()
 
     sys.stderr.write("=" * 70 + "\n RESEARCH-ACCURACY EVAL\n" + "=" * 70 + "\n")
-    res = run(args.golden)
+    res = run(args.golden, delay=args.delay)
     sys.stderr.write("-" * 70 + "\n")
     sys.stderr.write(f" ACCURACY: {res['passed']}/{res['total']} = {res['accuracy_pct']}%"
                      f"   (section-citation: {res['cite_accuracy_pct']}%)\n")
