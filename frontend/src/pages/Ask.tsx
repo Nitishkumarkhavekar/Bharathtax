@@ -18,6 +18,7 @@ import { ApiError, api } from "../api";
 import { toast } from "@/lib/toast";
 import { useAuth } from "../auth";
 import { resolveStarters } from "../lib/workspaceProfiles";
+import TodayBriefing from "@/components/TodayBriefing";
 import {
   ChatThread,
   ChatMessage,
@@ -841,6 +842,9 @@ function EmptyHero(props: {
     <div className="relative flex-1 min-h-0 overflow-y-auto chat-scrollbar">
       <div className="min-h-full flex items-center justify-center px-4 py-10 sm:py-16">
         <div className="w-full max-w-3xl space-y-8 animate-fade-up">
+          {/* Daily hook — what needs the officer today (deadlines), shown only
+              when something is due. The reason to open BharatTax each morning. */}
+          <TodayBriefing />
           {/* Logo mark — the BharatTax "h" mark from /favicon.png. White
               background lets the logo's own navy/orange/green show cleanly. */}
           <div className="flex justify-center">
