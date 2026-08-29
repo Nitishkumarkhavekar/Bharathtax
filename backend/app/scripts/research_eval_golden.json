@@ -1,0 +1,64 @@
+{
+  "_note": "Golden research-eval set. Each case: the correct SECTION(S) the answer must cite, KEY facts it should mention, terms it must NOT contain, and whether it should REFUSE (out-of-scope). Seed set — a CA should expand to ~100 and verify every `cite`/`mention` against current law before this number is quoted externally.",
+  "cases": [
+    { "id": "80c_max", "topic": "factual",
+      "question": "What is the maximum deduction available under section 80C, and give three eligible investments?",
+      "cite": ["80C"], "mention": ["1,50,000"], "forbid": [], "refuse": false },
+
+    { "id": "87a_new_regime", "topic": "factual",
+      "question": "What is the section 87A rebate under the NEW tax regime for AY 2025-26 — the income ceiling and the maximum rebate?",
+      "cite": ["87A"], "mention": ["7,00,000", "25,000"], "forbid": [], "refuse": false },
+
+    { "id": "68_test", "topic": "assessment",
+      "question": "When is an addition under section 68 for an unexplained cash credit sustainable? What must the assessee establish?",
+      "cite": ["68"], "mention": ["identity", "creditworthiness", "genuineness"], "forbid": [], "refuse": false },
+
+    { "id": "270a_rates", "topic": "penalty",
+      "question": "What are the penalty rates under section 270A for under-reporting and for mis-reporting of income?",
+      "cite": ["270A"], "mention": ["50%", "200%"], "forbid": ["271(1)(c)"], "refuse": false },
+
+    { "id": "115bbe_rate", "topic": "assessment",
+      "question": "What is the rate of tax under section 115BBE on income assessed under sections 68 to 69D?",
+      "cite": ["115BBE"], "mention": ["60%"], "forbid": [], "refuse": false },
+
+    { "id": "234b_interest", "topic": "interest",
+      "question": "How is interest under section 234B computed, and at what rate?",
+      "cite": ["234B"], "mention": ["1%", "advance tax"], "forbid": [], "refuse": false },
+
+    { "id": "148a_procedure", "topic": "reassessment",
+      "question": "What is the procedure under section 148A before a notice under section 148 is issued?",
+      "cite": ["148A", "148"], "mention": ["show cause", "information"], "forbid": [], "refuse": false },
+
+    { "id": "54_exemption", "topic": "capital gains",
+      "question": "What are the conditions for exemption under section 54 on sale of a residential house?",
+      "cite": ["54"], "mention": ["residential", "capital gain"], "forbid": [], "refuse": false },
+
+    { "id": "194j_rate", "topic": "tds",
+      "question": "What is the TDS rate under section 194J on professional fees and on fees for technical services?",
+      "cite": ["194J"], "mention": ["10%", "2%"], "forbid": [], "refuse": false },
+
+    { "id": "44ab_threshold", "topic": "audit",
+      "question": "What is the turnover threshold for a compulsory tax audit under section 44AB for a business?",
+      "cite": ["44AB"], "mention": ["1 crore"], "forbid": [], "refuse": false },
+
+    { "id": "220_2_interest", "topic": "recovery",
+      "question": "At what rate is interest charged under section 220(2) on an outstanding demand, and from when?",
+      "cite": ["220(2)"], "mention": ["1%"], "forbid": [], "refuse": false },
+
+    { "id": "271aac", "topic": "penalty",
+      "question": "What penalty is attracted under section 271AAC on income assessed under sections 68 to 69D?",
+      "cite": ["271AAC"], "mention": ["10%"], "forbid": [], "refuse": false },
+
+    { "id": "249_4_condonation", "topic": "appeals",
+      "question": "Explain condonation of delay in filing an appeal before the CIT(A) under section 249.",
+      "cite": ["249"], "mention": ["delay"], "forbid": [], "refuse": false },
+
+    { "id": "40aia_disallowance", "topic": "tds",
+      "question": "What is the disallowance under section 40(a)(ia) for non-deduction of TDS, and to what extent?",
+      "cite": ["40(a)(ia)"], "mention": ["30%"], "forbid": [], "refuse": false },
+
+    { "id": "out_of_scope_geo", "topic": "refuse",
+      "question": "What is the capital of France and what is the weather like there today?",
+      "cite": [], "mention": [], "forbid": ["Paris"], "refuse": true }
+  ]
+}
