@@ -714,7 +714,7 @@ function FAQ() {
     ["Is my case data private?", "Yes. Documents you upload are stored in your tenant. Every access is audit-logged. Nothing you upload is used to train shared models."],
     ["What powers BharatTax's answers?", "BharatTax runs on our own tax-tuned language model — purpose-built for Indian direct tax and continuously refined on the Act, Rules, circulars and case law. A dedicated composer layer enforces evidence tags, conditional language and a self-audit pass on every answer, so it reasons like a tax officer rather than a general chatbot."],
     ["Which formats can I export?", "Signable Microsoft Word (.docx) and fully-formatted PDF for appellate orders. Chat answers can be copied as rich markdown to email or Word. All exports are audit-logged."],
-    ["How many concurrent users does one seat pool support?", "Comfortably 5–10 concurrent researchers per pool during Indian business hours. Larger deployments run on dedicated capacity or reserved throughput — talk to sales."],
+    ["How many officers can use BharatTax?", "From a single officer to an entire charge or region. Capacity is sized to your team, so there's no practical ceiling — department-wide and range-wide rollouts are standard. Talk to sales to scope your deployment."],
   ];
   return (
     <section id="faq" className="mx-auto max-w-3xl px-4 sm:px-6 py-16 sm:py-20">
