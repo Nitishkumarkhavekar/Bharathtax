@@ -295,7 +295,7 @@ function Features() {
     { icon: <Users className="size-5" />, title: "Right-shaped for who's asking", desc: "A CA gets a computation framework. An AO gets verification points. A founder gets 'what to do, what to keep'. Same evidence, different depth." },
     { icon: <ShieldCheck className="size-5" />, title: "Self-audited answers", desc: "Post-generation checks catch reverse-engineered figures, initials-only case names, and over-confident claims — and prepend a visible warning before the answer." },
     { icon: <Gavel className="size-5" />, title: "Six-module appeal drafting", desc: "Facts, deficiencies, scope, compliance, findings and the order — each generated, cited, and editable before you sign the .docx." },
-    { icon: <Brain className="size-5" />, title: "Multi-agent research", desc: "A planner scopes the ask, a researcher pulls statute and case law from IndianKanoon, a composer assembles the answer under a strict evidence discipline." },
+    { icon: <Brain className="size-5" />, title: "Multi-agent research", desc: "A planner scopes the ask, a researcher pulls statute and live case law, a composer assembles the answer under a strict evidence discipline." },
   ];
   return (
     <section id="features" className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
@@ -533,7 +533,7 @@ function Stats() {
     { icon: <Scale className="size-4" />, title: "Income-tax Act, 1961", desc: "Every section, sub-clause and amendment — including Finance Act edits up to the latest year." },
     { icon: <BookOpen className="size-4" />, title: "Income-tax Rules, 1962", desc: "Full rules text with cross-references to the parent sections and CBDT circulars they operationalise." },
     { icon: <FileText className="size-4" />, title: "CBDT circulars & notifications", desc: "Numbered circulars, notifications, instructions and press releases — all citable by number and date." },
-    { icon: <Gavel className="size-4" />, title: "Live case law", desc: "Supreme Court, High Courts and ITAT judgments pulled from IndianKanoon — with the full reporter citation, not a made-up initials-only name." },
+    { icon: <Gavel className="size-4" />, title: "Live case law", desc: "Supreme Court, High Courts and ITAT judgments — with the full reporter citation, not a made-up initials-only name." },
     { icon: <Brain className="size-4" />, title: "GST & Companies Act cross-refs", desc: "Cross-reference into CGST notifications and MCA filings for the questions that straddle direct and indirect tax." },
     { icon: <ShieldCheck className="size-4" />, title: "Your uploaded documents", desc: "Sale deeds, assessment notices, appellate orders, client contracts — OCR'd, indexed, and answered from verbatim." },
   ];
@@ -708,7 +708,7 @@ function Pricing() {
 // ============================================================== FAQ
 function FAQ() {
   const items = [
-    ["Where do the citations come from?", "BharatTax indexes the Income-tax Act, Rules, CBDT circulars, GST notifications and MCA filings, and pulls live case law from IndianKanoon (Supreme Court, High Courts, ITAT). Every answer is anchored to the exact section, clause or judgment, and the source is one click away."],
+    ["Where do the citations come from?", "BharatTax indexes the Income-tax Act, Rules, CBDT circulars, GST notifications and MCA filings, and pulls live case law from the Supreme Court, High Courts and ITAT. Every answer is anchored to the exact section, clause or judgment, and the source is one click away."],
     ["What kinds of documents can I upload?", "Sale deeds (English and bilingual), assessment notices, show-cause letters, appellate orders, CBDT circulars, contracts, judgments. BharatTax OCRs image PDFs, extracts verbatim facts, and answers only from what's actually in the file — not from what should be there."],
     ["What happens if a critical figure is missing from my document?", "BharatTax refuses to invent it. If a Section 50C question depends on the Stamp Duty Value and the deed doesn't state it, you'll get a short 'please provide SDV or upload the valuation certificate' response — never a reverse-engineered guess dressed up as a conclusion."],
     ["Is my case data private?", "Yes. Documents you upload are stored in your tenant. Every access is audit-logged. Nothing you upload is used to train shared models."],
