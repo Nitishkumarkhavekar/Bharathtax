@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,12 +31,13 @@ class SavedItem(Base):
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     # Top-level IT-Act sections this item is about — displayed, and fed back
     # into the ruling-watchlist topic inference (a saved ruling sharpens "for you").
-    sections: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    sections: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String).with_variant(JSON, "sqlite"), nullable=True)
     # The id of the thing it was saved FROM (a chat message id, a corpus doc id)
     # so the same source can't be saved twice and the UI can render a saved/unsaved
     # toggle. NULL for items with no natural source (a free note).
     ref_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    meta: Mapped[dict] = mapped_column(JSONB, default=dict)
+    meta: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (

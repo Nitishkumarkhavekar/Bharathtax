@@ -83,3 +83,68 @@ def test_fresh_alerts_filters_dedups_and_flags_fresh():
 
 def test_fresh_alerts_empty_when_no_sections():
     assert w.fresh_ruling_alerts(_StubDB([]), []) == []
+
+
+# ---- infer_user_sections against a real (SQLite) session -----------------
+def _mk_user(db, user_factory, uid=1, profile="officer"):
+    u = user_factory(uid, email=f"u{uid}@x.com")
+    u.workspace_profile = profile
+    db.commit()
+    return u
+
+
+def test_infer_from_footprint_weights_and_ranks(db, user_factory):
+    from app.models.chat import ChatMessage
+    from app.models.assessment import AssessmentCase
+    from app.models.workspace import Deadline
+    from app.services import library as lib
+
+    u = _mk_user(db, user_factory)
+    # chat questions (weight 1 each)
+    db.add(ChatMessage(chat_id=1, user_id=u.id, role="user", content="What about section 68 additions?"))
+    db.add(ChatMessage(chat_id=1, user_id=u.id, role="user", content="Explain u/s 68 creditworthiness"))
+    # an assistant turn must NOT contribute
+    db.add(ChatMessage(chat_id=1, user_id=u.id, role="assistant", content="Under section 271AAC the penalty..."))
+    # a drafted case (weight 3)
+    db.add(AssessmentCase(slug="s1", owner_user_id=u.id, wing_id=1, title="X", section="147"))
+    # a docket deadline (weight 2)
+    from datetime import date
+    db.add(Deadline(matter_id=1, user_id=u.id, label="d", section_ref="Sec. 148A", due_date=date(2026, 1, 1)))
+    db.commit()
+    # a saved ruling (weight 2)
+    lib.save_item(db, u.id, kind="ruling", title="R", content="d", sections=["68"], ref_id="corpus:1")
+
+    res = w.infer_user_sections(db, u)
+    assert res["source"] == "usage"
+    secs = res["sections"]
+    # 68 appears in 2 chats (2) + saved ruling (2) = 4 -> top
+    assert secs[0] == "68"
+    # every discovered section is present
+    assert {"68", "147", "148A"}.issubset(set(secs))
+    # the assistant-only 271AAC must NOT be inferred (we only read role='user')
+    assert "271AAC" not in secs
+
+
+def test_infer_falls_back_to_wing_when_no_footprint(db, user_factory):
+    u = _mk_user(db, user_factory, profile="tds")
+    res = w.infer_user_sections(db, u)
+    assert res["source"] == "function"
+    assert res["sections"] == w.WING_DEFAULT_SECTIONS["tds"][:12]
+
+
+def test_infer_none_when_no_footprint_and_no_wing(db, user_factory):
+    u = _mk_user(db, user_factory, profile="all")   # meta-profile -> no default
+    res = w.infer_user_sections(db, u)
+    assert res["source"] == "none"
+    assert res["sections"] == []
+
+
+def test_infer_is_user_scoped(db, user_factory):
+    from app.models.chat import ChatMessage
+    u1 = _mk_user(db, user_factory, uid=1)
+    u2 = _mk_user(db, user_factory, uid=2)
+    db.add(ChatMessage(chat_id=1, user_id=u1.id, role="user", content="section 92CA arm's length"))
+    db.commit()
+    # u2 has no footprint -> falls back to wing, never sees u1's 92CA
+    res2 = w.infer_user_sections(db, u2)
+    assert "92CA" not in res2["sections"]
