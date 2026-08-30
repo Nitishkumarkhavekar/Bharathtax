@@ -45,7 +45,11 @@ _MAX_ITERS = int(os.getenv("CHAT_AGENT_MAX_ITERS", "4"))
 _FALLBACK_MODELS = tuple(
     m.strip() for m in os.getenv(
         "CHAT_AGENT_FALLBACK_MODELS",
-        "gemini-flash-latest,gemini-pro-latest",
+        # Verified available on this project's Vertex gateway. gemini-pro-latest
+        # (404) and gemini-2.5-pro (400) are NOT available here — an invalid name
+        # wastes a whole fallback attempt on every 429, so keep this to models
+        # that actually resolve.
+        "gemini-flash-latest,gemini-2.5-flash,gemini-flash-lite-latest",
     ).split(",") if m.strip() and m.strip() != _MODEL
 )
 
