@@ -1009,14 +1009,48 @@ export interface DraftTemplate {
   wings?: string[];
   fields: DraftField[];
 }
+export interface DraftReviewEvent {
+  status: string;              // pending | approved | returned
+  drafter: string | null;
+  reviewer: string | null;
+  request_note: string;
+  review_remarks: string;
+  created_at: string | null;
+  resolved_at: string | null;
+}
+export interface DraftReviewInfo {
+  reviewer_user_id: number | null;
+  reviewer_name: string | null;
+  is_reviewer: boolean;        // viewer is the assigned reviewer, while in review
+  is_owner: boolean;
+  can_edit: boolean;
+  history: DraftReviewEvent[];
+}
 export interface DraftDoc {
   id: number;
   kind: string;
   title: string;
   inputs: Record<string, string>;
   content: string;
-  status: string;
+  status: string;              // draft | in_review | approved | returned | final
   created_at: string | null;
+  updated_at: string | null;
+  review?: DraftReviewInfo;
+}
+export interface Reviewer {
+  id: number;
+  full_name: string;
+  designation: string | null;
+  tier: string;                // field | range | commissioner | ""
+  is_senior: boolean;
+  same_office: boolean;
+}
+export interface ReviewInboxItem {
+  id: number;
+  kind: string;
+  title: string;
+  status: string;
+  drafter: string | null;
   updated_at: string | null;
 }
 export interface DraftListItem {
@@ -1065,6 +1099,16 @@ export const api = {
     req<DraftDoc>(`/drafts/${id}`, { method: "PUT", body: JSON.stringify(b) }),
   regenerateDraft: (id: number) => req<DraftDoc>(`/drafts/${id}/regenerate`, { method: "POST" }),
   deleteDraft: (id: number) => req<void>(`/drafts/${id}`, { method: "DELETE" }),
+  // Draft review & approval
+  draftReviewers: () => req<Reviewer[]>("/drafts/reviewers"),
+  draftReviewInbox: () => req<ReviewInboxItem[]>("/drafts/review-inbox"),
+  draftReviewInboxCount: () => req<{ count: number }>("/drafts/review-inbox/count"),
+  draftSendReview: (id: number, b: { reviewer_user_id: number; note?: string }) =>
+    req<DraftDoc>(`/drafts/${id}/send-review`, { method: "POST", body: JSON.stringify(b) }),
+  draftApprove: (id: number, remarks?: string) =>
+    req<DraftDoc>(`/drafts/${id}/approve`, { method: "POST", body: JSON.stringify({ remarks }) }),
+  draftReturn: (id: number, remarks?: string) =>
+    req<DraftDoc>(`/drafts/${id}/return`, { method: "POST", body: JSON.stringify({ remarks }) }),
 
   // --- license status (read-only; users no longer activate their own key) ---
   licenseStatus: () => req<LicenseStatus>("/auth/license/status"),
