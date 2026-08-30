@@ -712,9 +712,9 @@ function FAQ() {
     ["What kinds of documents can I upload?", "Sale deeds (English and bilingual), assessment notices, show-cause letters, appellate orders, CBDT circulars, contracts, judgments. BharatTax OCRs image PDFs, extracts verbatim facts, and answers only from what's actually in the file — not from what should be there."],
     ["What happens if a critical figure is missing from my document?", "BharatTax refuses to invent it. If a Section 50C question depends on the Stamp Duty Value and the deed doesn't state it, you'll get a short 'please provide SDV or upload the valuation certificate' response — never a reverse-engineered guess dressed up as a conclusion."],
     ["Is my case data private?", "Yes. Documents you upload are stored in your tenant. Every access is audit-logged. Nothing you upload is used to train shared models."],
-    ["Which models power BharatTax?", "Google Gemini via Vertex AI (currently gemini-flash-latest with a fallback chain to gemini-2.5-pro). A dedicated composer prompt enforces evidence tags, conditional language and a self-audit pass on every answer."],
+    ["What powers BharatTax's answers?", "BharatTax runs on our own tax-tuned language model — purpose-built for Indian direct tax and continuously refined on the Act, Rules, circulars and case law. A dedicated composer layer enforces evidence tags, conditional language and a self-audit pass on every answer, so it reasons like a tax officer rather than a general chatbot."],
     ["Which formats can I export?", "Signable Microsoft Word (.docx) and fully-formatted PDF for appellate orders. Chat answers can be copied as rich markdown to email or Word. All exports are audit-logged."],
-    ["How many concurrent users does one seat pool support?", "Comfortably 5–10 concurrent researchers per pool during Indian business hours. Larger deployments run on regional Vertex endpoints or reserved throughput — talk to sales."],
+    ["How many concurrent users does one seat pool support?", "Comfortably 5–10 concurrent researchers per pool during Indian business hours. Larger deployments run on dedicated capacity or reserved throughput — talk to sales."],
   ];
   return (
     <section id="faq" className="mx-auto max-w-3xl px-4 sm:px-6 py-16 sm:py-20">
