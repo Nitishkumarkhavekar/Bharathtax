@@ -145,8 +145,22 @@ function SidebarBody({
     primaryLabel = null;
   }
 
+  // Poll the "for my review" count so the Drafting nav badge stays live.
+  const [reviewCount, setReviewCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => api.draftReviewInboxCount()
+      .then((r) => { if (alive) setReviewCount(r.count); }).catch(() => {});
+    load();
+    const t = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
   const renderItem = (n: (typeof nav)[number]) => {
     const active = loc.pathname.startsWith(n.to);
+    // Drafts awaiting THIS officer's approval — a pull to review (and the reason
+    // a senior opens BharatTax). Shown as a count badge on the Drafting item.
+    const badge = n.to === "/drafting" && reviewCount > 0 ? reviewCount : 0;
     return (
       <Link
         key={n.to}
@@ -154,7 +168,7 @@ function SidebarBody({
         data-tour={n.to}
         onClick={onNavigate}
         title={collapsed ? n.label : undefined}
-        aria-label={n.label}
+        aria-label={badge ? `${n.label} (${badge} to review)` : n.label}
         className={cn(
           "group flex items-center rounded-lg text-[13.5px] transition-colors",
           collapsed ? "justify-center p-2" : "gap-2.5 px-2.5 py-[7px]",
@@ -163,8 +177,16 @@ function SidebarBody({
             : "text-slate-600 font-medium hover:bg-slate-100 hover:text-slate-900",
         )}
       >
-        <n.icon className={cn("size-[18px] shrink-0", active ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+        <span className={cn("relative shrink-0", collapsed && "inline-flex")}>
+          <n.icon className={cn("size-[18px]", active ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+          {badge > 0 && collapsed && (
+            <span className="absolute -top-1.5 -right-1.5 size-2 rounded-full bg-amber-500 ring-2 ring-white" />
+          )}
+        </span>
         {!collapsed && <span className="min-w-0 flex-1 truncate">{n.label}</span>}
+        {!collapsed && badge > 0 && (
+          <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10.5px] font-bold grid place-items-center tabular-nums">{badge}</span>
+        )}
       </Link>
     );
   };
