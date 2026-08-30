@@ -12,6 +12,7 @@ from app.models.support import SupportAttachment, SupportMessage, SupportTicket
 from app.models.desktop_session import DesktopSession
 from app.models.password_reset import PasswordResetToken
 from app.models.drafting import DraftDocument
+from app.models.draft_review import DraftReview
 from app.models.library import SavedItem
 from app.models.contact import ContactMessage
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
@@ -45,6 +46,7 @@ __all__ = [
     "DesktopSession",
     "PasswordResetToken",
     "DraftDocument",
+    "DraftReview",
     "SavedItem",
     "ContactMessage",
 ]

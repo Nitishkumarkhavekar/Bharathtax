@@ -28,6 +28,9 @@ from app.models.library import SavedItem
 from app.models.chat import ChatMessage
 from app.models.appeal import AppealCase
 from app.models.assessment import AssessmentCase
+from app.models.drafting import DraftDocument
+from app.models.draft_review import DraftReview
+from app.models.activity import AuditLog
 
 _TABLES = [
     User.__table__, Matter.__table__, Deadline.__table__, Reminder.__table__,
@@ -36,6 +39,7 @@ _TABLES = [
     UserSettings.__table__, UserMemory.__table__,
     SavedItem.__table__, ChatMessage.__table__,
     AppealCase.__table__, AssessmentCase.__table__,
+    DraftDocument.__table__, DraftReview.__table__, AuditLog.__table__,
 ]
 
 
