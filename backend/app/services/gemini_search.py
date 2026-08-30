@@ -24,11 +24,13 @@ _KEY = os.getenv("GEMINI_API_KEY", "").strip()
 # quota / availability errors so the officer still gets an answer.
 # `GEMINI_SEARCH_MODEL` sets the primary; `GEMINI_SEARCH_FALLBACK_MODELS`
 # (comma-separated) sets the failover chain tried in order on 404/429/5xx.
-_MODEL = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-pro")
+# gemini-2.5-pro (400) / gemini-pro-latest (404) are NOT available on this
+# project's Vertex gateway — default to models that actually resolve.
+_MODEL = os.getenv("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
 _FALLBACK_MODELS = tuple(
     m.strip() for m in os.getenv(
         "GEMINI_SEARCH_FALLBACK_MODELS",
-        "gemini-pro-latest,gemini-flash-latest,gemini-2.5-flash",
+        "gemini-flash-latest,gemini-flash-lite-latest",
     ).split(",") if m.strip() and m.strip() != _MODEL
 )
 _ENABLED = os.getenv("WEB_SEARCH_ENABLED", "1").lower() not in ("0", "false", "no", "")
