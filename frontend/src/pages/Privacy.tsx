@@ -16,7 +16,7 @@ const SECTIONS: { h: string; p: string[] }[] = [
     "Documents and case data you upload are stored within your organisation's tenant and are access-controlled to your wing. For departments that require it, the platform can be deployed so that data never leaves the department's own environment (the appeals workflow runs in a desktop application specifically to meet this requirement).",
   ]},
   { h: "5. AI processing", p: [
-    "Answering and drafting use grounded retrieval over primary legal sources plus a language model. Content sent for processing is used only to produce your result. On-demand features such as web search or translation call an external model only when you invoke them, and only with the text needed for that request.",
+    "Answering and drafting run on BharatTax's own tax-tuned model over grounded retrieval from primary legal sources; the content you send is used only to produce your result, never to train shared models. Certain on-demand features — such as web search or translation — may use a specialised third-party service, only when you invoke them, and only with the text needed for that request.",
   ]},
   { h: "6. Sharing", p: [
     "We share data only with service providers who help us run the platform (for example hosting), under confidentiality obligations, and where required by law. A chat you choose to share via an internal link is visible only to signed-in BharatTax users who hold the link.",
