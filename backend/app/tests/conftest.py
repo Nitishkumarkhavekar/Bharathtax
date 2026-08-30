@@ -24,12 +24,18 @@ from app.models.workspace import (
     Deadline, Demand, Matter, MatterShare, Reminder, StickyNote, Watchlist, WorkspaceTemplate,
 )
 from app.models.personalization import UserMemory, UserSettings
+from app.models.library import SavedItem
+from app.models.chat import ChatMessage
+from app.models.appeal import AppealCase
+from app.models.assessment import AssessmentCase
 
 _TABLES = [
     User.__table__, Matter.__table__, Deadline.__table__, Reminder.__table__,
     StickyNote.__table__, WorkspaceTemplate.__table__, Watchlist.__table__,
     MatterShare.__table__, Demand.__table__,
     UserSettings.__table__, UserMemory.__table__,
+    SavedItem.__table__, ChatMessage.__table__,
+    AppealCase.__table__, AssessmentCase.__table__,
 ]
 
 
