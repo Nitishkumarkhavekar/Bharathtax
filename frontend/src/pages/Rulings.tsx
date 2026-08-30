@@ -1338,7 +1338,7 @@ function WebSearchFallback({ query }: { query: string }) {
         <div className="text-[11.5px] uppercase tracking-wider font-semibold text-slate-500">
           Web summary
         </div>
-        <span className="text-[10.5px] text-slate-400 ml-auto">grounded via Google Search</span>
+        <span className="text-[10.5px] text-slate-400 ml-auto">grounded via live web search</span>
       </div>
       {busy && (
         <div className="flex items-center gap-2 text-[13px] text-slate-500 py-4 justify-center">
