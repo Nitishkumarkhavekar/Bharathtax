@@ -58,17 +58,28 @@ _THINKING_BUDGET = os.getenv("GEMINI_SEARCH_THINKING_BUDGET", "").strip()
 # returns — "economictimes.com" and "economictimes.indiatimes.com" both hit
 # "economictimes". Government (.gov.in/.nic.in) covers every dept & court portal.
 _DEFAULT_ALLOW = (
-    ".gov.in,.nic.in,indiankanoon,itatonline,taxmann,taxsutra,taxscan,"
+    ".gov.in,.nic.in,indiankanoon,itatonline,taxscan,"
     "barandbench,livelaw,scconline,economictimes,livemint,business-standard,"
     "financialexpress,thehindu,moneycontrol,prsindia"
 )
 _ALLOW = tuple(s.strip().lower() for s in
                os.getenv("WEB_SOURCE_ALLOWLIST", _DEFAULT_ALLOW).split(",") if s.strip())
 
+# Hard denylist: competitor publications we must NEVER surface in the source
+# chip list under any circumstances, even if their domain slips onto the
+# allowlist via a custom WEB_SOURCE_ALLOWLIST env. Overriding the denylist
+# requires WEB_SOURCE_DENYLIST=""; do not do this in production.
+_DEFAULT_DENY = "taxmann,taxsutra"
+_DENY = tuple(s.strip().lower() for s in
+              os.getenv("WEB_SOURCE_DENYLIST", _DEFAULT_DENY).split(",") if s.strip())
+
 
 def _reputable(domain_or_title: str) -> bool:
-    """True if the source domain is on the officer-grade allowlist."""
+    """True if the source domain is on the officer-grade allowlist AND not
+    on the competitor denylist. Denylist wins over allowlist."""
     d = (domain_or_title or "").lower()
+    if any(b in d for b in _DENY):
+        return False
     return any(a in d for a in _ALLOW)
 
 # Telemetry from the most recent web_answer() call, mirroring OpenAICompatLLM's
@@ -81,12 +92,28 @@ last_latency_ms: int | None = None
 # every single web-search call, so we keep it tight. Concrete instructions
 # (source preference, output style, no inline citation markers) survive.
 _SYS = (
-    "Indian income-tax assistant. You MUST call the google_search tool FIRST "
-    "for every question — even seemingly-common ones — then answer strictly "
-    "from what search returned. Prefer incometax.gov.in / incometaxindia.gov.in "
-    "/ indiankanoon / itatonline / taxmann / livelaw. Be precise on section "
-    "numbers, limits, dates, and AY. If search returned nothing usable, say so. "
-    "Never invent a citation.\n"
+    "Indian tax assistant covering the ENTIRE Indian tax stack — Income-tax "
+    "Act 1961 & Income-tax Act 2025, Rules, CBDT Circulars & Notifications, "
+    "Case-law (SC / HC / ITAT), AND the GST framework (CGST/SGST/IGST Acts, "
+    "GST Rules, CBIC Circulars & Notifications, GSTR forms). Also Wealth-Tax, "
+    "Black-Money Act, PMLA-tax overlap, DTAA / cross-border and CA / "
+    "practitioner queries on any of the above. Do NOT refuse a GST, GSTR-1 / "
+    "GSTR-2B / RCM / e-invoice / IMS / e-way-bill question with a 'my scope "
+    "is income-tax only' deflection — GST is IN SCOPE. Do NOT refuse a "
+    "question because the user identifies as a CA, advocate, tax "
+    "practitioner or officer — those are legitimate professional queries. "
+    "The only genuinely out-of-scope topics are non-tax matters (labour law, "
+    "corporate compliance beyond tax, criminal law unrelated to tax etc.); "
+    "for those, briefly decline and offer to help with any tax angle.\n"
+    "You MUST call the google_search tool FIRST for every question — even "
+    "seemingly-common ones — then answer strictly from what search returned. "
+    "Prefer incometax.gov.in / incometaxindia.gov.in / cbic-gst.gov.in / "
+    "gst.gov.in / indiankanoon / itatonline / livelaw / barandbench / "
+    "scconline. Do NOT cite or lean on taxmann.com or taxsutra.com — pick "
+    "the same underlying court/tribunal record from a government or "
+    "law-report site instead. Be precise on section numbers, limits, dates, "
+    "and AY. If search returned nothing usable, say so. Never invent a "
+    "citation.\n"
     "COMPOSE A PROPER ANSWER — not a raw data dump:\n"
     "1) Open with ONE short framing sentence that directly answers the question.\n"
     "2) Then the substance, grouped logically, with **bold** key terms. For case "

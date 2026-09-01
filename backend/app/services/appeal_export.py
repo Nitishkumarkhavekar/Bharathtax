@@ -29,6 +29,57 @@ _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _NUM_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*[.)]\s+(.*)$")          # 1. / 2.1 …
 _LETTER_RE = re.compile(r"^\(([a-z]|[ivxlcdm]+)\)\s+(.*)$", re.I)  # (a), (ii)…
 _BULLET_RE = re.compile(r"^\s*[-*•]\s+(.*)$")
+# A markdown pipe-table row: starts with `|`, contains at least one internal
+# `|`, ends with `|`. We match liberally on internal whitespace so the LLM's
+# alignment styles (`| :--- | ---: |` etc.) still count as rows.
+_TABLE_ROW_RE = re.compile(r"^\s*\|(.+)\|\s*$")
+# A markdown-table SEPARATOR row (the `|:---|---:|:---:|` line that follows
+# the header) — cells that are only dashes/colons/spaces. Detected once we
+# know the line is already a table row.
+_TABLE_SEP_CELL_RE = re.compile(r"^\s*:?-+:?\s*$")
+# Sentinel prefix marking a pre-assembled pipe-table block so the render loop
+# knows to route it through _render_markdown_table instead of _render_line.
+_TABLE_BLOCK_MARK = "\x00TABLE\x00"
+
+
+def _is_table_row(s: str) -> bool:
+    return bool(_TABLE_ROW_RE.match(s))
+
+
+def _is_table_separator(s: str) -> bool:
+    m = _TABLE_ROW_RE.match(s)
+    if not m:
+        return False
+    cells = [c.strip() for c in m.group(1).split("|")]
+    return len(cells) >= 1 and all(_TABLE_SEP_CELL_RE.match(c) for c in cells)
+
+
+def _parse_table_rows(rows: list[str]) -> list[list[str]]:
+    """Take raw pipe-table lines and return a matrix of cells (strings).
+    The alignment-separator row (`| :--- | ---: |`) is dropped."""
+    out: list[list[str]] = []
+    for r in rows:
+        if _is_table_separator(r):
+            continue
+        m = _TABLE_ROW_RE.match(r)
+        if not m:
+            continue
+        cells = [c.strip() for c in m.group(1).split("|")]
+        out.append(cells)
+    return out
+
+
+def _looks_numeric(cell: str) -> bool:
+    """Right-align a cell when it reads as an amount / count. Strips markdown
+    bold markers, Indian-style comma-grouped digits, currency prefix, plus
+    optional trailing `-` for negatives."""
+    s = _strip_bold_markers(cell).replace(",", "").strip()
+    if not s:
+        return False
+    # accept: `1,60,500`, `Rs. 63,94,900`, `63,94,900.00`, `-15,000`, `10%`
+    s = re.sub(r"^(rs\.?|inr|₹|\$)\s*", "", s, flags=re.I)
+    s = s.rstrip("%").strip()
+    return bool(re.fullmatch(r"-?\d+(?:\.\d+)?", s))
 
 BODY_FONT = "Times New Roman"
 BODY_PT = 12
@@ -338,6 +389,74 @@ def _render_line(doc, line: str) -> None:
     _apply_body_font(p)
 
 
+def _set_cell_borders(cell) -> None:
+    """Apply thin single-line borders on all four sides of a table cell so
+    the exported table doesn't look like plain columns of text. Uses raw
+    OXML because python-docx doesn't expose per-cell borders directly."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    tcBorders = OxmlElement("w:tcBorders")
+    for edge in ("top", "left", "bottom", "right"):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")       # 1/2 pt line
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "808080")
+        tcBorders.append(el)
+    tcPr.append(tcBorders)
+
+
+def _render_markdown_table(doc, block: str) -> None:
+    """Render a stripped markdown-pipe-table block as a real Word table with
+    a bold header row, thin grey borders and right-aligned numeric columns.
+    `block` is the text produced by _collapse_lines with the sentinel
+    prefix stripped — each line is one raw pipe row (separator dropped)."""
+    rows = _parse_table_rows(block.split("\n"))
+    if not rows:
+        return
+    n_cols = max(len(r) for r in rows)
+    # Pad ragged rows so add_table doesn't crash on mismatched cell counts.
+    rows = [r + [""] * (n_cols - len(r)) for r in rows]
+
+    # Decide right-alignment per column by inspecting body cells (skip header).
+    body = rows[1:] if len(rows) > 1 else []
+    right_cols: set[int] = set()
+    if body:
+        for c in range(n_cols):
+            col_cells = [row[c] for row in body if row[c].strip()]
+            if col_cells and sum(_looks_numeric(x) for x in col_cells) / len(col_cells) >= 0.6:
+                right_cols.add(c)
+
+    table = doc.add_table(rows=len(rows), cols=n_cols)
+    table.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    table.autofit = True
+    # Give the whole table a small top gap so it doesn't butt into the
+    # previous paragraph.
+    for i, row in enumerate(rows):
+        for j, raw in enumerate(row):
+            cell = table.cell(i, j)
+            _set_cell_borders(cell)
+            # Clear the default empty paragraph docx inserts, then write ours.
+            p = cell.paragraphs[0]
+            p.text = ""
+            if j in right_cols and i > 0:
+                p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            elif j in right_cols and i == 0:
+                p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            else:
+                p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            # Header row = bold + upright; body = upright non-italic + tabular
+            # numerals for numeric columns.
+            _add_runs_with_bold(p, raw, bold_all=(i == 0), italic_all=False)
+            for r in p.runs:
+                r.font.name = BODY_FONT
+                r.font.size = Pt(BODY_PT)
+    # A trailing empty paragraph so the following text isn't glued to the
+    # bottom border.
+    doc.add_paragraph()
+
+
 def _normalize_asterisks(text: str) -> str:
     """Clean stray asterisks the LLM sometimes emits (e.g. "****Result:"):
     collapse runs of 3+ to a pair, and drop unbalanced ** on a line so no raw
@@ -353,23 +472,43 @@ def _normalize_asterisks(text: str) -> str:
 
 def _collapse_lines(draft_text: str) -> list[str]:
     """Group wrapped lines together so a single logical paragraph (which the
-    LLM may have wrapped at ~80 chars) renders as one Word paragraph."""
+    LLM may have wrapped at ~80 chars) renders as one Word paragraph.
+    Consecutive markdown pipe-table rows are collected into ONE special block
+    prefixed with `_TABLE_BLOCK_MARK` so the render loop can dispatch to
+    the real Word-table renderer instead of rendering them as prose."""
     raw_lines = (draft_text or "").replace("\r\n", "\n").split("\n")
     blocks: list[str] = []
     buf: list[str] = []
+    table_buf: list[str] = []
 
     def flush() -> None:
         if buf:
             blocks.append(" ".join(buf).strip())
             buf.clear()
 
+    def flush_table() -> None:
+        if table_buf:
+            blocks.append(_TABLE_BLOCK_MARK + "\n".join(table_buf))
+            table_buf.clear()
+
     for ln in raw_lines:
         s = ln.rstrip()
         if not s.strip():
             flush()
+            flush_table()
             blocks.append("")  # explicit blank between paragraphs
             continue
         stripped = s.strip()
+        # Markdown pipe-table row — accumulate contiguously, don't merge into
+        # the prose paragraph buffer.
+        if _is_table_row(stripped):
+            flush()
+            table_buf.append(stripped)
+            continue
+        # First non-table line after a table run — commit the table before
+        # continuing with prose.
+        if table_buf:
+            flush_table()
         # A markdown heading (#..####) or a fully-**bold** label line is a
         # STANDALONE block: flush the previous paragraph AND emit the heading on
         # its own, so the body line that follows is not merged into (and bolded
@@ -391,6 +530,7 @@ def _collapse_lines(draft_text: str) -> list[str]:
             flush()
         buf.append(stripped)
     flush()
+    flush_table()
     # Drop leading blanks and double blanks.
     out: list[str] = []
     last_blank = False
@@ -459,6 +599,9 @@ def build_order_docx(
             # on each paragraph — only add an explicit empty paragraph if the
             # previous block was a centred heading.
             doc.add_paragraph()
+            continue
+        if block.startswith(_TABLE_BLOCK_MARK):
+            _render_markdown_table(doc, block[len(_TABLE_BLOCK_MARK):])
             continue
         _render_line(doc, block)
 

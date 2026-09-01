@@ -1,0 +1,222 @@
+{
+  "coverage": [
+    {
+      "id": "q01",
+      "regime": "gst",
+      "question": "A registered goods transport agency (GTA) provides road transport services to a private limited company. Under Section 9(3) of the CGST Act, who is liable to pay GST and at what rate can the GTA opt for forward charge?",
+      "key_facts": [
+        "Under Sec 9(3) / Notification 13/2017-CT(R), GTA services to specified recipients (body corporates, factories, registered persons, etc.) attract reverse charge — the recipient (Pvt Ltd) pays GST",
+        "GTA may opt out of RCM and pay under forward charge at 12% with ITC by filing Annexure V by 15 March of the preceding FY (or before commencing supply)",
+        "If under forward charge, GTA can choose 5% without ITC or 12% with ITC; RCM rate for recipient is 5% without ITC to GTA"
+      ]
+    },
+    {
+      "id": "q02",
+      "regime": "gst",
+      "question": "Explain the distinction between Section 9(3) and Section 9(4) of the CGST Act and the current scope of Section 9(4) after the 2018-19 amendments.",
+      "key_facts": [
+        "Sec 9(3) covers notified goods/services where recipient pays under RCM regardless of supplier's registration status (e.g., GTA, legal services, director sitting fees)",
+        "Sec 9(4) originally required all registered persons to pay RCM on procurement from unregistered persons — suspended in Oct 2017 and replaced by a narrower version w.e.f. 01.02.2019",
+        "Present Sec 9(4) applies only to notified classes of registered persons (currently promoters of real estate projects) on specified inward supplies from unregistered persons (Notification 07/2019-CT(R))"
+      ]
+    },
+    {
+      "id": "q03",
+      "regime": "gst-itc",
+      "question": "A taxpayer notices that an invoice from a supplier does not appear in their GSTR-2B for July but the supplier claims to have filed GSTR-1 on time. Walk through the possible causes and the ITC treatment under Rule 36(4) / Section 16(2)(aa).",
+      "key_facts": [
+        "Under Sec 16(2)(aa) read with Rule 36(4), ITC can be availed ONLY if the invoice appears in GSTR-2B (auto-populated from supplier's GSTR-1/IFF)",
+        "Common causes: supplier filed GSTR-1 after the 2B cut-off (11th/13th of following month — invoice moves to next month's 2B), wrong recipient GSTIN entered, invoice reported in IFF vs GSTR-1 mismatch, or supplier is under QRMP",
+        "Recipient cannot claim ITC in the current month; must wait for the invoice to appear in a subsequent GSTR-2B or use IMS (from Oct 2024) to accept/pending the record",
+        "Sec 16(4) time limit — ITC must be availed by 30 November following FY (or annual return filing, whichever earlier)"
+      ]
+    },
+    {
+      "id": "q04",
+      "regime": "gst-reg-return",
+      "question": "A supplier realises that in GSTR-1 for August they reported an invoice against the wrong GSTIN (a similar-name customer). What is the correction mechanism and time limit?",
+      "key_facts": [
+        "The supplier cannot delete the wrongly-reported invoice; it must be amended via Table 9A (Amendments to B2B invoices) of a subsequent GSTR-1",
+        "Amendment must add the invoice under the correct GSTIN and reduce/nil-value the wrong GSTIN entry — both actions in Table 9A of the amendment month",
+        "Time limit under Sec 37(3): amendments allowed up to 30 November following the end of the FY to which the invoice pertains, or the date of filing the annual return, whichever is earlier",
+        "Wrong recipient's GSTR-2B will show the invoice — they should reject it in IMS (or communicate to supplier) so the credit reverses"
+      ]
+    },
+    {
+      "id": "q05",
+      "regime": "gst-e-invoice",
+      "question": "A company with FY 2023-24 turnover of Rs. 6 crore issues a tax invoice on 01 Aug 2025 without generating an IRN. What are the legal consequences and is the invoice valid?",
+      "key_facts": [
+        "E-invoicing under Rule 48(4) is mandatory for taxpayers with aggregate turnover exceeding Rs. 5 crore in any preceding FY from 2017-18 onwards (threshold reduced to 5 cr w.e.f. 01.08.2023)",
+        "Under Rule 48(5), a tax invoice issued by a notified person without IRN/QR code is NOT a valid invoice — it is deemed as if no invoice was issued",
+        "Recipient cannot claim ITC on such an invoice (Sec 16(2)(a) — no valid tax invoice); supplier faces penalty under Sec 122 (Rs. 10,000 or tax amount, whichever higher) plus penalty for wrong invoice under Sec 122(1)(i)",
+        "From 01 April 2025, e-invoice must be uploaded to IRP within 30 days of invoice date for taxpayers with AATO of Rs. 10 crore or more"
+      ]
+    },
+    {
+      "id": "q06",
+      "regime": "gst",
+      "question": "Explain the Invoice Management System (IMS) rolled out from October 2024 and how the recipient's actions on IMS affect GSTR-2B and GSTR-3B.",
+      "key_facts": [
+        "IMS is a facility on the GST portal (live from 14 Oct 2024, actions for Oct 2024 GSTR-2B) allowing recipients to Accept / Reject / keep Pending each invoice, credit note, or debit note filed by suppliers in GSTR-1 / IFF / 1A",
+        "Only Accepted and no-action (deemed accepted) records flow into GSTR-2B; Rejected records are excluded and Pending records are held over for a future period (up to Sec 16(4) time limit)",
+        "Rejecting a credit note increases the supplier's output liability in their next GSTR-3B (Sec 34 read with the CN acceptance framework)",
+        "Recipient's GSTR-3B ITC auto-populates from the IMS-computed 2B; accepting an invoice after 2B is generated requires re-computing 2B before filing 3B"
+      ]
+    },
+    {
+      "id": "q07",
+      "regime": "gst",
+      "question": "A exporter of services (zero-rated, without LUT payment of IGST) files a refund of unutilised ITC under Section 54(3). What is the formula, key documents, and time limit?",
+      "key_facts": [
+        "Refund of unutilised ITC on zero-rated supplies without payment of tax under Sec 54(3)(i) read with Rule 89(4): Refund = (Turnover of zero-rated supply of goods + services) x Net ITC / Adjusted Total Turnover",
+        "Application in FORM GST RFD-01 within 2 years from the relevant date (Sec 54(1) — for services, relevant date is receipt of payment in convertible foreign exchange or issue of invoice, whichever later)",
+        "Documents: FIRC/BRC for services, statement of invoices (Statement 3), LUT/bond copy, self-declaration under Rule 89(2)(l), CA certificate if refund > Rs. 2 lakh (Rule 89(2)(m))",
+        "Provisional refund of 90% within 7 days of acknowledgement (Sec 54(6)); interest at 6% if not sanctioned within 60 days (Sec 56)"
+      ]
+    },
+    {
+      "id": "q08",
+      "regime": "wealth-tax",
+      "question": "Wealth-tax was abolished from AY 2016-17. A reassessment notice under Section 17 of the Wealth-tax Act, 1957 is issued in 2025 for AY 2014-15. Is it valid, and what were the key charging provisions?",
+      "key_facts": [
+        "Wealth-tax Act, 1957 was abolished by Finance Act 2015 w.e.f. AY 2016-17; however, proceedings for AYs up to 2015-16 continue under the saving provisions",
+        "Sec 17 permitted reassessment within 4 years from end of AY (or 6 years if net wealth escaping assessment exceeded Rs. 10 lakh); for AY 2014-15, the outer limit expired on 31 March 2021",
+        "A 2025 notice for AY 2014-15 is time-barred and invalid unless issued pursuant to a search/requisition or a court/tribunal order within extended windows",
+        "Charging section was Sec 3 — 1% on net wealth exceeding Rs. 30 lakh on the valuation date; assets defined in Sec 2(ea) (unproductive assets — jewellery, motor cars, cash > Rs. 50,000 for individuals, urban land, guest houses, etc.)"
+      ]
+    },
+    {
+      "id": "q09",
+      "regime": "black-money",
+      "question": "An Indian resident individual failed to disclose a Swiss bank account in Schedule FA of ITR for AY 2018-19 (balance USD 2,00,000). Analyse the exposure under Sections 3, 10 and 43 of the Black Money (UFIA) Act, 2015.",
+      "key_facts": [
+        "Sec 3 is the charging section — undisclosed foreign income and undisclosed foreign assets (UFIA) held by a resident (other than not-ordinarily-resident) are taxed at flat 30% on the value in the year it comes to the notice of the AO (no basic exemption, no deductions, no set-off)",
+        "Sec 10 empowers the AO to assess/reassess UFIA; there is NO time limit for issuing notice under Sec 10(1) — notices can be issued for any past year once UFIA is discovered",
+        "Sec 43 imposes penalty of Rs. 10 lakh for failure to disclose foreign asset/income in the return (Schedule FA) — applies even if the asset was acquired from tax-paid funds (immunity only if aggregate balance of bank accounts <= Rs. 5 lakh at any time during the year, w.e.f. 2019)",
+        "Additional penalty under Sec 41 (equal to 3 times the tax) and prosecution under Sec 51 (rigorous imprisonment 3-10 years plus fine) for willful attempt to evade"
+      ]
+    },
+    {
+      "id": "q10",
+      "regime": "black-money",
+      "question": "Under the Black Money Act, 2015, what is the difference between Sec 42 and Sec 43 penalties, and can they be levied simultaneously?",
+      "key_facts": [
+        "Sec 42 — penalty of Rs. 10 lakh for failure to furnish a return under Sec 139(1)/(4)/(5) by a resident holding any foreign asset or having foreign income/signing authority (return-not-filed default)",
+        "Sec 43 — penalty of Rs. 10 lakh for failure to disclose foreign asset/income (Schedule FA) or providing inaccurate particulars in a return that was filed (disclosure default)",
+        "Both can apply — Sec 42 if no return filed at all, Sec 43 if return filed but foreign asset not disclosed; not both for the same default",
+        "De minimis exception (w.e.f. 01.07.2019): no Sec 42/43 penalty if the foreign asset is a bank account with aggregate balance not exceeding Rs. 5 lakh at any time during the previous year"
+      ]
+    },
+    {
+      "id": "q11",
+      "regime": "benami",
+      "question": "A father purchases a flat in the name of his married daughter using his own funds. Is this a benami transaction under Section 2(9) read with Section 5 of the Prohibition of Benami Property Transactions Act, 1988 (as amended in 2016)?",
+      "key_facts": [
+        "Sec 2(9)(A) defines benami — property held by one person, consideration paid by another; but Sec 2(9)(A)(ii) carves out an exception for property held in the name of spouse or any child where consideration is paid out of known sources of the individual",
+        "Purchase in daughter's name funded by father falls WITHIN the exception — NOT a benami transaction, provided funds are from father's known/disclosed sources",
+        "Sec 5 provides that benami property is liable to be confiscated by the Central Government — does not apply here due to the child-name exception",
+        "The exception is limited to spouse and 'child' (natural or adopted); other relatives (siblings, parents, HUF coparceners) do not enjoy this shelter unless covered by Sec 2(9)(A)(iii)/(iv) (fiduciary, karta of HUF, brother/sister/lineal ascendant-descendant as joint owner appearing in ITR)"
+      ]
+    },
+    {
+      "id": "q12",
+      "regime": "benami",
+      "question": "The Initiating Officer under the Benami Act attaches property under Section 24. Walk through the procedural steps and time limits from Section 24(1) to adjudication under Section 26.",
+      "key_facts": [
+        "Sec 24(1) — Initiating Officer (IO), on material in possession and reason to believe a person is a benamidar, issues show-cause notice to the benamidar (copy to beneficial owner if identifiable)",
+        "Sec 24(3) — with prior approval of Approving Authority, IO may provisionally attach the property for 90 days from the end of the month of the notice",
+        "Sec 24(4) — after hearing, IO passes an order within 90 days either continuing the attachment (with AA's approval) or revoking it; if continued, IO must draw up a statement of the case and refer it to the Adjudicating Authority (AA) within 15 days (Sec 24(5))",
+        "Sec 26 — Adjudicating Authority passes final order within 1 year from the end of the month in which the reference under Sec 24(5) was received, holding the property benami or not; if benami, confiscation follows under Sec 27"
+      ]
+    },
+    {
+      "id": "q13",
+      "regime": "dtaa",
+      "question": "A US resident company provides installation supervision services in India for 100 days spread over 14 months. Does it create a Permanent Establishment under Article 5 of the India-US DTAA, and how does 'Service PE' differ from 'Installation PE'?",
+      "key_facts": [
+        "Article 5(2)(k) of India-US DTAA — Installation PE arises where a building site or construction, installation or assembly project or supervisory activities in connection therewith continue for more than 120 days in any 12-month period",
+        "Article 5(2)(l) — Service PE arises where an enterprise furnishes services (other than technical services covered by Article 12) through employees in the other State for periods aggregating more than 90 days in any 12-month period (or 30 days for related-party services)",
+        "On facts: 100 days of installation supervision spread over 14 months — for Installation PE, the count is per project in a 12-month window; if >120 days fall in any rolling 12-month period, PE exists — here 100 days does not breach 120-day threshold, so no Installation PE",
+        "However, if characterised as Service PE (not connected with installation), 100 days exceeds 90-day threshold — PE would be constituted; classification is fact-specific"
+      ]
+    },
+    {
+      "id": "q14",
+      "regime": "dtaa",
+      "question": "An Indian company pays software licence fees to a Netherlands-resident company. The India-Netherlands DTAA taxes 'royalties' at 10%. Discuss the impact of the MFN clause post the Supreme Court ruling in Nestle SA (2023).",
+      "key_facts": [
+        "The Protocol to India-Netherlands DTAA contains an MFN clause — if India enters into a treaty with any OECD member after the Netherlands treaty providing lower rate or narrower scope for royalty/FTS, the same shall apply to the Netherlands treaty",
+        "Nestle SA v. AO (SC, 19 Oct 2023) held that the MFN clause is NOT self-operational — it applies only if a separate Notification under Sec 90(1) is issued by India importing the beneficial rate; also, the OECD-member country must have been an OECD member on the date India entered into the DTAA with it",
+        "Consequently, benefit of lower rate (e.g., 5% under India-Slovenia/Lithuania/Colombia treaties) is NOT available to Netherlands residents in absence of a specific notification — 10% treaty rate continues to apply",
+        "Also, taxability of software payment as 'royalty' — Engineering Analysis (SC 2021) held payments for shrink-wrapped/OEM software are not royalty under DTAA (only copyrighted article, not copyright); needs fact-check whether payment is for copyright or copyrighted article"
+      ]
+    },
+    {
+      "id": "q15",
+      "regime": "dtaa",
+      "question": "A Mauritius-resident FII sells listed Indian equity shares acquired on 15 March 2018 and realises long-term capital gains of Rs. 50 crore in FY 2024-25. Analyse taxability under Article 13 of the India-Mauritius DTAA (as amended by the 2016 Protocol and the 2024 amending Protocol).",
+      "key_facts": [
+        "2016 Protocol amended Article 13(3A)/(3B) — shares acquired on or after 01 April 2017 in an Indian company are taxable in India (source-based taxation); shares acquired BEFORE 01 April 2017 remained grandfathered (source exemption)",
+        "Shares acquired on 15 March 2018 are POST-cutoff — India has taxing rights; LTCG on listed equity exceeding Rs. 1 lakh taxable at 10% under Sec 112A (12.5% w.e.f. 23 July 2024 under Finance (No. 2) Act 2024)",
+        "2024 Amending Protocol (signed 07 Mar 2024, pending notification/entry-into-force as of 01 Sept 2026 check date) inserts Principal Purpose Test (PPT) under Article 27B — treaty benefits denied if obtaining the benefit was one of the principal purposes of any arrangement",
+        "Even under grandfathered shares (pre-01 Apr 2017), GAAR/PPT and beneficial-ownership tests apply; TRC alone is not sufficient (CBDT Circular 789 clarified by SC in Vodafone/Azadi Bachao line)"
+      ]
+    },
+    {
+      "id": "q16",
+      "regime": "cross-border-transfer-pricing",
+      "question": "An Indian subsidiary of a US MNC provides software development services to its US parent (Rs. 200 crore turnover). Which TP method is typically most appropriate, and what are the documentation / return filing obligations under Sec 92D, 92E and the Master File / CbCR rules?",
+      "key_facts": [
+        "Captive software development for AE — Transactional Net Margin Method (TNMM) with Operating Profit / Operating Cost (OP/OC) as PLI is the most commonly accepted MAM (Rule 10B/10C); alternative is Cost Plus Method",
+        "Sec 92D + Rule 10D — mandatory TP documentation if aggregate international transactions exceed Rs. 1 crore; Sec 92E — Accountant's Report in Form 3CEB to be furnished by the specified date (31 Oct of AY)",
+        "Master File — Form 3CEAA (Part A always if IT is entered into; Part B if consolidated group revenue > Rs. 500 crore AND international transactions > Rs. 50 crore for tangibles or Rs. 10 crore for intangibles); filing due date 30 November of AY (Rule 10DA)",
+        "CbCR — Form 3CEAD required if consolidated group revenue exceeds Rs. 6,400 crore (roughly EUR 750 million equivalent, notified threshold); filed by ultimate/alternate parent or Indian constituent entity under Sec 286"
+      ]
+    },
+    {
+      "id": "q17",
+      "regime": "income-tax-1961",
+      "question": "A resident senior citizen (age 68) earns FY 2024-25 income: pension Rs. 6,00,000, interest from FDs Rs. 3,50,000, LTCG on listed equity (STT paid) Rs. 1,80,000 sold on 10 Oct 2024. Compute tax under the OLD regime and state the Section 80TTB deduction.",
+      "key_facts": [
+        "Section 80TTB — resident senior citizen gets deduction up to Rs. 50,000 on interest from deposits with bank/co-op bank/post office; deduction from GTI",
+        "Basic exemption for senior citizen (age 60-80) under old regime is Rs. 3,00,000; slab: nil up to 3 lakh, 5% 3-5 lakh, 20% 5-10 lakh, 30% above 10 lakh",
+        "LTCG under Sec 112A on listed equity/EOF with STT: exemption up to Rs. 1,25,000 (raised from Rs. 1 lakh w.e.f. 23 July 2024); balance Rs. 55,000 taxed at 12.5% (post 23.07.2024 rate) = Rs. 6,875 (plus cess). LTCG cannot be adjusted against unexhausted basic exemption for non-residents; resident senior can adjust against unexhausted BE if other income < BE — not applicable here as pension alone > BE",
+        "Rebate under Sec 87A NOT available if total income > Rs. 5,00,000 (old regime); here total income ~9.8 lakh, so no rebate"
+      ]
+    },
+    {
+      "id": "q18",
+      "regime": "income-tax-2025",
+      "question": "Under the Income-tax Act, 2025 (which replaces the 1961 Act w.e.f. 01 April 2026), what is the position on the default tax regime for individuals, and how does the new Act renumber the erstwhile Sec 115BAC?",
+      "key_facts": [
+        "Income-tax Act, 2025 (Act 12 of 2025) received Presidential assent on 21 Aug 2025 and comes into force from 01 April 2026 (applies to AY 2027-28 onwards)",
+        "The 'new regime' under old Sec 115BAC is subsumed as the DEFAULT scheme in the 2025 Act (corresponding provision is Sec 202 of the new Act); taxpayers must opt out to use the old regime — old regime option itself is being phased out (available only to those with no business income and specified individuals)",
+        "Slab rates for FY 2025-26 (default regime): Nil up to Rs. 4L; 5% Rs. 4-8L; 10% Rs. 8-12L; 15% Rs. 12-16L; 20% Rs. 16-20L; 25% Rs. 20-24L; 30% above Rs. 24L. Sec 87A rebate up to Rs. 60,000 for total income up to Rs. 12 lakh",
+        "Standard deduction of Rs. 75,000 for salaried / pensioners under default regime; other traditional deductions (80C, 80D, HRA etc.) NOT available under default regime — retained in the residual old-regime option under Sec 202(6)"
+      ]
+    },
+    {
+      "id": "q19",
+      "regime": "ca-practitioner",
+      "question": "A CA has been asked to sign a Tax Audit Report (Form 3CD) for a client whose books show cash payments exceeding Rs. 10,000 for expenses (Sec 40A(3)) and where TDS on contractor payments has not been deducted. What are the reporting obligations in Form 3CD, and what is the ICAI's ceiling on tax audits per CA per FY?",
+      "key_facts": [
+        "Clause 21(d) of Form 3CD requires reporting of amounts inadmissible under Sec 40A(3) / 40A(3A) — cash payments exceeding Rs. 10,000 (Rs. 35,000 for transporters) to a person in a single day; auditor must obtain and verify",
+        "Clause 34(a) requires reporting TDS/TCS defaults — nature of payment, amount on which TDS was deductible, amount actually deducted, shortfall; disallowance under Sec 40(a)(ia) — 30% of such expenditure disallowed if TDS not deducted or not paid before ITR due date",
+        "ICAI ceiling (revised): tax audits under Sec 44AB limited to 60 per CA per FY (excluding audits under 44AD/44ADA/44AE presumptive limits); breach attracts professional misconduct proceedings under Clause 1 of Part II of Second Schedule of CA Act, 1949",
+        "UDIN mandatory for every audit report under ICAI UDIN Guidelines; Form 3CA/3CB + 3CD due by 30 September of AY (extended to 31 Oct in most recent years by CBDT notification)"
+      ]
+    },
+    {
+      "id": "q20",
+      "regime": "officer-practitioner",
+      "question": "As a GST officer, you receive a Section 74 SCN case where the taxpayer has admitted the tax and paid tax + interest + 15% penalty before issuance of the SCN. What is the appropriate closure action under Section 74(5) / 74(6), and how does the new Sec 74A (post Finance Act 2024) change future proceedings from FY 2024-25?",
+      "key_facts": [
+        "Sec 74(5) — where taxable person pays tax + interest + penalty equal to 15% of tax on the basis of own ascertainment or as ascertained by proper officer, and intimates in Form DRC-03 before issuance of SCN, no notice shall be served in respect of the tax so paid",
+        "Sec 74(6) — proceedings deemed concluded upon such payment; officer issues an order in Form DRC-05 confirming closure. No further liability for that tax period on the same issue",
+        "Sec 74A (inserted by Finance (No. 2) Act 2024 w.e.f. tax periods from FY 2024-25) unifies Sec 73 and Sec 74 — single provision for determination of tax whether fraud/suppression or not; common time limit of 42 months from due date of annual return for issuing SCN, and 12 months from SCN for order",
+        "Under Sec 74A, penalty is 10% of tax (or Rs. 10,000, whichever higher) in non-fraud cases; 100% of tax in fraud/suppression cases; reduced penalties of 15%/25%/50% available on payment at SCN / within 60 days of order stages"
+      ]
+    }
+  ]
+}

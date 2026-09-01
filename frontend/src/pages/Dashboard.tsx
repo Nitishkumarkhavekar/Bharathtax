@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderOpen, ArrowUpRight, RefreshCw, AlarmClock } from "lucide-react";
+import { LayoutDashboard, FolderOpen, ArrowUpRight, RefreshCw, AlarmClock, Newspaper } from "lucide-react";
 import { api, WsWorkload, WsWorkloadRow } from "../api";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -263,6 +263,109 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* Latest tax news — a small strip beneath the caseload so the officer
+          catches overnight headlines without leaving the dashboard. Full feed
+          on /news via the "View all →" link. */}
+      <NewsStrip />
+    </div>
+  );
+}
+
+// -------------------------------------------------------------- News strip
+// A compact 5-item list of the latest tax headlines, fetched from /news.
+// Silent-fails: an empty widget is a better UX than an error toast on the
+// dashboard, so a failed poll just hides the strip.
+function relTimeShort(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
+}
+
+// Aggregator names ("Google Alerts …", "Google News …") never surface;
+// derive publisher from URL hostname when needed.
+function newsPublisher(item: { source_name: string; url: string }): string {
+  const low = (item.source_name || "").toLowerCase();
+  if (item.source_name && !low.startsWith("google alert") && !low.startsWith("google news")) {
+    return item.source_name;
+  }
+  try {
+    return new URL(item.url).hostname.replace(/^www\./, "");
+  } catch {
+    return item.source_name || "";
+  }
+}
+
+function NewsStrip() {
+  const nav = useNavigate();
+  const [items, setItems] = useState<{
+    id: number; title: string; url: string; source_name: string;
+    source_category: string | null; published_at: string;
+  }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.news({ limit: 5, sort: "latest" })
+      .then((r) => { if (!cancelled) setItems(r.items); })
+      .catch(() => { /* silent — see comment above */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!loading && items.length === 0) return null;
+
+  return (
+    <div className="mt-4 bg-white rounded-2xl ring-1 ring-slate-200 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Newspaper className="size-4 text-primary" />
+          <h2 className="text-[13.5px] font-semibold text-slate-900">Latest tax news</h2>
+        </div>
+        <button
+          onClick={() => nav("/news")}
+          className="text-[12.5px] font-semibold text-primary hover:underline inline-flex items-center gap-0.5"
+        >
+          View all
+          <ArrowUpRight className="size-3.5" />
+        </button>
+      </div>
+      {loading ? (
+        <SkeletonRows rows={3} />
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {items.map((it) => (
+            <li key={it.id}>
+              <a
+                href={it.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="group flex items-start gap-3 py-2.5 hover:bg-slate-50 -mx-2 px-2 rounded-md transition-colors"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-medium text-slate-900 group-hover:text-primary line-clamp-2 leading-snug">
+                    {it.title}
+                  </div>
+                  <div className="mt-0.5 text-[11.5px] text-slate-500 flex items-center gap-1.5">
+                    {it.source_category && (
+                      <>
+                        <span className="text-slate-600">{it.source_category}</span>
+                        <span className="text-slate-300">·</span>
+                      </>
+                    )}
+                    <span className="truncate">{newsPublisher(it)}</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="tabular-nums shrink-0">{relTimeShort(it.published_at)}</span>
+                  </div>
+                </div>
+                <ArrowUpRight className="size-4 text-slate-300 group-hover:text-primary shrink-0 mt-1" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

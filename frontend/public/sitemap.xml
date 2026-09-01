@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  BharatTax public sitemap. Lists ONLY unauthenticated marketing / info
+  pages. Auth-only surfaces (/dashboard, /drafting, /ask, /workspace,
+  /calculators, /templates, /watchlists, /library, /reconcile, /rulings,
+  /news, /history, /profile, /appeals/*, /assessments/*, /admin/*) are
+  deliberately excluded — they require a session and should not be crawled.
+  Utility pages (/forgot-password, /reset-password, /shared/*) are excluded
+  because they are token-parameterised or single-use.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <url>
+    <loc>https://bharattax.wenvia.global/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/releases</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/docs</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/register</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/login</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <url>
+    <loc>https://bharattax.wenvia.global/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+</urlset>

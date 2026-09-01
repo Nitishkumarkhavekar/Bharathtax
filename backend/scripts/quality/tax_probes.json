@@ -1,0 +1,1018 @@
+[
+  {
+    "category": "statute-era",
+    "question": "For income earned on 15 March 2026, which Income-tax Act governs and what is the AY?",
+    "expected_key_facts": [
+      "Income-tax Act 1961 governs",
+      "AY is 2026-27",
+      "FY 2025-26 is the previous year",
+      "Income-tax Act 2025 does NOT apply to this income"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025 governs",
+      "Tax Year 2025-26 concept applies",
+      "AY 2027-28"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Salary credited 30 April 2026 - which statute applies, 1961 Act or 2025 Act?",
+    "expected_key_facts": [
+      "Income-tax Act 2025 governs",
+      "Tax Year 2026-27 framework applies",
+      "Falls in the first tax year of the 2025 Act commencing 1 April 2026",
+      "No separate AY concept under 2025 Act"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 1961 governs income of April 2026",
+      "AY 2027-28 under 1961 Act",
+      "Finance Act 2027 governs"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Client received rent on 31 March 2026 and again on 1 April 2026 - are both governed by the same Act?",
+    "expected_key_facts": [
+      "31 March 2026 rent falls under Income-tax Act 1961 (FY 2025-26, AY 2026-27)",
+      "1 April 2026 rent falls under Income-tax Act 2025 (Tax Year 2026-27)",
+      "Two different statutory regimes apply across the cut-over date"
+    ],
+    "disqualifiers": [
+      "Both governed by Income-tax Act 1961",
+      "Both governed by Income-tax Act 2025",
+      "Single AY covers both"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Capital gain on sale of listed shares on 20 February 2026 - which Act and which schedule of rates?",
+    "expected_key_facts": [
+      "Income-tax Act 1961",
+      "AY 2026-27 / FY 2025-26",
+      "Section 111A / 112A regime as amended by Finance (No.2) Act 2024",
+      "Rates in Part III of Finance Act 2025 for TDS/advance tax; confirmed by Part I of Finance Act 2026"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025",
+      "Rates only in Part I of Finance Act 2025",
+      "Finance Act 2026 has no role"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "For a business having accounting year ended 31 March 2027, which Income-tax statute applies to that income?",
+    "expected_key_facts": [
+      "Income-tax Act 2025",
+      "Tax Year 2026-27",
+      "Filing under 2025 Act framework",
+      "No AY 2027-28 concept under 2025 Act"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 1961 governs",
+      "AY 2027-28 under 1961 Act",
+      "Both Acts apply"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "A best-judgment assessment for FY 2024-25 is completed in November 2026 - which Act governs?",
+    "expected_key_facts": [
+      "Income-tax Act 1961 governs the substantive assessment (income of FY 2024-25 / AY 2025-26)",
+      "Procedural provisions in force at time of assessment may apply subject to savings",
+      "2025 Act does not retrospectively govern pre-existing AYs"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025 governs the assessment",
+      "Tax Year 2024-25 concept applies"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Reopening notice u/s 148 issued in July 2027 for AY 2024-25 - which statute is source of substantive charge?",
+    "expected_key_facts": [
+      "Income-tax Act 1961 remains source of substantive charge for AY 2024-25",
+      "Procedural provisions in force at reopening date govern the machinery",
+      "2025 Act does not displace substantive law of the assessment year"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025 governs the reopening substantively",
+      "AY concept does not exist post-1 April 2026"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Advance tax instalment due 15 June 2026 - under which Act is it computed?",
+    "expected_key_facts": [
+      "Income-tax Act 2025 governs (Tax Year 2026-27)",
+      "First advance tax instalment for Tax Year 2026-27",
+      "Rates from Finance Act 2026"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 1961 governs",
+      "AY 2027-28 under 1961 Act",
+      "Rates from Finance Act 2025 alone"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "TDS deducted by employer in February 2026 on salary - which Act governs the deduction?",
+    "expected_key_facts": [
+      "Income-tax Act 1961",
+      "FY 2025-26 / AY 2026-27",
+      "TDS rates per Part III of Finance Act 2025"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025",
+      "Tax Year 2025-26"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Penalty proceedings initiated in December 2026 for concealment relating to AY 2023-24 - under which Act?",
+    "expected_key_facts": [
+      "Income-tax Act 1961 governs the substantive offence (AY 2023-24)",
+      "Penalty machinery as in force at initiation may apply subject to savings",
+      "2025 Act does not retrospectively re-characterise a pre-existing AY"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025 governs entirely",
+      "AY 2023-24 rewritten under 2025 Act"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "For income of a partnership firm for the year ending 31 March 2026, quote the governing Act and the return-filing regime.",
+    "expected_key_facts": [
+      "Income-tax Act 1961 governs (FY 2025-26 / AY 2026-27)",
+      "Return under Section 139 of 1961 Act",
+      "Rates confirmed by Part I of Finance Act 2026"
+    ],
+    "disqualifiers": [
+      "Income-tax Act 2025 governs",
+      "Return under 2025 Act",
+      "Tax Year 2025-26"
+    ]
+  },
+  {
+    "category": "statute-era",
+    "question": "Client asks: is there any AY 2027-28 under Indian income-tax law?",
+    "expected_key_facts": [
+      "No AY 2027-28 concept under the Income-tax Act 2025",
+      "Period 1 April 2026 to 31 March 2027 is Tax Year 2026-27 under the 2025 Act",
+      "The Assessment Year / Previous Year duality does not carry into the 2025 Act"
+    ],
+    "disqualifiers": [
+      "AY 2027-28 exists under 1961 Act",
+      "AY 2027-28 exists under 2025 Act",
+      "Tax Year 2026-27 maps to AY 2027-28"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "For FY 2025-26 income assessed in AY 2026-27, which Finance Act is the source of the rates and in which Part?",
+    "expected_key_facts": [
+      "Rates initially in Part III (First Schedule) of Finance Act 2025 for TDS/advance tax",
+      "Rates confirmed by Part I of Finance Act 2026",
+      "Not Finance Act 2027"
+    ],
+    "disqualifiers": [
+      "Finance Act 2026 alone as source",
+      "Rates only in Part I of Finance Act 2025",
+      "Finance Act 2027 governs FY 2025-26"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "AY 2025-26 individual slab rates - which Finance Act enacts them and in which Part?",
+    "expected_key_facts": [
+      "Confirmed in Part I of Finance (No.2) Act 2024",
+      "Rates for FY 2024-25 originally in Part III of Finance Act 2024 for TDS/advance tax",
+      "Finance Act 2025 does NOT enact AY 2025-26 rates"
+    ],
+    "disqualifiers": [
+      "Finance Act 2025 enacts AY 2025-26 rates",
+      "Finance Act 2026 enacts AY 2025-26 rates"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "For FY 2024-25 short-term capital gain on equity, which rate applies and under which Finance Act?",
+    "expected_key_facts": [
+      "Section 111A applies",
+      "20% for transfers on or after 23 July 2024, 15% before that date (Finance (No.2) Act 2024 amendment)",
+      "Rate confirmed in Part I of Finance (No.2) Act 2024; rates for FY 2024-25 in Part III of Finance Act 2024"
+    ],
+    "disqualifiers": [
+      "Uniform 15% for entire FY 2024-25",
+      "Uniform 20% for entire FY 2024-25 including pre-23 July transfers",
+      "Rate under Finance Act 2025"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "Which Finance Act's Part III lays down TDS rates applicable during FY 2025-26?",
+    "expected_key_facts": [
+      "Finance Act 2025, Part III (First Schedule)",
+      "These rates are the operative TDS/advance tax rates during FY 2025-26",
+      "Later confirmed by Part I of Finance Act 2026 for AY 2026-27"
+    ],
+    "disqualifiers": [
+      "Finance Act 2026 Part III",
+      "Finance Act 2024 Part III",
+      "Only Part I of Finance Act 2025 lays down FY 2025-26 rates"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "For FY 2023-24 long-term capital gain u/s 112A, quote applicable rate and Finance Act.",
+    "expected_key_facts": [
+      "10% on gains above Rs 1 lakh (pre-23-July-2024 regime)",
+      "AY 2024-25, rates confirmed by Part I of Finance Act 2024",
+      "Section 112A of Income-tax Act 1961"
+    ],
+    "disqualifiers": [
+      "12.5% rate applies to FY 2023-24 gains",
+      "Rs 1.25 lakh exemption threshold for FY 2023-24",
+      "Finance (No.2) Act 2024 rates apply to FY 2023-24 gains"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "Where in Finance Act 2025 do we find the surcharge rates applicable during FY 2025-26 for advance tax?",
+    "expected_key_facts": [
+      "Part III of Finance Act 2025 / First Schedule Part III",
+      "Applicable for computing TDS and advance tax during FY 2025-26",
+      "Confirmed by Part I of Finance Act 2026"
+    ],
+    "disqualifiers": [
+      "Part I of Finance Act 2025 governs FY 2025-26 rates",
+      "Finance Act 2026 has no role in surcharge for FY 2025-26"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "For AY 2024-25 corporate tax at 22% under Sec 115BAA, which Finance Act confirms the base rate?",
+    "expected_key_facts": [
+      "Section 115BAA of Income-tax Act 1961 (rate embedded in the section, inserted by Taxation Laws (Amendment) Act 2019)",
+      "22% base plus 10% surcharge and 4% cess (effective 25.168%)",
+      "Not driven by annual Finance Act rate schedule for the base rate"
+    ],
+    "disqualifiers": [
+      "Rate schedule in Part I of Finance Act 2024 supplies the 22%",
+      "Finance Act 2025 supplies AY 2024-25 rates",
+      "22% subject to surcharge slab as per Part III of Finance Act 2024"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "For the new default regime u/s 115BAC(1A) as applicable to FY 2024-25, which Finance Act amended the slabs and which Part carries them?",
+    "expected_key_facts": [
+      "Finance (No.2) Act 2024 amended Sec 115BAC(1A) slabs for AY 2025-26",
+      "Slabs are set out within the section itself",
+      "Rates for tax computation confirmed by Part I of Finance (No.2) Act 2024"
+    ],
+    "disqualifiers": [
+      "Finance Act 2025 amended 115BAC slabs for FY 2024-25",
+      "Slabs in Part III of Finance Act 2025 apply to FY 2024-25",
+      "Slabs in First Schedule Part I of Finance Act 2023 apply to FY 2024-25"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "Under the 2025 Act, for Tax Year 2026-27, which Finance Act supplies the rates?",
+    "expected_key_facts": [
+      "Finance Act 2026 supplies rates for Tax Year 2026-27",
+      "Under 2025 Act there is no Part III / Part I duality across successive Finance Acts as under 1961 Act",
+      "No Finance Act 2027 is required to confirm Tax Year 2026-27 rates"
+    ],
+    "disqualifiers": [
+      "Finance Act 2027 confirms Tax Year 2026-27 rates",
+      "Finance Act 2025 supplies Tax Year 2026-27 rates in Part I"
+    ]
+  },
+  {
+    "category": "finance-act-mapping",
+    "question": "Where in Finance (No.2) Act 2024 are the enhanced STCG (20%) and LTCG (12.5%) rates found?",
+    "expected_key_facts": [
+      "Amendments to Section 111A and Section 112A of Income-tax Act 1961",
+      "Effective for transfers on or after 23 July 2024",
+      "Enacted through operative sections of Finance (No.2) Act 2024, not merely rate schedule"
+    ],
+    "disqualifiers": [
+      "Rates only in Part I of Finance Act 2024 First Schedule",
+      "Rates only in Part III of Finance Act 2025",
+      "Rates apply from 1 April 2024"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "How do I map Tax Year 2026-27 to the old AY/FY concept?",
+    "expected_key_facts": [
+      "Tax Year 2026-27 is a concept of the Income-tax Act 2025",
+      "Covers period 1 April 2026 to 31 March 2027",
+      "Does NOT map to AY 2027-28 under 1961 Act - the 1961 Act does not govern this period",
+      "No Assessment Year concept under 2025 Act"
+    ],
+    "disqualifiers": [
+      "Tax Year 2026-27 = AY 2027-28 under 1961 Act",
+      "Finance Act 2027 governs it under 1961 Act framework",
+      "Both Acts apply"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "Split income - Rs 3 lakh salary in March 2026 and Rs 4 lakh salary in May 2026 - how many returns and under which Acts?",
+    "expected_key_facts": [
+      "March 2026 salary falls in FY 2025-26, return under Income-tax Act 1961 for AY 2026-27",
+      "May 2026 salary falls in Tax Year 2026-27 under Income-tax Act 2025",
+      "Two separate returns under two different statutory regimes",
+      "NOT two ITRs both filed under the same Act"
+    ],
+    "disqualifiers": [
+      "Two ITRs both under 1961 Act",
+      "Both incomes clubbed in one return under 2025 Act",
+      "Both incomes clubbed under 1961 Act AY 2027-28"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "Client asks: does the 1961 Act continue to apply to any income earned after 1 April 2026?",
+    "expected_key_facts": [
+      "Income earned on or after 1 April 2026 is generally governed by Income-tax Act 2025",
+      "1961 Act continues to apply to periods up to 31 March 2026 (AY 2026-27 and prior)",
+      "Assessment / appeal / rectification of pre-1 April 2026 income continues under 1961 Act subject to savings"
+    ],
+    "disqualifiers": [
+      "1961 Act continues to govern all income indefinitely",
+      "1961 Act stands entirely repealed effective 1 April 2026 including for prior AYs"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "Business closes accounts on 31 December each year - what is the position for the year ending 31 December 2026 under the 2025 Act?",
+    "expected_key_facts": [
+      "Under the 2025 Act, Tax Year is uniform 12-month period aligned to 1 April to 31 March",
+      "Period 1 April 2026 to 31 March 2027 is Tax Year 2026-27",
+      "Books ending 31 December 2026 do not create a separate tax year"
+    ],
+    "disqualifiers": [
+      "Tax Year can be aligned to accounting year ending 31 December",
+      "AY concept still applies to 31 December 2026 books"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "I received notice for AY 2027-28 under section 143(2) - is such a notice valid?",
+    "expected_key_facts": [
+      "No AY 2027-28 exists under either statute",
+      "Period 1 April 2026 to 31 March 2027 is Tax Year 2026-27 under 2025 Act",
+      "Notice referring to AY 2027-28 is on its face defective - user should verify the notice terminology"
+    ],
+    "disqualifiers": [
+      "AY 2027-28 is the valid designation under 1961 Act",
+      "AY 2027-28 maps directly to Tax Year 2026-27 and is interchangeable"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "First advance tax instalment under 2025 Act for a salaried person with additional income - what date, what regime?",
+    "expected_key_facts": [
+      "15 June 2026 is the first instalment date for Tax Year 2026-27",
+      "Advance tax provisions under Income-tax Act 2025",
+      "Rates as per Finance Act 2026"
+    ],
+    "disqualifiers": [
+      "Advance tax under 1961 Act for AY 2027-28",
+      "Rates under Finance Act 2025 Part III alone"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "Belated return for FY 2025-26 filed in July 2027 - which Act governs the belated return machinery?",
+    "expected_key_facts": [
+      "Substantive law: Income-tax Act 1961 (AY 2026-27)",
+      "Belated return under Section 139(4) of 1961 Act as applicable",
+      "Procedural savings preserve the filing right even after 2025 Act comes into force"
+    ],
+    "disqualifiers": [
+      "Belated return under Section corresponding provision of 2025 Act",
+      "Filing under Tax Year 2025-26 framework of 2025 Act"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "How does the residential status test change between the 1961 Act (FY 2025-26) and 2025 Act (Tax Year 2026-27)?",
+    "expected_key_facts": [
+      "1961 Act Section 6 continues to apply for FY 2025-26 residency determination",
+      "2025 Act contains its own residency provisions applicable from Tax Year 2026-27",
+      "Each period tested under its own governing Act"
+    ],
+    "disqualifiers": [
+      "Section 6 of 1961 Act applies to Tax Year 2026-27",
+      "2025 Act residency rules apply retrospectively to FY 2025-26"
+    ]
+  },
+  {
+    "category": "tax-year-transition",
+    "question": "Loss carry-forward from AY 2025-26 - is it available for set-off in Tax Year 2026-27 under 2025 Act?",
+    "expected_key_facts": [
+      "Yes, subject to transition/savings provisions in the 2025 Act",
+      "Losses determined under 1961 Act must be carried across under specific migration clauses",
+      "Time-limits and heads of loss under the original assessment continue to control"
+    ],
+    "disqualifiers": [
+      "Losses of AY 2025-26 lapse on 1 April 2026",
+      "Losses freely available under 2025 Act without any transitional provision"
+    ]
+  },
+  {
+    "category": "section-87A-rebate",
+    "question": "Salaried person with total income Rs 6.9 lakh under new regime for AY 2026-27 - what is Sec 87A rebate?",
+    "expected_key_facts": [
+      "AY 2026-27 corresponds to FY 2025-26",
+      "Under new regime (Sec 115BAC(1A)) 87A rebate up to Rs 60,000 for income up to Rs 12 lakh (per Finance Act 2025)",
+      "Rs 6.9 lakh income fully within rebate ceiling, tax before cess reduced to nil"
+    ],
+    "disqualifiers": [
+      "Rebate cap of Rs 25,000 applies to AY 2026-27",
+      "Rebate limited to Rs 7 lakh income for AY 2026-27",
+      "AY 2027-28 slabs quoted"
+    ]
+  },
+  {
+    "category": "section-87A-rebate",
+    "question": "Total income Rs 7 lakh under new regime for AY 2025-26 - 87A rebate amount and calculation?",
+    "expected_key_facts": [
+      "Section 87A rebate up to Rs 25,000 for income up to Rs 7 lakh under new regime for AY 2025-26",
+      "Tax before rebate on Rs 7 lakh (new regime) equals Rs 25,000, reduced to nil by rebate",
+      "Marginal relief available for income marginally above Rs 7 lakh"
+    ],
+    "disqualifiers": [
+      "Rs 60,000 rebate cap for AY 2025-26",
+      "Rs 12 lakh threshold for AY 2025-26",
+      "Old regime Rs 12,500 rebate quoted for new regime"
+    ]
+  },
+  {
+    "category": "section-87A-rebate",
+    "question": "Total income Rs 4.9 lakh under old regime for AY 2025-26 - Sec 87A rebate?",
+    "expected_key_facts": [
+      "Old regime 87A rebate: up to Rs 12,500 for total income up to Rs 5 lakh",
+      "Rs 4.9 lakh is within limit, tax reduced to nil after rebate",
+      "Cess of 4% then does not apply because tax is nil"
+    ],
+    "disqualifiers": [
+      "Rebate Rs 25,000 under old regime",
+      "Rebate available at Rs 4.9 lakh under old regime capped at Rs 7 lakh",
+      "Cess payable despite rebate reducing tax to zero"
+    ]
+  },
+  {
+    "category": "section-87A-rebate",
+    "question": "Two Form 16s aggregating to Rs 11.5 lakh under new regime for AY 2026-27 - tax liability with 87A?",
+    "expected_key_facts": [
+      "AY 2026-27 = FY 2025-26 under Income-tax Act 1961",
+      "New regime slabs per Sec 115BAC(1A) as amended by Finance Act 2025 apply",
+      "87A rebate up to Rs 60,000 covers income up to Rs 12 lakh - liability reduced to nil before cess",
+      "Cess of 4% on tax after rebate (which is nil)"
+    ],
+    "disqualifiers": [
+      "AY 2027-28 slabs applied",
+      "Rs 25,000 rebate cap applied for AY 2026-27",
+      "Rebate not available because two employers"
+    ]
+  },
+  {
+    "category": "section-87A-rebate",
+    "question": "Income Rs 12.10 lakh under new regime for AY 2026-27 - is marginal relief available under Sec 87A?",
+    "expected_key_facts": [
+      "Yes, marginal relief u/s 87A available where income marginally exceeds Rs 12 lakh under new regime for AY 2026-27",
+      "Tax payable capped so incremental tax does not exceed incremental income above Rs 12 lakh",
+      "Per Finance Act 2025 amendment to Sec 87A"
+    ],
+    "disqualifiers": [
+      "No marginal relief in the new regime",
+      "Marginal relief only up to Rs 7 lakh threshold for AY 2026-27",
+      "AY 2027-28 slabs applied"
+    ]
+  },
+  {
+    "category": "section-87A-rebate",
+    "question": "Resident individual with Rs 6.5 lakh income including Rs 50,000 STCG u/s 111A for AY 2025-26 under new regime - is 87A available on the 111A tax?",
+    "expected_key_facts": [
+      "87A rebate not available against tax on STCG u/s 111A even in new regime (per settled position and July 2024 ITR utility)",
+      "Rebate available only on tax attributable to non-special-rate income",
+      "Tax on 111A component of Rs 50,000 payable at applicable rate"
+    ],
+    "disqualifiers": [
+      "Full rebate available including 111A tax",
+      "87A blanket rebate covers all tax including 112A / 111A"
+    ]
+  },
+  {
+    "category": "section-definition",
+    "question": "What does Section 2(19) of the Income-tax Act 1961 define?",
+    "expected_key_facts": [
+      "Section 2(19) defines 'co-operative society'",
+      "It does not define 'financial year'",
+      "'Financial year' is defined by Section 3(21) of the General Clauses Act 1897"
+    ],
+    "disqualifiers": [
+      "Section 2(19) defines 'financial year'",
+      "Section 2(19) defines 'previous year'",
+      "Section 2(19) defines 'assessment year'"
+    ]
+  },
+  {
+    "category": "section-definition",
+    "question": "Which section defines 'Assessment Year' under Income-tax Act 1961?",
+    "expected_key_facts": [
+      "Section 2(9) of the Income-tax Act 1961 defines 'Assessment Year'",
+      "Period of twelve months commencing on 1 April every year",
+      "Not Section 2(19) or Section 3"
+    ],
+    "disqualifiers": [
+      "Section 2(19) defines Assessment Year",
+      "Section 3 defines Assessment Year (Sec 3 defines Previous Year)",
+      "Section 2(34) defines Assessment Year"
+    ]
+  },
+  {
+    "category": "section-definition",
+    "question": "Which section defines 'Previous Year' under Income-tax Act 1961?",
+    "expected_key_facts": [
+      "Section 3 of the Income-tax Act 1961 defines 'Previous Year'",
+      "Financial year immediately preceding the assessment year",
+      "Special provision for newly set-up business in Sec 3"
+    ],
+    "disqualifiers": [
+      "Section 2(9) defines Previous Year",
+      "Section 2(19) defines Previous Year",
+      "Section 4 defines Previous Year"
+    ]
+  },
+  {
+    "category": "section-definition",
+    "question": "Does Section 2(19AA) of Income-tax Act 1961 define 'demerger' or 'amalgamation'?",
+    "expected_key_facts": [
+      "Section 2(19AA) defines 'demerger'",
+      "Section 2(1B) defines 'amalgamation'",
+      "Both are relevant to corporate reorganisation provisions"
+    ],
+    "disqualifiers": [
+      "Section 2(19AA) defines amalgamation",
+      "Section 2(1B) defines demerger",
+      "Section 2(19AA) defines slump sale"
+    ]
+  },
+  {
+    "category": "section-definition",
+    "question": "Under Income-tax Act 1961, what does Section 2(24) enumerate?",
+    "expected_key_facts": [
+      "Section 2(24) contains inclusive definition of 'income'",
+      "Enumerates categories of receipts treated as income",
+      "Non-exhaustive definition"
+    ],
+    "disqualifiers": [
+      "Section 2(24) defines 'assessee'",
+      "Section 2(24) defines 'person'",
+      "Section 2(24) defines 'total income'"
+    ]
+  },
+  {
+    "category": "section-definition",
+    "question": "Which provision under Income-tax Act 1961 defines 'person'?",
+    "expected_key_facts": [
+      "Section 2(31) of Income-tax Act 1961 defines 'person'",
+      "Includes individual, HUF, company, firm, AOP/BOI, local authority, artificial juridical person",
+      "Inclusive definition"
+    ],
+    "disqualifiers": [
+      "Section 2(7) defines 'person' (2(7) defines 'assessee')",
+      "Section 2(24) defines 'person'",
+      "Section 3 defines 'person'"
+    ]
+  },
+  {
+    "category": "gst-rcm-scope",
+    "question": "GTA services availed by a private limited company - which RCM provision applies, Sec 9(3) or Sec 9(4)?",
+    "expected_key_facts": [
+      "Section 9(3) of CGST Act 2017 applies via Notification 13/2017-CT(Rate)",
+      "GTA services to specified recipients including body corporate attract RCM under 9(3), not 9(4)",
+      "Recipient liable to pay GST under RCM regardless of GTA's registration"
+    ],
+    "disqualifiers": [
+      "Section 9(4) applies to GTA services",
+      "Section 9(4) blanket RCM applies to all unregistered suppliers",
+      "Cash-first payment mandatory only under this circular"
+    ]
+  },
+  {
+    "category": "gst-rcm-scope",
+    "question": "Legal services received from an individual advocate by a business entity - which RCM section?",
+    "expected_key_facts": [
+      "Section 9(3) of CGST Act 2017 applies via Notification 13/2017-CT(Rate) entry 2",
+      "Applies to legal services by individual advocate/firm of advocates to any business entity above threshold",
+      "Not Section 9(4)"
+    ],
+    "disqualifiers": [
+      "Section 9(4) applies because supplier is unregistered",
+      "No RCM if advocate is unregistered",
+      "Forward charge with 18% GST by advocate"
+    ]
+  },
+  {
+    "category": "gst-rcm-scope",
+    "question": "Registered promoter buys cement from unregistered supplier - which sub-section triggers RCM?",
+    "expected_key_facts": [
+      "Section 9(4) via Notification 07/2019-CT(Rate) applies to promoters/builders in real estate",
+      "Applicable where less than 80% of inward supplies are from registered suppliers",
+      "Cement purchase from unregistered supplier attracts RCM by promoter without the 80% test"
+    ],
+    "disqualifiers": [
+      "Section 9(3) applies to cement RCM by promoter",
+      "Section 9(4) is a blanket provision covering all URD purchases by all persons",
+      "No RCM applicable in real estate sector"
+    ]
+  },
+  {
+    "category": "gst-rcm-scope",
+    "question": "Does Section 9(4) of CGST Act cast a blanket RCM liability on any registered person buying from unregistered supplier?",
+    "expected_key_facts": [
+      "No, Section 9(4) is confined to notified classes of registered recipients and notified categories of supply",
+      "Notification 07/2019-CT(Rate) restricts scope mainly to promoters in real estate",
+      "Blanket 9(4) applicability was suspended/deferred via Notification 22/2018 and eventually amended by CGST (Amendment) Act 2018"
+    ],
+    "disqualifiers": [
+      "Section 9(4) is a blanket RCM on all URD purchases",
+      "Every registered person must pay RCM on any purchase from unregistered supplier",
+      "Cash-first payment always required under 9(4)"
+    ]
+  },
+  {
+    "category": "gst-rcm-scope",
+    "question": "Payment of RCM liability - can input tax credit balance be used or must it be paid in cash?",
+    "expected_key_facts": [
+      "RCM liability must be discharged in cash via electronic cash ledger",
+      "Cannot be set off against ITC balance in the electronic credit ledger (Sec 49(4) read with Rule 86(2))",
+      "Once paid in cash, ITC of the RCM tax may be availed subject to eligibility"
+    ],
+    "disqualifiers": [
+      "RCM can be paid via electronic credit ledger balance",
+      "No cash payment required if credit balance available"
+    ]
+  },
+  {
+    "category": "gst-rcm-scope",
+    "question": "Import of consultancy services from a foreign firm by an Indian body corporate - which RCM provision?",
+    "expected_key_facts": [
+      "Section 5(3) of IGST Act 2017 read with Notification 10/2017-IT(Rate)",
+      "Import of services by any person for business purposes attracts RCM under IGST",
+      "Recipient reports in GSTR-3B and pays IGST under RCM in cash"
+    ],
+    "disqualifiers": [
+      "Section 9(3) of CGST Act applies to import of services",
+      "Section 9(4) of CGST Act applies to import of services",
+      "No RCM on import of services if consideration below threshold"
+    ]
+  },
+  {
+    "category": "gst-2B-mismatch",
+    "question": "As a CA I have a client with Rs 6 lakh of ITC in books but only Rs 4.8 lakh reflecting in GSTR-2B for August 2026 - what is my legal position and action plan?",
+    "expected_key_facts": [
+      "Section 16(2)(aa) of CGST Act - ITC available only if invoice reflected in GSTR-2B (per Rule 36(4) framework post-Jan 2022)",
+      "Circular 183/15/2022-GST provides mechanism for FY 2017-18 and 2018-19 mismatches; for later years reconciliation with supplier is required",
+      "Action: reconcile invoice-wise, obtain supplier certificate / follow-up to file GSTR-1, retain payment proofs u/s 16(2)(c)",
+      "Document checklist: tax invoice, e-way bill, payment proof, communication with supplier, ledger extract"
+    ],
+    "disqualifiers": [
+      "ITC blindly available on book invoices regardless of 2B",
+      "Refuse to advise the client on generic grounds",
+      "No documentation required to defend ITC"
+    ]
+  },
+  {
+    "category": "gst-2B-mismatch",
+    "question": "Supplier filed GSTR-1 late so invoice appears in GSTR-2B of next month instead - can I claim ITC in the earlier month per books?",
+    "expected_key_facts": [
+      "ITC available only in the month in which invoice appears in recipient's GSTR-2B (Sec 16(2)(aa) read with Rule 36(4))",
+      "Cannot pre-empt to earlier month; claim in the month of 2B reflection",
+      "Time-limit under Sec 16(4) - 30 November of following FY or annual return, whichever earlier"
+    ],
+    "disqualifiers": [
+      "ITC available in earlier month based on invoice date alone",
+      "GSTR-2B is only advisory, not binding",
+      "No time-limit on ITC claim"
+    ]
+  },
+  {
+    "category": "gst-2B-mismatch",
+    "question": "Supplier's GSTIN cancelled retrospectively after ITC availed - is my ITC at risk?",
+    "expected_key_facts": [
+      "Yes, ITC exposure arises; department may deny under Sec 16(2)(c) if tax not deposited by supplier",
+      "Retrospective cancellation is litigated; HC rulings (e.g. Delhi HC in Gargo Traders / Balaji Exim) require enquiry into recipient's bona fides",
+      "Recipient must show payment to supplier through banking channel, valid invoice, e-way bill and receipt of goods/services"
+    ],
+    "disqualifiers": [
+      "No effect on ITC because supplier's cancellation is his problem",
+      "ITC automatically reversed with 100% penalty without notice",
+      "Recipient cannot defend under any circumstances"
+    ]
+  },
+  {
+    "category": "gst-2B-mismatch",
+    "question": "GSTR-2B shows an invoice I never received - what is the correct action?",
+    "expected_key_facts": [
+      "Do not claim ITC on such invoice (Sec 16(2)(b) requires actual receipt of goods/services)",
+      "Communicate with supplier through IMS (Invoice Management System) to reject the invoice",
+      "Report/reject through GSTR-2B communication mechanism; keep documentary trail"
+    ],
+    "disqualifiers": [
+      "Claim ITC because it appears in 2B",
+      "No mechanism to reject 2B entries",
+      "IMS does not exist under GST"
+    ]
+  },
+  {
+    "category": "gstr1-amendment",
+    "question": "I filed GSTR-1 for July 2025 with wrong GSTIN of recipient - how do I correct it and by when?",
+    "expected_key_facts": [
+      "Amend via Table 9A of GSTR-1 (amendment to B2B invoices) in a later month's return",
+      "Statutory cut-off: earlier of 30 November 2026 (following FY) or filing of annual return for FY 2025-26 (Sec 37(3) proviso)",
+      "After cut-off, no amendment possible in GSTR-1; recipient's ITC in wrong GSTIN cannot be revived through GSTR-1"
+    ],
+    "disqualifiers": [
+      "Amendment via Table 9C only",
+      "Amendment available anytime, no cut-off",
+      "GSTR-1 cannot be amended at all"
+    ]
+  },
+  {
+    "category": "gstr1-amendment",
+    "question": "GSTR-1 window closed but wrong GSTIN discovered - what remedies remain?",
+    "expected_key_facts": [
+      "No amendment possible in GSTR-1 after Sec 37(3) proviso cut-off (30 November of following FY / annual return)",
+      "Recipient in whose GSTIN wrongly reported cannot use ITC (never received goods/services)",
+      "Remedy: refund route by supplier if tax paid to wrong GSTIN leads to double payment; credit note (Sec 34) if within time; explanation letter and reconciliation to defend audit"
+    ],
+    "disqualifiers": [
+      "GSTR-1 amendment always available even after annual return",
+      "No remedy at all - loss must be borne",
+      "Table 9A available indefinitely"
+    ]
+  },
+  {
+    "category": "gstr1-amendment",
+    "question": "For FY 2023-24 GSTR-1 invoice value error discovered in December 2024 - can I still amend?",
+    "expected_key_facts": [
+      "Sec 37(3) proviso cut-off: 30 November 2024 or filing of annual return for FY 2023-24, whichever earlier",
+      "December 2024 amendment attempt is beyond cut-off - not permitted through GSTR-1",
+      "Errors of tax liability can still be paid via DRC-03; recipient ITC issues need separate handling"
+    ],
+    "disqualifiers": [
+      "Amendment available up to 3 years",
+      "Amendment via Table 9A available in December 2024 without restriction",
+      "No cut-off applicable to GSTR-1 amendments"
+    ]
+  },
+  {
+    "category": "cross-border-foreign",
+    "question": "My Indian manufacturing client wants to claim accelerated depreciation - can they use US Section 179?",
+    "expected_key_facts": [
+      "US Section 179 is a US Internal Revenue Code provision, not applicable to Indian taxpayers",
+      "Indian taxpayers claim depreciation under Sec 32 of Income-tax Act 1961 (or corresponding provision of 2025 Act)",
+      "Rates prescribed in Appendix I to Income-tax Rules 1962; additional depreciation available u/s 32(1)(iia)"
+    ],
+    "disqualifiers": [
+      "US Section 179 is available to Indian taxpayers",
+      "Form 6765 (US R&D credit) is relevant for Indian claim",
+      "Rs 5,000 low-value asset 100% depreciation is currently available in India (this was withdrawn)"
+    ]
+  },
+  {
+    "category": "cross-border-foreign",
+    "question": "For Indian corporate R&D expenditure, is IRS Form 6765 relevant?",
+    "expected_key_facts": [
+      "Form 6765 is a US IRS form for claiming R&D credit under IRC Sec 41 - not relevant to Indian taxpayer",
+      "Indian R&D deduction historically under Sec 35 of Income-tax Act 1961 (weighted deduction of 150% withdrawn from AY 2021-22)",
+      "Post-AY 2021-22 only 100% deduction available under Sec 35(1)/(2AB); no Form 6765 filing in India"
+    ],
+    "disqualifiers": [
+      "Form 6765 needed for Indian R&D claim",
+      "Weighted 150% deduction still available under Sec 35(2AB) after AY 2021-22",
+      "IRS forms interchangeable with Indian tax forms"
+    ]
+  },
+  {
+    "category": "cross-border-foreign",
+    "question": "Client asks whether QBI deduction (US Sec 199A) is available to his LLP in India.",
+    "expected_key_facts": [
+      "QBI Sec 199A is a US Internal Revenue Code provision, not applicable to Indian LLPs",
+      "Indian LLPs taxed at 30% under Income-tax Act 1961 with no analogous 20% QBI-type deduction",
+      "Only Indian statutory deductions (Chapter VI-A etc) applicable"
+    ],
+    "disqualifiers": [
+      "QBI Sec 199A 20% deduction available to Indian LLP",
+      "Sec 199A cross-referenced with Indian Sec 80JJAA or similar as equivalent",
+      "US provision applies by analogy"
+    ]
+  },
+  {
+    "category": "cross-border-foreign",
+    "question": "Is the UK Making Tax Digital (MTD) e-filing framework applicable to Indian GST returns?",
+    "expected_key_facts": [
+      "MTD is a UK HMRC framework for VAT and income-tax digital record-keeping - not applicable in India",
+      "Indian GST returns follow CGST Act 2017 - GSTR-1, GSTR-3B, GSTR-9 filed through GST portal / IMS",
+      "No MTD compliance for Indian taxpayers"
+    ],
+    "disqualifiers": [
+      "MTD compliance applies to Indian GST returns",
+      "HMRC guidance is binding on Indian GST officers",
+      "UK VAT rules override CGST provisions"
+    ]
+  },
+  {
+    "category": "cross-border-foreign",
+    "question": "Client had US-source dividend income - can he claim US foreign-tax credit via IRS Form 1116 on his Indian ITR?",
+    "expected_key_facts": [
+      "Foreign tax credit in India claimed under Sec 90 / 91 of Income-tax Act 1961 read with Rule 128",
+      "Filed via Form 67 (not Form 1116) before due date of return u/s 139(1)",
+      "Form 1116 is a US IRS form for US residents claiming credit on foreign tax, irrelevant to Indian return"
+    ],
+    "disqualifiers": [
+      "Form 1116 filed with Indian ITR for FTC",
+      "Form 67 not required in India",
+      "US IRS forms accepted by CBDT"
+    ]
+  },
+  {
+    "category": "circular-fabrication",
+    "question": "Does CBIC Circular 45/2026 dated 12 March 2026 mandate cash-only payment for all RCM liabilities?",
+    "expected_key_facts": [
+      "Cannot confirm existence of such a circular without primary source verification; user should provide/verify the source",
+      "RCM cash-payment requirement stems from Sec 49(4) CGST Act read with Rule 86 (electronic credit ledger not usable for output tax under RCM) - not from a 2026 circular",
+      "Sec 9(3) and Sec 9(4) coverage is fixed by notifications, not by such a circular",
+      "Sec 9(3) RCM categories (GTA, legal services, etc.) continue independently of any such circular"
+    ],
+    "disqualifiers": [
+      "Confirm Circular 45/2026 as genuine",
+      "Blanket 9(4) RCM revived by such circular",
+      "Cash-first requirement is new via 2026 circular"
+    ]
+  },
+  {
+    "category": "circular-fabrication",
+    "question": "Can you cite CBDT Circular 25/2026 dated 5 August 2026 regarding TDS on cryptocurrency?",
+    "expected_key_facts": [
+      "Cannot verify circular without primary source; specific number and date should be confirmed on incometaxindia.gov.in",
+      "TDS on VDA transfers is governed by Sec 194S of Income-tax Act 1961 (inserted by Finance Act 2022)",
+      "Existing guidance: CBDT Circulars 13/2022 and 14/2022 dated 22 June 2022"
+    ],
+    "disqualifiers": [
+      "Confirm Circular 25/2026 as genuine without verification",
+      "Fabricate content of the alleged circular"
+    ]
+  },
+  {
+    "category": "circular-fabrication",
+    "question": "GST Notification 89/2025-Central Tax purportedly extends GSTR-9 due date to 30 June 2026 - is this valid?",
+    "expected_key_facts": [
+      "Cannot confirm without verifying against CBIC official gazette / cbic-gst.gov.in",
+      "Standard GSTR-9 due date is 31 December of following FY (Sec 44 CGST Act)",
+      "Any extension is typically issued closer to due date; user should verify"
+    ],
+    "disqualifiers": [
+      "Confirm the notification as issued without verification",
+      "Fabricate specific paragraphs of the notification"
+    ]
+  },
+  {
+    "category": "circular-fabrication",
+    "question": "Is there a CBDT Instruction No. 5/2027 laying down monetary limits for departmental appeals?",
+    "expected_key_facts": [
+      "Cannot verify without primary source; user must check incometaxindia.gov.in",
+      "Current monetary limits for departmental appeals as per CBDT Circular 09/2024 dated 17 September 2024: ITAT Rs 60 lakh, HC Rs 2 crore, SC Rs 5 crore",
+      "Any 2027 instruction would supersede only if formally issued and gazetted"
+    ],
+    "disqualifiers": [
+      "Confirm Instruction 5/2027 as genuine without verification",
+      "Fabricate specific monetary thresholds attributed to a non-verified instruction"
+    ]
+  },
+  {
+    "category": "appeal-substantive-vs-procedural",
+    "question": "AY 2022-23 appeal being heard in September 2026 - is substantive law strictly frozen as on 1 April 2022?",
+    "expected_key_facts": [
+      "General rule: substantive law of AY 2022-23 (as on 1 April 2022) applies",
+      "Retrospective amendments enacted later may apply if the amending statute so provides",
+      "Clarificatory amendments deemed always to have been in force, apply to pending proceedings",
+      "Procedural amendments (including reassessment / appellate machinery) apply to proceedings in force at that time",
+      "Later Supreme Court rulings interpreting AY 2022-23 law bind the appeal"
+    ],
+    "disqualifiers": [
+      "Substantive law absolutely frozen as on 1 April 2022 with no carve-outs",
+      "All later amendments apply regardless of nature",
+      "2025 Act substantively displaces 1961 Act for AY 2022-23 appeal"
+    ]
+  },
+  {
+    "category": "appeal-substantive-vs-procedural",
+    "question": "Reassessment for AY 2019-20 initiated in 2026 - which reassessment procedure applies?",
+    "expected_key_facts": [
+      "Procedure applicable at date of notice governs (Sec 148/148A machinery as amended by Finance Act 2021 and Finance Act 2022)",
+      "Ashish Agarwal (2022) 444 ITR 1 SC and Rajeev Bansal (2024) 469 ITR 46 SC clarify migration of pre-2021 notices",
+      "Substantive charge remains under 1961 Act for AY 2019-20"
+    ],
+    "disqualifiers": [
+      "Old Sec 147 pre-Finance Act 2021 procedure applies to fresh notice in 2026",
+      "2025 Act reassessment provisions apply to AY 2019-20",
+      "Substantive charge governed by 2025 Act"
+    ]
+  },
+  {
+    "category": "appeal-substantive-vs-procedural",
+    "question": "Retrospective amendment via Finance Act 2023 - does Sec 43B(h) apply to appeal for AY 2021-22?",
+    "expected_key_facts": [
+      "Sec 43B(h) inserted by Finance Act 2023 is prospective from AY 2024-25 - does not affect AY 2021-22",
+      "Retrospective amendments apply to earlier AYs only if the statute so provides",
+      "Explanations 'for the removal of doubt' or 'clarificatory' may apply retroactively; specific language of the amendment must be checked"
+    ],
+    "disqualifiers": [
+      "All Finance Act 2023 amendments automatically apply to AY 2021-22",
+      "Sec 43B(h) retrospective from AY 2021-22",
+      "No retrospective amendment can ever apply to prior AY"
+    ]
+  },
+  {
+    "category": "appeal-substantive-vs-procedural",
+    "question": "For appeal relating to AY 2020-21 penalty u/s 271(1)(c) heard in 2026, does new penalty regime u/s 270A apply?",
+    "expected_key_facts": [
+      "Sec 270A applies to AY 2017-18 onwards; Sec 271(1)(c) applies up to AY 2016-17 (substituted)",
+      "For AY 2020-21, Sec 270A already applies substantively (not 271(1)(c))",
+      "Penalty machinery in force at time of penalty order applies procedurally"
+    ],
+    "disqualifiers": [
+      "Sec 271(1)(c) still applies to AY 2020-21 substantively",
+      "2025 Act penalty regime applies retroactively",
+      "New penalty threshold from 2026 amendment applies to AY 2020-21"
+    ]
+  },
+  {
+    "category": "appeal-substantive-vs-procedural",
+    "question": "Appeal filed under Sec 246A for AY 2024-25 pending as on 1 April 2026 - does the 2025 Act change the appellate procedure?",
+    "expected_key_facts": [
+      "Substantive charge remains under 1961 Act for AY 2024-25",
+      "Procedural appeal provisions of 2025 Act may govern the appellate process post-1 April 2026 subject to savings",
+      "General Clauses Act Sec 6 saves accrued rights and pending proceedings unless different intention appears"
+    ],
+    "disqualifiers": [
+      "Appeal automatically abates on 1 April 2026",
+      "Substantive AY 2024-25 charge rewritten under 2025 Act",
+      "No savings for pending appeals"
+    ]
+  },
+  {
+    "category": "multi-employer-16",
+    "question": "Employee has Form 16 from Employer A (Rs 8 lakh) and Employer B (Rs 4 lakh) for FY 2025-26 - what is aggregate treatment and tax under new regime with 87A?",
+    "expected_key_facts": [
+      "Aggregate salary Rs 12 lakh - shown as total salary income in ITR for AY 2026-27",
+      "New regime slabs (Sec 115BAC(1A)) apply as default; 87A rebate up to Rs 60,000 covers Rs 12 lakh (per Finance Act 2025)",
+      "Tax before cess reduced to nil after 87A; check TDS credit already deducted by both employers",
+      "Standard deduction Rs 75,000 available under new regime for AY 2026-27"
+    ],
+    "disqualifiers": [
+      "Two ITRs required for two Form 16s",
+      "AY 2027-28 slabs applied",
+      "Only Rs 25,000 87A rebate applied for AY 2026-27",
+      "Old regime slabs applied by default"
+    ]
+  },
+  {
+    "category": "multi-employer-16",
+    "question": "Two Form 16s aggregating Rs 15.5 lakh for FY 2024-25 - tax under new regime with 87A?",
+    "expected_key_facts": [
+      "AY 2025-26 - new regime slabs per Sec 115BAC(1A) as amended by Finance Act 2023 apply",
+      "87A rebate not available (income exceeds Rs 7 lakh threshold under new regime for AY 2025-26)",
+      "Standard deduction Rs 75,000 under new regime for AY 2025-26; 4% cess on tax + surcharge if applicable"
+    ],
+    "disqualifiers": [
+      "Rs 60,000 87A rebate applied for AY 2025-26 up to Rs 12 lakh",
+      "AY 2026-27 slabs applied to FY 2024-25 income",
+      "Two separate ITRs required"
+    ]
+  },
+  {
+    "category": "multi-employer-16",
+    "question": "Employee changed jobs midyear - both employers gave Sec 87A rebate in TDS. Aggregate income is Rs 8 lakh for FY 2024-25 under new regime - what is the correction at return filing?",
+    "expected_key_facts": [
+      "Aggregate salary Rs 8 lakh exceeds Rs 7 lakh threshold for 87A rebate under new regime for AY 2025-26",
+      "87A rebate NOT available at return-filing stage; each employer computed TDS assuming they were the sole employer",
+      "Additional tax liability plus interest u/s 234B/234C possible; aggregate slab tax on Rs 8 lakh (less standard deduction Rs 75,000) computed at new regime slabs"
+    ],
+    "disqualifiers": [
+      "87A rebate still available at aggregate stage for AY 2025-26 up to Rs 8 lakh",
+      "No correction required at return-filing",
+      "AY 2026-27 Rs 60,000 rebate applied to FY 2024-25"
+    ]
+  }
+]

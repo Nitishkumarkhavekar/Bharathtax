@@ -1,11 +1,67 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Scale, Play, CheckCircle2, AlertTriangle, ArrowLeftRight, Flag, Search, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Scale, Play, CheckCircle2, AlertTriangle, ArrowLeftRight, Flag, Search, Upload, History, Trash2, X, ArrowUpRight } from "lucide-react";
 import { api, WsReconResult, WsSftResult, WsSftThreshold } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import PageHelp from "@/components/PageHelp";
+
+// ------------------------------------------------------------------- history
+//
+// Per-device history of Reconcile / SFT-scan runs. Kept in localStorage — no
+// server side effect. Each entry stores the inputs the user typed and a short
+// summary string so the drawer can show a scannable list; clicking an entry
+// re-hydrates the form and re-runs.
+
+type ReconMode = "reconcile" | "sft";
+type ReconHistoryEntry = {
+  id: string;
+  at: number;
+  mode: ReconMode;
+  summary: string;
+  // Free-form payload — the receiving mode component decides how to restore.
+  inputs: { a?: string; b?: string; tol?: string; text?: string };
+};
+
+const HISTORY_KEY = "bt.recon.history";
+const HISTORY_MAX = 40;
+
+function loadHistory(): ReconHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function saveHistory(items: ReconHistoryEntry[]) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_MAX))); }
+  catch { /* quota / private mode — fail silently */ }
+}
+function useReconHistory() {
+  const [items, setItems] = useState<ReconHistoryEntry[]>(() => loadHistory());
+  const push = (e: Omit<ReconHistoryEntry, "id" | "at">) => {
+    const entry: ReconHistoryEntry = { ...e, id: crypto.randomUUID(), at: Date.now() };
+    const next = [entry, ...items].slice(0, HISTORY_MAX);
+    setItems(next); saveHistory(next);
+  };
+  const remove = (id: string) => {
+    const next = items.filter((x) => x.id !== id);
+    setItems(next); saveHistory(next);
+  };
+  const clear = () => { setItems([]); saveHistory([]); };
+  return { items, push, remove, clear };
+}
+
+function relTime(ms: number): string {
+  const d = (Date.now() - ms) / 1000;
+  if (d < 60) return "just now";
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+  if (d < 86400 * 7) return `${Math.floor(d / 86400)}d ago`;
+  return new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
 
 const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n));
 
@@ -30,6 +86,118 @@ function parseRows(text: string): { key: string; name?: string; amount: number }
 
 const PLACEHOLDER = "One entry per line:  TAN, Deductor name, Amount\nBLRA00123A, ACME Ltd, 45000\nMUMB00456B, Beta Corp, 12000";
 
+function HistoryDrawer({
+  open, mode, history, onClose, onRestore,
+}: {
+  open: boolean;
+  mode: ReconMode;
+  history: ReturnType<typeof useReconHistory>;
+  onClose: () => void;
+  onRestore: (e: ReconHistoryEntry) => void;
+}) {
+  const filtered = useMemo(
+    () => history.items.filter((x) => x.mode === mode),
+    [history.items, mode],
+  );
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 z-[90] bg-slate-900/20" onClick={onClose} aria-hidden />
+      <aside
+        role="dialog"
+        aria-label="Reconciliation history"
+        className="fixed top-0 right-0 z-[100] h-full w-full max-w-md bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col animate-in slide-in-from-right-4 duration-200"
+      >
+        <header className="p-5 border-b border-slate-100 shrink-0 flex items-start gap-3">
+          <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+            <History className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[15px] font-bold text-slate-900">
+              {mode === "reconcile" ? "Reconciliation history" : "SFT scan history"}
+            </h2>
+            <p className="text-[12px] text-slate-500 mt-0.5">
+              {filtered.length} run{filtered.length === 1 ? "" : "s"} saved on this device
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X className="size-4" />
+          </button>
+        </header>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="p-10 text-center">
+              <History className="size-8 text-slate-300 mx-auto mb-3" />
+              <div className="text-sm font-semibold text-slate-700">No history yet</div>
+              <p className="text-[12.5px] text-slate-500 mt-1">
+                Run a {mode === "reconcile" ? "reconciliation" : "SFT scan"} and it'll appear here — click to reload the inputs later.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {filtered.map((e) => (
+                <li key={e.id} className="group flex items-start gap-2 p-4 hover:bg-slate-50 transition-colors">
+                  <button
+                    onClick={() => onRestore(e)}
+                    className="flex-1 min-w-0 text-left"
+                    title="Reload these inputs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10.5px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ring-1 bg-primary/10 text-primary ring-primary/20">
+                        {e.mode === "reconcile" ? "Reconcile" : "SFT"}
+                      </span>
+                      <span className="text-[11px] text-slate-400 tabular-nums">{relTime(e.at)}</span>
+                    </div>
+                    <div className="mt-1 text-[13.5px] font-semibold text-slate-900 group-hover:text-primary line-clamp-2">
+                      {e.summary}
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      onClick={() => onRestore(e)}
+                      title="Reload inputs"
+                      className="p-1.5 rounded-md text-slate-400 hover:text-primary hover:bg-primary/5"
+                    >
+                      <ArrowUpRight className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => history.remove(e.id)}
+                      title="Delete entry"
+                      className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <footer className="border-t border-slate-100 shrink-0 bg-white p-3 flex items-center justify-between text-[12.5px]">
+          <button
+            onClick={history.clear}
+            disabled={history.items.length === 0}
+            className="text-slate-500 hover:text-red-600 disabled:opacity-40 disabled:hover:text-slate-500 font-medium"
+          >
+            Clear all history
+          </button>
+          <span className="text-slate-400">{history.items.length} total across both modes</span>
+        </footer>
+      </aside>
+    </>
+  );
+}
+
 function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div className={cn("px-3 py-2 rounded-xl ring-1 text-center", tone)}>
@@ -41,10 +209,21 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: stri
 
 export default function Reconcile() {
   const [mode, setMode] = useState<"reconcile" | "sft">("reconcile");
+  const history = useReconHistory();
+  const [showHistory, setShowHistory] = useState(false);
+  // A restore signal — a monotonic counter increments when the user picks an
+  // entry from the drawer; child modes watch it in `useEffect` and re-hydrate.
+  const [restoreEntry, setRestoreEntry] = useState<ReconHistoryEntry | null>(null);
+
+  const restore = (e: ReconHistoryEntry) => {
+    setMode(e.mode);
+    setRestoreEntry(e);
+    setShowHistory(false);
+  };
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
           <Scale className="size-6" />
         </div>
@@ -52,7 +231,21 @@ export default function Reconcile() {
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Reconciliation & SFT scan</h1>
           <p className="text-[13px] text-slate-500">AIS / 26AS matching, and a Rule 114E high-value transaction scan.</p>
         </div>
-        <PageHelp id="reconcile" className="ml-auto shrink-0" />
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] font-semibold text-slate-700 ring-1 ring-slate-200 bg-white hover:bg-slate-50"
+            title="Show previous runs"
+          >
+            <History className="size-4" /> History
+            {history.items.length > 0 && (
+              <span className="ml-0.5 text-[10.5px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded tabular-nums">
+                {history.items.length}
+              </span>
+            )}
+          </button>
+          <PageHelp id="reconcile" className="shrink-0" />
+        </div>
       </div>
 
       <div className="inline-flex rounded-lg bg-slate-100 p-1">
@@ -62,22 +255,60 @@ export default function Reconcile() {
         ))}
       </div>
 
-      {mode === "reconcile" ? <ReconcileMode /> : <SftMode />}
+      {mode === "reconcile"
+        ? <ReconcileMode history={history} restore={restoreEntry?.mode === "reconcile" ? restoreEntry : null} />
+        : <SftMode history={history} restore={restoreEntry?.mode === "sft" ? restoreEntry : null} />}
+
+      <HistoryDrawer
+        open={showHistory}
+        mode={mode}
+        history={history}
+        onClose={() => setShowHistory(false)}
+        onRestore={restore}
+      />
     </div>
   );
 }
 
-function ReconcileMode() {
+function ReconcileMode({
+  history, restore,
+}: {
+  history: ReturnType<typeof useReconHistory>;
+  restore: ReconHistoryEntry | null;
+}) {
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const [tol, setTol] = useState("1");
   const [res, setRes] = useState<WsReconResult | null>(null);
 
+  // Re-hydrate from a history entry the parent handed us.
+  useEffect(() => {
+    if (!restore) return;
+    setA(restore.inputs.a || "");
+    setB(restore.inputs.b || "");
+    setTol(restore.inputs.tol || "1");
+    setRes(null);
+    toast.success("Loaded from history.");
+  }, [restore]);
+
+  const clear = () => {
+    if (!a && !b && !res) return;
+    setA(""); setB(""); setTol("1"); setRes(null);
+    toast.success("Cleared.");
+  };
+
   const run = async () => {
     const ra = parseRows(a), rb = parseRows(b);
     if (ra.length === 0 || rb.length === 0) { toast.error("Enter entries in both columns (key, name, amount)."); return; }
-    try { setRes(await api.wsReconcile(ra, rb, parseFloat(tol) || 0)); }
-    catch (e: any) { toast.error(e?.message || "Could not reconcile."); }
+    try {
+      const r = await api.wsReconcile(ra, rb, parseFloat(tol) || 0);
+      setRes(r);
+      history.push({
+        mode: "reconcile",
+        summary: `${r.summary.matched_count} matched · ${r.summary.mismatch_count} mismatch · ${r.summary.only_a_count + r.summary.only_b_count} unmatched (tolerance ₹${tol || 0})`,
+        inputs: { a, b, tol },
+      });
+    } catch (e: any) { toast.error(e?.message || "Could not reconcile."); }
   };
 
   return (
@@ -92,12 +323,17 @@ function ReconcileMode() {
         ))}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <label className="text-[12px] text-slate-500 flex items-center gap-2">
           Tolerance (₹)
           <Input type="number" className="w-24 h-9" value={tol} onChange={(e) => setTol(e.target.value)} />
         </label>
-        <Button className="ml-auto" onClick={run}><Play className="size-4 mr-1" /> Reconcile</Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" onClick={clear} disabled={!a && !b && !res} title="Clear both inputs and the current result">
+            <Trash2 className="size-4 mr-1" /> Clear
+          </Button>
+          <Button onClick={run}><Play className="size-4 mr-1" /> Reconcile</Button>
+        </div>
       </div>
 
       {res && (
@@ -199,12 +435,30 @@ function stripSftHeader(text: string): string {
   return lines.join("\n");
 }
 
-function SftMode() {
+function SftMode({
+  history, restore,
+}: {
+  history: ReturnType<typeof useReconHistory>;
+  restore: ReconHistoryEntry | null;
+}) {
   const [text, setText] = useState("");
   const [cats, setCats] = useState<WsSftThreshold[]>([]);
   const [res, setRes] = useState<WsSftResult | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => { api.wsSftThresholds().then(setCats).catch(() => {}); }, []);
+
+  useEffect(() => {
+    if (!restore) return;
+    setText(restore.inputs.text || "");
+    setRes(null);
+    toast.success("Loaded from history.");
+  }, [restore]);
+
+  const clear = () => {
+    if (!text && !res) return;
+    setText(""); setRes(null);
+    toast.success("Cleared.");
+  };
 
   const onFile = async (f: File | null) => {
     if (!f) return;
@@ -224,8 +478,15 @@ function SftMode() {
   const run = async () => {
     const rows = parseSftRows(text);
     if (!rows.length) { toast.error("Paste rows or upload a CSV (PAN, Name, Category, Amount)."); return; }
-    try { setRes(await api.wsSftAnalyze(rows)); }
-    catch (e: any) { toast.error(e?.message || "Could not analyse."); }
+    try {
+      const r = await api.wsSftAnalyze(rows);
+      setRes(r);
+      history.push({
+        mode: "sft",
+        summary: `${r.summary.flagged} flagged of ${r.summary.persons} · ${r.summary.transactions} txn · ₹${new Intl.NumberFormat("en-IN").format(Math.round(r.summary.grand_total))}`,
+        inputs: { text },
+      });
+    } catch (e: any) { toast.error(e?.message || "Could not analyse."); }
   };
 
   return (
@@ -254,8 +515,13 @@ function SftMode() {
           </div>
         </div>
       </div>
-      <div className="flex items-center">
-        <Button className="ml-auto" onClick={run}><Search className="size-4 mr-1" /> Scan high-value</Button>
+      <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" onClick={clear} disabled={!text && !res} title="Clear input and result">
+            <Trash2 className="size-4 mr-1" /> Clear
+          </Button>
+          <Button onClick={run}><Search className="size-4 mr-1" /> Scan high-value</Button>
+        </div>
       </div>
 
       {res && (

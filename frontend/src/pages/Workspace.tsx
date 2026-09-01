@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  CalendarClock, Plus, Trash2, Check, AlarmClock, X, RefreshCw, FolderOpen, Info,
+  CalendarClock, Plus, Trash2, Check, AlarmClock, X, RefreshCw, FolderOpen, Info, Pencil,
   StickyNote as StickyNoteIcon, Pin, Share2, UserPlus, Users2,
 } from "lucide-react";
 import { api, WsMatter, WsDeadline, WsDemand, WsRuleCatalogue, WsNote, WsShare } from "../api";
@@ -421,6 +421,41 @@ export default function Workspace() {
     } catch (e: any) { toast.error(e?.message || "Could not delete the matter."); }
   };
 
+  // Inline edit for the currently-open matter. `editingMatter` is null when
+  // the read-only header is showing; a form object when the user is editing.
+  const [editingMatter, setEditingMatter] = useState<null | {
+    title: string; pan: string; assessment_year: string; category: string;
+  }>(null);
+  const startEditMatter = (m: WsMatter) => {
+    setEditingMatter({
+      title: m.title || "",
+      pan: m.pan || "",
+      assessment_year: m.assessment_year || "",
+      category: m.category || defaultCategory,
+    });
+  };
+  const cancelEditMatter = () => setEditingMatter(null);
+  const saveEditMatter = async () => {
+    if (!detail || !editingMatter) return;
+    const em = editingMatter;
+    if (!em.title.trim()) { toast.error("Give the matter a title."); return; }
+    const panErr = optional(em.pan, isPan, "PAN must look like ABCDE1234E.");
+    if (panErr) { toast.error(panErr); return; }
+    const ayErr = optional(em.assessment_year, isAy, "Assessment year must be like 2023-24.");
+    if (ayErr) { toast.error(ayErr); return; }
+    try {
+      await api.wsUpdateMatter(detail.id, {
+        title: em.title.trim(),
+        pan: em.pan.trim() || null,
+        assessment_year: em.assessment_year.trim() || null,
+        category: em.category,
+      });
+      setEditingMatter(null);
+      await Promise.all([loadDetail(detail.id), refreshMatters()]);
+      toast.success("Matter updated.");
+    } catch (e: any) { toast.error(e?.message || "Could not update the matter."); }
+  };
+
   const stats = useMemo(() => {
     const overdue = upcoming.filter((d) => daysUntil(d.due_date) < 0).length;
     const soon = upcoming.filter((d) => { const n = daysUntil(d.due_date); return n >= 0 && n <= 30; }).length;
@@ -553,25 +588,68 @@ export default function Workspace() {
           {/* Selected matter — compute + its deadlines */}
           {detail ? (
             <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
-              <div className="flex items-start gap-2 mb-3">
-                <div className="min-w-0">
-                  <h2 className="text-[15px] font-bold text-slate-900 truncate">{detail.title}</h2>
-                  <p className="text-[11.5px] text-slate-500">
-                    {[detail.pan, detail.assessment_year, CATEGORIES.find((c) => c.v === detail.category)?.l]
-                      .filter(Boolean).join(" · ") || "—"}
-                  </p>
+              {editingMatter && detail.owned !== false ? (
+                <div className="mb-3 p-3 rounded-xl bg-slate-50 ring-1 ring-slate-200 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Pencil className="size-3.5 text-primary" />
+                    <span className="text-[12px] font-semibold text-primary">Edit matter</span>
+                  </div>
+                  <Input placeholder="Matter title"
+                    value={editingMatter.title}
+                    onChange={(e) => setEditingMatter({ ...editingMatter, title: e.target.value })} />
+                  <div className="flex gap-2">
+                    <Input placeholder="PAN (ABCDE1234E)" maxLength={10}
+                      value={editingMatter.pan}
+                      onChange={(e) => setEditingMatter({ ...editingMatter, pan: formatPan(e.target.value) })}
+                      className={cn(editingMatter.pan.length > 0 && !isPan(editingMatter.pan) && "border-rose-300 focus-visible:ring-rose-200")} />
+                    <Input placeholder="AY 2023-24" maxLength={7}
+                      value={editingMatter.assessment_year}
+                      onChange={(e) => setEditingMatter({ ...editingMatter, assessment_year: formatAy(e.target.value) })}
+                      className={cn(editingMatter.assessment_year.length > 0 && !isAy(editingMatter.assessment_year) && "border-rose-300 focus-visible:ring-rose-200")} />
+                  </div>
+                  <select
+                    className="w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700"
+                    value={editingMatter.category}
+                    onChange={(e) => setEditingMatter({ ...editingMatter, category: e.target.value })}
+                  >
+                    {CATEGORIES.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+                  </select>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <Button size="sm" variant="outline" onClick={cancelEditMatter}>
+                      <X className="size-3.5 mr-1" /> Cancel
+                    </Button>
+                    <Button size="sm" onClick={saveEditMatter}>
+                      <Check className="size-3.5 mr-1" /> Save
+                    </Button>
+                  </div>
                 </div>
-                {detail.owned === false ? (
-                  <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-md">
-                    <Users2 className="size-3.5" /> Shared · read-only
-                  </span>
-                ) : (
-                  <button onClick={() => removeMatter(detail)} title="Delete matter"
-                    className="ml-auto p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                    <Trash2 className="size-4" />
-                  </button>
-                )}
-              </div>
+              ) : (
+                <div className="flex items-start gap-2 mb-3">
+                  <div className="min-w-0">
+                    <h2 className="text-[15px] font-bold text-slate-900 truncate">{detail.title}</h2>
+                    <p className="text-[11.5px] text-slate-500">
+                      {[detail.pan, detail.assessment_year, CATEGORIES.find((c) => c.v === detail.category)?.l]
+                        .filter(Boolean).join(" · ") || "—"}
+                    </p>
+                  </div>
+                  {detail.owned === false ? (
+                    <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-md">
+                      <Users2 className="size-3.5" /> Shared · read-only
+                    </span>
+                  ) : (
+                    <div className="ml-auto flex items-center gap-0.5 shrink-0">
+                      <button onClick={() => startEditMatter(detail)} title="Edit matter"
+                        className="p-1.5 rounded-md text-slate-400 hover:bg-primary/10 hover:text-primary">
+                        <Pencil className="size-4" />
+                      </button>
+                      <button onClick={() => removeMatter(detail)} title="Delete matter"
+                        className="p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Compute deadlines from a trigger (owner only) */}
               {detail.owned !== false && (

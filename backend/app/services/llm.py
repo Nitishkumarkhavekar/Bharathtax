@@ -100,6 +100,95 @@ class OpenAICompatLLM:
         return payload["choices"][0]["message"]["content"].strip()
 
 
+class VertexLLM:
+    """Vertex AI Gemini client with the same `.complete(system, user, ...)`
+    signature as `OpenAICompatLLM`. Uses the shared `gemini_transport`
+    (`_tx`) so it inherits the service-account auth, model-name mapping
+    and Vertex/AI-Studio backend selection that the chat surfaces use.
+
+    Prefer this for surfaces that need Gemini-quality drafts (opinion, order,
+    reply) but still want the OpenAI-shaped ergonomics of the rest of the
+    codebase. Telemetry is captured on `self.last_*` after each call, same
+    as OpenAICompatLLM.
+    """
+
+    def __init__(self, model: str) -> None:
+        self.model = model
+        self.last_usage: dict | None = None
+        self.last_model: str | None = None
+        self.last_latency_ms: int | None = None
+
+    def complete(
+        self,
+        system: str,
+        user: str,
+        *,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        context: str | None = None,
+    ) -> str:
+        import time
+        # Lazy import — gemini_transport pulls in httpx + google-auth which
+        # are cheap but not needed for the mock/openai code path.
+        from app.services import gemini_transport as _tx
+
+        used_model = model or self.model
+        self.last_usage = None
+        self.last_model = used_model
+        self.last_latency_ms = None
+        t0 = time.time()
+
+        # Gemini message shape: `systemInstruction` + `contents[]` (parts).
+        # `context` becomes a preceding user turn so the model has personalisation
+        # without treating it as the current question.
+        contents: list[dict] = []
+        if context:
+            contents.append({"role": "user", "parts": [{"text": context}]})
+            contents.append({"role": "model", "parts": [{"text": "Understood — I'll keep that in mind."}]})
+        contents.append({"role": "user", "parts": [{"text": user}]})
+
+        body = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": contents,
+            "generationConfig": {
+                "temperature": settings.llm_temperature,
+                "maxOutputTokens": max_tokens or settings.llm_max_tokens,
+                # Draft prose doesn't need thinking budget — the model just
+                # writes; requesting a budget slows every call by 5-10s.
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
+        }
+
+        with _tx.gate(), httpx.Client(timeout=httpx.Timeout(180.0)) as client:
+            r = client.post(
+                _tx.url(used_model, "generateContent"),
+                headers=_tx.headers(),
+                json=body,
+            )
+            r.raise_for_status()
+            payload = r.json()
+
+        self.last_latency_ms = int((time.time() - t0) * 1000)
+        # Vertex telemetry — map to OpenAI-shaped keys so downstream code
+        # doesn't care which backend produced the numbers.
+        um = payload.get("usageMetadata") or {}
+        self.last_usage = {
+            "prompt_tokens": um.get("promptTokenCount"),
+            "completion_tokens": um.get("candidatesTokenCount"),
+            "total_tokens": um.get("totalTokenCount"),
+        }
+
+        cand = (payload.get("candidates") or [{}])[0]
+        parts = (cand.get("content") or {}).get("parts") or []
+        text = "".join(p.get("text", "") for p in parts).strip()
+        if not text:
+            # Surface the finish reason so an empty completion doesn't turn
+            # into a silent no-op (safety block, content filter, quota).
+            fr = cand.get("finishReason", "UNKNOWN")
+            raise RuntimeError(f"Vertex returned no text (finishReason={fr})")
+        return text
+
+
 def get_llm() -> LLMClient:
     backend = settings.llm_backend.lower()
     if backend == "mock":

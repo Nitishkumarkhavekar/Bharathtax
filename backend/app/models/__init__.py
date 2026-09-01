@@ -15,6 +15,7 @@ from app.models.drafting import DraftDocument
 from app.models.draft_review import DraftReview
 from app.models.library import SavedItem
 from app.models.contact import ContactMessage
+from app.models.news import NewsItem, NewsSource
 from app.models.corpus import CorpusChunk, CorpusDocument, CorpusSource
 from app.models.documents import Document, DocumentChunk
 from app.models.enums import (
@@ -49,4 +50,5 @@ __all__ = [
     "DraftReview",
     "SavedItem",
     "ContactMessage",
+    "NewsItem", "NewsSource",
 ]

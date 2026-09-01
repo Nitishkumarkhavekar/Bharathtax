@@ -52,7 +52,21 @@ export default function DraftingPage() {
       const d = await api.createDraft({ kind: tmpl.kind, inputs });
       setCurrent(d); setView("edit"); refreshList();
     } catch (e: any) {
-      setErr(e?.message ?? "Generation failed");
+      // Distinguish a browser-level network failure ("Failed to fetch" —
+      // usually a stale bundle, blocked port, or extension interference)
+      // from a server-level rejection (which carries an HTTP status +
+      // detail). The old message swallowed both cases behind "Failed to
+      // fetch"; the new one names the likely fix.
+      const msg = e?.message ?? "";
+      if (msg === "Failed to fetch" || /NetworkError|Load failed/i.test(msg)) {
+        setErr(
+          "Couldn't reach the drafting service. If the problem persists, " +
+          "please hard-refresh the page (Ctrl+Shift+R) and try again — " +
+          "an old cached copy of the app can trip this.",
+        );
+      } else {
+        setErr(msg || "Generation failed");
+      }
     } finally { setBusy(false); }
   }
 

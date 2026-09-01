@@ -524,3 +524,84 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* -------------------- Rich (WYSIWYG) editor body -------------------- */
+/* Styles the ProseMirror surface so the editable view looks like the
+   Markdown preview, not like a textarea. Applied by RichEditor.tsx. */
+.bt-md-body { line-height: 1.6; color: rgb(30 41 59); font-size: 13.5px; }
+.bt-md-body h1 { font-size: 20px; font-weight: 700; margin: 1em 0 0.4em; color: rgb(15 23 42); }
+.bt-md-body h2 { font-size: 17px; font-weight: 700; margin: 0.9em 0 0.35em; color: rgb(15 23 42); }
+.bt-md-body h3 { font-size: 15px; font-weight: 600; margin: 0.8em 0 0.3em; color: rgb(15 23 42); }
+.bt-md-body h4 { font-size: 13.5px; font-weight: 600; margin: 0.7em 0 0.25em; color: rgb(15 23 42); }
+.bt-md-body p { margin: 0.5em 0; }
+.bt-md-body strong { font-weight: 700; color: rgb(15 23 42); }
+.bt-md-body ul, .bt-md-body ol { padding-left: 1.35em; margin: 0.4em 0; }
+.bt-md-body li { margin: 0.15em 0; }
+.bt-md-body li p { margin: 0.05em 0; }
+.bt-md-body a { color: rgb(30 64 175); text-decoration: underline; }
+.bt-md-body .bt-md-quote,
+.bt-md-body blockquote {
+  border-left: 3px solid rgb(203 213 225);
+  padding: 0.15em 0.9em;
+  color: rgb(71 85 105);
+  background: rgb(248 250 252);
+  margin: 0.6em 0;
+  border-radius: 0 4px 4px 0;
+}
+.bt-md-body .bt-md-code,
+.bt-md-body pre {
+  background: rgb(248 250 252);
+  border: 1px solid rgb(226 232 240);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  overflow-x: auto;
+}
+.bt-md-body code {
+  background: rgb(241 245 249);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.92em;
+  color: rgb(15 23 42);
+}
+.bt-md-body pre code { background: transparent; padding: 0; }
+
+/* Tables — full grid, sticky look. Editable cells so users can just type. */
+.bt-md-body .bt-md-table,
+.bt-md-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 12.5px;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bt-md-body th, .bt-md-body td {
+  border: 1px solid rgb(226 232 240);
+  padding: 6px 10px;
+  vertical-align: top;
+  min-width: 60px;
+  position: relative;
+}
+.bt-md-body th { background: rgb(241 245 249); font-weight: 600; text-align: left; color: rgb(15 23 42); }
+.bt-md-body tr:nth-child(even) td { background: rgb(248 250 252); }
+.bt-md-body .selectedCell:after {
+  content: "";
+  position: absolute; inset: 0;
+  background: rgb(59 130 246 / 12%);
+  pointer-events: none;
+}
+.bt-md-body .column-resize-handle {
+  position: absolute; right: -2px; top: 0; bottom: 0; width: 4px;
+  background: rgb(59 130 246); pointer-events: none;
+}
+
+/* Placeholder */
+.bt-md-body p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgb(148 163 184);
+  float: left; height: 0; pointer-events: none;
+}

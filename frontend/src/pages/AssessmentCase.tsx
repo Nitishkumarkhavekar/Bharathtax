@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "@/lib/toast";
 import { Markdown } from "@/lib/markdown";
@@ -25,6 +25,9 @@ import {
   Calculator,
   ScrollText,
 } from "lucide-react";
+// Lazy-load so a fault inside the ~800KB TipTap chunk never breaks the
+// assessment page shell — the fallback is a plain textarea below.
+const RichEditor = lazy(() => import("@/components/RichEditor"));
 import { api, isLocalFirst } from "../api";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -509,12 +512,17 @@ function OutputCard({
         </div>
       </div>
       {editing ? (
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={Math.min(28, Math.max(8, draft.split("\n").length + 2))}
-          className="w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] font-mono leading-relaxed text-slate-800 outline-none focus:ring-2 focus:ring-primary/20"
-        />
+        <Suspense fallback={
+          <div className="rounded-lg border border-slate-200 bg-white p-3 text-[12px] text-slate-500 min-h-[16rem] flex items-center justify-center">
+            Loading rich editor…
+          </div>
+        }>
+          <RichEditor
+            markdown={draft}
+            onChange={setDraft}
+            placeholder="Type freely — headings, bullets, bold and tables are all editable in place."
+          />
+        </Suspense>
       ) : (
         <div className="prose-legal max-w-none text-[13.5px] leading-relaxed text-slate-800">
           <Markdown text={output.content} />

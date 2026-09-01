@@ -8,6 +8,7 @@ from app.api.deps import require_feature
 from app.api.routes import admin, appeal, assist, ask, auth, billing, chats, documents, history, ratings, rulings
 from app.api.routes import appeal_oo, crossref, desktop_update, desktop_admin, personalization, drafting, contact
 from app.api.routes import library
+from app.api.routes import news
 from app.api.routes import assessment
 from app.api.routes import workspace
 from app.api.routes import support as support_routes
@@ -103,6 +104,37 @@ settings.assert_prod_safe()
 _ensure_admin_tables()
 _patch_user_columns()
 
+
+def _bootstrap_news_sources() -> None:
+    """Seed the default news feeds (Google Alerts + Google News + PIB) if
+    none are configured — so a fresh install has content in /news the first
+    time the beat scheduler runs. Idempotent."""
+    try:
+        from app.services import news_ingest
+        added = news_ingest.ensure_default_sources()
+        if added:
+            _log.info("bootstrap: seeded %d default news source(s)", added)
+    except Exception as exc:  # noqa: BLE001 — startup diagnostic only
+        _log.warning("news source bootstrap skipped: %s", exc)
+
+
+def _patch_news_columns() -> None:
+    """Post-baseline schema evolution for news_items. Postgres supports
+    'ADD COLUMN IF NOT EXISTS' natively so this is fully idempotent and
+    safe to run on every boot."""
+    from sqlalchemy import text
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE news_items ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000)"
+            ))
+    except Exception as exc:  # noqa: BLE001 — startup diagnostic only
+        _log.warning("news_items column patch skipped: %s", exc)
+
+
+_patch_news_columns()
+_bootstrap_news_sources()
+
 # In production the interactive API docs and the OpenAPI schema are DISABLED —
 # publishing the full route/parameter/schema map is free reconnaissance for an
 # attacker, even though every endpoint is auth-gated. /docs, /redoc and
@@ -156,6 +188,8 @@ app.include_router(drafting.router)
 # My Library — an officer's saved answers / rulings / drafts. Authenticated;
 # switching-cost layer, available to any signed-in user.
 app.include_router(library.router)
+app.include_router(news.router)
+app.include_router(news.public_router)
 app.include_router(contact.router)
 # Auto-update feed for the packaged desktop app. Unauthenticated on purpose —
 # electron-updater cannot carry a JWT and the artefacts already live behind

@@ -1,10 +1,18 @@
 """Grounded, personalized drafting of officer-side artifacts — notices, orders,
 letters — for the Income-Tax Department.
 
-Generation runs on the SELF-HOSTED model (data stays in-country; department
-paperwork must not leave the network). Each artifact is defined by a template
-(fields + structure); the officer's profile (name, designation, charge) is fed
-in so the draft is correctly headed and written from the authority's standpoint.
+Backend selection is env-flagged via ``DRAFT_LLM_BACKEND``:
+
+  * ``vertex`` (default) — Vertex AI Gemini, for higher-quality drafts.
+    Model is picked from ``DRAFT_VERTEX_MODEL`` (default gemini-flash-latest).
+  * ``openai`` (or any other value) — the self-hosted OpenAI-compatible model
+    on the LiteLLM gateway (``DRAFT_MODEL_NAME``, default llama-3.1-8b-instruct).
+    Use this for on-prem / sovereign deployments where department paperwork
+    must not leave the network.
+
+Each artifact is defined by a template (fields + structure); the officer's
+profile (name, designation, charge) is fed in so the draft is correctly
+headed and written from the authority's standpoint.
 """
 from __future__ import annotations
 
@@ -17,12 +25,23 @@ from app.core.enums import Domain
 from app.models.org import User
 from app.services import llm as llm_mod
 
-# Raw self-hosted model (respects our system prompt — unlike the RAG gateway
-# model). Same endpoint the digest/appeal-local paths use.
+# Local / self-hosted model — the on-prem fallback path.
 _DRAFT_MODEL = os.getenv("DRAFT_MODEL_NAME", "llama-3.1-8b-instruct")
+# Vertex model — the default drafting engine. flash-latest is the sweet
+# spot for form-driven prose: fast, cheap, and instruction-following.
+_DRAFT_VERTEX_MODEL = os.getenv("DRAFT_VERTEX_MODEL", "gemini-flash-latest")
+# Route selector. Vertex by default; department deployments can flip to
+# "openai" (or "local") to keep everything on the internal gateway.
+_DRAFT_BACKEND = os.getenv("DRAFT_LLM_BACKEND", "vertex").strip().lower()
 
 
-def _draft_llm() -> llm_mod.OpenAICompatLLM:
+def _draft_llm():
+    """Return the drafting LLM client. Vertex by default; on-prem fallback
+    on the local LiteLLM gateway when ``DRAFT_LLM_BACKEND`` is anything other
+    than ``vertex``. Both clients implement the same `.complete(system,
+    user, *, max_tokens=...)` surface, so callers don't branch."""
+    if _DRAFT_BACKEND == "vertex":
+        return llm_mod.VertexLLM(_DRAFT_VERTEX_MODEL)
     return llm_mod.OpenAICompatLLM(settings.llm_base_url, _DRAFT_MODEL, settings.llm_api_key)
 
 
@@ -365,12 +384,24 @@ TEMPLATES: dict[str, dict] = {
             Field("pay_by", "Payable by (date)", required=False, placeholder="within 30 days of service"),
         ],
         "structure": (
-            "a Notice of Demand under section 156 of the Income-tax Act, 1961: office heading, notice "
-            "number and date, assessee + PAN + AY, reference to the order under which the sum has become "
-            "payable, the amount payable broken into tax / interest / penalty / fee as given, a direction "
-            "to pay within 30 days of service (or the stated date) at the specified mode, the consequences "
-            "of non-payment (interest u/s 220(2), penalty u/s 221 and recovery proceedings), the right of "
-            "appeal, and the officer's designation and charge. Use ONLY the figures provided."
+            "a Notice of Demand under section 156 of the Income-tax Act, 1961: office heading of "
+            "the ISSUING officer (from ISSUING OFFICER block — the officer serving this demand, "
+            "not the officer who passed the underlying order), `DIN: [•]`, `F. No.` with `[•]`, "
+            "`Date: [•]`, assessee + PAN + AY, a `Sub:` line naming the underlying order, a "
+            "reference paragraph reproducing the underlying order reference EXACTLY as given "
+            "(including the designation of the officer who passed it — do not silently retitle it "
+            "to match the issuing officer), the amount payable broken into tax / interest u/s "
+            "234A/234B/234C / penalty / fee u/s 234F as given, a direction to pay within 30 days "
+            "of service of THIS notice at the specified mode, the consequences of non-payment: "
+            "(i) simple interest u/s 220(2) at 1% per month or part thereof from the date of "
+            "default, (ii) penalty u/s 221 not exceeding the amount of tax in arrears, (iii) "
+            "recovery proceedings including garnishee proceedings u/s 226(3), attachment and "
+            "sale of movable/immovable property under the Second Schedule read with section "
+            "222, and treatment as an assessee-in-default u/s 220(4); the right of appeal to "
+            "the CIT(A)/NFAC u/s 246A within 30 days in Form 35, and the option to seek stay "
+            "of demand u/s 220(6) pending appeal on payment of 20% of the disputed demand; "
+            "close with `Yours faithfully,` then the officer's name, designation and charge on "
+            "separate lines. Use ONLY the figures provided."
         ),
     },
     "notice_148A": {
@@ -385,13 +416,19 @@ TEMPLATES: dict[str, dict] = {
             Field("reply_by", "Reply by (date)", placeholder="18.08.2026"),
         ],
         "structure": (
-            "a show-cause notice under section 148A(1) (as substituted by the Finance (No. 2) Act, 2024) "
-            "before issue of a notice u/s 148: heading, DIN, number and date, assessee + PAN + AY, a "
-            "statement that information as per section 148/149 suggests income chargeable to tax has "
-            "escaped assessment, the SUBSTANCE of that information and the amount, a call to show cause "
-            "within the period specified why a notice u/s 148 should not be issued, a note that the reply "
-            "and material will be considered before any order u/s 148A(3), and the officer's designation "
-            "and charge. Use only the information provided; do NOT invent figures."
+            "a show-cause notice under section 148A(1) (as substituted by the Finance (No. 2) Act, "
+            "2024) before issue of a notice u/s 148: heading, DIN, number and date, assessee + "
+            "PAN + AY, a statement that information as per section 148/149 suggests income "
+            "chargeable to tax has escaped assessment, the SUBSTANCE of that information and the "
+            "amount (name the likely charging provision inferred from the information — "
+            "section 68 / 69 / 69A / 56(2) etc. — do not merely say 'the Act'), a call to show "
+            "cause within the period specified why a notice u/s 148 should not be issued, a "
+            "note that on failure to reply within the stipulated time an order u/s 148A(3) will "
+            "be passed on the material available on record deciding whether it is a fit case "
+            "for issue of notice u/s 148 within the limitation prescribed by section 149, and "
+            "the closing block: `Yours faithfully,` on its own line, then the officer's name, "
+            "designation and charge on separate lines. Use only the information provided; do "
+            "NOT invent figures."
         ),
     },
     "order_148A": {
@@ -1208,13 +1245,33 @@ TEMPLATES: dict[str, dict] = {
             Field("returned", "Returned income", required=False, placeholder="Rs. 12,00,00,000"),
         ],
         "structure": (
-            "a DRAFT assessment order under section 144C(1) for an eligible assessee (a foreign company / "
-            "any case with a TP variation): heading, DIN, number and date, assessee + PAN + AY, the "
-            "returned income, an issue-wise discussion of each proposed variation prejudicial to the "
-            "assessee (incorporating the TPO's 92CA(3) adjustment where any), the draft computed income, "
-            "and a clear statement that this is a DRAFT and the assessee may, within 30 days, either "
-            "accept the variations or file objections with the Dispute Resolution Panel and the AO. The "
-            "officer's designation and charge. Use only the figures provided."
+            "a DRAFT assessment order under section 144C(1) for an eligible assessee: office "
+            "heading, `DIN: [•]`, `F. No.` with `[•]`, `Date: [•]`, assessee + PAN + AY, a "
+            "`Sub:` line, an opening paragraph stating that the assessee IS an eligible "
+            "assessee within the meaning of section 144C(15)(b) (either a foreign company, or "
+            "any person in whose case a variation arises from the TPO's order u/s 92CA(3)), a "
+            "paragraph stating the returned income (as given in the FACTS block — if not given, "
+            "write `[•]`; do NOT invent the date of filing the return), an issue-wise "
+            "discussion of EACH proposed variation prejudicial to the assessee: TP adjustment "
+            "u/s 92CA(3) (extract the TPO order number and date from the variation text "
+            "exactly), corporate-tax disallowances — cite the correct sub-clause EVERY TIME, "
+            "in BOTH the paragraph heading AND the computation-table row: u/s 40(a)(i) for "
+            "non-resident payment TDS default, u/s 40(a)(ia) for resident payment TDS "
+            "default, u/s 43B(a) for statutory dues (tax, duty, cess, fee under any law — "
+            "GST included) unpaid before the due date u/s 139(1). Never write bare `Section "
+            "43B` or bare `Section 40(a)` — always the sub-clause. Any other proposed "
+            "additions get the exact charging clause. Then the draft computed total income "
+            "table (Returned → each Variation → Draft Assessed Income), followed by a "
+            "MANDATORY closing paragraph stating: (i) this is a DRAFT ORDER under section "
+            "144C(1) — no demand is being raised on this draft; (ii) the assessee may within "
+            "30 days of receipt either (a) file its acceptance of the variations with the AO, "
+            "or (b) file objections with the Dispute Resolution Panel u/s 144C(2) in Form 35A "
+            "with a copy to the AO; (iii) if the DRP option is exercised, the AO shall "
+            "complete the assessment in conformity with the DRP's directions u/s 144C(13); "
+            "(iv) failing either action within 30 days, a final assessment order u/s 144C(3) "
+            "will be passed on the terms of this draft. Close with `Yours faithfully,` then "
+            "the officer's name, designation and charge on separate lines. Use only the "
+            "figures provided."
         ),
     },
     "order_144C_5": {
@@ -1328,12 +1385,26 @@ TEMPLATES: dict[str, dict] = {
                   placeholder="Addition of Rs. 45,00,000 u/s 69A deleted; disallowance of Rs. 5,00,000 restricted to Rs. 2,00,000"),
         ],
         "structure": (
-            "an Order Giving Effect to an appellate / ITAT / revisional order (u/s 143(3) read with "
-            "250/254/263): heading, DIN, number and date, assessee + PAN + AY, reference to the order to "
-            "be given effect to, the directions in it, the recomputation of the total income and tax "
-            "accordingly (each figure only as flowing from the directions), the revised demand or refund, "
-            "a note that a fresh demand notice u/s 156 / refund follows, and the officer's designation. "
-            "Do NOT re-adjudicate — only give effect to the directions."
+            "an Order Giving Effect to an appellate / ITAT / revisional order. CITE THE RIGHT "
+            "SECTION in the heading based on which forum's order is being given effect: for "
+            "a CIT(A)/NFAC order, `ORDER UNDER SECTION 143(3) READ WITH SECTIONS 250 AND 250(2) "
+            "OF THE INCOME-TAX ACT, 1961` (250 is the appellate provision, 250(2) is the "
+            "procedural hook empowering the AO to give effect); for an ITAT order, `... READ "
+            "WITH SECTION 254`; for a PCIT/CIT revision, `... READ WITH SECTION 263`. Decide "
+            "the forum from the `Appellate / ITAT / revisional order` field. Then: office heading of the AO, `DIN: [•]`, `F. No.` with "
+            "`[•]`, `Date: [•]`, assessee + PAN + AY, a `Sub:` line, a reference paragraph "
+            "reproducing the appellate order reference EXACTLY as given, a direction-by-"
+            "direction implementation section (deletion / restriction / recomputation as the "
+            "appellate order says), a recomputation table showing Assessed Income → Effect of "
+            "Appellate Order → Revised Total Income; if the prior assessed income or tax figures "
+            "are NOT in the FACTS block, write `[•]` in those cells and continue (do NOT invent "
+            "or write hedged filler like 'assumed for calculation purposes' or 'as per record'), "
+            "the revised demand or refund with a note that a fresh notice of demand u/s 156 "
+            "(or refund) will follow, consequential recomputation of interest u/s 234A/234B "
+            "and penalty proceedings u/s 270A on the revised income if the appellate order so "
+            "directs, and the closing block: `Yours faithfully,` then the officer's name, "
+            "designation and charge on separate lines. Do NOT re-adjudicate — only give effect "
+            "to the directions."
         ),
     },
 
@@ -1685,11 +1756,65 @@ def list_templates(profile: str | None = None, wings: list[str] | None = None) -
 
 
 # --------------------------------------------------------------- grounding
+#
+# TOOL-AUGMENTED DRAFTING. Before we ask the LLM to write the notice/order we
+# pre-fetch what it might not know reliably:
+#
+#   * The statutory text of the governing section    (Income-tax Act corpus)
+#   * Two or three on-topic tribunal / HC judgments  (Case-law corpus)
+#
+# Both retrievals run IN PARALLEL and are cached per-section (LRU + 30-min
+# TTL) so a repeat draft on the same section skips both hits entirely and
+# the whole `generate()` finishes in about the time of one Vertex call —
+# usually 2-3 seconds.
+#
+# A hard 2.5-second cap on each tool means a slow retrieval can never stall
+# the draft; if the tool doesn't come back in time we just draft without it
+# rather than making the user wait.
+
+import concurrent.futures as _futures
+import time as _time
+from functools import lru_cache
+from threading import Lock
+
+# Small LRU + TTL cache per section. The corpus doesn't change on the scale
+# of individual drafting sessions, so caching by (kind, section) for 30 min
+# is safe and cuts the median draft time by ~1s.
+_RETRIEVAL_CACHE: dict[tuple[str, str], tuple[float, str]] = {}
+_RETRIEVAL_CACHE_LOCK = Lock()
+_RETRIEVAL_TTL_S = 1800  # 30 minutes
+_RETRIEVAL_MAX = 128
+
+
+def _cache_get(key: tuple[str, str]) -> str | None:
+    with _RETRIEVAL_CACHE_LOCK:
+        entry = _RETRIEVAL_CACHE.get(key)
+        if entry is None:
+            return None
+        ts, val = entry
+        if _time.time() - ts > _RETRIEVAL_TTL_S:
+            _RETRIEVAL_CACHE.pop(key, None)
+            return None
+        return val
+
+
+def _cache_put(key: tuple[str, str], val: str) -> None:
+    with _RETRIEVAL_CACHE_LOCK:
+        if len(_RETRIEVAL_CACHE) >= _RETRIEVAL_MAX:
+            # Evict the oldest entry; O(n) but n is small (≤128).
+            oldest = min(_RETRIEVAL_CACHE.items(), key=lambda kv: kv[1][0])[0]
+            _RETRIEVAL_CACHE.pop(oldest, None)
+        _RETRIEVAL_CACHE[key] = (_time.time(), val)
+
+
 def _governing_law(section: str) -> str:
     """Short excerpt of the governing provision so the draft cites it accurately.
-    Best-effort — returns '' if retrieval is unavailable."""
+    Best-effort — returns '' if retrieval is unavailable. Cached per section."""
     if not section:
         return ""
+    cached = _cache_get(("law", section))
+    if cached is not None:
+        return cached
     try:
         from app.services.retrieval import retrieve
         from app.core.db import SessionLocal
@@ -1700,19 +1825,95 @@ def _governing_law(section: str) -> str:
             db.close()
         if res.passages:
             p = res.passages[0]
-            return f"[{p.breadcrumb}] {p.text[:900]}"
+            out = f"[{p.breadcrumb}] {p.text[:900]}"
+            _cache_put(("law", section), out)
+            return out
     except Exception:  # noqa: BLE001
         pass
+    _cache_put(("law", section), "")
     return ""
+
+
+def _governing_cases(section: str, kind: str) -> str:
+    """Top 2-3 tribunal / HC judgments on the governing section, so the draft
+    cites accurately instead of inventing. Best-effort, cached per section."""
+    if not section:
+        return ""
+    cached = _cache_get(("cases", section))
+    if cached is not None:
+        return cached
+    try:
+        from app.services.retrieval import retrieve
+        from app.core.db import SessionLocal
+        # Sec-anchored query — the retriever's section boost picks the
+        # most on-point judgments over broad matches.
+        q = f"Section {section} Income-tax Act — leading judgment / ratio / principle"
+        db = SessionLocal()
+        try:
+            res = retrieve(db, q, domain=Domain.case_law)
+        finally:
+            db.close()
+        picks = []
+        for p in (res.passages or [])[:3]:
+            head = getattr(p, "digest", None) or ""
+            body = (p.text or "")[:500].strip()
+            picks.append(f"• {p.breadcrumb}\n  {head or body}")
+        out = "\n".join(picks)
+        _cache_put(("cases", section), out)
+        return out
+    except Exception:  # noqa: BLE001
+        _cache_put(("cases", section), "")
+        return ""
+
+
+def _parallel_research(section: str, kind: str, timeout_s: float = 2.5) -> tuple[str, str]:
+    """Run both retrievals concurrently and return (law_excerpt, cases_block).
+    Each call is capped at `timeout_s` — a slow tool never blocks the draft."""
+    if not section:
+        return "", ""
+    with _futures.ThreadPoolExecutor(max_workers=2) as pool:
+        f_law = pool.submit(_governing_law, section)
+        f_cases = pool.submit(_governing_cases, section, kind)
+        try:
+            law = f_law.result(timeout=timeout_s)
+        except Exception:  # noqa: BLE001
+            law = ""
+        try:
+            cases = f_cases.result(timeout=timeout_s)
+        except Exception:  # noqa: BLE001
+            cases = ""
+    return law, cases
 
 
 _SYSTEM = (
     "You are an expert drafting assistant for officers of the Indian Income-Tax Department. "
     "You draft formal departmental documents (notices, orders, letters) in correct, dignified "
-    "legal English, from the AUTHORITY's standpoint. STRICT RULES: use ONLY the facts, names, "
-    "figures, dates and PAN provided — NEVER invent an amount, date, name or fact; if a detail is "
-    "missing write [•]. Cite the governing section as given. Output ONLY the document text, ready "
-    "to place on the office letterhead — no preamble, no commentary, no markdown code fences."
+    "legal English, from the AUTHORITY's standpoint.\n\n"
+    "STRICT RULES:\n"
+    "1. FACTS: Use ONLY the facts, names, figures, dates and PAN provided. NEVER invent, "
+    "   assume, extrapolate or estimate an amount, date, name, order reference, PAN, bank "
+    "   account, address or any other fact. If a required detail is not in the FACTS block "
+    "   write EXACTLY `[•]` — do NOT write phrases like 'assumed for calculation purposes', "
+    "   'to be verified', 'as per record', 'if applicable', 'approximately' or any other "
+    "   hedged filler. `[•]` is the ONLY permitted placeholder.\n"
+    "2. LAW: Cite the governing section as given. When the AUTHORITIES block below supplies "
+    "   the statutory text or a leading judgment, paraphrase the key words of the provision "
+    "   in the body of the document (do not merely name the section). Cite consequential "
+    "   provisions where the surface requires them (e.g. a demand u/s 156 mentions "
+    "   interest u/s 220(2), penalty u/s 221 and the right of appeal u/s 246A/246; a "
+    "   148A(1) notice references section 149 for the limitation window). Do NOT invent "
+    "   case-law citations that are not in the AUTHORITIES block.\n"
+    "3. STRUCTURE: Follow the structure specified for the template — office heading, `DIN: "
+    "   [•]`, `F. No.` line with `[•]`, `Date: [•]`, addressee (name + PAN + AY), a `Sub:` "
+    "   line where a subject is customary, numbered/lettered body paragraphs, consequence "
+    "   or right-of-appeal clause where the template calls for one, and the officer's "
+    "   designation and charge at the end.\n"
+    "4. TONE: Formal legal English in the third person. No first-person 'I feel', no "
+    "   colloquialisms, no markdown headings (`#`, `##`), no code fences, no emojis. "
+    "   Underline / bold section headings are fine using plain UPPERCASE or `Sub:` — do "
+    "   NOT wrap prose in markdown syntax.\n"
+    "5. OUTPUT: Only the document text, ready to place on the office letterhead — no "
+    "   preamble, no explanatory notes, no closing remarks about what you drafted."
 )
 
 
@@ -1728,14 +1929,50 @@ def generate(db: Session, user: User, kind: str, inputs: dict) -> str:
     tmpl = TEMPLATES.get(kind)
     if not tmpl:
         raise ValueError(f"unknown draft kind: {kind}")
+
     facts = "\n".join(f"- {f.label}: {inputs.get(f.key, '').strip() or '[•]'}"
                       for f in tmpl["fields"])
-    law = _governing_law(tmpl["section"])
+
+    # Tool-augmented research: pull the statutory text + on-topic judgments IN
+    # PARALLEL before the LLM call. Each hit is capped at 2.5s and cached per
+    # section — a repeat draft on the same section skips both entirely.
+    law, cases = _parallel_research(tmpl["section"], kind)
+
+    authorities: list[str] = []
+    if law:
+        authorities.append(f"— STATUTE (governing provision) —\n{law}")
+    if cases:
+        authorities.append(f"— CASE LAW (leading judgments on this section) —\n{cases}")
+    authorities_block = "\n\n".join(authorities)
+
     user_prompt = (
         f"Draft {tmpl['structure']}\n\n"
         f"=== FACTS ON RECORD (use ONLY these) ===\n{facts}\n\n"
         f"=== ISSUING OFFICER ===\n{_officer_block(user)}\n\n"
-        + (f"=== GOVERNING LAW (cite accurately) ===\n{law}\n\n" if law else "")
-        + "Now write the complete document."
+        + (f"=== AUTHORITIES (paraphrase / cite from these ONLY) ===\n"
+           f"{authorities_block}\n\n" if authorities_block else "")
+        + "=== REMINDER BEFORE YOU WRITE ===\n"
+        "• Any figure, date, name, PAN, order number or bank detail NOT in "
+        "the FACTS block above must appear as `[•]` in the draft. NEVER "
+        "invent, assume, extrapolate, estimate, or write a hedged filler "
+        "phrase like 'assumed for calculation purposes', 'to be verified', "
+        "'as per record'.\n"
+        "• If a COMPUTATION requires a figure you don't have (e.g. an "
+        "Order-Giving-Effect needs the assessed income to recompute), do "
+        "NOT invent a starting balance — write the computation table with "
+        "`[•]` in the missing cells and continue. The office will fill in.\n"
+        "• DO NOT perform arithmetic sums in your head to fill a TOTAL row. "
+        "For any table with a `Total` / `Draft Assessed Income` / `Revised "
+        "Total Income` / `Net Payable` row, write `[•]` in the total cell "
+        "so the office arithmetic desk computes and enters it. This is a "
+        "hard rule — LLMs slip on arithmetic; the office does not.\n"
+        "• EXTRACT specifics (dates, section numbers, party names, order "
+        "references, amounts) from every textarea field on the FACTS block "
+        "— do not paraphrase them away or replace them with `[•]`.\n\n"
+        "Now write the complete document."
     )
-    return _draft_llm().complete(_SYSTEM, user_prompt, max_tokens=1400).strip()
+    # Output budget scaled to template length. Most notices are 500-800
+    # tokens; orders and long approvals need a bit more. Keeping the cap
+    # tight cuts Vertex latency by ~30-40% on the short templates.
+    max_out = 1500 if tmpl["category"] in ("Order", "Approval", "Certificate") else 1000
+    return _draft_llm().complete(_SYSTEM, user_prompt, max_tokens=max_out).strip()

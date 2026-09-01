@@ -14,12 +14,15 @@ import {
   Bookmark,
   Scale,
   BookOpen,
+  Newspaper,
   Menu,
   X,
   HelpCircle,
   UserCircle2,
   PanelLeft,
   BookMarked,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
@@ -48,6 +51,7 @@ const NAV: {
   { to: "/workspace", label: "Calendar", icon: CalendarClock, tone: "primary", hint: "Matters, deadlines & reminders" },
   { to: "/drafting", label: "Drafting", icon: ScrollText, tone: "rose", hint: "Orders, appeals & notices" },
   { to: "/rulings", label: "Rulings", icon: BookOpen, feature: "rulings", tone: "violet", hint: "Case-law search" },
+  { to: "/news", label: "News", icon: Newspaper, tone: "amber", hint: "Latest Indian tax news" },
   { to: "/history", label: "History", icon: Clock, feature: "history", tone: "emerald", hint: "Past queries" },
   { to: "/calculators", label: "Calculators", icon: Calculator, tone: "primary", hint: "Interest & tax", group: "tools" },
   { to: "/templates", label: "Templates", icon: FileText, tone: "amber", hint: "Reusable drafts", group: "tools" },
@@ -200,9 +204,33 @@ function SidebarBody({
   // the nav sinks to a pinned strip at the bottom.
   const slot = useSidebarSlotContent();
 
-  const SectionLabel = ({ children }: { children: ReactNode }) => (
-    <div className="px-2.5 pt-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.13em] text-slate-400">{children}</div>
-  );
+  // Collapsible toggle for the primary nav group. State persists per browser
+  // so the choice survives reloads. Chevron reflects current state — up means
+  // "click to hide", down means "click to show" — matching the request.
+  //
+  // The button is inlined at the render site (see below) rather than
+  // extracted into a nested component. A nested component defined inside the
+  // parent's render function is a NEW function reference on every render,
+  // which React treats as a different component TYPE and remounts on each
+  // parent re-render — this parent re-renders every ~5s from the
+  // review-inbox poll, so an extracted `<PrimaryToggle />` gets torn down
+  // repeatedly and clicks on the transient node race the remount. Keeping
+  // it as JSX inside the parent keeps the same DOM node alive across those
+  // renders and the click reliably flips the state.
+  const [primaryOpen, setPrimaryOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("bt.sidebar.primaryOpen") !== "0";
+  });
+  useEffect(() => {
+    window.localStorage.setItem("bt.sidebar.primaryOpen", primaryOpen ? "1" : "0");
+  }, [primaryOpen]);
+  const [toolsOpen, setToolsOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("bt.sidebar.toolsOpen") !== "0";
+  });
+  useEffect(() => {
+    window.localStorage.setItem("bt.sidebar.toolsOpen", toolsOpen ? "1" : "0");
+  }, [toolsOpen]);
 
   return (
     <>
@@ -294,15 +322,51 @@ function SidebarBody({
           collapsed ? "px-2 py-3 space-y-1" : "px-2.5 py-2.5 space-y-0.5",
         )}
       >
-        {!collapsed && primaryLabel && <SectionLabel>{primaryLabel}</SectionLabel>}
-        {primaryList.map((n) => renderItem(n))}
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={() => setPrimaryOpen((v) => !v)}
+            aria-expanded={primaryOpen}
+            aria-controls="primary-nav-list"
+            title={primaryOpen ? "Hide navigation" : "Show navigation"}
+            className="w-full flex items-center justify-between px-2.5 pt-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.13em] text-slate-500 hover:text-slate-900 transition-colors group"
+          >
+            <span>{primaryLabel ?? "Navigate"}</span>
+            {primaryOpen
+              ? <ChevronUp className="size-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />
+              : <ChevronDown className="size-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />}
+          </button>
+        )}
+        {(collapsed || primaryOpen) && (
+          <div id="primary-nav-list" className={collapsed ? "" : "space-y-0.5"}>
+            {primaryList.map((n) => renderItem(n))}
+          </div>
+        )}
 
         {secondaryList.length > 0 && (
-          collapsed
-            ? <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
-            : <SectionLabel>{secondaryLabel}</SectionLabel>
+          collapsed ? (
+            <div className="my-1.5 mx-auto h-px w-6 bg-slate-200" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setToolsOpen((v) => !v)}
+              aria-expanded={toolsOpen}
+              aria-controls="tools-nav-list"
+              title={toolsOpen ? "Hide tools" : "Show tools"}
+              className="w-full flex items-center justify-between px-2.5 pt-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.13em] text-slate-500 hover:text-slate-900 transition-colors group"
+            >
+              <span>{secondaryLabel}</span>
+              {toolsOpen
+                ? <ChevronUp className="size-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />
+                : <ChevronDown className="size-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />}
+            </button>
+          )
         )}
-        {secondaryList.map((n) => renderItem(n))}
+        {(collapsed || toolsOpen) && (
+          <div id="tools-nav-list" className={collapsed ? "" : "space-y-0.5"}>
+            {secondaryList.map((n) => renderItem(n))}
+          </div>
+        )}
       </nav>
 
       {/* Footer: seat widget + user card */}
