@@ -581,9 +581,9 @@ function Stats() {
 // from GET /news/public (unauthenticated, capped at 20 items).
 function LiveNews() {
   const [items, setItems] = useState<{
-    id: number; title: string; url: string; source_name: string;
-    source_category: string | null; image_url: string | null;
-    published_at: string;
+    id: number; title: string; url: string; snippet: string | null;
+    source_name: string; source_category: string | null;
+    image_url: string | null; published_at: string; first_seen_at: string;
   }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -685,9 +685,9 @@ function NewsCard({
   item, relTime, pub,
 }: {
   item: {
-    id: number; title: string; url: string; source_name: string;
-    source_category: string | null; image_url: string | null;
-    published_at: string;
+    id: number; title: string; url: string; snippet: string | null;
+    source_name: string; source_category: string | null;
+    image_url: string | null; published_at: string; first_seen_at: string;
   };
   relTime: (iso: string) => string;
   pub: (i: { source_name: string; url: string }) => string;

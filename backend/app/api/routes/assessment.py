@@ -591,6 +591,11 @@ def export_docx(cid: str, p: Principal = Depends(get_principal), db: Session = D
         case.title, order.content, pan=case.pan, assessment_year=case.assessment_year,
         section=case.section, banner_text=_BANNER, subtitle_prefix=_SUBTITLE_PREFIX, footer_text=_FOOTER,
     )
+    # Explicit no-cache so the browser never serves a previously-downloaded
+    # .docx with stale table rendering — every click hits the server and
+    # regenerates from the current markdown.
     return Response(content=data,
                     media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    headers={"Content-Disposition": f'attachment; filename="assessment_order_case_{cid}.docx"'})
+                    headers={"Content-Disposition": f'attachment; filename="assessment_order_case_{cid}.docx"',
+                             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                             "Pragma": "no-cache", "Expires": "0"})

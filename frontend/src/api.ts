@@ -1578,6 +1578,7 @@ export const api = {
       snippet: string | null;
       source_name: string;
       source_category: string | null;
+      image_url: string | null;
       published_at: string;
       first_seen_at: string;
     }[];

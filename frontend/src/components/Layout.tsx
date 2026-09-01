@@ -204,10 +204,6 @@ function SidebarBody({
   // the nav sinks to a pinned strip at the bottom.
   const slot = useSidebarSlotContent();
 
-  const SectionLabel = ({ children }: { children: ReactNode }) => (
-    <div className="px-2.5 pt-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.13em] text-slate-400">{children}</div>
-  );
-
   // Collapsible toggle for the primary nav group. State persists per browser
   // so the choice survives reloads. Chevron reflects current state — up means
   // "click to hide", down means "click to show" — matching the request.

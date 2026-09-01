@@ -355,7 +355,7 @@ export default function News() {
 
       {/* List */}
       {loading ? (
-        <SkeletonRows count={6} />
+        <SkeletonRows rows={6} />
       ) : items.length === 0 ? (
         <div className="rounded-xl ring-1 ring-slate-200 bg-white p-10 text-center">
           <Newspaper className="size-8 text-slate-300 mx-auto mb-3" />

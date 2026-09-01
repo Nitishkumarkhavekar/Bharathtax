@@ -333,7 +333,7 @@ function NewsStrip() {
         </button>
       </div>
       {loading ? (
-        <SkeletonRows count={3} />
+        <SkeletonRows rows={3} />
       ) : (
         <ul className="divide-y divide-slate-100">
           {items.map((it) => (
