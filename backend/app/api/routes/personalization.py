@@ -8,9 +8,18 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, get_principal
 from app.core.db import get_db
+from app.core import department as dept
 from app.services import personalization as svc
 
 router = APIRouter(prefix="/me", tags=["personalization"])
+
+
+@router.get("/department-taxonomy")
+def department_taxonomy(_p: Principal = Depends(get_principal)) -> dict:
+    """The canonical department taxonomy — wings, designations (with tiers),
+    and the statutory approval map. Static reference data the dashboard and
+    onboarding read from. Authenticated but user-independent."""
+    return dept.taxonomy()
 
 
 class ProfileSettingsIn(BaseModel):
