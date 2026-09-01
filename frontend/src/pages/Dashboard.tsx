@@ -8,6 +8,7 @@ import { useAuth } from "../auth";
 import { resolveWorkspace, resolveTiles } from "@/lib/workspaceProfiles";
 import { Skeleton, SkeletonRows } from "@/components/ui/Skeleton";
 import PageHelp from "@/components/PageHelp";
+import WingActivities from "@/components/WingActivities";
 
 const CATS = [
   { v: "", l: "All" }, { v: "officer", l: "AO" }, { v: "cita", l: "CIT(A)" },
@@ -172,6 +173,9 @@ export default function Dashboard() {
               return d ? <Tile key={k} label={d.label} value={d.get(s)} tone={d.tone} /> : null;
             })}
       </div>
+
+      {/* Your daily work — the officer's real wing activities (taxonomy-driven). */}
+      <WingActivities />
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
