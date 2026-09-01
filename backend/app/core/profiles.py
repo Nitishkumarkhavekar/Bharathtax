@@ -7,35 +7,22 @@ from __future__ import annotations
 
 import re
 
+from app.core import department as _dept
+
+# The selectable primary functions + their standpoints are sourced from the
+# canonical department taxonomy (core.department) so there is ONE source of
+# truth. `group` lets the picker group the (now 14) wings by department.
 WORKSPACE_PROFILES: list[dict] = [
-    {"key": "officer", "label": "Assessing Officer"},
-    {"key": "cita", "label": "CIT(A) / NFAC"},
-    {"key": "drp", "label": "DRP"},
-    {"key": "tp", "label": "Transfer Pricing (TPO)"},
-    {"key": "investigation", "label": "Investigation"},
-    {"key": "ici", "label": "I&CI"},
-    {"key": "recovery", "label": "Recovery / TRO"},
-    {"key": "tds", "label": "TDS / Exemptions"},
-    {"key": "ca", "label": "CA / Advocate"},
+    {"key": w["key"], "label": w["label"], "group": w["group"]} for w in _dept.WINGS
 ]
 
 WORKSPACE_PROFILE_KEYS = {p["key"] for p in WORKSPACE_PROFILES}
 _LABEL_BY_KEY = {p["key"]: p["label"] for p in WORKSPACE_PROFILES}
 
 # The standpoint each function argues from. Fed to the model (chat preamble) so
-# an answer adopts the officer's perspective even when their free-text
-# designation is blank — a TPO reasons as a TPO, a CA argues for the assessee.
-WING_STANDPOINT: dict[str, str] = {
-    "officer": "the Assessing Officer, framing the assessment on the material on record",
-    "cita": "the first appellate authority (CIT(A) / NFAC), deciding the appeal ground-wise",
-    "drp": "the Dispute Resolution Panel, issuing directions on a draft assessment order",
-    "tp": "the Transfer Pricing Officer, determining the arm's-length price",
-    "investigation": "the Investigation wing, appraising seized and gathered material",
-    "ici": "the Intelligence & Criminal Investigation (I&CI) wing, verifying reported financial information",
-    "recovery": "the Tax Recovery Officer, enforcing an outstanding demand",
-    "tds": "the TDS / Exemptions officer, examining deduction compliance and exemption claims",
-    "ca": "a Chartered Accountant / Advocate, representing the assessee",
-}
+# an answer adopts the officer's perspective even when the designation is blank —
+# a TPO reasons as a TPO, a CA argues for the assessee.
+WING_STANDPOINT: dict[str, str] = {w["key"]: w["standpoint"] for w in _dept.WINGS}
 
 
 def wing_label(profile: str | None, wings: list[str] | None = None) -> str | None:
@@ -67,14 +54,31 @@ _TIER_STANDPOINT = {
 }
 
 
+# The 5-tier canonical taxonomy collapses onto the 3 seniority buckets this
+# module reasons in (ministerial/apex fold to ''/'commissioner').
+_TAXO_TIER_MAP = {
+    "ministerial": "", "field": "field", "range": "range",
+    "commissioner": "commissioner", "apex": "commissioner",
+}
+
+
 def role_tier(designation: str | None) -> str:
-    """Coarse seniority tier from a free-text designation:
+    """Coarse seniority tier from a designation:
     'field' (ITO/AO/ACIT/DCIT/TRO/TPO — drafts), 'range' (Addl./Joint CIT —
     approves/reviews), 'commissioner' (CIT/PCIT/CCIT — revises/sanctions), or ''
-    when it can't be told (→ no role nuance, behaviour unchanged)."""
+    when it can't be told (→ no role nuance, behaviour unchanged).
+
+    Prefers a structured designation KEY from the canonical taxonomy (e.g.
+    'jcit', 'pr_cit'); falls back to parsing legacy free-text ('Joint CIT')."""
     d = (designation or "").strip()
     if not d:
         return ""
+    # Structured taxonomy key wins (Phase 1 capture stores these).
+    from app.core.department import designation_tier as _dt
+    t = _dt(d.lower())
+    if t is not None:
+        return _TAXO_TIER_MAP.get(t, "")
+    # Legacy free-text.
     if _RANGE_RE.search(d):
         return "range"
     # Commissioner-level, but NOT 'Assistant/Deputy Commissioner' (those are AOs).

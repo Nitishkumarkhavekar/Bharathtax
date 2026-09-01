@@ -263,6 +263,21 @@ export interface ProfileUpdate {
   current_password?: string;
   new_password?: string;
 }
+// Canonical department taxonomy (served by /me/department-taxonomy).
+export interface TaxonomyWing {
+  key: string; label: string; group: string; standpoint: string;
+  sections: string[]; activities: string[]; tools: string[];
+  template_groups: string[]; calc_tabs: string[]; deadlines: string[];
+}
+export interface TaxonomyDesignation {
+  key: string; label: string; tier: string; cadre: string; directorate?: string;
+}
+export interface DepartmentTaxonomy {
+  tiers: string[];
+  wings: TaxonomyWing[];
+  designations: TaxonomyDesignation[];
+  approvals: { section: string; what: string; ay_dependent: boolean; authority: unknown; note: string }[];
+}
 export interface AdminUserCreate {
   username: string;
   password: string;
@@ -1018,12 +1033,21 @@ export interface DraftReviewEvent {
   created_at: string | null;
   resolved_at: string | null;
 }
+export interface RequiredApproval {
+  section: string;          // e.g. "151" | "153D" | "144C" | "263"
+  what: string;             // "Sanction to reopen (notice u/s 148)"
+  authority: string[];      // designation labels that can sanction
+  required_tiers: string[]; // seniority tiers (field/range/commissioner) that qualify
+  note: string;
+  years_elapsed: number | null;
+}
 export interface DraftReviewInfo {
   reviewer_user_id: number | null;
   reviewer_name: string | null;
   is_reviewer: boolean;        // viewer is the assigned reviewer, while in review
   is_owner: boolean;
   can_edit: boolean;
+  required_approval?: RequiredApproval | null;
   history: DraftReviewEvent[];
 }
 export interface DraftDoc {
@@ -1076,7 +1100,8 @@ export const api = {
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; workspace_profile: string | null; workspace_wings: string[] | null; wing_id: number; features: string[] | null }>("/auth/me"),
-  workspaceProfiles: () => req<{ key: string; label: string }[]>("/auth/workspace-profiles"),
+  workspaceProfiles: () => req<{ key: string; label: string; group?: string }[]>("/auth/workspace-profiles"),
+  departmentTaxonomy: () => req<DepartmentTaxonomy>("/me/department-taxonomy"),
 
   // --- personalization / memory ---
   personalization: () => req<Personalization>("/me/personalization"),

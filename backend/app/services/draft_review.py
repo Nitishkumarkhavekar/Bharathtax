@@ -20,11 +20,61 @@ from datetime import datetime, timezone
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from app.core import department as _dept
 from app.core.profiles import role_tier
 from app.models.draft_review import DraftReview
 from app.models.drafting import DraftDocument
 from app.models.org import User
 from app.services import audit
+
+# Fold the canonical 5-tier taxonomy onto the 3 seniority buckets the reviewer
+# list reports (so "recommended" matching is apples-to-apples).
+_FOLD_TIER = {"ministerial": "", "field": "field", "range": "range",
+              "commissioner": "commissioner", "apex": "commissioner"}
+
+
+def _years_from_ay(ay: str | None) -> float | None:
+    """Years elapsed since the end of an assessment year like '2022-23'."""
+    import re as _re
+    from datetime import date
+    m = _re.match(r"(20\d{2})-(\d{2})", (ay or "").strip())
+    if not m:
+        return None
+    ay_end = date(int(m.group(1)) + 1, 3, 31)   # AY 2022-23 ends 31 Mar 2023
+    return max(0.0, (date.today() - ay_end).days / 365.25)
+
+
+def required_approval_for_draft(d: DraftDocument) -> dict | None:
+    """The statutory sanction a draft needs, and who can give it — mapping the
+    draft's kind → section → the approval authority (department.APPROVALS).
+    Returns None for drafts that carry no special approval."""
+    kind = (d.kind or "").lower()
+    if "148" in kind:
+        section = "151"
+    elif "153a" in kind or "153c" in kind or "153d" in kind:
+        section = "153D"
+    elif "144c" in kind:
+        section = "144C"
+    elif "263" in kind:
+        section = "263"
+    elif "264" in kind:
+        section = "264"
+    else:
+        return None
+    inputs = d.inputs or {}
+    years = _years_from_ay(inputs.get("ay") or inputs.get("assessment_year")) if section == "151" else None
+    auth_keys = _dept.approver_for(section, years_elapsed=years) or []
+    info = _dept.APPROVALS_BY_SECTION.get(section, {})
+    labels = [_dept.DESIGNATIONS_BY_KEY.get(k, {}).get("label", k) for k in auth_keys]
+    tiers = sorted({_FOLD_TIER.get(_dept.designation_tier(k) or "", "") for k in auth_keys} - {""})
+    return {
+        "section": section,
+        "what": info.get("what", ""),
+        "authority": labels,
+        "required_tiers": tiers,
+        "note": info.get("note", ""),
+        "years_elapsed": round(years, 1) if years is not None else None,
+    }
 
 _TIER_RANK = {"commissioner": 0, "range": 1, "field": 2, "": 3}
 
@@ -186,5 +236,6 @@ def review_info(db: Session, d: DraftDocument, viewer_id: int) -> dict:
         "is_reviewer": d.reviewer_user_id == viewer_id and d.status == "in_review",
         "is_owner": d.user_id == viewer_id,
         "can_edit": can_edit(d, viewer_id),
+        "required_approval": required_approval_for_draft(d),
         "history": history(db, d.id),
     }

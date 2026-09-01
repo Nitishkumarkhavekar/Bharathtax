@@ -33,6 +33,17 @@ export const PROFILES: ProfileConfig[] = [
     tools: ["/drafting", "/calculators", "/templates"], calcTab: "tds", templateGroup: "Exemptions" },
   { key: "ca", label: "CA / Advocate", categories: ["ca"],
     tools: ["/drafting", "/calculators", "/templates", "/rulings", "/reconcile"], calcTab: "interest", templateGroup: "Assessee replies" },
+  // --- wings added in the taxonomy (Phase 0), given first-class config here (Phase 3) ---
+  { key: "central", label: "Central Charges (Search Assessment)", categories: ["investigation", "officer"],
+    tools: ["/drafting", "/calculators", "/rulings", "/reconcile"], calcTab: "peak", templateGroup: "Investigation" },
+  { key: "exemptions", label: "Exemptions (Trusts)", categories: ["tds"],
+    tools: ["/drafting", "/calculators", "/rulings"], calcTab: "interest", templateGroup: "Exemptions" },
+  { key: "inttax", label: "International Taxation", categories: ["tp", "officer"],
+    tools: ["/drafting", "/calculators", "/rulings"], calcTab: "alp", templateGroup: "Transfer Pricing" },
+  { key: "audit", label: "Internal Audit", categories: ["officer"],
+    tools: ["/rulings", "/calculators", "/drafting"], calcTab: "interest", templateGroup: "Assessment & notices" },
+  { key: "hq", label: "Headquarters / Admin", categories: [],
+    tools: ["/workspace", "/rulings"], calcTab: "interest", templateGroup: "Assessment & notices" },
 ];
 
 const BY_KEY = new Map(PROFILES.map((p) => [p.key, p]));
@@ -51,6 +62,11 @@ const WING_GROUPS: Record<string, string[]> = {
   recovery: ["Recovery"],
   tds: ["TDS", "Exemptions"],
   ca: ["Assessee replies"],
+  central: ["Investigation", "Assessment", "Penalty"],
+  exemptions: ["Exemptions"],
+  inttax: ["Transfer Pricing", "Assessment"],
+  audit: ["Assessment", "Appeals & Revision"],
+  hq: [],
 };
 
 // The calculators each function actually uses — so the Calculators page leads
@@ -65,6 +81,11 @@ const WING_CALC_TABS: Record<string, string[]> = {
   recovery: ["interest", "recovery", "penalty"],
   tds: ["tds", "interest"],
   ca: ["interest", "slab", "capgains", "tds"],
+  central: ["peak", "bbe", "interest", "penalty"],
+  exemptions: ["interest"],
+  inttax: ["alp", "interest"],
+  audit: ["interest", "bbe"],
+  hq: [],
 };
 
 /** The calculators this officer leads with (empty = show everything). */
@@ -162,6 +183,38 @@ export const WING_STARTERS: Record<string, WingStarter[]> = {
     { category: "Submission", text: "Prepare a written submission explaining a large cash deposit" },
     { category: "Deductions", text: "Maximum deduction available under section 80C with examples" },
     { category: "Capital gains", text: "Exemption under section 54 on sale of a residential house" },
+  ],
+  central: [
+    { category: "Search assessment", text: "Framing an assessment under section 153A for the search year and six preceding years" },
+    { category: "Approval", text: "Section 153D — what the Range Head's approval of a search assessment must establish" },
+    { category: "153C", text: "When can seized material be used to assess a third party under section 153C?" },
+    { category: "Penalty", text: "Section 271AAB — penalty on undisclosed income found in a search" },
+    { category: "Draft", text: "Draft an assessment order on unexplained cash seized during a search" },
+  ],
+  exemptions: [
+    { category: "Registration", text: "Conditions for registration of a trust under section 12AB and the provisional-to-final route" },
+    { category: "80G", text: "Requirements for approval of a charitable institution under section 80G" },
+    { category: "Violation", text: "Section 13 — when does a trust lose its section 11 exemption?" },
+    { category: "115TD", text: "Accreted-income tax under section 115TD on cancellation of registration" },
+    { category: "Draft", text: "Draft a show-cause for cancellation of registration under section 12AB(4)" },
+  ],
+  inttax: [
+    { category: "Withholding", text: "Section 195 — obligation to deduct tax on a payment to a non-resident" },
+    { category: "Treaty", text: "How does a DTAA override the Act where it is more beneficial to the assessee?" },
+    { category: "PE", text: "When does a foreign enterprise have a permanent establishment in India?" },
+    { category: "Draft order", text: "Section 144C — the draft assessment order route for a foreign company" },
+    { category: "Draft", text: "Draft a show-cause on royalty characterisation under section 9(1)(vi)" },
+  ],
+  audit: [
+    { category: "Objection", text: "Frame an internal audit objection on an under-assessment of capital gains" },
+    { category: "263", text: "Section 263 — when is an assessment order erroneous and prejudicial to revenue?" },
+    { category: "Errors", text: "Common assessment errors that attract a revenue-audit para" },
+    { category: "Review", text: "Points to check when reviewing a completed 143(3) assessment for quality" },
+  ],
+  hq: [
+    { category: "Monitoring", text: "Which assessments are getting time-barred this quarter and need priority?" },
+    { category: "Limitation", text: "Section 153 — the current time limits for completing assessments" },
+    { category: "Coordination", text: "Summarise the disposal and pendency position a Range Head should monitor" },
   ],
 };
 

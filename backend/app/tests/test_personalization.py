@@ -103,11 +103,11 @@ def test_persona_is_additive_default_is_unchanged():
 
 # ---- Wing-aware chat persona (per-function standpoint) -----------------------
 def test_wing_helpers_map_key_to_label_and_standpoint():
-    assert wing.wing_label("tp") == "Transfer Pricing (TPO)"
+    assert "Transfer Pricing" in wing.wing_label("tp")
     assert "arm's-length" in wing.wing_standpoint("tp")
     assert "assessee" in wing.wing_standpoint("ca")          # CA argues the other side
     # custom → first recognised chosen wing wins
-    assert wing.wing_label("custom", ["nonsense", "recovery"]) == "Recovery / TRO"
+    assert "Recovery" in (wing.wing_label("custom", ["nonsense", "recovery"]) or "")
     assert wing.wing_standpoint("all") == "" and wing.wing_standpoint(None) == ""
 
 

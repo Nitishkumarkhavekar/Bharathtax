@@ -5,7 +5,7 @@ import {
   Gavel, Scale as ScaleIcon, ChevronRight, ChevronDown, ShieldCheck, Clock,
   Send, Users, CheckCircle2, CornerUpLeft, History, X, Lock, Inbox,
 } from "lucide-react";
-import { api, DraftDoc, DraftListItem, DraftTemplate, Reviewer, ReviewInboxItem } from "../api";
+import { api, DraftDoc, DraftListItem, DraftTemplate, Reviewer, ReviewInboxItem, RequiredApproval } from "../api";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -656,7 +656,8 @@ function DraftEditor({
     <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden">
       {dialog}
       {showSend && (
-        <SendReviewModal busy={busy === "send"} onClose={() => setShowSend(false)} onSend={sendForReview} />
+        <SendReviewModal busy={busy === "send"} onClose={() => setShowSend(false)} onSend={sendForReview}
+          requiredApproval={draft.review?.required_approval ?? null} />
       )}
       {/* Toolbar header */}
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
@@ -821,14 +822,16 @@ function DraftEditor({
 // Send-for-review modal — pick a senior in your wing, add a covering note.
 // ---------------------------------------------------------------------------
 function SendReviewModal({
-  busy, onClose, onSend,
+  busy, onClose, onSend, requiredApproval,
 }: {
   busy: boolean; onClose: () => void; onSend: (reviewerId: number, note: string) => void;
+  requiredApproval?: RequiredApproval | null;
 }) {
   const [reviewers, setReviewers] = useState<Reviewer[] | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [q, setQ] = useState("");
+  const reqTiers = new Set(requiredApproval?.required_tiers ?? []);
 
   useEffect(() => { api.draftReviewers().then(setReviewers).catch(() => setReviewers([])); }, []);
   const filtered = useMemo(() => {
@@ -846,6 +849,12 @@ function SendReviewModal({
           <button onClick={onClose} className="ml-auto p-1 rounded text-slate-400 hover:bg-slate-100"><X className="size-4" /></button>
         </div>
         <div className="p-5 space-y-3">
+          {requiredApproval && (
+            <div className="rounded-lg bg-amber-50 ring-1 ring-amber-200 px-3 py-2.5 text-[12px] text-amber-900">
+              <div className="font-semibold">Needs sanction under §{requiredApproval.section} — {requiredApproval.what}</div>
+              <div className="mt-0.5">Approving authority: <b>{requiredApproval.authority.join(" / ")}</b>{requiredApproval.years_elapsed != null ? ` · ${requiredApproval.years_elapsed} yrs since AY-end` : ""}. Pick a reviewer marked <span className="font-semibold text-emerald-700">Recommended</span>.</div>
+            </div>
+          )}
           <div>
             <label className="text-[12.5px] font-semibold text-slate-800 mb-1.5 block">Reviewer</label>
             <div className="relative mb-2">
@@ -867,6 +876,7 @@ function SendReviewModal({
                     <div className="text-[13px] font-medium text-slate-800 truncate">{r.full_name}</div>
                     {r.designation && <div className="text-[11px] text-slate-500 truncate">{r.designation}</div>}
                   </div>
+                  {reqTiers.size > 0 && reqTiers.has(r.tier) && <span className="shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-1.5 py-0.5">Recommended</span>}
                   {r.is_senior && <span className="shrink-0 text-[10px] font-semibold text-indigo-700 bg-indigo-50 ring-1 ring-indigo-200 rounded-full px-1.5 py-0.5">Senior</span>}
                   {picked === r.id && <Check className="size-4 text-primary shrink-0" />}
                 </button>
