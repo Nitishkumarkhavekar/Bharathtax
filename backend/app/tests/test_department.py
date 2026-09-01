@@ -54,6 +54,22 @@ def test_approver_for_151_is_ay_dependent():
     assert dept.approver_for(" S153D ") is not None
 
 
+def test_role_tier_bridges_structured_and_freetext():
+    from app.core.profiles import role_tier
+    # structured taxonomy keys resolve to the 3-bucket vocabulary
+    assert role_tier("jcit") == "range"
+    assert role_tier("addl_cit") == "range"
+    assert role_tier("pr_cit") == "commissioner"
+    assert role_tier("ccit") == "commissioner"      # apex folds to commissioner
+    assert role_tier("ito") == "field"
+    assert role_tier("ta") == ""                     # ministerial → no seniority nuance
+    # legacy free-text still works unchanged
+    assert role_tier("Joint CIT") == "range"
+    assert role_tier("Pr. CIT") == "commissioner"
+    assert role_tier("DCIT") == "field"
+    assert role_tier("") == ""
+
+
 def test_taxonomy_is_json_serialisable_and_complete():
     tx = dept.taxonomy()
     s = json.dumps(tx)                      # must not raise

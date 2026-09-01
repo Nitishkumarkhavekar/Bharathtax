@@ -67,14 +67,31 @@ _TIER_STANDPOINT = {
 }
 
 
+# The 5-tier canonical taxonomy collapses onto the 3 seniority buckets this
+# module reasons in (ministerial/apex fold to ''/'commissioner').
+_TAXO_TIER_MAP = {
+    "ministerial": "", "field": "field", "range": "range",
+    "commissioner": "commissioner", "apex": "commissioner",
+}
+
+
 def role_tier(designation: str | None) -> str:
-    """Coarse seniority tier from a free-text designation:
+    """Coarse seniority tier from a designation:
     'field' (ITO/AO/ACIT/DCIT/TRO/TPO — drafts), 'range' (Addl./Joint CIT —
     approves/reviews), 'commissioner' (CIT/PCIT/CCIT — revises/sanctions), or ''
-    when it can't be told (→ no role nuance, behaviour unchanged)."""
+    when it can't be told (→ no role nuance, behaviour unchanged).
+
+    Prefers a structured designation KEY from the canonical taxonomy (e.g.
+    'jcit', 'pr_cit'); falls back to parsing legacy free-text ('Joint CIT')."""
     d = (designation or "").strip()
     if not d:
         return ""
+    # Structured taxonomy key wins (Phase 1 capture stores these).
+    from app.core.department import designation_tier as _dt
+    t = _dt(d.lower())
+    if t is not None:
+        return _TAXO_TIER_MAP.get(t, "")
+    # Legacy free-text.
     if _RANGE_RE.search(d):
         return "range"
     # Commissioner-level, but NOT 'Assistant/Deputy Commissioner' (those are AOs).
