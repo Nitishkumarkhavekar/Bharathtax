@@ -27,11 +27,6 @@ from app.models.drafting import DraftDocument
 from app.models.org import User
 from app.services import audit
 
-# Fold the canonical 5-tier taxonomy onto the 3 seniority buckets the reviewer
-# list reports (so "recommended" matching is apples-to-apples).
-_FOLD_TIER = {"ministerial": "", "field": "field", "range": "range",
-              "commissioner": "commissioner", "apex": "commissioner"}
-
 
 def _years_from_ay(ay: str | None) -> float | None:
     """Years elapsed since the end of an assessment year like '2022-23'."""
@@ -66,7 +61,7 @@ def required_approval_for_draft(d: DraftDocument) -> dict | None:
     auth_keys = _dept.approver_for(section, years_elapsed=years) or []
     info = _dept.APPROVALS_BY_SECTION.get(section, {})
     labels = [_dept.DESIGNATIONS_BY_KEY.get(k, {}).get("label", k) for k in auth_keys]
-    tiers = sorted({_FOLD_TIER.get(_dept.designation_tier(k) or "", "") for k in auth_keys} - {""})
+    tiers = sorted({_dept.COARSE_TIER.get(_dept.designation_tier(k) or "", "") for k in auth_keys} - {""})
     return {
         "section": section,
         "what": info.get("what", ""),
