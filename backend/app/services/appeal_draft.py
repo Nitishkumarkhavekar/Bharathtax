@@ -49,8 +49,11 @@ _GEMINI_KEY = _os.getenv("GEMINI_API_KEY", "").strip()
 _GEMINI_MODELS = [m.strip() for m in _os.getenv(
     "GEMINI_MODELS",
     # Flash-first: Pro is 3-4x slower and unnecessary for module-5 drafting on
-    # already-retrieved law + facts. Keep Pro at the tail for edge cases.
-    "gemini-flash-latest,gemini-2.5-flash").split(",") if m.strip()]
+    # already-retrieved law + facts. `gemini-2.5-flash` beats the `-latest`
+    # alias on Vertex — the alias occasionally routes to a heavier model with
+    # a warm-up penalty on cold shards, adding 15-30s per call. Pin the
+    # specific 2.5-flash model as primary and use `-latest` only as fallback.
+    "gemini-2.5-flash,gemini-flash-latest").split(",") if m.strip()]
 # Separate model list for OCR-only extraction of scanned appeal PDFs. Extract
 # is high-volume + low-reasoning, so we default to cheaper SKUs. Operators
 # can set `GEMINI_OCR_MODELS` to e.g. "gemini-1.5-flash-8b" to cut spend ~3x

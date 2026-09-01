@@ -50,6 +50,13 @@ celery_app.conf.beat_schedule = {
         "task": "app.ingestion.tasks.daily_case_law_update",
         "schedule": _crontab_from_str(os.getenv("CASE_LAW_UPDATE_CRON", "30 3 * * *")),
     },
+    # Poll every configured news source (Google Alerts Atom, Google News RSS,
+    # PIB / CBDT) — new stories land in `news_items` and light up the sidebar
+    # "News" page. Default cadence 30 min; override with NEWS_POLL_SECONDS.
+    "news-feed-poll": {
+        "task": "app.ingestion.tasks.poll_news_feeds",
+        "schedule": float(os.getenv("NEWS_POLL_SECONDS", "1800")),
+    },
 }
 
 # Weekly deadline digest — the retention hook. OFF by default; a deployment opts
@@ -410,6 +417,29 @@ def ingest_case_law(path: str = "/data/manual/case_law") -> dict:
     from app.ingestion.case_law import ingest_dir  # lazy
 
     return ingest_dir(path)
+
+
+@celery_app.task
+def poll_news_feeds() -> dict:
+    """Poll every active NewsSource and upsert fresh items into news_items.
+    Idempotent (SHA-256 hash dedup). One bad feed never aborts the sweep."""
+    from app.services import news_ingest  # lazy — worker-cold-start safe
+
+    # Bootstrap the default sources on first run so ops don't have to seed
+    # the table by hand. Idempotent.
+    try:
+        news_ingest.ensure_default_sources()
+    except Exception as e:  # noqa: BLE001
+        log.warning("news source bootstrap failed: %s", e)
+
+    r = news_ingest.poll_all()
+    # After ingest, pick up og:images for the newest items that still
+    # have image_url = NULL — bounded so this can't runaway.
+    try:
+        r["image_hydration"] = news_ingest.hydrate_images(limit=40)
+    except Exception as e:  # noqa: BLE001
+        log.warning("hydrate_images failed: %s", e)
+    return r
 
 
 @celery_app.task

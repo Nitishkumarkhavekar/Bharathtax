@@ -1,0 +1,54 @@
+# BharatTax robots policy.
+# Crawlers are welcome on marketing / info pages. Auth-only surfaces are
+# disallowed so search engines don't spend budget on pages behind login
+# (they return the SPA shell for unauthenticated visitors — not useful).
+
+User-agent: *
+Allow: /$
+Allow: /releases
+Allow: /docs
+Allow: /contact
+Allow: /register
+Allow: /login
+Allow: /terms
+Allow: /privacy
+Allow: /favicon.png
+Allow: /bharattax-logo.png
+Allow: /bharattax-logo-transparent.png
+
+# Auth-only pages
+Disallow: /ask
+Disallow: /dashboard
+Disallow: /workspace
+Disallow: /drafting
+Disallow: /drafts
+Disallow: /appeals
+Disallow: /assessments
+Disallow: /calculators
+Disallow: /templates
+Disallow: /watchlists
+Disallow: /library
+Disallow: /reconcile
+Disallow: /rulings
+Disallow: /news
+Disallow: /history
+Disallow: /profile
+
+# Utility / token-parameterised
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /shared/
+
+# Admin
+Disallow: /admin
+Disallow: /admin/
+
+# Backend API — everything under these prefixes is JSON, not HTML
+Disallow: /auth/
+Disallow: /public/
+Disallow: /desktop-update/
+Disallow: /desktop-admin/
+Disallow: /desktop-session/
+Disallow: /password-reset/
+
+Sitemap: https://bharattax.wenvia.global/sitemap.xml

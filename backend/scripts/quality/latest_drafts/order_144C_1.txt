@@ -1,0 +1,56 @@
+OFFICE OF THE DEPUTY COMMISSIONER OF INCOME-TAX, CIRCLE 42(1), MUMBAI
+
+DIN: [•]
+F. No. DCIT/Cir-42(1)/Draft-144C/2020-21/[•]
+Date: [•]
+
+To,
+M/s Novatek Software India Pvt. Ltd.
+PAN: AAACN7412R
+Assessment Year: 2020-21
+
+Sub: Draft Assessment Order under Section 144C(1) of the Income-tax Act, 1961.
+
+1. This Draft Assessment Order is being passed in the case of M/s Novatek Software India Pvt. Ltd. (hereinafter referred to as the Assessee) for the Assessment Year 2020-21. The Assessee is an eligible assessee within the meaning of section 144C(15)(b) of the Income-tax Act, 1961, as a variation arises from the order of the Transfer Pricing Officer (TPO) under section 92CA(3).
+
+2. The Assessee filed its Return of Income declaring a total income of Rs. 27,42,60,000.
+
+3. During the course of assessment proceedings, the following variations prejudicial to the interest of the Assessee are proposed:
+
+**A. Variation under Section 92CA(3) – Transfer Pricing Adjustment**
+
+The Transfer Pricing Officer (TPO) passed an Order under section 92CA(3) dated 30.10.2025, proposing an adjustment to the arm’s length price of the international transaction pertaining to software development services. The TPO determined the arm's-length margin at 22.14% against the tested-party margin of 14.06%. Consequently, an adjustment of Rs. 4,72,00,000 is proposed to be added to the total income of the Assessee.
+
+**B. Variation under Section 40(a)(i) – Disallowance of Royalty Payment**
+
+The Assessee made a payment of royalty to Novatek Ireland Ltd., a non-resident, without deduction of tax at source as required under section 195 of the Act. Section 40(a)(i) mandates that any interest, royalty, fees for technical services, or other sum chargeable under the Act, payable to a non-resident, shall not be allowed as a deduction if tax is deductible at source and has not been deducted, or after deduction, has not been paid on or before the due date specified in section 139(1). Accordingly, a disallowance of Rs. 18,60,000 is proposed under section 40(a)(i).
+
+**C. Variation under Section 43B(a) – Disallowance of Unpaid Statutory Dues**
+
+The Assessee failed to deposit the Goods and Services Tax (GST) liability of Rs. 12,00,000, which was outstanding as on 31.03.2020, before the due date for furnishing the return of income under section 139(1). Section 43B(a) provides that any sum payable by the Assessee by way of tax, duty, cess, or fee, by whatever name called, under any law for the time being in force, shall be allowed as a deduction only in the previous year in which such sum is actually paid. Since the GST liability was not paid before the due date under section 139(1), a disallowance of Rs. 12,00,000 is proposed under section 43B(a).
+
+4. The total income is computed as under:
+
+| Particulars | Amount (Rs.) |
+| :--- | :--- |
+| Returned Income | 27,42,60,000 |
+| **Add: Proposed Variations** | |
+| A. TP Adjustment u/s 92CA(3) | 4,72,00,000 |
+| B. Disallowance u/s 40(a)(i) | 18,60,000 |
+| C. Disallowance u/s 43B(a) | 12,00,000 |
+| **Draft Assessed Income** | **32,43,20,000** |
+
+5. This is a DRAFT ASSESSMENT ORDER under section 144C(1) of the Income-tax Act, 1961, and no demand is being raised on the basis of this draft order. The Assessee may, within thirty days of the receipt of this draft order, take either of the following actions:
+
+(a) File its acceptance of the variations proposed in this draft order with the Assessing Officer; or
+(b) File objections to the variations proposed in this draft order with the Dispute Resolution Panel (DRP) in Form 35A, along with a copy to the Assessing Officer.
+
+6. If the Assessee files objections with the DRP, the Assessing Officer shall complete the assessment in conformity with the directions issued by the DRP under section 144C(13).
+
+7. If the Assessee fails to take either of the actions specified in paragraph 5 within the period of thirty days, the Assessing Officer shall pass the final assessment order under section 144C(3) on the basis of this draft order.
+
+Yours faithfully,
+
+Priya Ramanathan
+Deputy Commissioner of Income-tax,
+Circle 42(1), Mumbai

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bookmark, Plus, Trash2, Search, X } from "lucide-react";
+import { Bookmark, Plus, Trash2, Search, X, Pencil, Check } from "lucide-react";
 import { api, WsWatchlist } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,9 @@ export default function Watchlists() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [nw, setNw] = useState({ label: "", query: "", kind: "topic" });
+  // Inline edit state — one row at a time. null means no row is being edited.
+  const [editId, setEditId] = useState<number | null>(null);
+  const [edit, setEdit] = useState({ label: "", query: "", kind: "topic" });
 
   const load = async () => setItems(await api.wsWatchlists());
   useEffect(() => {
@@ -50,6 +53,25 @@ export default function Watchlists() {
     try { await api.wsDeleteWatchlist(w.id); await load(); } catch (e: any) { toast.error(e?.message || "Could not remove."); }
   };
   const find = (w: WsWatchlist) => nav(`/rulings?q=${encodeURIComponent(w.query)}`);
+  const startEdit = (w: WsWatchlist) => {
+    setEditId(w.id);
+    setEdit({ label: w.label, query: w.query, kind: w.kind || "topic" });
+  };
+  const cancelEdit = () => setEditId(null);
+  const saveEdit = async (id: number) => {
+    if (!edit.label.trim() || !edit.query.trim()) {
+      toast.error("Label and search terms are required.");
+      return;
+    }
+    try {
+      await api.wsUpdateWatchlist(id, {
+        label: edit.label.trim(), query: edit.query.trim(), kind: edit.kind,
+      });
+      setEditId(null);
+      await load();
+      toast.success("Watchlist updated.");
+    } catch (e: any) { toast.error(e?.message || "Could not update."); }
+  };
 
   return (
     <div className="space-y-5 max-w-4xl">
@@ -85,19 +107,51 @@ export default function Watchlists() {
           <div className="text-[13px] text-slate-400 py-10 text-center">No watchlists yet. Add one to track it.</div>
         )}
         {items.map((w) => (
-          <div key={w.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[14px] font-semibold text-slate-800 truncate">{w.label}</span>
-                <span className={cn("shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ring-1 uppercase", KIND_TONE[w.kind] || KIND_TONE.topic)}>{w.kind}</span>
-              </div>
-              <div className="text-[12px] text-slate-500 truncate">{w.query}</div>
+          editId === w.id ? (
+            <div key={w.id} className="flex flex-col sm:flex-row gap-2 px-4 py-3 bg-slate-50/60">
+              <Input
+                placeholder="Label"
+                value={edit.label}
+                onChange={(e) => setEdit({ ...edit, label: e.target.value })}
+                autoFocus
+              />
+              <Input
+                placeholder="Search terms"
+                value={edit.query}
+                onChange={(e) => setEdit({ ...edit, query: e.target.value })}
+              />
+              <select
+                value={edit.kind}
+                onChange={(e) => setEdit({ ...edit, kind: e.target.value })}
+                className="h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 shrink-0"
+              >
+                {KINDS.map((k) => <option key={k.v} value={k.v}>{k.l}</option>)}
+              </select>
+              <Button className="shrink-0" size="sm" onClick={() => saveEdit(w.id)}>
+                <Check className="size-3.5 mr-1" /> Save
+              </Button>
+              <Button className="shrink-0" size="sm" variant="outline" onClick={cancelEdit}>
+                <X className="size-3.5 mr-1" /> Cancel
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={() => find(w)}><Search className="size-3.5 mr-1" /> Find rulings</Button>
-            <button onClick={() => del(w)} title="Remove" className="p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-              <Trash2 className="size-4" />
-            </button>
-          </div>
+          ) : (
+            <div key={w.id} className="flex items-center gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] font-semibold text-slate-800 truncate">{w.label}</span>
+                  <span className={cn("shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ring-1 uppercase", KIND_TONE[w.kind] || KIND_TONE.topic)}>{w.kind}</span>
+                </div>
+                <div className="text-[12px] text-slate-500 truncate">{w.query}</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => find(w)}><Search className="size-3.5 mr-1" /> Find rulings</Button>
+              <button onClick={() => startEdit(w)} title="Edit" className="p-1.5 rounded-md text-slate-400 hover:bg-primary/10 hover:text-primary">
+                <Pencil className="size-4" />
+              </button>
+              <button onClick={() => del(w)} title="Remove" className="p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          )
         ))}
       </div>
       {dialog}

@@ -1,0 +1,196 @@
+{
+  "questions": [
+    {
+      "id": "Q01-43B-a-vs-b",
+      "surface": "income-tax-1961",
+      "question": "Under Section 43B of the Income-tax Act, 1961, my company has GST collected from customers but not deposited of Rs. 10 lakh, and unpaid employer's contribution to recognised PF of Rs. 2 lakh, both outstanding as on 31.03.2025. What is the deductibility position under clause (a) versus clause (b), and by when must each be paid to be allowable in AY 2025-26?",
+      "must_contain": [
+        "Section 43B",
+        "actual payment",
+        "due date",
+        "Section 139(1)"
+      ],
+      "must_not_contain": [
+        "Section 43B has been omitted",
+        "no deduction under 43B",
+        "Section 36(1)(va) governs employer PF"
+      ]
+    },
+    {
+      "id": "Q02-tax-year-concept",
+      "surface": "income-tax-2025",
+      "question": "Under the new Income-tax Act, 2025, is the concept of 'assessment year' retained or replaced by 'tax year'? When does tax year 2026-27 begin and end, and from what date does the 2025 Act itself come into force?",
+      "must_contain": [
+        "tax year",
+        "1 April 2026",
+        "31 March 2027",
+        "Income-tax Act, 2025"
+      ],
+      "must_not_contain": [
+        "assessment year 2026-27",
+        "Finance Act 2027",
+        "Income-tax Act, 1961 continues to apply"
+      ]
+    },
+    {
+      "id": "Q03-gstr2b-mismatch",
+      "surface": "gst",
+      "question": "For the tax period August 2025, my GSTR-2B reflects Rs. 5 lakh ITC while my books show Rs. 6 lakh from the same suppliers - invoices and goods both received. Can I claim the Rs. 1 lakh differential in GSTR-3B pending supplier upload, and what is the governing provision?",
+      "must_contain": [
+        "Section 16(2)(aa)",
+        "GSTR-2B",
+        "cannot claim",
+        "GSTR-3B"
+      ],
+      "must_not_contain": [
+        "10% provisional",
+        "Rule 36(4) permits",
+        "scope is income-tax only"
+      ]
+    },
+    {
+      "id": "Q04-draft-148-notice",
+      "surface": "drafting-notice",
+      "question": "Draft a Section 148 notice for AY 2021-22 to XYZ Pvt Ltd where escaped income of Rs. 75 lakh is represented by unexplained share capital. List the mandatory pre-conditions under Section 148A that must be satisfied before issue, and identify the specified authority whose sanction is required.",
+      "must_contain": [
+        "Section 148A",
+        "specified authority",
+        "prior approval",
+        "show cause"
+      ],
+      "must_not_contain": [
+        "no notice under 148A required",
+        "sanction not needed",
+        "reopening barred without exception"
+      ]
+    },
+    {
+      "id": "Q05-draft-reply-143(2)",
+      "surface": "drafting-reply",
+      "question": "Draft a reply to a Section 143(2) scrutiny notice for AY 2024-25 issued to an individual practising Chartered Accountant, questioning cash deposits aggregating Rs. 25 lakh in the SB account during the year. Structure the reply covering source of funds, documentary evidence, and reconciliation with returned income.",
+      "must_contain": [
+        "Section 143(2)",
+        "cash deposits",
+        "bank statement",
+        "source of funds"
+      ],
+      "must_not_contain": [
+        "ignore the notice",
+        "reply is not required",
+        "penalty is automatic"
+      ]
+    },
+    {
+      "id": "Q06-cit-appeal-limitation",
+      "surface": "appeals",
+      "question": "What is the limitation period and the prescribed form for filing an appeal before the CIT(A) against an assessment order passed under Section 143(3), and what is the standard pre-deposit percentage for obtaining stay of demand as per CBDT Instruction No. 1914 read with the OM dated 31.07.2017?",
+      "must_contain": [
+        "Section 246A",
+        "30 days",
+        "Form 35",
+        "20%"
+      ],
+      "must_not_contain": [
+        "60 days from service",
+        "no pre-deposit",
+        "Form 36 for CIT(A)"
+      ]
+    },
+    {
+      "id": "Q07-87A-marginal-relief",
+      "surface": "computation",
+      "question": "For tax year 2026-27, a resident individual under the new tax regime has total income of Rs. 12,10,000 with no capital gains. Compute the tax payable after Section 87A rebate and marginal relief, showing slab-wise tax, rebate arithmetic, marginal relief working, and health & education cess.",
+      "must_contain": [
+        "Section 87A",
+        "marginal relief",
+        "60,000",
+        "12 lakh"
+      ],
+      "must_not_contain": [
+        "rebate of Rs. 25,000",
+        "up to Rs. 7 lakh",
+        "no marginal relief available"
+      ]
+    },
+    {
+      "id": "Q08-195-software-royalty",
+      "surface": "cross-border",
+      "question": "An Indian company is remitting USD 50,000 to a US-resident vendor for a non-exclusive, non-transferable software licence used only for internal business. What is the TDS position under Section 195 read with Article 12 of the India-USA DTAA, and are Forms 15CA/15CB mandatory before remittance?",
+      "must_contain": [
+        "Section 195",
+        "Form 15CA",
+        "Form 15CB",
+        "DTAA"
+      ],
+      "must_not_contain": [
+        "no TDS ever applies",
+        "Section 194J applies to non-resident",
+        "domestic tax scope only"
+      ]
+    },
+    {
+      "id": "Q09-2(19)-cooperative-trap",
+      "surface": "income-tax-1961",
+      "question": "A client has incorporated a Section 8 company (Companies Act, 2013) to carry on microfinance for its members. Would this entity qualify as a 'co-operative society' under Section 2(19) of the Income-tax Act, 1961 so as to claim deduction under Section 80P? Explain the definitional requirements.",
+      "must_contain": [
+        "Section 2(19)",
+        "co-operative society",
+        "Co-operative Societies Act, 1912",
+        "registered"
+      ],
+      "must_not_contain": [
+        "Section 8 company qualifies as co-operative society",
+        "80P is available",
+        "company is a co-operative"
+      ]
+    },
+    {
+      "id": "Q10-FA-mapping-87A",
+      "surface": "income-tax-2025",
+      "question": "Which Finance Act enhanced the Section 87A rebate under the new tax regime to Rs. 60,000, from which tax year does the enhanced rebate apply, and what is the eligibility income threshold?",
+      "must_contain": [
+        "Finance Act, 2025",
+        "Section 87A",
+        "60,000",
+        "12 lakh"
+      ],
+      "must_not_contain": [
+        "Finance Act, 2027",
+        "Finance (No. 2) Act, 2024 enhanced",
+        "from tax year 2025-26"
+      ]
+    },
+    {
+      "id": "Q11-gst-rcm-legal",
+      "surface": "gst",
+      "question": "In October 2025, a body corporate receives legal services from an individual advocate for representation before the High Court. Who is liable to pay GST, at what rate, and can the recipient claim input tax credit of the GST so paid?",
+      "must_contain": [
+        "reverse charge",
+        "18%",
+        "body corporate",
+        "Notification No. 13/2017"
+      ],
+      "must_not_contain": [
+        "forward charge by advocate",
+        "exempt from GST",
+        "ITC is blocked under Section 17(5)"
+      ]
+    },
+    {
+      "id": "Q12-itat-253-appeal",
+      "surface": "appeals",
+      "question": "What is the limitation period for filing an appeal to the Income Tax Appellate Tribunal under Section 253, the prescribed form, and the fee slabs based on assessed total income?",
+      "must_contain": [
+        "Section 253",
+        "60 days",
+        "Form 36",
+        "ITAT"
+      ],
+      "must_not_contain": [
+        "30 days for ITAT appeal",
+        "no filing fees payable",
+        "Form 35 for ITAT"
+      ]
+    }
+  ]
+}

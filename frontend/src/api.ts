@@ -1413,6 +1413,8 @@ export const api = {
   wsWatchlists: () => req<WsWatchlist[]>("/workspace/watchlists"),
   wsCreateWatchlist: (body: { label: string; query: string; kind?: string }) =>
     req<WsWatchlist>("/workspace/watchlists", { method: "POST", body: JSON.stringify(body) }),
+  wsUpdateWatchlist: (id: number, body: { label?: string; query?: string; kind?: string }) =>
+    req<WsWatchlist>(`/workspace/watchlists/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   wsDeleteWatchlist: (id: number) => req<void>(`/workspace/watchlists/${id}`, { method: "DELETE" }),
   // collaboration
   wsShares: (matterId: number) => req<WsShare[]>(`/workspace/matters/${matterId}/shares`),
@@ -1522,6 +1524,66 @@ export const api = {
     }[];
     source: "ecourts" | "corpus";
   }>(`/rulings/recent?limit=${limit}`),
+
+  // --- news feed (Google Alerts + Google News + PIB / CBDT) ---
+  news: (opts: {
+    q?: string;
+    category?: string;
+    sort?: "latest" | "trending";
+    limit?: number;
+    offset?: number;
+    sinceDays?: number;     // 1 = today only, 7 = last week, 30 = last month
+    fromDate?: string;      // YYYY-MM-DD (overrides sinceDays)
+    toDate?: string;        // YYYY-MM-DD
+  } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.q) params.set("q", opts.q);
+    if (opts.category) params.set("category", opts.category);
+    if (opts.sort) params.set("sort", opts.sort);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    if (opts.offset) params.set("offset", String(opts.offset));
+    if (opts.sinceDays) params.set("since_days", String(opts.sinceDays));
+    if (opts.fromDate) params.set("from_date", opts.fromDate);
+    if (opts.toDate) params.set("to_date", opts.toDate);
+    const qs = params.toString();
+    return req<{
+      items: {
+        id: number;
+        title: string;
+        url: string;
+        snippet: string | null;
+        source_name: string;
+        source_category: string | null;
+        image_url: string | null;
+        published_at: string;
+        first_seen_at: string;
+      }[];
+      total: number;
+      latest_first_seen_at: string | null;
+    }>(`/news${qs ? "?" + qs : ""}`);
+  },
+  newsCategories: () => req<{
+    categories: { name: string; count: number }[];
+  }>("/news/categories"),
+  newsRefresh: () => req<{
+    sources: number; inserted: number; failed: number;
+  }>("/news/refresh", { method: "POST" }),
+  // Unauthenticated snapshot for the landing page — the newest 6 items,
+  // capped at 20 server-side so it can't be scraped as a free news API.
+  publicNews: (limit = 6) => req<{
+    items: {
+      id: number;
+      title: string;
+      url: string;
+      snippet: string | null;
+      source_name: string;
+      source_category: string | null;
+      published_at: string;
+      first_seen_at: string;
+    }[];
+    total: number;
+    latest_first_seen_at: string | null;
+  }>(`/news/public?limit=${limit}`),
 
   // --- eCourts India integration (live court-tracking API) ---
   // Independent of the IndianKanoon-backed /rulings search — additive only.

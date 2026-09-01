@@ -266,7 +266,7 @@ def _extract_understanding(case: AssessmentCase, docs_text: str, persona: str = 
         "documents; do NOT invent an issue. If none can be identified, return an empty array.\n"
         'Return {"return_income": "...", "filing_date": "...", "selection_reason": "...", '
         '"notices": ["..."], "issues": [{"issue": "...", "query": "...", "amount": "..."}]}\n\n' + src,
-        max_tokens=3500, persona=persona)
+        max_tokens=2200, persona=persona)
     if not isinstance(j, dict):
         j = {}
     issues = []

@@ -7,6 +7,7 @@ import {
   LogOut,
   X,
   BookOpen,
+  Newspaper,
   ScrollText,
   Clock,
   LayoutDashboard,
@@ -34,6 +35,7 @@ const TOOLS = [
   { to: "/workspace", label: "Calendar", icon: CalendarClock },
   { to: "/drafting", label: "Drafting", icon: ScrollText },
   { to: "/rulings", label: "Rulings", icon: BookOpen },
+  { to: "/news", label: "News", icon: Newspaper },
   { to: "/history", label: "History", icon: Clock },
 ];
 

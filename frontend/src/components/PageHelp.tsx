@@ -39,18 +39,24 @@ export default function PageHelp({ id, className, compact }: { id: string; class
       </button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-        >
+        <>
+          {/* No backdrop — the underlying page shows through completely.
+              Dialog floats over the page; user dismisses via Close / Got it /
+              × / Escape key. Compact centered card, not a full-height drawer. */}
           <div
-            className="w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[100]",
+              // Wider card so paragraphs wrap to 2 lines instead of 4 and the
+              // whole help fits on a laptop screen without a scrollbar.
+              "w-[min(94vw,40rem)] max-h-[94vh] bg-white",
+              "rounded-2xl shadow-2xl ring-1 ring-slate-200 flex flex-col",
+              "animate-in fade-in zoom-in-95 duration-150",
+            )}
             role="dialog"
-            aria-modal="true"
+            aria-modal="false"
             aria-label={`How to use — ${h.title}`}
           >
-            <div className="relative p-6 pb-5">
+            <div className="relative p-6 pb-4 border-b border-slate-100 shrink-0">
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Close"
@@ -58,13 +64,15 @@ export default function PageHelp({ id, className, compact }: { id: string; class
               >
                 <X className="size-4" />
               </button>
-              <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center mb-3.5">
+              <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center mb-3">
                 <HelpCircle className="size-5" />
               </div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">How to use</div>
               <h2 className="text-lg font-bold text-slate-900 mt-0.5">{h.title}</h2>
+            </div>
 
-              <p className="mt-3 text-[13.5px] text-slate-700 leading-relaxed">{h.what}</p>
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 pt-4">
+              <p className="text-[13.5px] text-slate-700 leading-relaxed">{h.what}</p>
 
               <div className="mt-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400 mb-1">When to use it</div>
@@ -93,7 +101,14 @@ export default function PageHelp({ id, className, compact }: { id: string; class
                 <p className="mt-3 text-[12px] text-slate-500 italic">{h.note}</p>
               )}
             </div>
-            <div className="flex justify-end px-6 py-3.5 border-t border-slate-100">
+
+            <div className="flex justify-end gap-2 px-6 py-3.5 border-t border-slate-100 shrink-0 bg-white">
+              <button
+                onClick={() => setOpen(false)}
+                className="rounded-lg text-slate-600 text-[13px] font-medium px-3 py-2 hover:bg-slate-100 transition-colors"
+              >
+                Close
+              </button>
               <button
                 onClick={() => setOpen(false)}
                 className="rounded-lg bg-primary text-white text-[13px] font-semibold px-4 py-2 hover:bg-primary/90 transition-colors"
@@ -102,7 +117,7 @@ export default function PageHelp({ id, className, compact }: { id: string; class
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );

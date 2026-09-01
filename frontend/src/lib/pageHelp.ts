@@ -134,4 +134,16 @@ export const PAGE_HELP: Record<string, HelpContent> = {
       "Check your plan and token usage under the Plan tab.",
     ],
   },
+  news: {
+    title: "Latest news",
+    what: "A live feed of Indian tax headlines — Income-tax, GST, Customs, Transfer Pricing and International Tax — CBDT / CBIC notifications, tribunal rulings, budget commentary and filing-deadline stories, curated from verified publishers.",
+    when: "Skim it in the morning to catch overnight circulars, GST changes, budget commentary and tribunal rulings that affect your matters.",
+    how: [
+      "Use the search box to filter to a section number, statute or entity.",
+      "Filter by category (General / CBDT / Case law / GST) to narrow the feed.",
+      "Toggle 'Latest' vs 'Trending' to change the sort — Latest is by article date, Trending is by the order stories arrived on your desk.",
+      "Click any card to open the article at its original publisher in a new tab.",
+      "Press Refresh if you want the latest headlines immediately.",
+    ],
+  },
 };

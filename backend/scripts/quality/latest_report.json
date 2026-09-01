@@ -1,0 +1,238 @@
+[
+  {
+    "scenario": {
+      "surface": "Notice",
+      "label": "Show-cause u/s 148A(1)",
+      "kind": "notice_148A"
+    },
+    "gen_ms": 59753,
+    "draft_chars": 2273,
+    "verdict": {
+      "scores": {
+        "law_citation": 10,
+        "facts_fidelity": 10,
+        "structure": 10,
+        "register": 10,
+        "completeness": 10
+      },
+      "total": 50,
+      "weaknesses": [],
+      "ballots": [
+        {
+          "scores": {
+            "law_citation": 10,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 10
+          },
+          "weaknesses": {}
+        },
+        {
+          "scores": {
+            "law_citation": 10,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 10
+          },
+          "weaknesses": {}
+        },
+        {
+          "scores": {
+            "law_citation": 10,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 10
+          },
+          "weaknesses": {}
+        }
+      ]
+    },
+    "draft_preview": "OFFICE OF THE DEPUTY COMMISSIONER OF INCOME-TAX, CIRCLE 42(1), MUMBAI\n\nDIN: [\u2022]\nF. No. [\u2022]/DCIT/C-42(1)/SCN/148A/2026-27\nDate: [\u2022]\n\nTo,\nM/s Silverstone Traders Pvt. Ltd.\nPAN: AABCS4592L\n\nSub: Show-Cause Notice under section 148A(1) of the Income-tax Act, 1961, for the Assessment Year 2021-22.\n\n1. Information has been received which suggests that income chargeable to tax has escaped assessment for the Assessment Year 2021-22, within the meaning of sections 148 and 149 of the Income-tax Act, 1961 (the Act).\n\n2. The substance of the information suggesting escapement of income is as follows:\nThe information available on the Insight Portal and the Annual Information Statement (AIS) indicates that M/s Silverstone Traders Pvt. Ltd. made three cash deposits aggregating to Rs. 45,00,000 in the current account (a/c ******7841) maintained with HDFC Bank between 12.04.2020 and 28.03.2021. The return of income filed by you on 30.11.2021 declared a total income of Rs. 8,20,140. These cash deposits of Rs. 45,00,000 are not reflected in the said return of income, and no exemption or exclusion claimed in the return would cover these deposits.\n\n3. Based on the above information, it is suggested that income amounting to Rs. 45,00,000, being the unexplained cash credits, has escaped assessment, which is likely to be chargeable to tax under section 68 of the Act.\n\n4. Therefore, in compliance with the provisions of section 148A(1) of the Act, you are hereby called upon to show cause, within the period specified below, as to why a notice under section 148 of the Act should not be issued to you for the Assessment Year 2021-22.\n\n5. You are required to furnish your reply to this notice, along with all supporting documents and evidence, on or before 18.09.2026.\n\n6. Please note that if no response is received by the stipulated date, it shall be presumed that you have nothing to offer in the matter, and the undersigned shall proceed to pass an order under section 148A(3) of the Act, based on the material available on record, deciding whether it is a fit case for the issue of a notice under section 148 of the Act, within the limitation prescribed by section 149 of the Act.\n\nYours faithfully,\n\nPriya Ramanathan\nDeputy Commissioner of Income-tax\nCircle 42(1), Mumbai"
+  },
+  {
+    "scenario": {
+      "surface": "Notice",
+      "label": "Notice of Demand u/s 156",
+      "kind": "notice_156"
+    },
+    "gen_ms": 73931,
+    "draft_chars": 2901,
+    "verdict": {
+      "scores": {
+        "law_citation": 10,
+        "facts_fidelity": 10,
+        "structure": 10,
+        "register": 10,
+        "completeness": 10
+      },
+      "total": 50,
+      "weaknesses": [],
+      "ballots": [
+        {
+          "scores": {
+            "law_citation": 10,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 10
+          },
+          "weaknesses": {}
+        },
+        {
+          "scores": {
+            "law_citation": 10,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 10
+          },
+          "weaknesses": {}
+        },
+        {
+          "scores": {
+            "law_citation": 10,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 10
+          },
+          "weaknesses": {}
+        }
+      ]
+    },
+    "draft_preview": "OFFICE OF THE DEPUTY COMMISSIONER OF INCOME-TAX, CIRCLE 42(1), MUMBAI\n\nDIN: [\u2022]\nF. No. [\u2022]\nDate: [\u2022]\n\nTo,\nShri Ramesh Kumar Sharma\nPAN: AGHPS9821K\nAssessment Year: 2022-23\n\nSub: Notice of Demand under section 156 of the Income-tax Act, 1961, pursuant to Assessment Order u/s 143(3) dated 24.03.2026.\n\n1. This notice is issued to you in consequence of the Assessment Order u/s 143(3) dated 24.03.2026 passed by the Deputy Commissioner of Income-tax, Circle 42(1), Mumbai, for the Assessment Year 2022-23.\n\n2. In accordance with the provisions of section 156 of the Income-tax Act, 1961, you are hereby required to pay the sum specified below, being the amount due from you under the said Act:\n\n| Particulars | Amount (Rs.) |\n| :--- | :--- |\n| Tax | 12,60,000 |\n| Interest under section 234A | 2,52,000 |\n| Interest under section 234B | 3,15,000 |\n| Fee under section 234F | 15,780 |\n| **Total Sum Payable** | **18,42,780** |\n\n3. You are directed to pay the aforesaid sum of Rs. 18,42,780 (Rupees Eighteen Lakh Forty-Two Thousand Seven Hundred and Eighty only) within 30 days of the service of this notice. Payment must be made through the authorized modes of payment, including e-payment via the official portal of the Income-tax Department.\n\n4. **Consequences of Non-Payment:**\nIf the amount demanded is not paid within the specified period, you shall be treated as an assessee-in-default under section 220(4) of the Income-tax Act, 1961, and the following consequences shall ensue:\n    (i) Simple interest under section 220(2) shall be levied at the rate of one per cent per month or part of a month from the date immediately following the end of the period allowed for payment.\n    (ii) A penalty under section 221 may be imposed, which shall not exceed the amount of tax in arrears.\n    (iii) Recovery proceedings shall be initiated for the realization of the demand, which may include:\n        (a) Garnishee proceedings under section 226(3) against any person from whom money is due or may become due to you, or who holds or may subsequently hold money for or on your behalf.\n        (b) Attachment and sale of your movable and immovable property under the provisions of the Second Schedule to the Income-tax Act, 1961, read with section 222.\n\n5. **Right of Appeal and Stay of Demand:**\n    (i) If you are aggrieved by the order giving rise to this demand, you may prefer an appeal to the Commissioner of Income-tax (Appeals) or the National Faceless Appeal Centre (NFAC) under section 246A of the Income-tax Act, 1961, within 30 days from the date on which this notice is served upon you, by filing Form No. 35.\n    (ii) You may seek a stay of the demand under section 220(6) pending the disposal of the appeal, provided you pay a minimum of 20% of the disputed demand before filing the stay application.\n\nYours faithfully,\n\nPriya Ramanathan\nDeputy Commissioner of Income-tax\nCircle 42(1), Mumbai"
+  },
+  {
+    "scenario": {
+      "surface": "Appeal order",
+      "label": "Order Giving Effect (appellate)",
+      "kind": "order_oge"
+    },
+    "gen_ms": 59408,
+    "draft_chars": 2811,
+    "verdict": {
+      "scores": {
+        "law_citation": 8,
+        "facts_fidelity": 10,
+        "structure": 10,
+        "register": 10,
+        "completeness": 9
+      },
+      "total": 47,
+      "weaknesses": [
+        "law_citation: The heading incorrectly cites Section 250 and 250(2) as the basis for the order, instead of Section 250(1) or just Section 250.",
+        "completeness: The order fails to explicitly mention the original assessed income figure, which is necessary to derive the revised total income."
+      ],
+      "ballots": [
+        {
+          "scores": {
+            "law_citation": 8,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 9
+          },
+          "weaknesses": {
+            "law_citation": "The heading incorrectly cites Section 250 and 250(2) as the basis for the order, instead of Section 250(1) or just Section 250.",
+            "completeness": "The order fails to explicitly mention the original assessed income figure, which is necessary to derive the revised total income."
+          }
+        },
+        {
+          "scores": {
+            "law_citation": 8,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 9
+          },
+          "weaknesses": {
+            "law_citation": "The heading incorrectly cites Section 250 and 250(2) instead of only Section 250.",
+            "completeness": "The order fails to explicitly state the original total income from which the reduction is calculated."
+          }
+        },
+        {
+          "scores": {
+            "law_citation": 8,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 9
+          },
+          "weaknesses": {
+            "law_citation": "The heading incorrectly cites Section 250 and 250(2) instead of only Section 250.",
+            "completeness": "The order does not explicitly state the original assessed income figure."
+          }
+        }
+      ]
+    },
+    "draft_preview": "ORDER UNDER SECTION 143(3) READ WITH SECTIONS 250 AND 250(2) OF THE INCOME-TAX ACT, 1961\n\nDIN: [\u2022]\nF. No. [\u2022]/DCIT/Cir 42(1)/O.G.E./2026-27\nDate: [\u2022]\n\nTo,\nM/s Anvi Textiles LLP\nPAN: AABFA1729Q\nAssessment Year: 2019-20\n\nSUB: Giving effect to the order of the Commissioner of Income-tax (Appeals) / National Faceless Appeal Centre (NFAC) in the case of M/s Anvi Textiles LLP for Assessment Year 2019-20.\n\n1. The assessment in the case of M/s Anvi Textiles LLP (the Assessee) for the Assessment Year 2019-20 was completed under section 143(3) of the Income-tax Act, 1961 (the Act) vide order dated 27.03.2024.\n\n2. The Assessee preferred an appeal against the said assessment order before the Commissioner of Income-tax (Appeals) / National Faceless Appeal Centre (NFAC). The appeal has been disposed of vide Order No. NFAC/2024-25/10011234 dated 12.06.2026.\n\n3. In compliance with the provisions of section 250(2) of the Act, effect is hereby given to the directions contained in the aforesaid appellate order. The directions and the consequential effect are as follows:\n\n    (i) **Addition under section 68:** The addition of Rs. 62,00,000 made under section 68 of the Act on account of unexplained share capital is DELETED. The appellate authority held the share capital to be genuine on the strength of PAN, Income Tax Return, and bank statements of the subscribers.\n    (ii) **Disallowance under section 40A(3):** The disallowance of Rs. 8,40,000 made under section 40A(3) of the Act is RESTRICTED to Rs. 2,10,000. The appellate authority sustained the disallowance only in respect of payments above Rs. 10,000 made in a single day to a single party. The net reduction in disallowance is Rs. 6,30,000 (Rs. 8,40,000 - Rs. 2,10,000).\n\n4. **RECOMPUTATION OF TOTAL INCOME**\n\n| Particulars | Amount (Rs.) |\n| :--- | :--- |\n| Assessed Income as per Order u/s 143(3) dated 27.03.2024 | [\u2022] |\n| **Less: Effect of Appellate Order dated 12.06.2026** | |\n| Deletion of addition u/s 68 (Share Capital) | 62,00,000 |\n| Reduction in disallowance u/s 40A(3) (Rs. 8,40,000 - Rs. 2,10,000) | 6,30,000 |\n| **Total Reduction** | 68,30,000 |\n| **Revised Total Income** | [\u2022] |\n\n5. **CONSEQUENTIAL ACTION**\n\n    (i) Based on the Revised Total Income, the tax liability for Assessment Year 2019-20 is recomputed.\n    (ii) A fresh Notice of Demand under section 156 of the Act, reflecting the revised demand or refund due, will be issued separately.\n    (iii) Interest chargeable under sections 234A, 234B, and 234C of the Act shall be recomputed on the Revised Total Income.\n    (iv) The initiation of penalty proceedings under section 270A of the Act shall be recomputed on the Revised Total Income, as directed by the appellate authority.\n\nYours faithfully,\n\nPriya Ramanathan\nDeputy Commissioner of Income-tax\nCircle 42(1), Mumbai"
+  },
+  {
+    "scenario": {
+      "surface": "Assessment order",
+      "label": "Draft assessment order u/s 144C(1)",
+      "kind": "order_144C_1"
+    },
+    "gen_ms": 65758,
+    "draft_chars": 4400,
+    "verdict": {
+      "scores": {
+        "law_citation": 9,
+        "facts_fidelity": 10,
+        "structure": 10,
+        "register": 10,
+        "completeness": 9
+      },
+      "total": 48,
+      "weaknesses": [
+        "law_citation: Section 43B(a) is cited for GST disallowance, but the correct hook is Section 43B(a) read with the second proviso to Section 43B.",
+        "completeness: The computation table lacks the final calculated figure for Draft Assessed Income."
+      ],
+      "ballots": [
+        {
+          "scores": {
+            "law_citation": 8,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 9
+          },
+          "weaknesses": {
+            "law_citation": "Section 43B(a) is cited for GST disallowance, but the correct hook is Section 43B(a) read with the second proviso to Section 43B.",
+            "completeness": "The computation table lacks the final calculated figure for Draft Assessed Income."
+          }
+        },
+        {
+          "scores": {
+            "law_citation": 9,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 9
+          },
+          "weaknesses": {
+            "law_citation": "The draft incorrectly cites Section 43B(a) instead of the correct Section 43B.",
+            "completeness": "The computation table does not include the total Draft Assessed Income, which is required for completeness."
+          }
+        },
+        {
+          "scores": {
+            "law_citation": 9,
+            "facts_fidelity": 10,
+            "structure": 10,
+            "register": 10,
+            "completeness": 9
+          },
+          "weaknesses": {
+            "law_citation": "The disallowance under Section 43B should cite clause (a) explicitly in the heading.",
+            "completeness": "The computation table does not show the calculated Draft Assessed Income."
+          }
+        }
+      ]
+    },
+    "draft_preview": "OFFICE OF THE DEPUTY COMMISSIONER OF INCOME-TAX, CIRCLE 42(1), MUMBAI\n\nDIN: [\u2022]\nF. No. DCIT/Cir-42(1)/Draft-144C/2020-21/[\u2022]\nDate: [\u2022]\n\nTo,\nM/s Novatek Software India Pvt. Ltd.\nPAN: AAACN7412R\nAssessment Year: 2020-21\n\nSUB: Draft Assessment Order under Section 144C(1) of the Income-tax Act, 1961.\n\n1. This Draft Assessment Order is being passed in the case of M/s Novatek Software India Pvt. Ltd. (hereinafter referred to as the Assessee) for the Assessment Year 2020-21. The Assessee is an eligible assessee within the meaning of section 144C(15)(b) of the Income-tax Act, 1961 (the Act), as a variation prejudicial to the interest of the Assessee arises from the order passed by the Transfer Pricing Officer (TPO) under section 92CA(3) of the Act.\n\n2. The Assessee filed its Return of Income declaring a total income of Rs. 27,42,60,000. Based on the material on record, including the TPO's order and the findings during the assessment proceedings, the following variations prejudicial to the Assessee are proposed:\n\n**A. Variation under Section 92CA(3) \u2013 Transfer Pricing Adjustment**\n\n3. The Transfer Pricing Officer, vide Order under section 92CA(3) dated 30.10.2025, determined that the arm's-length margin for the software development services segment was 22.14% against the tested-party margin of 14.06% reported by the Assessee. Consequently, an adjustment of Rs. 4,72,00,000 is proposed to be added to the total income of the Assessee to bring the international transaction to arm's length.\n\n**B. Variation under Section 40(a)(i) \u2013 Disallowance for Non-Deduction of Tax at Source on Payment to Non-Resident**\n\n4. During the assessment proceedings, it was observed that the Assessee made a royalty payment to Novatek Ireland Ltd., a non-resident, without deducting tax at source as required under section 195 of the Act. In accordance with the provisions of section 40(a)(i) of the Act, any interest, royalty, fees for technical services or other sum chargeable under the Act, payable to a non-resident, shall not be allowed as a deduction if tax has not been deducted or after deduction, has not been paid on or before the due date specified in section 139(1). Accordingly, a disallowance of Rs. 18,60,000 is proposed under section 40(a)(i).\n\n**C. Variation under Section 43B(a) \u2013 Disallowance of Statutory Dues Unpaid**\n\n5. It is noted that an amount of Rs. 12,00,000, representing Goods and Services Tax (GST), which is a sum payable by the Assessee by way of tax, duty, cess or fee, was outstanding as on 31.03.2020 and was not paid before the due date for furnishing the return of income under section 139(1) for the Assessment Year 2020-21. In terms of section 43B(a) of the Act, such sum shall be allowed as a deduction only in the previous year in which it is actually paid. Accordingly, a disallowance of Rs. 12,00,000 is proposed under section 43B(a).\n\n**D. Computation of Draft Assessed Income**\n\n6. Based on the variations proposed above, the Draft Assessed Income is computed as follows:\n\n| Particulars | Amount (Rs.) |\n| :--- | :--- |\n| Returned Income | 27,42,60,000 |\n| **Additions:** | |\n| TP Adjustment u/s 92CA(3) | 4,72,00,000 |\n| Disallowance u/s 40(a)(i) | 18,60,000 |\n| Disallowance u/s 43B(a) | 12,00,000 |\n| **Draft Assessed Income** | [\u2022] |\n\n7. This is a **DRAFT ASSESSMENT ORDER** under section 144C(1) of the Income-tax Act, 1961. No demand is being raised on the basis of this Draft Order.\n\n8. The Assessee may, within thirty days of the receipt of this Draft Order, adopt either of the following courses of action:\n\n    (a) File its acceptance of the variations proposed in this Draft Order with the Assessing Officer; or\n\n    (b) File objections to the variations proposed in this Draft Order with the Dispute Resolution Panel (DRP) in Form 35A, along with a copy of the objections furnished to the Assessing Officer.\n\n9. If the Assessee exercises the option to file objections with the DRP, the Assessing Officer shall complete the assessment in conformity with the directions issued by the DRP under section 144C(13) of the Act.\n\n10. If the Assessee fails to take any action as specified in paragraph 8 within the period of thirty days, the Assessing Officer shall pass the final assessment order under section 144C(3) on the basis of the terms of this Draft Order.\n\nYours faithfully,\n\nPriya Ramanathan\nDeputy Commissioner of Income-tax\nCircle 42(1), Mumbai"
+  }
+]

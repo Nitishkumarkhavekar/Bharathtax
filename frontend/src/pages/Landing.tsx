@@ -22,9 +22,12 @@ import {
   Bell,
   StickyNote,
   BookMarked,
+  Newspaper,
+  ExternalLink,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
+import { api } from "../api";
 
 // Marketing landing page — calm, near-white ground, a serif display hero with
 // one accent word, twin CTAs, a browser-chromed product preview, then feature
@@ -51,6 +54,7 @@ export default function Landing() {
       <UseCases />
       <HowItWorks />
       <Stats />
+      <LiveNews />
       <Pricing />
       <FAQ />
       <CTA />
@@ -566,6 +570,229 @@ function Stats() {
         })}
       </div>
     </section>
+  );
+}
+
+
+// ============================================================== Live news
+// A live tax-headline strip between Stats and Pricing. Signals "this tool
+// is genuinely current" to visitors, and gets them clicking through to
+// real articles before they hit the pricing page. Fully public — reads
+// from GET /news/public (unauthenticated, capped at 20 items).
+function LiveNews() {
+  const [items, setItems] = useState<{
+    id: number; title: string; url: string; source_name: string;
+    source_category: string | null; image_url: string | null;
+    published_at: string;
+  }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.publicNews(6)
+      .then((r) => { if (!cancelled) setItems(r.items); })
+      .catch(() => { /* silent — a landing section that 500s is worse than one that hides */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // If the poller hasn't populated anything yet, don't render an empty
+  // section — hides the widget cleanly on a fresh install.
+  if (!loading && items.length === 0) return null;
+
+  const relTime = (iso: string): string => {
+    const d = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (d < 60) return "just now";
+    if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+    if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+    return `${Math.floor(d / 86400)}d ago`;
+  };
+  const pub = (it: { source_name: string; url: string }): string => {
+    const low = (it.source_name || "").toLowerCase();
+    if (it.source_name && !low.startsWith("google alert") && !low.startsWith("google news")) {
+      return it.source_name;
+    }
+    try {
+      return new URL(it.url).hostname.replace(/^www\./, "");
+    } catch {
+      return it.source_name || "";
+    }
+  };
+
+  return (
+    <section id="live-news" className="bg-white/60 border-y border-slate-100">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-20">
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="text-[12px] uppercase tracking-[0.18em] text-primary font-semibold flex items-center justify-center gap-1.5">
+            <span className="relative inline-flex size-2 rounded-full bg-emerald-500">
+              <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
+            </span>
+            Live tax pulse
+          </div>
+          <h2 className="mt-2 font-serif text-[26px] sm:text-[40px] font-semibold tracking-tight">
+            The latest, from the desks that write the law.
+          </h2>
+          <p className="mt-3 text-slate-600">
+            Real-time headlines across the whole of Indian taxation — Income-tax,
+            GST, Customs, Transfer Pricing and International Tax — CBDT and CBIC
+            notifications, tribunal rulings, budget commentary and filing-deadline
+            news, curated from verified publishers.
+          </p>
+        </div>
+
+        <div className="mt-10">
+          {loading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[0, 1, 2, 3, 4, 5].map((k) => (
+                <div key={k} className="rounded-2xl bg-white ring-1 ring-slate-200 p-5">
+                  <div className="h-3 w-24 bg-slate-100 rounded animate-pulse" />
+                  <div className="mt-3 h-4 w-full bg-slate-100 rounded animate-pulse" />
+                  <div className="mt-2 h-4 w-4/5 bg-slate-100 rounded animate-pulse" />
+                  <div className="mt-4 h-3 w-32 bg-slate-100 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {items.map((it) => (
+                <NewsCard key={it.id} item={it} relTime={relTime} pub={pub} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-8 text-center">
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-primary hover:underline"
+          >
+            <Newspaper className="size-4" />
+            Get the full live feed inside BharatTax
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+// ------- NewsCard: a landing-style card with a 16:9 hero image + fallback
+// tile (category-tinted gradient with the publisher favicon centred). The
+// image lives inside the card so a broken load reveals the fallback tile
+// underneath, not a torn layout.
+function NewsCard({
+  item, relTime, pub,
+}: {
+  item: {
+    id: number; title: string; url: string; source_name: string;
+    source_category: string | null; image_url: string | null;
+    published_at: string;
+  };
+  relTime: (iso: string) => string;
+  pub: (i: { source_name: string; url: string }) => string;
+}) {
+  const [imgOk, setImgOk] = useState<boolean>(!!item.image_url);
+  // Category → soft gradient. Used both on the fallback tile and as a
+  // subtle accent tint on the card top-border.
+  const gradients: Record<string, string> = {
+    "CBDT": "from-blue-100 via-slate-50 to-blue-50",
+    "Case law": "from-violet-100 via-slate-50 to-violet-50",
+    "GST": "from-emerald-100 via-slate-50 to-emerald-50",
+    "General": "from-amber-100 via-slate-50 to-amber-50",
+    "Customs": "from-cyan-100 via-slate-50 to-cyan-50",
+    "Transfer Pricing": "from-fuchsia-100 via-slate-50 to-fuchsia-50",
+    "International Tax": "from-indigo-100 via-slate-50 to-indigo-50",
+    "TDS/TCS": "from-orange-100 via-slate-50 to-orange-50",
+    "Budget": "from-rose-100 via-slate-50 to-rose-50",
+  };
+  const grad = gradients[item.source_category || "General"] || gradients["General"];
+
+  let host = "";
+  try { host = new URL(item.url).hostname.replace(/^www\./, ""); } catch { host = ""; }
+  // For Google News permalinks the URL host is "news.google.com" — its
+  // favicon would misleadingly imply Google is the publisher. Skip the
+  // favicon in that case and let the fallback tile lean on the source
+  // NAME instead (which is the real publisher — Livemint / CAclubindia /
+  // Business Standard / etc.).
+  const isAggregatorHost = !host || host.endsWith("google.com");
+  const favicon = !isAggregatorHost
+    ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`
+    : null;
+  const publisherLabel = pub(item);
+
+  return (
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="group rounded-2xl bg-white ring-1 ring-slate-200 overflow-hidden hover:ring-primary/40 hover:shadow-md transition-all flex flex-col"
+    >
+      {/* Hero — 16:9 aspect. Real image when available; otherwise a
+          category-tinted gradient with the publisher favicon centred. */}
+      <div className={`relative aspect-[16/9] bg-gradient-to-br ${grad} overflow-hidden`}>
+        {item.image_url && imgOk ? (
+          <img
+            src={item.image_url}
+            alt=""
+            loading="lazy"
+            onError={() => setImgOk(false)}
+            className="absolute inset-0 size-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center px-4">
+            <div className="flex flex-col items-center gap-2 opacity-95 text-center">
+              {favicon ? (
+                <img
+                  src={favicon}
+                  alt=""
+                  className="size-12 rounded-lg bg-white/70 ring-1 ring-white/60 p-1.5"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : (
+                <div className="size-11 rounded-xl bg-white/70 ring-1 ring-white/60 grid place-items-center">
+                  <Newspaper className="size-5 text-slate-500" />
+                </div>
+              )}
+              {/* When no favicon (i.e. aggregator URL) — surface the real
+                  publisher NAME as the hero focal point, big and clear.
+                  This is what the reader would see on the article page
+                  anyway. */}
+              {isAggregatorHost && (
+                <span className="text-[15px] font-serif font-semibold text-slate-800 leading-tight line-clamp-1">
+                  {publisherLabel}
+                </span>
+              )}
+              <span className="text-[10.5px] font-medium text-slate-500 tracking-widest uppercase">
+                {item.source_category || "Tax news"}
+              </span>
+            </div>
+          </div>
+        )}
+        {/* Category chip pinned top-left over the hero so the reader
+            always sees the tag regardless of image tone. */}
+        {item.source_category && (
+          <span className="absolute top-2.5 left-2.5 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/90 text-primary ring-1 ring-primary/20 backdrop-blur">
+            {item.source_category}
+          </span>
+        )}
+      </div>
+
+      <div className="p-5 flex flex-col flex-1">
+        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
+          <span className="normal-case tracking-normal">{relTime(item.published_at)}</span>
+        </div>
+        <h3 className="mt-1.5 font-semibold text-[15px] text-slate-900 group-hover:text-primary leading-snug line-clamp-3 flex-1">
+          {item.title}
+        </h3>
+        <div className="mt-3 flex items-center justify-between text-[12.5px]">
+          <span className="text-slate-500 truncate">
+            <span className="font-medium text-slate-700">{pub(item)}</span>
+          </span>
+          <ExternalLink className="size-3.5 shrink-0 text-slate-300 group-hover:text-primary" />
+        </div>
+      </div>
+    </a>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Calculator, Info, IndianRupee, Percent, RotateCcw } from "lucide-react";
+import { Calculator, Info, IndianRupee, Percent, RotateCcw, History } from "lucide-react";
 import { api, WsInterestResult, WsBBEResult, Ws234CResult, WsSlabResult, WsCapGainsResult, WsPenaltyResult, WsTdsResult, WsTdsSection, WsInstallmentResult, WsTrust11Result, Ws115BBCResult, WsPeakCreditResult, WsAlpResult, WsTpMethod } from "../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,18 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { resolveWorkspace, resolveCalcTabs } from "@/lib/workspaceProfiles";
 import PageHelp from "@/components/PageHelp";
+import { useCalcHistory, type CalcHistoryEntry } from "@/lib/calcHistory";
+import CalcHistoryDrawer from "@/components/CalcHistoryDrawer";
+
+// Every calculator accepts these two optional props so:
+//   * `initial`   — a history entry's inputs are re-hydrated when the user
+//                   clicks a row in the history drawer.
+//   * `onCompute` — every successful Compute saves an entry into history.
+// Free-shape record because each calculator's input shape differs.
+type CalcProps = {
+  initial?: Record<string, unknown>;
+  onCompute?: (inputs: Record<string, unknown>, summary: string) => void;
+};
 
 const inr = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(Math.round(n));
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -36,11 +48,11 @@ function ResultRow({ label, value, strong }: { label: string; value: string; str
   );
 }
 
-function InterestCalc() {
-  const [section, setSection] = useState("234A");
-  const [principal, setPrincipal] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState(todayISO());
+function InterestCalc({ initial, onCompute }: CalcProps = {}) {
+  const [section, setSection] = useState<string>((initial?.section as string) ?? "234A");
+  const [principal, setPrincipal] = useState<string>((initial?.principal as string) ?? "");
+  const [from, setFrom] = useState<string>((initial?.from as string) ?? "");
+  const [to, setTo] = useState<string>((initial?.to as string) ?? todayISO());
   const [res, setRes] = useState<WsInterestResult | null>(null);
 
   const run = async () => {
@@ -49,7 +61,12 @@ function InterestCalc() {
     if (!from || !to) { toast.error("Pick both dates."); return; }
     if (to < from) { toast.error("End date must be on or after the start date."); return; }
     try {
-      setRes(await api.wsCalcInterest({ section, principal: p, from_date: from, to_date: to }));
+      const r = await api.wsCalcInterest({ section, principal: p, from_date: from, to_date: to });
+      setRes(r);
+      onCompute?.(
+        { section, principal, from, to },
+        `${section} — ${inr(r.principal)} × ${r.months}m = ${inr(r.total_payable)}`,
+      );
     } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
 
@@ -98,15 +115,21 @@ function InterestCalc() {
   );
 }
 
-function Bbe115Calc() {
-  const [income, setIncome] = useState("");
+function Bbe115Calc({ initial, onCompute }: CalcProps = {}) {
+  const [income, setIncome] = useState<string>((initial?.income as string) ?? "");
   const [res, setRes] = useState<WsBBEResult | null>(null);
 
   const run = async () => {
     const v = parseFloat(income);
     if (!v || v <= 0) { toast.error("Enter the unexplained income."); return; }
-    try { setRes(await api.wsCalc115bbe(v)); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalc115bbe(v);
+      setRes(r);
+      onCompute?.(
+        { income },
+        `115BBE on ${inr(r.income)} = ${inr(r.total_tax)} (${r.effective_rate_pct}%)`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
 
   return (
@@ -146,16 +169,19 @@ function Bbe115Calc() {
   );
 }
 
-function Calc234C() {
-  const [tax, setTax] = useState("");
-  const [paid, setPaid] = useState(["", "", "", ""]);
+function Calc234C({ initial, onCompute }: CalcProps = {}) {
+  const [tax, setTax] = useState<string>((initial?.tax as string) ?? "");
+  const [paid, setPaid] = useState<string[]>((initial?.paid as string[]) ?? ["", "", "", ""]);
   const [res, setRes] = useState<Ws234CResult | null>(null);
   const labels = ["Paid by 15 Jun", "Paid by 15 Sep", "Paid by 15 Dec", "Paid by 15 Mar"];
   const run = async () => {
     const t = parseFloat(tax);
     if (!t || t <= 0) { toast.error("Enter the tax liability."); return; }
-    try { setRes(await api.wsCalc234c(t, paid.map((p) => parseFloat(p) || 0))); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalc234c(t, paid.map((p) => parseFloat(p) || 0));
+      setRes(r);
+      onCompute?.({ tax, paid }, `234C on tax ${inr(t)} → interest ${inr(r.interest)}`);
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -190,14 +216,21 @@ function Calc234C() {
   );
 }
 
-function SlabCalc() {
-  const [income, setIncome] = useState("");
-  const [regime, setRegime] = useState("new");
+function SlabCalc({ initial, onCompute }: CalcProps = {}) {
+  const [income, setIncome] = useState<string>((initial?.income as string) ?? "");
+  const [regime, setRegime] = useState<string>((initial?.regime as string) ?? "new");
   const [res, setRes] = useState<WsSlabResult | null>(null);
   const run = async () => {
     const v = parseFloat(income);
     if (!v || v <= 0) { toast.error("Enter the total income."); return; }
-    try { setRes(await api.wsCalcSlab(v, regime)); } catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcSlab(v, regime);
+      setRes(r);
+      onCompute?.(
+        { income, regime },
+        `${regime === "new" ? "New" : "Old"} regime · ${inr(v)} → ${inr(r.total_tax)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -236,14 +269,18 @@ const CG_KINDS = [
   { v: "stcg_equity", l: "STCG — listed equity (111A)" },
   { v: "ltcg_other", l: "LTCG — other (112)" },
 ];
-function CapGainsCalc() {
-  const [amount, setAmount] = useState("");
-  const [kind, setKind] = useState("ltcg_equity");
+function CapGainsCalc({ initial, onCompute }: CalcProps = {}) {
+  const [amount, setAmount] = useState<string>((initial?.amount as string) ?? "");
+  const [kind, setKind] = useState<string>((initial?.kind as string) ?? "ltcg_equity");
   const [res, setRes] = useState<WsCapGainsResult | null>(null);
   const run = async () => {
     const v = parseFloat(amount);
     if (!v || v <= 0) { toast.error("Enter the gain amount."); return; }
-    try { setRes(await api.wsCalcCapitalGains(v, kind)); } catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcCapitalGains(v, kind);
+      setRes(r);
+      onCompute?.({ amount, kind }, `${r.label} on ${inr(v)} = ${inr(r.total_tax)}`);
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -280,16 +317,22 @@ const PENALTY_KINDS = [
   { v: "271aac", l: "271AAC — 115BBE income (10%)" },
   { v: "271_1c", l: "271(1)(c) — concealment (100–300%)" },
 ];
-function PenaltyCalc() {
-  const [kind, setKind] = useState("270a_under");
-  const [baseTax, setBaseTax] = useState("");
-  const [pct, setPct] = useState("100");
+function PenaltyCalc({ initial, onCompute }: CalcProps = {}) {
+  const [kind, setKind] = useState<string>((initial?.kind as string) ?? "270a_under");
+  const [baseTax, setBaseTax] = useState<string>((initial?.baseTax as string) ?? "");
+  const [pct, setPct] = useState<string>((initial?.pct as string) ?? "100");
   const [res, setRes] = useState<WsPenaltyResult | null>(null);
   const run = async () => {
     const t = parseFloat(baseTax);
     if (!t || t <= 0) { toast.error("Enter the base tax."); return; }
-    try { setRes(await api.wsCalcPenalty(kind, t, kind === "271_1c" ? (parseFloat(pct) || 100) : undefined)); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcPenalty(kind, t, kind === "271_1c" ? (parseFloat(pct) || 100) : undefined);
+      setRes(r);
+      onCompute?.(
+        { kind, baseTax, pct },
+        `${r.label} · base ${inr(t)} → ${inr(r.penalty)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -326,15 +369,15 @@ function PenaltyCalc() {
   );
 }
 
-function TdsCalc() {
+function TdsCalc({ initial, onCompute }: CalcProps = {}) {
   const [sections, setSections] = useState<WsTdsSection[]>([]);
-  const [section, setSection] = useState("194C");
-  const [amount, setAmount] = useState("");
-  const [rate, setRate] = useState("1");
-  const [due, setDue] = useState("");
-  const [deducted, setDeducted] = useState("");
-  const [deposited, setDeposited] = useState("");
-  const [stmtDue, setStmtDue] = useState("");
+  const [section, setSection] = useState<string>((initial?.section as string) ?? "194C");
+  const [amount, setAmount] = useState<string>((initial?.amount as string) ?? "");
+  const [rate, setRate] = useState<string>((initial?.rate as string) ?? "1");
+  const [due, setDue] = useState<string>((initial?.due as string) ?? "");
+  const [deducted, setDeducted] = useState<string>((initial?.deducted as string) ?? "");
+  const [deposited, setDeposited] = useState<string>((initial?.deposited as string) ?? "");
+  const [stmtDue, setStmtDue] = useState<string>((initial?.stmtDue as string) ?? "");
   const [res, setRes] = useState<WsTdsResult | null>(null);
 
   useEffect(() => {
@@ -354,11 +397,16 @@ function TdsCalc() {
     if (!r || r < 0) { toast.error("Enter the TDS rate."); return; }
     if (!due) { toast.error("Enter the date the tax was deductible."); return; }
     try {
-      setRes(await api.wsCalcTds({
+      const rr = await api.wsCalcTds({
         amount: a, rate_pct: r, deduction_due: due,
         deducted_on: deducted || null, deposited_on: deposited || null,
         statement_due: stmtDue || null,
-      }));
+      });
+      setRes(rr);
+      onCompute?.(
+        { section, amount, rate, due, deducted, deposited, stmtDue },
+        `${section} · ${inr(a)} @ ${r}% → payable ${inr(rr.total_payable)}`,
+      );
     } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
 
@@ -411,10 +459,10 @@ function TdsCalc() {
   );
 }
 
-function RecoveryCalc() {
-  const [demand, setDemand] = useState("");
-  const [n, setN] = useState("6");
-  const [firstDue, setFirstDue] = useState(todayISO());
+function RecoveryCalc({ initial, onCompute }: CalcProps = {}) {
+  const [demand, setDemand] = useState<string>((initial?.demand as string) ?? "");
+  const [n, setN] = useState<string>((initial?.n as string) ?? "6");
+  const [firstDue, setFirstDue] = useState<string>((initial?.firstDue as string) ?? todayISO());
   const [res, setRes] = useState<WsInstallmentResult | null>(null);
   const run = async () => {
     const d = parseFloat(demand);
@@ -422,8 +470,14 @@ function RecoveryCalc() {
     if (!d || d <= 0) { toast.error("Enter the outstanding demand."); return; }
     if (!cnt || cnt < 1) { toast.error("Enter the number of instalments."); return; }
     if (!firstDue) { toast.error("Pick the first instalment date."); return; }
-    try { setRes(await api.wsCalcInstallments({ demand: d, installments: cnt, first_due: firstDue })); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcInstallments({ demand: d, installments: cnt, first_due: firstDue });
+      setRes(r);
+      onCompute?.(
+        { demand, n, firstDue },
+        `Instalment plan · ${inr(d)} × ${cnt} → total ${inr(r.total_payable)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -460,29 +514,41 @@ function RecoveryCalc() {
   );
 }
 
-function TrustCalc() {
-  const [mode, setMode] = useState<"apply" | "anon">("apply");
+function TrustCalc({ initial, onCompute }: CalcProps = {}) {
+  const [mode, setMode] = useState<"apply" | "anon">((initial?.mode as "apply" | "anon") ?? "apply");
   // 11(2) application
-  const [gross, setGross] = useState("");
-  const [applied, setApplied] = useState("");
-  const [form10, setForm10] = useState("");
+  const [gross, setGross] = useState<string>((initial?.gross as string) ?? "");
+  const [applied, setApplied] = useState<string>((initial?.applied as string) ?? "");
+  const [form10, setForm10] = useState<string>((initial?.form10 as string) ?? "");
   const [r11, setR11] = useState<WsTrust11Result | null>(null);
   // 115BBC
-  const [anon, setAnon] = useState("");
-  const [total, setTotal] = useState("");
+  const [anon, setAnon] = useState<string>((initial?.anon as string) ?? "");
+  const [total, setTotal] = useState<string>((initial?.total as string) ?? "");
   const [rbbc, setRbbc] = useState<Ws115BBCResult | null>(null);
 
   const run11 = async () => {
     const g = parseFloat(gross), a = parseFloat(applied);
     if (!g || g <= 0) { toast.error("Enter the gross income."); return; }
-    try { setR11(await api.wsCalcTrust11({ gross_income: g, amount_applied: a || 0, accumulated_11_2: parseFloat(form10) || 0 })); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcTrust11({ gross_income: g, amount_applied: a || 0, accumulated_11_2: parseFloat(form10) || 0 });
+      setR11(r);
+      onCompute?.(
+        { mode: "apply", gross, applied, form10 },
+        `Sec 11 · gross ${inr(g)} → shortfall ${inr(r.shortfall_taxable)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
   const runBbc = async () => {
     const an = parseFloat(anon), t = parseFloat(total);
     if (!t || t <= 0) { toast.error("Enter the total donations."); return; }
-    try { setRbbc(await api.wsCalc115bbc({ anonymous_donations: an || 0, total_donations: t })); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalc115bbc({ anonymous_donations: an || 0, total_donations: t });
+      setRbbc(r);
+      onCompute?.(
+        { mode: "anon", anon, total },
+        `115BBC · anonymous ${inr(an || 0)}/${inr(t)} → tax ${inr(r.total_tax)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
 
   return (
@@ -543,8 +609,10 @@ function TrustCalc() {
 }
 
 type PeakEntry = { date: string; amount: string; kind: "credit" | "debit" };
-function PeakCreditCalc() {
-  const [rows, setRows] = useState<PeakEntry[]>([{ date: "", amount: "", kind: "credit" }]);
+function PeakCreditCalc({ initial, onCompute }: CalcProps = {}) {
+  const [rows, setRows] = useState<PeakEntry[]>(
+    (initial?.rows as PeakEntry[]) ?? [{ date: "", amount: "", kind: "credit" }],
+  );
   const [res, setRes] = useState<WsPeakCreditResult | null>(null);
   const setRow = (i: number, patch: Partial<PeakEntry>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const addRow = () => setRows((rs) => [...rs, { date: "", amount: "", kind: "credit" }]);
@@ -555,8 +623,14 @@ function PeakCreditCalc() {
       .filter((r) => r.date && parseFloat(r.amount) > 0)
       .map((r) => ({ date: r.date, amount: parseFloat(r.amount), kind: r.kind }));
     if (!entries.length) { toast.error("Add at least one dated credit."); return; }
-    try { setRes(await api.wsCalcPeakCredit(entries)); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcPeakCredit(entries);
+      setRes(r);
+      onCompute?.(
+        { rows },
+        `Peak credit · ${entries.length} rows → peak ${inr(r.peak_credit)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
 
   return (
@@ -604,11 +678,11 @@ function PeakCreditCalc() {
   );
 }
 
-function AlpCalc() {
+function AlpCalc({ initial, onCompute }: CalcProps = {}) {
   const [methods, setMethods] = useState<WsTpMethod[]>([]);
-  const [comps, setComps] = useState("");
-  const [tested, setTested] = useState("");
-  const [base, setBase] = useState("");
+  const [comps, setComps] = useState<string>((initial?.comps as string) ?? "");
+  const [tested, setTested] = useState<string>((initial?.tested as string) ?? "");
+  const [base, setBase] = useState<string>((initial?.base as string) ?? "");
   const [res, setRes] = useState<WsAlpResult | null>(null);
   useEffect(() => { api.wsTpMethods().then(setMethods).catch(() => {}); }, []);
 
@@ -617,8 +691,14 @@ function AlpCalc() {
     const t = parseFloat(tested);
     if (!comparables.length) { toast.error("Enter the comparables' margins (comma-separated)."); return; }
     if (isNaN(t)) { toast.error("Enter the tested-party margin."); return; }
-    try { setRes(await api.wsCalcAlp({ comparables, tested_margin: t, base_amount: parseFloat(base) || 0 })); }
-    catch (e: any) { toast.error(e?.message || "Could not compute."); }
+    try {
+      const r = await api.wsCalcAlp({ comparables, tested_margin: t, base_amount: parseFloat(base) || 0 });
+      setRes(r);
+      onCompute?.(
+        { comps, tested, base },
+        `ALP · ${r.count} comparables · tested ${t}% → adj ${inr(r.adjustment || 0)}`,
+      );
+    } catch (e: any) { toast.error(e?.message || "Could not compute."); }
   };
 
   return (
@@ -681,7 +761,22 @@ export default function Calculators() {
   const [tab, setTab] = useState<CalcTab>(defaultTab);
   // Bumping this remounts the active calculator, resetting its inputs + result.
   const [resetKey, setResetKey] = useState(0);
-  const clear = () => setResetKey((k) => k + 1);
+  // Pending inputs to hydrate the calc with (set by history restore).
+  // Cleared on the next Clear so it doesn't stick around across tab switches.
+  const [pendingInit, setPendingInit] = useState<Record<string, unknown> | null>(null);
+  const clear = () => { setPendingInit(null); setResetKey((k) => k + 1); };
+  // History — localStorage-backed, cross-tab-synced.
+  const history = useCalcHistory();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const saveHistory = (inputs: Record<string, unknown>, summary: string) =>
+    history.push(tab, inputs, summary);
+  const restore = (entry: CalcHistoryEntry) => {
+    setHistoryOpen(false);
+    setTab(entry.tab);
+    setPendingInit(entry.inputs);
+    // Bump key so the calc remounts and picks up the fresh initial values.
+    setResetKey((k) => k + 1);
+  };
   // Role-divided: lead with the calculators the officer's function actually
   // uses; the rest sit behind "More" (empty ownTabs → show all).
   const ownTabs = resolveCalcTabs(session?.workspaceProfile, session?.workspaceWings);
@@ -723,25 +818,53 @@ export default function Calculators() {
             </button>
           )}
         </div>
-        <button onClick={clear} title="Clear this calculator"
-          className="ml-auto inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors">
-          <RotateCcw className="size-3.5" /> Clear
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setHistoryOpen(true)}
+            title="View calculation history"
+            className={cn(
+              "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold ring-1 bg-white transition-colors relative",
+              history.entries.length > 0
+                ? "text-slate-700 ring-slate-200 hover:bg-slate-50 hover:text-primary hover:ring-primary/30"
+                : "text-slate-400 ring-slate-200 hover:bg-slate-50",
+            )}
+          >
+            <History className="size-3.5" /> History
+            {history.entries.length > 0 && (
+              <span className="ml-0.5 inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 rounded-full bg-primary/10 text-primary text-[10.5px] font-bold tabular-nums">
+                {history.entries.length > 99 ? "99+" : history.entries.length}
+              </span>
+            )}
+          </button>
+          <button onClick={clear} title="Clear this calculator"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors">
+            <RotateCcw className="size-3.5" /> Clear
+          </button>
+        </div>
       </div>
 
       <div key={`${tab}-${resetKey}`} className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4 sm:p-5">
-        {tab === "interest" ? <InterestCalc />
-          : tab === "234c" ? <Calc234C />
-          : tab === "tds" ? <TdsCalc />
-          : tab === "recovery" ? <RecoveryCalc />
-          : tab === "trust" ? <TrustCalc />
-          : tab === "peak" ? <PeakCreditCalc />
-          : tab === "alp" ? <AlpCalc />
-          : tab === "bbe" ? <Bbe115Calc />
-          : tab === "slab" ? <SlabCalc />
-          : tab === "capgains" ? <CapGainsCalc />
-          : <PenaltyCalc />}
+        {tab === "interest" ? <InterestCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "234c" ? <Calc234C initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "tds" ? <TdsCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "recovery" ? <RecoveryCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "trust" ? <TrustCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "peak" ? <PeakCreditCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "alp" ? <AlpCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "bbe" ? <Bbe115Calc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "slab" ? <SlabCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : tab === "capgains" ? <CapGainsCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />
+          : <PenaltyCalc initial={pendingInit ?? undefined} onCompute={saveHistory} />}
       </div>
+
+      <CalcHistoryDrawer
+        open={historyOpen}
+        entries={history.entries}
+        onClose={() => setHistoryOpen(false)}
+        onRestore={restore}
+        onRemove={history.remove}
+        onClearAll={history.clearAll}
+      />
 
       <p className="flex items-start gap-1.5 text-[11.5px] text-slate-400">
         <IndianRupee className="size-3.5 mt-px shrink-0" />
