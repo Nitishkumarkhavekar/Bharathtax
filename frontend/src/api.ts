@@ -1033,12 +1033,21 @@ export interface DraftReviewEvent {
   created_at: string | null;
   resolved_at: string | null;
 }
+export interface RequiredApproval {
+  section: string;          // e.g. "151" | "153D" | "144C" | "263"
+  what: string;             // "Sanction to reopen (notice u/s 148)"
+  authority: string[];      // designation labels that can sanction
+  required_tiers: string[]; // seniority tiers (field/range/commissioner) that qualify
+  note: string;
+  years_elapsed: number | null;
+}
 export interface DraftReviewInfo {
   reviewer_user_id: number | null;
   reviewer_name: string | null;
   is_reviewer: boolean;        // viewer is the assigned reviewer, while in review
   is_owner: boolean;
   can_edit: boolean;
+  required_approval?: RequiredApproval | null;
   history: DraftReviewEvent[];
 }
 export interface DraftDoc {

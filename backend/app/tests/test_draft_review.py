@@ -10,6 +10,27 @@ from app.models.draft_review import DraftReview
 from app.services import draft_review as rv
 
 
+def test_required_approval_maps_kind_to_sanctioning_rank():
+    from types import SimpleNamespace
+    def ra(kind, **inputs):
+        return rv.required_approval_for_draft(SimpleNamespace(kind=kind, inputs=inputs))
+
+    # §148 reopening → §151 sanction; AY timing decides the rank
+    recent = ra("notice_148A", ay="2023-24")          # <3 yrs → Pr.CIT/CIT (commissioner)
+    assert recent["section"] == "151" and recent["required_tiers"] == ["commissioner"]
+    old = ra("notice_148", ay="2016-17")              # >3 yrs → Pr.CCIT/CCIT (commissioner-folded)
+    assert old["section"] == "151"
+    # search assessment → §153D, Range Head (range tier)
+    assert ra("order_153a")["section"] == "153D"
+    assert ra("order_153a")["required_tiers"] == ["range"]
+    # TP/foreign draft order → §144C
+    assert ra("order_144C_1")["section"] == "144C"
+    # revision
+    assert ra("order_263")["section"] == "263"
+    # ordinary notice → no special sanction
+    assert ra("notice_142_1") is None
+
+
 def _draft(db, owner_id, status="draft"):
     d = DraftDocument(user_id=owner_id, wing_id=1, kind="notice_142_1",
                       title="§142(1) — Alpha", inputs={}, content="body", status=status)
