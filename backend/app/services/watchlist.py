@@ -50,16 +50,12 @@ _DIGEST_SENTINELS = ("PROCEDURAL", "INSUFFICIENT")
 
 # The sections that DEFINE each function — the fallback when an officer has no
 # footprint yet, so the feed is personalised-by-role from the first login.
+# Sourced from the canonical department taxonomy (one source of truth) so it
+# covers every wing, including the ones the flat model was missing.
+from app.core.department import WINGS as _WINGS
+
 WING_DEFAULT_SECTIONS: dict[str, list[str]] = {
-    "officer": ["143", "147", "148", "148A", "68", "69", "115BBE", "271AAC", "270A"],
-    "cita": ["246A", "250", "251", "270A", "271", "68", "69", "143"],
-    "drp": ["144C", "92CA", "143", "147"],
-    "tp": ["92C", "92CA", "92D", "92E", "144C"],
-    "investigation": ["132", "132A", "153A", "153C", "68", "69", "115BBE"],
-    "ici": ["285BA", "271FA", "139A", "133"],
-    "recovery": ["220", "221", "222", "156", "179", "226"],
-    "tds": ["192", "194", "194A", "194J", "194C", "201", "40", "271C"],
-    "ca": ["139", "143", "80C", "54", "44AB", "234B", "270A"],
+    w["key"]: list(w.get("sections") or []) for w in _WINGS
 }
 
 # strip subsection parentheticals so "271(1)(c)/40(a)(ia)" -> "271 / 40"

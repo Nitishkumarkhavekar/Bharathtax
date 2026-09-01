@@ -2,12 +2,14 @@
 from app.core import profiles as p
 
 
-def test_nine_functions_present():
-    assert len(p.WORKSPACE_PROFILES) == 9
+def test_functions_sourced_from_taxonomy():
+    # Sourced from the canonical department taxonomy (14 wings) — a superset of
+    # the original nine, each with key + label + group.
     keys = {x["key"] for x in p.WORKSPACE_PROFILES}
-    assert keys == {"officer", "cita", "drp", "tp", "investigation", "ici", "recovery", "tds", "ca"}
+    assert {"officer", "cita", "drp", "tp", "investigation", "ici", "recovery", "tds", "ca"} <= keys
+    assert {"central", "exemptions", "inttax", "audit", "hq"} <= keys
     for x in p.WORKSPACE_PROFILES:
-        assert x["key"] and x["label"]
+        assert x["key"] and x["label"] and x["group"]
 
 
 def test_is_valid_profile_accepts_functions_meta_and_none():

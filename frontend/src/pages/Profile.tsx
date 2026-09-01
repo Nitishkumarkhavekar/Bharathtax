@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   User as UserIcon,
@@ -16,7 +16,7 @@ import {
   Wallet,
   Sparkles,
 } from "lucide-react";
-import { ApiError, LicenseStatus, Profile as ProfileT, api } from "../api";
+import { ApiError, LicenseStatus, Profile as ProfileT, TaxonomyDesignation, api } from "../api";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth";
 import { PlanUsage } from "@/components/PlanUsage";
@@ -240,16 +240,35 @@ function PersonalDetailsCard({
   const [organisation, setOrganisation] = useState(profile.organisation ?? "");
   const [wp, setWp] = useState(profile.workspace_profile ?? "");
   const [wpWings, setWpWings] = useState<string[]>(profile.workspace_wings ?? []);
-  const [wpOptions, setWpOptions] = useState<{ key: string; label: string }[]>([]);
+  const [designation, setDesignation] = useState(profile.designation ?? "");
+  const [wpOptions, setWpOptions] = useState<{ key: string; label: string; group?: string }[]>([]);
+  const [designations, setDesignations] = useState<TaxonomyDesignation[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => { api.workspaceProfiles().then(setWpOptions).catch(() => {}); }, []);
+  useEffect(() => { api.departmentTaxonomy().then((t) => setDesignations(t.designations)).catch(() => {}); }, []);
+
+  // Wing options grouped by department, for a readable picker across all wings.
+  const wpByGroup = useMemo(() => {
+    const m = new Map<string, { key: string; label: string }[]>();
+    for (const o of wpOptions) { const g = o.group || "Other"; (m.get(g) ?? m.set(g, []).get(g)!).push(o); }
+    return Array.from(m.entries());
+  }, [wpOptions]);
+  // Designations grouped by cadre (executive/irs vs ministerial/admin/steno).
+  const desigByCadre = useMemo(() => {
+    const order = ["irs", "executive", "admin", "ministerial", "steno"];
+    const label: Record<string, string> = { irs: "Group A (IRS)", executive: "Executive", admin: "Administrative Officer", ministerial: "Ministerial", steno: "Steno / PS" };
+    const m = new Map<string, TaxonomyDesignation[]>();
+    for (const d of designations) { (m.get(d.cadre) ?? m.set(d.cadre, []).get(d.cadre)!).push(d); }
+    return [...m.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])).map(([c, ds]) => [label[c] || c, ds] as const);
+  }, [designations]);
 
   const wingsEqual = JSON.stringify([...wpWings].sort()) === JSON.stringify([...(profile.workspace_wings ?? [])].sort());
   const dirty =
     (fullName ?? "") !== (profile.full_name ?? "") ||
     (organisation ?? "") !== (profile.organisation ?? "") ||
+    (designation ?? "") !== (profile.designation ?? "") ||
     (wp ?? "") !== (profile.workspace_profile ?? "") ||
     (wp === "custom" && !wingsEqual);
 
@@ -269,6 +288,7 @@ function PersonalDetailsCard({
       const updated = await api.updateProfile({
         full_name: fullName,
         organisation,
+        designation,
         workspace_profile: wp,
         workspace_wings: wp === "custom" ? wpWings : null,
       });
@@ -348,7 +368,7 @@ function PersonalDetailsCard({
       </Field>
 
       <Field
-        label="Primary function"
+        label="Wing / department"
         hint="Tailors your dashboard and sidebar to the work you actually do. Every tool stays reachable under “All tools”."
       >
         <IconWrap icon={<UserCog className="size-4" />}>
@@ -360,9 +380,35 @@ function PersonalDetailsCard({
             <option value="">Not set</option>
             <option value="all">Show everything (all wings)</option>
             <option value="custom">Custom — pick the wings I work</option>
-            <optgroup label="Single function">
-              {wpOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-            </optgroup>
+            {wpByGroup.map(([group, opts]) => (
+              <optgroup key={group} label={group}>
+                {opts.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </IconWrap>
+      </Field>
+
+      <Field
+        label="Designation"
+        hint="Your rank — used to tailor drafting, approvals and the ‘who sanctions this’ guidance to your seniority."
+      >
+        <IconWrap icon={<UserCog className="size-4" />}>
+          <select
+            value={designation ?? ""}
+            onChange={(e) => setDesignation(e.target.value)}
+            className="w-full h-10 rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">Not set</option>
+            {/* keep a legacy free-text value selectable if it isn't a taxonomy key */}
+            {designation && !designations.some((d) => d.key === designation) && (
+              <option value={designation}>{designation} (current)</option>
+            )}
+            {desigByCadre.map(([cadre, ds]) => (
+              <optgroup key={cadre} label={cadre}>
+                {ds.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+              </optgroup>
+            ))}
           </select>
         </IconWrap>
       </Field>

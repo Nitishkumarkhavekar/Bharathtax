@@ -263,6 +263,21 @@ export interface ProfileUpdate {
   current_password?: string;
   new_password?: string;
 }
+// Canonical department taxonomy (served by /me/department-taxonomy).
+export interface TaxonomyWing {
+  key: string; label: string; group: string; standpoint: string;
+  sections: string[]; activities: string[]; tools: string[];
+  template_groups: string[]; calc_tabs: string[]; deadlines: string[];
+}
+export interface TaxonomyDesignation {
+  key: string; label: string; tier: string; cadre: string; directorate?: string;
+}
+export interface DepartmentTaxonomy {
+  tiers: string[];
+  wings: TaxonomyWing[];
+  designations: TaxonomyDesignation[];
+  approvals: { section: string; what: string; ay_dependent: boolean; authority: unknown; note: string }[];
+}
 export interface AdminUserCreate {
   username: string;
   password: string;
@@ -1076,7 +1091,8 @@ export const api = {
     req<Profile>("/auth/profile", { method: "PUT", body: JSON.stringify(b) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ id: number; username: string; full_name: string | null; role: string; designation: string | null; workspace_profile: string | null; workspace_wings: string[] | null; wing_id: number; features: string[] | null }>("/auth/me"),
-  workspaceProfiles: () => req<{ key: string; label: string }[]>("/auth/workspace-profiles"),
+  workspaceProfiles: () => req<{ key: string; label: string; group?: string }[]>("/auth/workspace-profiles"),
+  departmentTaxonomy: () => req<DepartmentTaxonomy>("/me/department-taxonomy"),
 
   // --- personalization / memory ---
   personalization: () => req<Personalization>("/me/personalization"),
