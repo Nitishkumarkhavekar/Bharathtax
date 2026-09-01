@@ -300,6 +300,15 @@ def designation_tier(designation_key: str | None) -> str | None:
     return d["tier"] if d else None
 
 
+# Fold the 5 canonical tiers onto the 3 COARSE seniority buckets the drafting /
+# approval layers reason in (ministerial → '', apex → 'commissioner'). One
+# definition, shared by profiles.role_tier and the approval-routing.
+COARSE_TIER = {
+    TIER_MINISTERIAL: "", TIER_FIELD: "field", TIER_RANGE: "range",
+    TIER_COMMISSIONER: "commissioner", TIER_APEX: "commissioner",
+}
+
+
 # --------------------------------------------------------------------------- #
 # APPROVALS — which rank sanctions which statutory step. Feeds the review/
 # approval routing (Phase 4) and lets the product show "who signs this off".

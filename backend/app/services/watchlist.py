@@ -36,6 +36,7 @@ from app.models.chat import ChatMessage
 from app.models.corpus import CorpusDocument
 from app.models.library import SavedItem
 from app.models.workspace import Deadline, Demand, StickyNote
+from app.core.department import WINGS as _WINGS
 from app.core.profiles import WORKSPACE_PROFILE_KEYS
 
 # A judgment counts as "fresh" (worth a NEW badge) if we ingested it within this
@@ -52,8 +53,6 @@ _DIGEST_SENTINELS = ("PROCEDURAL", "INSUFFICIENT")
 # footprint yet, so the feed is personalised-by-role from the first login.
 # Sourced from the canonical department taxonomy (one source of truth) so it
 # covers every wing, including the ones the flat model was missing.
-from app.core.department import WINGS as _WINGS
-
 WING_DEFAULT_SECTIONS: dict[str, list[str]] = {
     w["key"]: list(w.get("sections") or []) for w in _WINGS
 }
