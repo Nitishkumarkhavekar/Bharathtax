@@ -1924,6 +1924,122 @@ TEMPLATES: dict[str, dict] = {
             "(name, designation, date). Factual only."
         ),
     },
+
+    # ---- Ministerial desk — depth (registers, establishment, field) ------
+    "panchnama_132": {
+        "label": "Panchnama (search & seizure) u/s 132",
+        "category": "Report",
+        "section": "132",
+        "designations": ["inspector"],
+        "fields": _COMMON + [
+            Field("premises", "Premises searched", placeholder="Residence at 8, Sun Villa, Baner, Pune"),
+            Field("authorisation", "Warrant / authorisation ref", required=False, placeholder="Authorisation u/s 132(1) dated 12.08.2026 by Pr. DIT (Inv.)"),
+            Field("witnesses", "Panch witnesses", placeholder="Two independent local witnesses (names & addresses)"),
+            Field("seized", "Assets / books seized or restrained", textarea=True,
+                  placeholder="Cash Rs. 22,00,000; jewellery 640 g; laptops (2); ledgers FY 2022-24; bank lockers restrained u/s 132(3)"),
+        ],
+        "structure": (
+            "a panchnama recording a search under section 132: heading, the search authorisation reference and "
+            "authority, the premises and the date/times of commencement and conclusion, the names and "
+            "addresses of the two independent panch witnesses, a factual narration of the search, an "
+            "itemised inventory of the assets/books/documents seized (or placed under restraint u/s 132(3)), "
+            "any statement recorded u/s 132(4), and the signatures of the authorised officer, the person "
+            "searched and the panchas. Record only what was found; draw no inference."
+        ),
+    },
+    "spot_enquiry_report": {
+        "label": "Spot / field enquiry report",
+        "category": "Report",
+        "section": "133(6)",
+        "designations": ["inspector"],
+        "fields": _COMMON + [
+            Field("purpose", "Purpose of enquiry", placeholder="Verify genuineness of purchases from M/s ABC; confirm existence at given address"),
+            Field("observations", "Field observations", textarea=True,
+                  placeholder="No business found at the address; premises is a residence; neighbours confirm no such firm; GST registration cancelled"),
+        ],
+        "structure": (
+            "a spot / field enquiry report by the Inspector: heading, number and date, the assessee/entity "
+            "verified with PAN + AY, the purpose of the enquiry and the point(s) referred by the AO, a factual "
+            "account of what was seen and enquired on the spot, the persons met and what they stated, the "
+            "documents / evidence collected u/s 133(6) if any, and the Inspector's factual conclusion for the "
+            "AO. Report observations, not legal findings."
+        ),
+    },
+    "dcr_note": {
+        "label": "Demand & Collection Register note",
+        "category": "Note",
+        "section": "",
+        "designations": ["ta", "sta"],
+        "fields": _COMMON + [
+            Field("entry", "Demand / collection entry", textarea=True,
+                  placeholder="Demand raised Rs. 6,40,000 (AY 2023-24) on 10.08.2026; part payment Rs. 2,00,000 on 20.08.2026; balance Rs. 4,40,000"),
+            Field("action", "Reconciliation / follow-up", required=False, placeholder="Reconcile with CPC arrear demand; flag for 220(2) interest; propose 226(3) if unpaid"),
+        ],
+        "structure": (
+            "a Demand & Collection Register (DCR) reconciliation note for the officer: heading, the assessee + "
+            "PAN + AY, the demand raised with reference to the order/156 notice, the collections/adjustments "
+            "posted with dates, the balance outstanding, any interest u/s 220(2) accruing, and the follow-up "
+            "recommended (reminder, arrear reconciliation with CPC, recovery reference). Keep the arithmetic "
+            "clean; internal register note, not a notice."
+        ),
+    },
+    "lpc": {
+        "label": "Last Pay Certificate (LPC)",
+        "category": "Office",
+        "section": "",
+        "designations": ["ao1", "ao2", "ao3", "pao"],
+        "fields": [
+            Field("employee", "Employee", placeholder="Shri A.B. Sharma, Inspector"),
+            Field("relieved", "Relieved on / reason", placeholder="Relieved on 31.08.2026 on transfer to Mumbai charge"),
+            Field("pay_particulars", "Pay particulars", textarea=True,
+                  placeholder="Basic pay Rs. 56,100 (Level 7); last paid up to Aug-2026; DA/HRA rates; recoveries — GPF Rs. 5,000/m, festival advance Rs. 8,000 balance"),
+        ],
+        "structure": (
+            "a Last Pay Certificate issued by the DDO: office heading, LPC number and date, the employee's "
+            "name, designation and the date up to which pay/allowances were drawn, the last-drawn pay "
+            "particulars (basic pay and level, DA/HRA and other allowances with rates), outstanding "
+            "recoveries and advances to be continued, income-tax recovered so far in the financial year, and "
+            "the DDO's signature block. Certificate format; use only the particulars provided."
+        ),
+    },
+    "ta_da_bill": {
+        "label": "TA / DA bill verification note",
+        "category": "Office",
+        "section": "",
+        "designations": ["ao1", "ao2", "ao3", "pao"],
+        "fields": [
+            Field("claimant", "Claimant", placeholder="Shri C.D. Rao, ITO Ward 3(2)"),
+            Field("journey", "Journey / tour details", textarea=True,
+                  placeholder="Pune → Mumbai for survey on 12-13.08.2026; rail AC-II Rs. 1,240 ×2; DA 2 days; hotel Rs. 3,000/night"),
+            Field("entitlement", "Entitlement / grade", required=False, placeholder="Level 8 — AC-II rail, DA Rs. 800/day, hotel ceiling Rs. 3,000"),
+        ],
+        "structure": (
+            "a TA/DA bill verification note by the DDO: office heading, the claimant and grade/level, the tour "
+            "or journey particulars with dates and purpose, the entitlement under the TA rules for that grade, "
+            "a head-wise check of the amounts claimed (fare, daily allowance, accommodation) against "
+            "entitlement, the admitted amount and any disallowance with reason, and the DDO's recommendation "
+            "for sanction. Show the computation; use only the figures provided."
+        ),
+    },
+    "do_letter_shell": {
+        "label": "D.O. / official letter shell (from dictation)",
+        "category": "Order",
+        "section": "",
+        "designations": ["steno", "ps", "pps"],
+        "fields": [
+            Field("to", "Addressee", placeholder="The Pr. CIT-3, Pune"),
+            Field("subject", "Subject", placeholder="Monthly disposal report — August 2026"),
+            Field("dictation", "Dictated content / points", textarea=True,
+                  placeholder="Paste the officer's dictated points to be laid out as a clean D.O. / official letter"),
+        ],
+        "structure": (
+            "a cleanly formatted demi-official (D.O.) / official letter from the officer's dictation — a "
+            "FORMATTING task, not drafting: office letterhead and D.O. number, date, salutation to the named "
+            "addressee, a subject line, the body arranged into short paragraphs exactly as dictated (add "
+            "nothing of your own), a courteous close and the officer's signature block. Preserve the officer's "
+            "wording; only organise and format."
+        ),
+    },
 }
 
 
@@ -1980,9 +2096,11 @@ _TEMPLATE_GROUP: dict[str, str] = {
     "penalty_default_note": "Penalty", "demand_computation_note": "Assessment",
     "office_order": "Office & establishment", "sanction_letter_admin": "Office & establishment",
     "salary_tds_note": "Office & establishment",
-    "order_format_shell": "Order drafting",
+    "order_format_shell": "Order drafting", "do_letter_shell": "Order drafting",
     "proof_of_service": "Service of notice", "affixture_endorsement": "Service of notice",
     "refusal_endorsement": "Service of notice",
+    "panchnama_132": "Field & survey", "spot_enquiry_report": "Field & survey",
+    "dcr_note": "Recovery", "lpc": "Office & establishment", "ta_da_bill": "Office & establishment",
 }
 
 
