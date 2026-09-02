@@ -639,7 +639,8 @@ def template_ai(payload: _AiComposeIn, p: Principal = Depends(get_principal),
 
 
 class _RenderIn(BaseModel):
-    content: str | None = None   # overrides the stored body when provided
+    content: str | None = None       # overrides the stored body when provided
+    strip_heading: bool = False      # drop the draft's own office heading (draft→letterhead)
 
 
 @router.post("/templates/{template_id}/render.docx")
@@ -654,6 +655,8 @@ def render_template_docx(template_id: int, body: _RenderIn | None = None,
         raise HTTPException(404, "Not found")
     from app.services import template_docx, drafting_export, storage
     content = (body.content if body and body.content is not None else t.body) or ""
+    if body and body.strip_heading:
+        content = template_docx.strip_office_heading(content)
     if getattr(t, "kind", "text") == "file" and t.storage_key:
         try:
             raw = storage.get_bytes(t.storage_key)

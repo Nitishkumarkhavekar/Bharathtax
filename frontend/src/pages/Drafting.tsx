@@ -666,7 +666,8 @@ function DraftEditor({
     setLhOpen(false);
     try {
       const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
-      const m = await api.wsRenderTemplateDocx(t.id, content, `${name}.docx`);
+      // strip the draft's own office heading — the letterhead already carries it.
+      const m = await api.wsRenderTemplateDocx(t.id, content, `${name}.docx`, true);
       if (m !== "cancelled") toast.success(`Saved on ${t.name}.`);
     } catch (e: any) { toast.error(e?.message ?? "Letterhead export failed"); }
   }
