@@ -271,6 +271,10 @@ export interface TaxonomyWing {
 }
 export interface TaxonomyDesignation {
   key: string; label: string; tier: string; cadre: string; directorate?: string;
+  // Role-specific desk (ministerial / Inspector cadre only)
+  activities?: string[];
+  serves?: "core" | "partial" | "formatter" | "reference" | "minimal";
+  tools?: string[];
 }
 export interface DepartmentTaxonomy {
   tiers: string[];

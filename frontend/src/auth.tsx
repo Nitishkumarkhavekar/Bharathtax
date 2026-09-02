@@ -8,6 +8,7 @@ interface Session {
   wingId: number;
   workspaceProfile: string | null;   // primary function / "all" / "custom"; null until picked
   workspaceWings: string[] | null;   // chosen functions when profile === "custom"
+  designation: string | null;        // rank/designation key — drives the role desk
   features: string[] | null;   // allowed modules; null = all
 }
 interface AuthCtx {
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .me()
       .then((me) => {
-        const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, workspaceWings: me.workspace_wings ?? null, features: me.features ?? null };
+        const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, workspaceWings: me.workspace_wings ?? null, designation: me.designation ?? null, features: me.features ?? null };
         localStorage.setItem(SESS, JSON.stringify(s));
         setSession(s);
       })
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(KEY, tok.access_token);
     // Pull the full profile (incl. allowed modules) so the session is complete.
     const me = await api.me();
-    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, workspaceWings: me.workspace_wings ?? null, features: me.features ?? null };
+    const s: Session = { username: me.username, fullName: me.full_name ?? null, role: me.role, wingId: me.wing_id, workspaceProfile: me.workspace_profile ?? null, workspaceWings: me.workspace_wings ?? null, designation: me.designation ?? null, features: me.features ?? null };
     localStorage.setItem(SESS, JSON.stringify(s));
     setSession(s);
     return s;
