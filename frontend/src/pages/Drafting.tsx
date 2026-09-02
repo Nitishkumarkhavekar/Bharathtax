@@ -523,11 +523,11 @@ function DraftForm({
             </label>
             {f.textarea ? (
               <textarea
-                rows={4}
+                rows={7}
                 value={inputs[f.key] || ""}
                 onChange={(e) => setInputs({ ...inputs, [f.key]: e.target.value })}
                 placeholder={f.placeholder}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-[13.5px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="w-full resize-y min-h-[140px] rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-[14px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
               />
             ) : (
               <input
@@ -794,7 +794,7 @@ function DraftEditor({
           readOnly={!canEdit}
           spellCheck={false}
           className={cn(
-            "w-full min-h-[560px] rounded-xl border border-slate-200 p-5 text-[13.5px] leading-[1.7] font-mono text-slate-800 shadow-inner focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 whitespace-pre-wrap",
+            "w-full resize-y min-h-[68vh] rounded-xl border border-slate-200 p-6 text-[14px] leading-[1.8] font-mono text-slate-800 shadow-inner focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 whitespace-pre-wrap",
             canEdit ? "bg-white" : "bg-slate-100/70 cursor-not-allowed"
           )}
         />

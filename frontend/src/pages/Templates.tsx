@@ -240,8 +240,8 @@ export default function Templates() {
             value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
             placeholder={isFile
               ? "The body of your uploaded document. Edit it — your header/footer stays untouched."
-              : "Template text… use {{PAN}}, {{AY}}, {{ASSESSEE}}, {{APPEAL_NO}} as placeholders."} rows={14}
-            className="w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] text-slate-800 outline-none focus:ring-2 focus:ring-primary/20"
+              : "Template text… use {{PAN}}, {{AY}}, {{ASSESSEE}}, {{APPEAL_NO}} as placeholders."}
+            className="w-full resize-y min-h-[60vh] rounded-lg border border-slate-200 bg-white p-4 text-[14px] leading-[1.7] text-slate-800 outline-none focus:ring-2 focus:ring-primary/20"
           />
           <div className="flex items-center gap-2">
             <p className="text-[11px] text-slate-400">Placeholders: {"{{PAN}}"} · {"{{AY}}"} · {"{{ASSESSEE}}"} · {"{{APPEAL_NO}}"}</p>
