@@ -1665,6 +1665,265 @@ TEMPLATES: dict[str, dict] = {
             "the officer's designation. Do NOT reopen other issues — amend only for the specified event."
         ),
     },
+
+    # =====================================================================
+    # MINISTERIAL & INSPECTORATE DESK — templates keyed to the DESIGNATION,
+    # not the wing. These carry a `designations` list so an Inspector, Tax
+    # Assistant, Administrative Officer, Steno or Notice Server sees THEIR
+    # own work-product first (see list_templates / _DESIGNATION_DESK). They
+    # have no `wings` key, so for officers they simply rank as universal.
+    # =====================================================================
+
+    # ---- Inspector — field & survey -------------------------------------
+    "survey_report_133a": {
+        "label": "Survey report u/s 133A",
+        "category": "Report",
+        "section": "133A",
+        "designations": ["inspector"],
+        "fields": _COMMON + [
+            Field("premises", "Premises surveyed", placeholder="Business premises at 12, MG Road, Pune"),
+            Field("survey_date", "Date of survey", placeholder="14.08.2026"),
+            Field("team", "Survey party", required=False, placeholder="ITO Ward 3(1), Inspector, two witnesses"),
+            Field("findings", "Findings", textarea=True,
+                  placeholder="Physical cash Rs. 4,10,000 vs. book cash Rs. 90,000; stock excess of Rs. 22,00,000; two undisclosed bank accounts; impounded books listed"),
+            Field("statement", "Statement recorded / admission", textarea=True, required=False,
+                  placeholder="Partner Shri X admitted Rs. 25,00,000 as additional income for AY 2026-27"),
+        ],
+        "structure": (
+            "a survey report under section 133A of the Income-tax Act, 1961 submitted by the Inspector to "
+            "the Assessing Officer: office heading, report number and date, the assessee + PAN + AY, the "
+            "premises surveyed and date/time of the survey, the composition of the survey party and the "
+            "witnesses, a factual narration of the proceedings, a numbered list of findings (physical cash "
+            "vs. book cash, excess/shortage of stock, documents and books impounded u/s 133A(3)(ia) with an "
+            "inventory reference, undisclosed bank accounts / assets), the substance of any statement or "
+            "admission recorded, and the Inspector's recommendation for the AO's consideration. State only "
+            "the facts found; do not draw legal conclusions on additions."
+        ),
+    },
+    "remand_report": {
+        "label": "Remand report to CIT(A)",
+        "category": "Report",
+        "section": "250(4)",
+        "designations": ["inspector"],
+        "fields": _COMMON + [
+            Field("appeal_ref", "Appeal / CIT(A) reference", placeholder="Appeal No. CIT(A)-5/123/2025-26"),
+            Field("grounds", "Grounds / additional evidence remanded", textarea=True,
+                  placeholder="Rule 46A additional evidence — confirmations from three creditors; verification of source of cash deposits"),
+            Field("verification", "Verification done / result", textarea=True,
+                  placeholder="Creditors summoned u/s 131; two confirmed, one non-existent; bank statements examined"),
+        ],
+        "structure": (
+            "a remand report called for by the CIT(A) under section 250(4) / Rule 46A: heading, reference to "
+            "the appeal number and the CIT(A)'s remand direction, the assessee + PAN + AY, the specific "
+            "point(s) or additional evidence remanded for verification, a factual account of the enquiry "
+            "conducted and the material examined, the verification result on each point, and the Assessing "
+            "Officer's comments on admissibility of the additional evidence and whether the addition is "
+            "sustainable. Confine the report to the remanded points."
+        ),
+    },
+    "recovery_field_report": {
+        "label": "Recovery field / TRO situation report",
+        "category": "Report",
+        "section": "222",
+        "designations": ["inspector"],
+        "fields": _COMMON + [
+            Field("arrears", "Arrears outstanding", placeholder="Rs. 18,42,000 for AY 2021-22 to 2023-24"),
+            Field("enquiry", "Field enquiry findings", textarea=True,
+                  placeholder="Immovable property at survey no. 45; two bank accounts; a car; debtor M/s Y owes Rs. 6,00,000"),
+            Field("recommendation", "Recommended recovery action", required=False,
+                  placeholder="Attach immovable property (ITCP-16) and issue 226(3) on debtor/bank"),
+        ],
+        "structure": (
+            "a field situation report by the Inspector to the Tax Recovery Officer on a defaulter: heading, "
+            "number and date, the assessee-in-default + PAN + AY(s), the tax arrears outstanding with demand "
+            "reference, the assets and sources traced during field enquiry (immovable property, bank "
+            "accounts, movable assets, debtors), the defaulter's apparent means and conduct, and the "
+            "Inspector's recommended recovery step under Schedule II (attachment ITCP-16, garnishee "
+            "226(3), arrest proposal). State facts and leave the sanction to the TRO."
+        ),
+    },
+
+    # ---- Tax Assistant / Sr. Tax Assistant -------------------------------
+    "penalty_default_note": {
+        "label": "Penalty-default note for AO",
+        "category": "Note",
+        "section": "",
+        "designations": ["ta", "sta"],
+        "fields": _COMMON + [
+            Field("default", "Default noticed", textarea=True,
+                  placeholder="Return for AY 2024-25 filed 4 months late (271F/234F); TDS statement 26Q for Q2 filed late (234E/271H)"),
+            Field("section_prop", "Penalty section proposed", placeholder="270A / 271AAC / 272A(1)(d) / 234E"),
+            Field("quantum", "Quantum / computation", required=False, placeholder="Rs. 10,000 u/s 272A(1)(d); or 50% of tax on under-reported income"),
+        ],
+        "structure": (
+            "an office note from the ministerial desk to the Assessing Officer flagging a penalty default: "
+            "heading, the assessee + PAN + AY, the default noticed (with the register/row reference), the "
+            "penalty section attracted and why, the computation of the penalty leviable on the figures on "
+            "record, the limitation date u/s 275 for passing the penalty order, and a request for the AO's "
+            "orders to initiate proceedings and issue the show-cause. This is an internal note, not a notice "
+            "to the assessee."
+        ),
+    },
+    "demand_computation_note": {
+        "label": "Demand / interest computation sheet",
+        "category": "Note",
+        "section": "156",
+        "designations": ["ta", "sta"],
+        "fields": _COMMON + [
+            Field("tax", "Tax on assessed income", placeholder="Rs. 6,40,000"),
+            Field("prepaid", "Prepaid taxes (TDS/advance/SA)", required=False, placeholder="TDS Rs. 1,10,000; advance tax Rs. 2,00,000"),
+            Field("interest_heads", "Interest heads applicable", required=False, placeholder="234A (3 months), 234B, 234C; 220(2) if arrears"),
+        ],
+        "structure": (
+            "a demand and interest computation sheet supporting a notice of demand u/s 156: heading, assessee "
+            "+ PAN + AY, the tax on the assessed/returned income, surcharge and cess, less prepaid taxes "
+            "(TDS/TCS, advance tax, self-assessment tax), the interest computed under each applicable head "
+            "(234A/234B/234C, and 220(2) on arrears) shown head-wise with the period and rate, and the net "
+            "amount payable rounded off. Show the arithmetic clearly; use only the figures provided."
+        ),
+    },
+
+    # ---- Administrative Officer / DDO (office establishment) --------------
+    "office_order": {
+        "label": "Office order / charge memo",
+        "category": "Office",
+        "section": "",
+        "designations": ["ao1", "ao2", "ao3", "pao"],
+        "fields": [
+            Field("subject", "Subject", placeholder="Distribution of work in the Range / charge handing-over"),
+            Field("order_body", "Order details", textarea=True,
+                  placeholder="Consequent to the transfer of Shri X, the charge of Ward 2(3) is assigned to Shri Y with effect from 01.09.2026…"),
+            Field("effective", "Effective date", required=False, placeholder="01.09.2026"),
+        ],
+        "structure": (
+            "an internal office order issued by the Administrative Officer over the office letterhead: office "
+            "heading, office-order number and date, subject line, the operative direction in numbered "
+            "paragraphs (work distribution, charge assignment, leave/duty arrangement, etc.), the effective "
+            "date, and the issuing authority's designation with a standard distribution/copy-to list. Keep it "
+            "administrative and precise."
+        ),
+    },
+    "sanction_letter_admin": {
+        "label": "Administrative sanction / approval letter",
+        "category": "Office",
+        "section": "",
+        "designations": ["ao1", "ao2", "ao3", "pao"],
+        "fields": [
+            Field("subject", "Subject of sanction", placeholder="Sanction for purchase of office stationery / TA-DA claim / contingent expenditure"),
+            Field("amount", "Amount", required=False, placeholder="Rs. 48,500"),
+            Field("basis", "Basis / reference", textarea=True, required=False,
+                  placeholder="Delegation of Financial Powers Rules; budget head 'Office Expenses'; quotation dated 10.08.2026"),
+        ],
+        "structure": (
+            "an administrative sanction/approval letter: office heading, letter number and date, subject, the "
+            "sanction accorded with the amount and the budget head/DFPR reference, any conditions, and the "
+            "sanctioning authority's designation. Business-like and complete; use only the figures and "
+            "references provided."
+        ),
+    },
+    "salary_tds_note": {
+        "label": "Salary-TDS / Form 16 note (DDO)",
+        "category": "Office",
+        "section": "192",
+        "designations": ["ao1", "ao2", "ao3", "pao"],
+        "fields": [
+            Field("employee", "Employee", placeholder="Shri A.B. Sharma, Inspector"),
+            Field("fy", "Financial year", placeholder="2025-26"),
+            Field("gross", "Gross salary", required=False, placeholder="Rs. 9,60,000"),
+            Field("regime", "Regime & particulars", textarea=True, required=False,
+                  placeholder="New regime (115BAC); standard deduction 75,000; 80C 1,50,000 (old regime); TDS deducted Rs. 62,000"),
+        ],
+        "structure": (
+            "a salary-TDS working note in the DDO capacity under section 192: heading, employee name and "
+            "designation, the financial year and assessment year, computation of taxable salary (gross less "
+            "exemptions and standard deduction), the tax regime applied (old / 115BAC new) with the slab "
+            "computation, deductions considered, the tax and cess, the TDS to be deducted month-wise / the "
+            "shortfall, and a reference to Form 16 / quarterly 24Q. Show the computation; use only the "
+            "particulars provided."
+        ),
+    },
+
+    # ---- Steno / PS (order formatting) -----------------------------------
+    "order_format_shell": {
+        "label": "Order-formatting shell (from dictation)",
+        "category": "Order",
+        "section": "",
+        "designations": ["steno", "ps", "pps"],
+        "fields": _COMMON + [
+            Field("order_type", "Order / letter type", placeholder="Assessment order u/s 143(3); or speaking order; or D.O. letter"),
+            Field("dictation", "Dictated content / notes", textarea=True,
+                  placeholder="Paste the officer's dictated points/rough notes to be laid out cleanly"),
+        ],
+        "structure": (
+            "a clean, correctly formatted shell of the officer's dictated order/letter — this is a FORMATTING "
+            "task, not a drafting one: reproduce the officer's dictated content faithfully in a proper "
+            "structure — office heading and DIN line, order/letter number and date, addressee (assessee + PAN "
+            "+ AY where relevant), a subject line, the body arranged into numbered paragraphs exactly as "
+            "dictated (do not add reasoning or facts of your own), and the officer's designation and charge "
+            "block at the foot. Preserve the officer's wording; only organise, paragraph and format it."
+        ),
+    },
+
+    # ---- MTS / Notice Server (service of notice) -------------------------
+    "proof_of_service": {
+        "label": "Proof / report of service",
+        "category": "Service",
+        "section": "282",
+        "designations": ["mts", "notice_server"],
+        "fields": [
+            Field("notice_ref", "Notice / document served", placeholder="Notice u/s 143(2) dated 12.08.2026"),
+            Field("assessee", "Addressee", placeholder="M/s ABC Pvt. Ltd."),
+            Field("served_on", "Date of service", placeholder="16.08.2026"),
+            Field("served_to", "Served on (person & capacity)", required=False, placeholder="Shri R. Kumar, Accountant / authorised person"),
+            Field("mode", "Mode of service", required=False, placeholder="Hand delivery against acknowledgement"),
+        ],
+        "structure": (
+            "an endorsement / report of service of a notice under section 282 read with Order V CPC: the "
+            "notice/document served with its date, the addressee, the date and place of service, the person "
+            "on whom it was served and in what capacity, the mode (hand delivery against signature / "
+            "acknowledgement), and the serving official's signature block (name, designation — Notice Server "
+            "/ MTS — with date). Keep it to the factual endorsement."
+        ),
+    },
+    "affixture_endorsement": {
+        "label": "Affixture endorsement",
+        "category": "Service",
+        "section": "282",
+        "designations": ["mts", "notice_server"],
+        "fields": [
+            Field("notice_ref", "Notice / document", placeholder="Notice u/s 148 dated 20.08.2026"),
+            Field("assessee", "Addressee", placeholder="Shri D. Verma"),
+            Field("address", "Address of affixture", placeholder="Last known address: 45, Model Colony, Pune"),
+            Field("reason", "Reason for affixture", required=False, placeholder="Addressee not found / evading service / refused to sign"),
+            Field("witnesses", "Witnesses", required=False, placeholder="Two independent local witnesses (names)"),
+        ],
+        "structure": (
+            "an affixture endorsement where ordinary service could not be effected (Order V Rule 17 CPC read "
+            "with section 282): the notice/document and its date, the addressee, the last known address where "
+            "the copy was affixed, the date and time of affixture, the reason ordinary service failed "
+            "(addressee not found / evading / refused), the identity of the two independent witnesses in "
+            "whose presence it was affixed, and the serving official's signature block. Factual only."
+        ),
+    },
+    "refusal_endorsement": {
+        "label": "Refusal endorsement",
+        "category": "Service",
+        "section": "282",
+        "designations": ["mts", "notice_server"],
+        "fields": [
+            Field("notice_ref", "Notice / document", placeholder="Penalty show-cause dated 22.08.2026"),
+            Field("assessee", "Addressee", placeholder="M/s XYZ & Co."),
+            Field("served_on", "Date tendered", placeholder="24.08.2026"),
+            Field("witnesses", "Witness(es)", required=False, placeholder="One independent witness (name)"),
+        ],
+        "structure": (
+            "a refusal endorsement recording that the addressee refused to accept service: the notice/document "
+            "and its date, the addressee, the date and place at which it was tendered, a statement that the "
+            "addressee (or an adult member/authorised person) refused to accept it and that it is therefore "
+            "treated as duly served, the witness present, and the serving official's signature block "
+            "(name, designation, date). Factual only."
+        ),
+    },
 }
 
 
@@ -1715,6 +1974,15 @@ _TEMPLATE_GROUP: dict[str, str] = {
     "sc_prosecution": "Prosecution", "sanction_279": "Prosecution",
     # Assessee side
     "reply_notice": "Assessee replies",
+    # --- Ministerial & inspectorate desks (keyed to designation) ---
+    "survey_report_133a": "Field & survey", "remand_report": "Field & survey",
+    "recovery_field_report": "Field & survey",
+    "penalty_default_note": "Penalty", "demand_computation_note": "Assessment",
+    "office_order": "Office & establishment", "sanction_letter_admin": "Office & establishment",
+    "salary_tds_note": "Office & establishment",
+    "order_format_shell": "Order drafting",
+    "proof_of_service": "Service of notice", "affixture_endorsement": "Service of notice",
+    "refusal_endorsement": "Service of notice",
 }
 
 
@@ -1728,14 +1996,28 @@ def _user_wing_keys(profile: str | None, wings: list[str] | None) -> set[str]:
     return {profile}
 
 
-def list_templates(profile: str | None = None, wings: list[str] | None = None) -> list[dict]:
+def list_templates(profile: str | None = None, wings: list[str] | None = None,
+                   designation: str | None = None) -> list[dict]:
     """Every template, but RANKED so the officer's own function's templates come
     first, then the universal ones, then the rest — soft emphasis, nothing
-    hidden (an AO can still reach a 133(6); a TRO can still reach a 142(1))."""
+    hidden (an AO can still reach a 133(6); a TRO can still reach a 142(1)).
+
+    A ministerial / inspectorate DESIGNATION (Inspector, Tax Assistant, Steno,
+    Administrative Officer, Notice Server) additionally lifts that role's own
+    work-product to the very top — a Tax Assistant leads with the penalty-note
+    and demand-sheet templates, a Notice Server with the service endorsements."""
     keys = _user_wing_keys(profile, wings)
+    desig = (designation or "").strip().lower() or None
 
     def rank(t: dict) -> int:
+        td = t.get("designations")
+        if desig and td and desig in td:
+            return -1  # this role's own work-product — lead with it
         tw = t.get("wings")  # None = universal (belongs to every desk)
+        if td and not tw:
+            # A role template for a DIFFERENT designation — keep it out of an
+            # officer's face (rank alongside another wing's templates).
+            return 2 if keys else 1
         if not keys:
             return 0
         if tw and keys & set(tw):
@@ -1747,6 +2029,7 @@ def list_templates(profile: str | None = None, wings: list[str] | None = None) -
     items = [
         (rank(t), {"kind": k, "label": t["label"], "category": t["category"],
                    "section": t["section"], "wings": t.get("wings") or [],
+                   "designations": t.get("designations") or [],
                    "group": _TEMPLATE_GROUP.get(k, "Other"),
                    "fields": [f.as_dict() for f in t["fields"]]})
         for k, t in TEMPLATES.items()

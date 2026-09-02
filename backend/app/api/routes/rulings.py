@@ -172,6 +172,7 @@ def browse_judgments(
     db: Session = Depends(get_db),
     bench: str | None = Query(None, description="ITAT city bench (Delhi, Mumbai, …) or 'All'"),
     judge: str | None = Query(None, description="Free-text judge-name match (title / digest / text)"),
+    sections: str | None = Query(None, description="Comma-separated IT-Act sections; keeps only judgments citing one of them (e.g. the officer's desk sections)"),
     date_from: date | None = Query(None, description="Only judgments on or after this date"),
     date_to: date | None = Query(None, description="Only judgments on or before this date"),
     page: int = Query(1, ge=1, le=10_000),
@@ -207,6 +208,10 @@ def browse_judgments(
             # we don't scan every megabyte of full judgment prose.
             func.substr(cast(CorpusDocument.extracted_text, String), 1, 4000).ilike(j),
         ))
+    sec_list = [s.strip() for s in (sections or "").split(",") if s.strip()]
+    if sec_list:
+        # Keep judgments whose cited-sections array overlaps the requested set.
+        filters.append(CorpusDocument.sections_cited.op("&&")(sec_list))
     if date_from:
         filters.append(CorpusDocument.published_date >= date_from)
     if date_to:
@@ -249,7 +254,7 @@ def browse_judgments(
         "total": total,
         "total_pages": total_pages,
         "filters": {
-            "bench": bench, "judge": judge,
+            "bench": bench, "judge": judge, "sections": sec_list,
             "date_from": date_from.isoformat() if date_from else None,
             "date_to": date_to.isoformat() if date_to else None,
         },

@@ -3,14 +3,48 @@ but their own function's templates are ranked to the top."""
 from app.services import drafting
 
 
-def _kinds(profile=None, wings=None):
-    return [t["kind"] for t in drafting.list_templates(profile, wings)]
+def _kinds(profile=None, wings=None, designation=None):
+    return [t["kind"] for t in drafting.list_templates(profile, wings, designation)]
 
 
 def test_all_templates_reachable_for_every_profile():
     full = set(drafting.TEMPLATES.keys())
     for prof in ["officer", "recovery", "tp", "tds", "investigation", "ici", "cita", "ca", "all", None]:
         assert set(_kinds(prof)) == full, f"{prof} lost a template"
+    # a ministerial designation must still see the whole library, too
+    assert set(_kinds("officer", None, "ta")) == full
+
+
+def test_ministerial_designation_leads_with_its_own_templates():
+    # A Tax Assistant leads with the penalty-note + demand-sheet.
+    ta_top = _kinds("officer", None, "ta")[:2]
+    assert set(ta_top) == {"penalty_default_note", "demand_computation_note"}
+    # An Inspector leads with the field/survey desk.
+    insp_top = set(_kinds("investigation", None, "inspector")[:3])
+    assert insp_top == {"survey_report_133a", "remand_report", "recovery_field_report"}
+    # A Notice Server leads with the service endorsements.
+    ns_top = set(_kinds(None, None, "notice_server")[:3])
+    assert ns_top == {"proof_of_service", "affixture_endorsement", "refusal_endorsement"}
+
+
+def test_role_templates_dont_crowd_a_plain_officer():
+    # With no designation, an Inspector-only template must NOT rank at the top
+    # for an ordinary AO — it sits below the officer's own + universal set.
+    ordered = _kinds("officer")
+    own_or_universal = {
+        k for k, t in drafting.TEMPLATES.items()
+        if t.get("designations") is None and
+        ((t.get("wings") is None) or ("officer" in (t.get("wings") or [])))
+    }
+    last_lead = max(ordered.index(k) for k in own_or_universal)
+    assert ordered.index("survey_report_133a") > last_lead
+
+
+def test_every_ministerial_template_is_grouped():
+    role_kinds = [k for k, t in drafting.TEMPLATES.items() if t.get("designations")]
+    assert role_kinds, "expected ministerial/role templates to exist"
+    for k in role_kinds:
+        assert drafting._TEMPLATE_GROUP.get(k, "Other") != "Other", f"{k} ungrouped"
 
 
 def test_recovery_sees_its_templates_first():
@@ -24,7 +58,8 @@ def test_officer_leads_with_ao_and_universal():
     ordered = _kinds("officer")
     own_or_universal = {
         k for k, t in drafting.TEMPLATES.items()
-        if (t.get("wings") is None) or ("officer" in (t.get("wings") or []))
+        if t.get("designations") is None   # role templates are designation-scoped, not universal
+        and ((t.get("wings") is None) or ("officer" in (t.get("wings") or [])))
     }
     last_lead = max(ordered.index(k) for k in own_or_universal)
     # A template belonging ONLY to another wing must rank after all of them.

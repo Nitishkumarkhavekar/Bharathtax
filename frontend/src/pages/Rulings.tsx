@@ -5,6 +5,7 @@ import {
   Filter, ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, User, Inbox, X,
 } from "lucide-react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,81 @@ import { Markdown } from "@/lib/markdown";
 import PageHelp from "@/components/PageHelp";
 
 const POPULAR = ["68", "14A", "37", "40", "271", "148", "147", "69A", "54", "10", "80IB", "263"];
+
+// Resolve the officer's wing → the IT-Act sections that matter to their desk,
+// from the department taxonomy. null until known / when the user has no wing
+// (profile "all" or unset) so the case-law page stays wing-agnostic for them.
+function useDeskSections(): { label: string; sections: string[] } | null {
+  const { session } = useAuth();
+  const [desk, setDesk] = useState<{ label: string; sections: string[] } | null>(null);
+  useEffect(() => {
+    const key = session?.workspaceProfile;
+    if (!key || key === "all") { setDesk(null); return; }
+    let alive = true;
+    api.departmentTaxonomy().then((t) => {
+      if (!alive) return;
+      const byKey = new Map(t.wings.map((w) => [w.key, w]));
+      let label = ""; let sections: string[] = [];
+      if (key === "custom") {
+        const ws = session?.workspaceWings ?? [];
+        label = ws.map((k) => byKey.get(k)?.label).filter(Boolean).join(" · ");
+        sections = [...new Set(ws.flatMap((k) => byKey.get(k)?.sections ?? []))];
+      } else {
+        const w = byKey.get(key); label = w?.label ?? ""; sections = w?.sections ?? [];
+      }
+      setDesk(sections.length ? { label, sections } : null);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [session?.workspaceProfile, session?.workspaceWings]);
+  return desk;
+}
+
+// The wing-scoped case-law shortcut on the Search landing: the officer's own
+// sections as one-click chips into the Section hub, plus the latest corpus
+// judgments that actually cite those sections — so a TDS officer lands on
+// 192/194/201 law, not an undifferentiated firehose.
+function DeskCaseLaw({ desk, onPick }: {
+  desk: { label: string; sections: string[] }; onPick: (s: string) => void;
+}) {
+  const [recent, setRecent] = useState<Awaited<ReturnType<typeof api.rulingsBrowse>> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api.rulingsBrowse({ sections: desk.sections, per_page: 4 })
+      .then((d) => { if (alive) setRecent(d); }).catch(() => {});
+    return () => { alive = false; };
+  }, [desk.sections]);
+  return (
+    <div className="rounded-2xl ring-1 ring-primary/15 bg-primary/[0.04] p-4">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Scale className="size-4 text-primary" />
+        <span className="text-[13px] font-semibold text-slate-900">Case law for your desk</span>
+        <span className="text-[11.5px] text-slate-500">— {desk.label}</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {desk.sections.map((s) => (
+          <button key={s} type="button" onClick={() => onPick(s)}
+            title={`Everything on section ${s}`}
+            className="inline-flex items-center gap-0.5 rounded-full bg-white ring-1 ring-primary/20 text-primary text-[12px] font-medium px-2.5 py-0.5 hover:bg-primary/10 transition-colors">
+            <Hash className="size-2.5" />{s}
+          </button>
+        ))}
+      </div>
+      {recent && recent.items.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-primary/10 space-y-1.5">
+          <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">Latest on your sections</div>
+          {recent.items.slice(0, 4).map((it) => (
+            <a key={it.id} href={it.source_url ?? "#"} target="_blank" rel="noreferrer"
+              className="group flex items-start gap-1.5 text-[12.5px] text-slate-700 hover:text-primary leading-snug">
+              <Gavel className="size-3 mt-0.5 shrink-0 text-slate-400 group-hover:text-primary" />
+              <span className="line-clamp-1">{it.title || "(untitled judgment)"}</span>
+              {it.published_date && <span className="ml-auto shrink-0 text-[11px] text-slate-400">{it.published_date}</span>}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ErrBox({ msg }: { msg: string }) {
   return <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{msg}</div>;
@@ -256,6 +332,8 @@ export default function Rulings() {
   const [hubBusy, setHubBusy] = useState(false);
   const [hubErr, setHubErr] = useState("");
 
+  const desk = useDeskSections();   // the officer's wing → its IT-Act sections
+
   async function search(e?: FormEvent) {
     e?.preventDefault();
     await runSearch(q);
@@ -386,6 +464,7 @@ export default function Rulings() {
               results so the results stay above the fold. */}
           {!res && !err && (
             <>
+              {desk && <DeskCaseLaw desk={desk} onPick={loadSection} />}
               <RecentJudgments
                 onPick={loadSection}
                 onViewAll={() => {
@@ -423,6 +502,17 @@ export default function Rulings() {
               {hubBusy ? <><Loader2 className="size-4 animate-spin" /> Loading…</> : "Show hub"}
             </Button>
           </form>
+          {desk && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-medium text-primary/80 mr-0.5">Your desk:</span>
+              {desk.sections.map((s) => (
+                <button key={s} type="button" onClick={() => loadSection(s)}
+                  className="rounded-full bg-primary/10 text-primary text-[11.5px] px-2.5 py-0.5 hover:bg-primary/20 transition-colors">
+                  s. {s}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] text-slate-400 mr-0.5">Popular:</span>
             {POPULAR.map((s) => (

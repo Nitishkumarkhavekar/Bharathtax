@@ -51,8 +51,11 @@ def _out(d: DraftDocument) -> dict:
 
 @router.get("/templates")
 def templates(p: Principal = Depends(get_principal)) -> list[dict]:
-    # Ranked to the requesting officer's function — their wing's templates first.
-    return svc.list_templates(p.user.workspace_profile, p.user.workspace_wings)
+    # Ranked to the requesting officer's function (wing) first, and — for a
+    # ministerial / inspectorate role — their designation's own work on top.
+    return svc.list_templates(
+        p.user.workspace_profile, p.user.workspace_wings, p.user.designation
+    )
 
 
 @router.get("")
