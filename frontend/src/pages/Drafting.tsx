@@ -513,10 +513,10 @@ function DraftForm({
           </div>
         </div>
       </div>
-      {/* Fields */}
-      <div className="p-6 space-y-4">
+      {/* Fields — short inputs in a 2-col grid, typing textareas span full width. */}
+      <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
         {tmpl.fields.map((f) => (
-          <div key={f.key}>
+          <div key={f.key} className={f.textarea ? "sm:col-span-2" : ""}>
             <label className="text-[12.5px] font-semibold text-slate-800 mb-1.5 block">
               {f.label}
               {f.required && <span className="text-rose-500"> *</span>}
