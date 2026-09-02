@@ -135,6 +135,42 @@ def _patch_news_columns() -> None:
 _patch_news_columns()
 _bootstrap_news_sources()
 
+
+def _news_warmup_poll() -> None:
+    """Kick a one-off news poll in a background thread on api boot if the
+    latest ingested item is older than 30 min. Belt-and-braces alongside
+    the request-time autopoll — makes the first user request on a fresh
+    container see up-to-date headlines even before the beat scheduler's
+    next tick."""
+    import threading, os
+    from datetime import datetime, timezone
+    from sqlalchemy import select, func
+    stale_s = int(os.getenv("NEWS_MAX_STALENESS_SECONDS", "1800"))
+
+    def _run():
+        try:
+            from app.core.db import SessionLocal
+            from app.models.news import NewsItem
+            from app.services import news_ingest
+            db = SessionLocal()
+            try:
+                latest = db.scalar(select(func.max(NewsItem.first_seen_at)))
+            finally:
+                db.close()
+            if latest is not None:
+                latest_utc = latest if latest.tzinfo else latest.replace(tzinfo=timezone.utc)
+                if (datetime.now(timezone.utc) - latest_utc).total_seconds() < stale_s:
+                    return  # fresh enough — beat is doing its job
+            _log.info("warmup: news feed stale — polling")
+            news_ingest.poll_all()
+        except Exception as e:  # noqa: BLE001 — startup diagnostic only
+            _log.warning("news warmup poll skipped: %s", e)
+
+    threading.Thread(target=_run, name="news-warmup", daemon=True).start()
+
+
+_news_warmup_poll()
+
 # In production the interactive API docs and the OpenAPI schema are DISABLED —
 # publishing the full route/parameter/schema map is free reconnaissance for an
 # attacker, even though every endpoint is auth-gated. /docs, /redoc and
