@@ -438,6 +438,35 @@ def delete_doc(cid: str, did: int,
 
 
 # --- run / outputs ---
+def _worker_alive(timeout: float = 1.5) -> bool:
+    """See assessment.py — same fallback pattern. True iff at least one
+    Celery worker responds to a broadcast ping within `timeout` seconds."""
+    try:
+        from app.ingestion.tasks import celery_app
+        return bool(celery_app.control.ping(timeout=timeout))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _run_inline_appeal(run_id: int) -> None:
+    """Run the appellate drafting pipeline in a daemon thread inside the api
+    process — fallback for when the Celery worker is unresponsive (stale code
+    after a prod deploy, worker container down, broker connection issue)."""
+    import threading, logging
+    log = logging.getLogger("start_run.fallback")
+
+    def _worker():
+        try:
+            from app.services.appeal_draft import run_case
+            run_case(run_id)
+        except Exception:  # noqa: BLE001
+            log.exception("inline appeal run %s crashed", run_id)
+
+    t = threading.Thread(target=_worker, name=f"inline-appeal-{run_id}", daemon=True)
+    t.start()
+    log.info("started inline appeal run %s (thread=%s)", run_id, t.name)
+
+
 @router.post("/cases/{cid}/run")
 def start_run(cid: str, p: Principal = Depends(get_principal),
               _quota: Principal = Depends(require_quota),
@@ -447,11 +476,16 @@ def start_run(cid: str, p: Principal = Depends(get_principal),
         raise HTTPException(400, "Upload documents before running")
     run = AppealRun(case_id=case.id, created_by=p.user.id, status="queued")
     db.add(run); db.commit(); db.refresh(run)
-    from app.ingestion.tasks import run_appeal_case
-    async_result = run_appeal_case.delay(run.id)
-    # Persist the celery task id so a subsequent /cancel call can revoke it.
-    run.task_id = async_result.id
-    db.commit()
+    # Prefer Celery, fall back to in-process thread when the worker isn't
+    # answering. Keeps the pipeline usable even if the prod deploy left the
+    # worker container running stale code (or down).
+    if _worker_alive():
+        from app.ingestion.tasks import run_appeal_case
+        async_result = run_appeal_case.delay(run.id)
+        run.task_id = async_result.id
+        db.commit()
+    else:
+        _run_inline_appeal(run.id)
     audit.log_event(db, action="appeal.run", user_id=p.user.id, wing_id=p.user.wing_id,
                     resource_type="appeal_case", resource_id=str(case.id), **client_meta(request))
     return _run_out(run)

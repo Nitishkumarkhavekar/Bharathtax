@@ -162,7 +162,25 @@ export default function AssessmentCase() {
     try {
       const r = await api.asmtRun(id);
       setRun(r);
+      // Immediately re-fetch so the poller has authoritative state — a
+      // stale worker in production can leave a run in "queued" and the
+      // useEffect polling loop wouldn't fire on top of the setRun above
+      // if the status returned by /run was already what we expected.
+      await loadLatest();
       toast.success("Drafting started");
+      // Watchdog: if the run is still "queued" 45 s later, the worker
+      // likely never picked it up. Warn the user and re-enable Start so
+      // they can try again (the inline-thread fallback in the api will
+      // usually take over on the retry).
+      window.setTimeout(async () => {
+        try {
+          const rr = await api.asmtLatest(id);
+          if (rr?.run?.id === r.id && rr?.run?.status === "queued") {
+            toast.error("Still queued after 45s — worker may be down. Click Start again to retry.");
+            setErr("Pipeline did not start on the worker. Click Start again — the api will run it in-process as a fallback.");
+          }
+        } catch { /* ignore — the poller will surface network errors */ }
+      }, 45_000);
     } catch (e: any) {
       setErr(e?.message ?? "Could not start the run.");
       toast.error(e?.message ?? "Could not start the run.");
