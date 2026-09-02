@@ -71,8 +71,9 @@ describe("role×dept matrix — frontend resolvers", () => {
   });
 
   it("assessment/appeal engines are HARD-scoped by wing (the demo-blocker)", () => {
-    // Investigation & I&CI must NEVER see assessment or appeal drafting engines.
-    for (const w of ["investigation", "ici", "tp", "tds", "exemptions", "recovery", "ca"]) {
+    // These wings must NEVER see assessment or appeal drafting engines
+    // (hq = Headquarters/Admin, scoped to notices only).
+    for (const w of ["investigation", "ici", "tp", "tds", "exemptions", "recovery", "ca", "hq"]) {
       const tabs = resolveDraftingTabs(w, null)!;
       expect(tabs.has("assessments"), `${w} assessments`).toBe(false);
       expect(tabs.has("appeals"), `${w} appeals`).toBe(false);

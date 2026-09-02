@@ -761,6 +761,97 @@ FINAL ASSESSMENT ORDER u/s 143(3) r.w.s. 144C(13) of the Income-tax Act, 1961
 Date: {{TODAY}}
 """
 
+# --- TDS / TCS (deductor side) ---
+_NOTICE_201_TDS = """OFFICE OF THE {{AO}}
+
+To,
+{{ASSESSEE}}   (Deductor)
+TAN / PAN: {{PAN}}                 FY / AY: {{AY}}
+
+Show-cause notice u/s 201(1) / 201(1A) of the Income-tax Act, 1961 — proposed treatment as assessee-in-default
+
+1. On verification of the TDS statements (Form 24Q / 26Q / 27Q) and Form 26AS / TRACES for {{AY}}, it is seen that tax was not deducted / was short-deducted / was deducted but not paid to the credit of the Central Government on the payments listed in the Annexure.
+
+2. You are hereby required to show cause, on or before {{NOTICE_DATE}}, why you should not be treated as an assessee-in-default u/s 201(1) for the tax not deducted / paid, together with interest u/s 201(1A) (1% per month for non-deduction / 1.5% per month for non-payment), and why penalty u/s 271C should not be initiated separately.
+
+3. Please furnish a reconciliation of the payments, the deductee-wise details, and proof of any deduction / deposit relied upon, including Form 26A where the payee has paid the tax. If no cause is shown, the matter will be decided on the material on record.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_ORDER_201_TDS = """OFFICE OF THE {{AO}}
+
+{{ASSESSEE}} (Deductor) — TAN / PAN {{PAN}} — FY / AY {{AY}}
+
+Order u/s 201(1) / 201(1A) of the Income-tax Act, 1961
+
+1. A show-cause notice dated {{NOTICE_DATE}} was issued proposing to treat the deductor as an assessee-in-default for failure to deduct / short deduction / non-payment of TDS. The deductor's reply [dated __ / not furnished] has been considered.
+
+2. On the facts, the default is established in respect of the payments in the Annexure. The tax not deducted / paid works out to Rs. {{DEMAND}}, on which interest u/s 201(1A) is charged from the date the tax was deductible to the date of this order.
+
+3. The deductor is treated as an assessee-in-default u/s 201(1). A notice of demand u/s 156 for the tax and interest is issued herewith. Penalty u/s 271C is initiated separately. Where the payee has furnished the return and paid the tax, the benefit of the first proviso to s. 201(1) is allowed on production of Form 26A.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+_SCN_271C = """OFFICE OF THE {{AO}}
+
+{{ASSESSEE}} (Deductor) — TAN / PAN {{PAN}} — FY / AY {{AY}}
+
+Show-cause notice u/s 271C r.w.s. 274 — penalty for failure to deduct / pay TDS
+
+1. It has been found, and held vide order u/s 201 dated {{NOTICE_DATE}}, that you failed to deduct the whole or part of the tax, or to pay it, as required under Chapter XVII-B for {{AY}}.
+
+2. You are required to show cause, on or before [date], why a penalty equal to the amount of tax not deducted / paid should not be imposed u/s 271C. You may also show that the failure was for good and sufficient reason within the meaning of s. 273B.
+
+                                                    ({{AO}})
+Date: {{TODAY}}
+"""
+
+# --- appeals (CIT(A) / NFAC) ---
+_APPEAL_ORDER_250 = """OFFICE OF THE COMMISSIONER OF INCOME-TAX (APPEALS) / NFAC
+
+Appeal No. {{APPEAL_NO}}
+{{ASSESSEE}} — PAN {{PAN}} — AY {{AY}}
+
+Appellate order u/s 250 of the Income-tax Act, 1961
+
+1. This appeal is directed against the order dated {{NOTICE_DATE}} passed by the Assessing Officer. The grounds of appeal are taken up as under.
+
+2. Facts: [brief facts of the addition / disallowance in dispute].
+
+3. Submissions of the appellant: [summarise the written / oral submissions and the case law relied upon].
+
+4. Findings: Ground-wise — [for each ground discuss the AO's basis, the appellant's submissions, the evidence and the applicable law, and record a reasoned finding: confirmed / deleted / restricted]. The addition of Rs. {{DEMAND}} is [confirmed / deleted / restricted to Rs. __] for the reasons above.
+
+5. In the result, the appeal is [allowed / partly allowed / dismissed]. The Assessing Officer shall give effect to this order.
+
+                                        Commissioner of Income-tax (Appeals)
+Date: {{TODAY}}
+"""
+
+_NOTICE_APPEAL_HEARING = """OFFICE OF THE COMMISSIONER OF INCOME-TAX (APPEALS) / NFAC
+
+Appeal No. {{APPEAL_NO}}
+To,
+{{ASSESSEE}}
+PAN: {{PAN}}                       AY: {{AY}}
+
+Notice of hearing u/s 250 of the Income-tax Act, 1961
+
+1. Your appeal for AY {{AY}} against the order dated {{NOTICE_DATE}} is fixed for hearing on [date] at [time] through the National Faceless Appeal Centre / video conferencing.
+
+2. You are requested to file your written submissions, statement of facts, grounds and the documentary evidence relied upon, along with any application under Rule 46A for admission of additional evidence, on or before the date of hearing.
+
+3. If you neither appear nor respond, the appeal will be decided on the material on record.
+
+                                        Commissioner of Income-tax (Appeals)
+Date: {{TODAY}}
+"""
+
+
 LIBRARY = [
     # --- assessee side ---
     {"id": "reply_142_1", "name": "Reply to notice u/s 142(1)", "category": "notice", "side": "assessee", "body": _REPLY_142_1},
@@ -780,6 +871,13 @@ LIBRARY = [
     {"id": "notice_226_3", "name": "Garnishee notice u/s 226(3)", "category": "notice", "side": "officer", "body": _NOTICE_226_3},
     {"id": "tro_222", "name": "Reference to TRO u/s 222 (recovery certificate)", "category": "order", "side": "officer", "body": _TRO_222},
     {"id": "instalment_order", "name": "Instalment order u/s 220(3)", "category": "order", "side": "officer", "body": _INSTALMENT_ORDER},
+    # --- TDS / TCS (deductor side) ---
+    {"id": "notice_201_tds", "name": "SCN u/s 201/201(1A) (TDS default)", "category": "notice", "side": "officer", "body": _NOTICE_201_TDS},
+    {"id": "order_201_tds", "name": "Order u/s 201(1)/201(1A) (TDS default)", "category": "order", "side": "officer", "body": _ORDER_201_TDS},
+    {"id": "scn_271c", "name": "Penalty SCN u/s 271C (TDS)", "category": "notice", "side": "officer", "body": _SCN_271C},
+    # --- appeals (CIT(A) / NFAC) ---
+    {"id": "appeal_order_250", "name": "Appellate order u/s 250 (CIT(A))", "category": "order", "side": "officer", "body": _APPEAL_ORDER_250},
+    {"id": "notice_appeal_hearing", "name": "Appeal hearing notice u/s 250", "category": "notice", "side": "officer", "body": _NOTICE_APPEAL_HEARING},
     # --- trust / charity (exemptions) ---
     {"id": "form10_accum", "name": "Form 10 — accumulation u/s 11(2)", "category": "other", "side": "assessee", "body": _FORM10_ACCUM},
     {"id": "form10ab_80g", "name": "Form 10AB — 80G renewal application", "category": "other", "side": "assessee", "body": _FORM10AB_80G},
@@ -821,6 +919,8 @@ _GROUPS: dict[str, str] = {
     "penalty_order_270a": "Penalty",
     "notice_221": "Recovery", "notice_226_3": "Recovery",
     "tro_222": "Recovery", "instalment_order": "Recovery",
+    "notice_201_tds": "TDS", "order_201_tds": "TDS", "scn_271c": "TDS",
+    "appeal_order_250": "Appeals", "notice_appeal_hearing": "Appeals",
     "form10_accum": "Exemptions", "form10ab_80g": "Exemptions", "scn_12ab4": "Exemptions",
     "scn_263": "Revision", "order_263": "Revision", "order_264": "Revision",
     "sanction_151": "Approvals", "approval_153d": "Approvals",

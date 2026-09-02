@@ -19,3 +19,13 @@ def test_every_template_is_grouped_no_other():
 def test_template_ids_are_unique():
     ids = [t["id"] for t in lib.library()]
     assert len(ids) == len(set(ids))
+
+
+def test_wing_default_groups_all_have_templates():
+    """Every group a wing opens its Templates page on (workspaceProfiles PROFILES
+    templateGroup) must actually contain starters — otherwise the officer lands
+    on an empty page. Guards the TDS / Appeals gap that this fixes."""
+    populated = {t["group"] for t in lib.library()}
+    for grp in ("TDS", "Appeals", "Exemptions", "Recovery", "Assessment & notices",
+                "Assessee replies", "Transfer Pricing", "DRP", "Investigation"):
+        assert grp in populated, f"wing-default group {grp!r} has no templates"
