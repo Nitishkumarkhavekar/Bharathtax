@@ -23,6 +23,8 @@ import {
   BookMarked,
   ChevronDown,
   ChevronUp,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
@@ -447,6 +449,31 @@ export default function Layout({ children }: { children: ReactNode }) {
   );
 }
 
+// Light / dark toggle. Applies `.dark` on <html> and persists it; the initial
+// theme is set before paint by an inline script in index.html.
+function ThemeToggle() {
+  const [dark, setDark] = useState(
+    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
+  );
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    try { localStorage.setItem("bt_theme", next ? "dark" : "light"); } catch { /* */ }
+  };
+  return (
+    <button
+      onClick={toggle}
+      title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className="inline-flex items-center gap-1.5 text-slate-300/80 hover:text-white transition-colors"
+    >
+      {dark ? <Sun className="size-[13px]" /> : <Moon className="size-[13px]" />}
+      <span className="hidden sm:inline">{dark ? "Light" : "Dark"}</span>
+    </button>
+  );
+}
+
 // A slim, dignified identity band across the very top — the pattern government
 // portals use to signal an official-grade tool. Purely presentational; reuses
 // the brand navy. The officer's function/charge shows on the left when known.
@@ -465,8 +492,11 @@ function IdentityStrip() {
             <span className="text-slate-600">·</span> {wing}
           </span>
         )}
-        <span className="ml-auto inline-flex items-center gap-1.5 text-emerald-300/85 whitespace-nowrap">
-          <ShieldCheck className="size-[13px]" /> Secure session
+        <span className="ml-auto flex items-center gap-3.5 whitespace-nowrap">
+          <ThemeToggle />
+          <span className="inline-flex items-center gap-1.5 text-emerald-300/85">
+            <ShieldCheck className="size-[13px]" /> Secure session
+          </span>
         </span>
       </div>
     </div>

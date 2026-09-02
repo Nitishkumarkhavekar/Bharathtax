@@ -8,6 +8,13 @@
     <title>BharatTax — Tax Research</title>
     <!-- Runtime deployment config (on-prem override) — loads before the app. -->
     <script src="/config.js"></script>
+    <!-- Apply the saved theme before first paint to avoid a light flash. -->
+    <script>
+      try {
+        var t = localStorage.getItem("bt_theme");
+        if (t === "dark") document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
