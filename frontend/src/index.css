@@ -42,6 +42,38 @@
     --radius: 0.55rem;
   }
 
+  /* ── Dark theme ──  Toggled by `.dark` on <html> (see IdentityStrip).
+     Deep ink-navy ground; the brand navy primary is lightened so it reads on
+     a dark surface. Only tokens are redefined here — components stay tokenised,
+     and the "dark shim" at the bottom of this file remaps the many hardcoded
+     slate/white utility classes the app was built with. */
+  .dark {
+    --background: 222 42% 8%;
+    --foreground: 216 30% 91%;
+    --card: 222 34% 13%;
+    --card-foreground: 216 30% 91%;
+    --popover: 222 34% 13%;
+    --popover-foreground: 216 30% 91%;
+    --primary: 221 60% 66%;            /* lightened Ink Blue for dark ground */
+    --primary-foreground: 222 45% 11%;
+    --secondary: 222 28% 18%;
+    --secondary-foreground: 216 25% 88%;
+    --muted: 222 26% 18%;
+    --muted-foreground: 218 16% 66%;
+    --accent: 222 34% 20%;
+    --accent-foreground: 216 30% 91%;
+    --destructive: 3 62% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 144 46% 52%;
+    --success-foreground: 0 0% 100%;
+    --border: 222 24% 23%;
+    --input: 222 24% 23%;
+    --ring: 221 55% 58%;
+    --sidebar: 222 40% 10%;
+    --sidebar-foreground: 216 30% 88%;
+    color-scheme: dark;
+  }
+
   * { @apply border-border; }
   body { @apply bg-background text-foreground font-sans antialiased; }
   /* Prevent tiny overflow bugs from producing a body horizontal scrollbar
@@ -605,3 +637,65 @@
   color: rgb(148 163 184);
   float: left; height: 0; pointer-events: none;
 }
+
+/* ============================================================================
+   DARK MODE SHIM
+   The app was built with hardcoded slate/white utility classes, not tokens.
+   Rather than rewrite ~2,500 of them across 75 files, we remap the high-
+   frequency ones under `.dark` here — `.dark .x` (0,2,0) beats `.x` (0,1,0),
+   so these win without !important. Tokenised components need no entry.
+   ============================================================================ */
+
+/* App chrome (these @apply hardcoded #fff / slate) */
+.dark .bt-app-bg { background: hsl(222 42% 7%); }
+.dark .bt-header-glass { background: hsl(var(--card)); border-bottom-color: hsl(var(--border)); }
+.dark .bt-sidebar-bg { background: hsl(222 40% 10%); }
+.dark .bt-card { background: hsl(var(--card)); border-color: hsl(var(--border)); }
+.dark .input { background: hsl(var(--card)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+
+/* Surfaces */
+.dark .bg-white { background-color: hsl(var(--card)); }
+.dark .bg-slate-50 { background-color: hsl(222 30% 15%); }
+.dark .bg-slate-100 { background-color: hsl(222 28% 18%); }
+.dark .bg-slate-200 { background-color: hsl(222 24% 24%); }
+
+/* Text */
+.dark .text-slate-900, .dark .text-slate-800 { color: hsl(var(--foreground)); }
+.dark .text-slate-700 { color: hsl(216 22% 82%); }
+.dark .text-slate-600, .dark .text-slate-500 { color: hsl(var(--muted-foreground)); }
+.dark .text-slate-400 { color: hsl(218 14% 55%); }
+.dark .text-slate-300 { color: hsl(218 14% 48%); }
+
+/* Borders / rings / dividers */
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-300 { border-color: hsl(var(--border)); }
+.dark .ring-slate-200, .dark .ring-slate-300 { --tw-ring-color: hsl(var(--border)); }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--border)); }
+
+/* Hover states that used light slates */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover { background-color: hsl(222 26% 18%); }
+.dark .hover\:bg-white:hover { background-color: hsl(var(--card)); }
+.dark .hover\:text-slate-900:hover, .dark .hover\:text-slate-800:hover { color: hsl(var(--foreground)); }
+.dark .hover\:text-slate-700:hover, .dark .hover\:text-slate-600:hover { color: hsl(216 22% 82%); }
+
+/* Placeholder text */
+.dark .placeholder\:text-slate-400::placeholder { color: hsl(218 14% 50%); }
+
+/* Semantic status tints (deadline / alert badges) — dark ground + lighter ink */
+.dark .bg-rose-50 { background-color: hsl(3 40% 17%); }
+.dark .bg-amber-50 { background-color: hsl(38 44% 15%); }
+.dark .bg-emerald-50, .dark .bg-green-50 { background-color: hsl(150 34% 14%); }
+.dark .bg-blue-50, .dark .bg-sky-50 { background-color: hsl(214 42% 17%); }
+.dark .bg-violet-50, .dark .bg-indigo-50 { background-color: hsl(255 34% 18%); }
+.dark .text-rose-700, .dark .text-rose-600 { color: hsl(3 78% 74%); }
+.dark .text-amber-700, .dark .text-amber-600 { color: hsl(40 78% 66%); }
+.dark .text-emerald-700, .dark .text-emerald-600, .dark .text-green-700 { color: hsl(150 52% 62%); }
+.dark .text-blue-700, .dark .text-blue-600, .dark .text-sky-700 { color: hsl(214 72% 74%); }
+.dark .ring-rose-200 { --tw-ring-color: hsl(3 35% 30%); }
+.dark .ring-amber-200 { --tw-ring-color: hsl(38 40% 28%); }
+.dark .ring-emerald-200 { --tw-ring-color: hsl(150 30% 26%); }
+.dark .ring-blue-200, .dark .ring-sky-200 { --tw-ring-color: hsl(214 38% 30%); }
+.dark .border-rose-200 { border-color: hsl(3 35% 30%); }
+.dark .border-amber-200 { border-color: hsl(38 40% 28%); }
+.dark .border-emerald-200 { border-color: hsl(150 30% 26%); }
