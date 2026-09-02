@@ -10,10 +10,30 @@ and render the new content — which python-docx inserts before the sectPr.
 from __future__ import annotations
 
 import io
+import re
 
 from docx import Document
 
 from .drafting_export import render_content
+
+_TO_RE = re.compile(r"^\s*to\s*[,:]?\s*$", re.I)
+_HEADING_RE = re.compile(r"OFFICE OF|GOVERNMENT OF|F\.?\s*No|\bDIN\b", re.I)
+
+
+def strip_office_heading(text: str) -> str:
+    """For placing a generated draft on the officer's OWN letterhead: drop the
+    draft's own office heading / DIN / F.No. / date block (everything before the
+    'To,' addressee line), since the letterhead already carries the office
+    identity — otherwise the heading appears twice. No-op unless the top clearly
+    looks like an office heading AND a 'To,' line is found near the top."""
+    lines = (text or "").splitlines()
+    if not any(_HEADING_RE.search(ln) for ln in lines[:6]):
+        return text
+    for i, ln in enumerate(lines[:18]):
+        s = ln.strip().lower()
+        if _TO_RE.match(ln) or s.startswith("to,"):
+            return "\n".join(lines[i:]).lstrip("\n")
+    return text
 
 DOCX_CONTENT_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

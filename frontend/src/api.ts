@@ -1458,11 +1458,11 @@ export const api = {
     }),
   // Download a template as Word — a letterhead template keeps its header/footer,
   // filled with `content` (the current, possibly-edited body).
-  async wsRenderTemplateDocx(id: number, content: string, filename: string): Promise<SaveResult> {
+  async wsRenderTemplateDocx(id: number, content: string, filename: string, stripHeading = false): Promise<SaveResult> {
     const res = await fetch(`${BASE}/workspace/templates/${id}/render.docx`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, strip_heading: stripHeading }),
     });
     if (!res.ok) throw new ApiError(res.status, "Download failed");
     return saveBlob(await res.blob(), filename);

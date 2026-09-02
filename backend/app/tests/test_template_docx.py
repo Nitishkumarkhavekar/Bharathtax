@@ -42,6 +42,24 @@ def test_fill_preserves_header_footer_and_replaces_body():
     assert all("Original body" not in b for b in bodies)
 
 
+def test_strip_office_heading():
+    draft = (
+        "OFFICE OF THE INCOME-TAX OFFICER, WARD 28(1), DELHI\n\n"
+        "DIN: [•]\nF. No. ITO/2023-24\nDate: [•]\n\n"
+        "To,\nM/s Sundaram Traders Pvt. Ltd.\n\nSUB: Notice u/s 142(1)…\n\n1. Whereas…"
+    )
+    out = td.strip_office_heading(draft)
+    assert out.startswith("To,")                       # heading block dropped
+    assert "OFFICE OF THE INCOME-TAX OFFICER, WARD 28(1)" not in out
+    assert "SUB: Notice u/s 142(1)" in out             # body kept
+    # a body with no office heading is left untouched
+    plain = "To,\nM/s X\n\nSUB: something"
+    assert td.strip_office_heading(plain) == plain
+    # no 'To,' anchor -> untouched (don't over-strip)
+    weird = "OFFICE OF THE ITO\n\nsome order text without an addressee line"
+    assert td.strip_office_heading(weird) == weird
+
+
 def test_fill_on_garbage_falls_back():
     # not a real .docx → still returns a usable .docx (plain export), no crash
     out = td.fill_letterhead_docx(b"not a docx", "hello")
