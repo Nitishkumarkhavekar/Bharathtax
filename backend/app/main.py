@@ -89,6 +89,13 @@ def _patch_user_columns() -> None:
         "UPDATE users SET email = replace(lower(email), '@bharathtax.local', '@bharathtax.com') WHERE lower(email) LIKE '%@bharathtax.local'",
         # Unique index on lower(email) so user@x.com == User@X.com.
         "CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_uq ON users (lower(email))",
+        # Uploaded .docx templates (officer's own letterhead) — workspace_templates
+        # was text-only; a 'file' kind carries the stored object + letterhead flag.
+        "ALTER TABLE workspace_templates ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NOT NULL DEFAULT 'text'",
+        "ALTER TABLE workspace_templates ADD COLUMN IF NOT EXISTS filename VARCHAR(255)",
+        "ALTER TABLE workspace_templates ADD COLUMN IF NOT EXISTS content_type VARCHAR(120)",
+        "ALTER TABLE workspace_templates ADD COLUMN IF NOT EXISTS storage_key VARCHAR(500)",
+        "ALTER TABLE workspace_templates ADD COLUMN IF NOT EXISTS has_letterhead BOOLEAN NOT NULL DEFAULT FALSE",
     ]
     try:
         with engine.begin() as conn:

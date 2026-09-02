@@ -12,7 +12,7 @@ from datetime import date, datetime
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
@@ -294,6 +294,9 @@ def _matter_out(m, owned: bool = True) -> dict:
 
 def _template_out(t) -> dict:
     return {"id": t.id, "name": t.name, "category": t.category, "body": t.body,
+            "kind": getattr(t, "kind", "text") or "text",
+            "filename": getattr(t, "filename", None),
+            "has_letterhead": bool(getattr(t, "has_letterhead", False)),
             "created_at": t.created_at.isoformat() if t.created_at else None,
             "updated_at": t.updated_at.isoformat() if t.updated_at else None}
 
@@ -578,6 +581,73 @@ def edit_template(template_id: int, body: TemplatePatch,
     if not t:
         raise HTTPException(404, "Not found")
     return _template_out(t)
+
+
+_MAX_TEMPLATE_BYTES = 15 * 1024 * 1024   # 15 MB — a letterhead .docx is tiny
+
+
+@router.post("/templates/upload", status_code=201)
+async def upload_template(
+    file: UploadFile = File(...),
+    name: str | None = Form(None),
+    category: str | None = Form(None),
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Upload the officer's own .docx template (e.g. their office letterhead).
+    We store the original file, extract its body text as an editable preview,
+    and flag whether it carries a header/footer letterhead to preserve."""
+    fname = (file.filename or "template.docx").strip()
+    if not fname.lower().endswith(".docx"):
+        raise HTTPException(415, "Please upload a Word .docx file")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "The file is empty")
+    if len(raw) > _MAX_TEMPLATE_BYTES:
+        raise HTTPException(413, "File too large (max 15 MB)")
+
+    from app.services import template_docx
+    body_text = template_docx.extract_text(raw)
+    has_letterhead = template_docx.detect_letterhead(raw)
+    label = (name or "").strip() or fname.rsplit(".", 1)[0]
+    t = svc.create_file_template(
+        db, p.user.id, name=label, body=body_text,
+        category=(category or "other"), filename=fname,
+        content_type=template_docx.DOCX_CONTENT_TYPE, raw=raw,
+        has_letterhead=has_letterhead,
+    )
+    return _template_out(t)
+
+
+class _RenderIn(BaseModel):
+    content: str | None = None   # overrides the stored body when provided
+
+
+@router.post("/templates/{template_id}/render.docx")
+def render_template_docx(template_id: int, body: _RenderIn | None = None,
+                         p: Principal = Depends(get_principal),
+                         db: Session = Depends(get_db)) -> Response:
+    """Download the template as Word. For an uploaded letterhead template the
+    original header/footer is preserved and the body is filled with `content`
+    (or the stored body); a plain template renders to a clean office .docx."""
+    t = svc.get_template(db, template_id, p.user.id)
+    if not t:
+        raise HTTPException(404, "Not found")
+    from app.services import template_docx, drafting_export, storage
+    content = (body.content if body and body.content is not None else t.body) or ""
+    if getattr(t, "kind", "text") == "file" and t.storage_key:
+        try:
+            raw = storage.get_bytes(t.storage_key)
+            data = template_docx.fill_letterhead_docx(raw, content)
+        except Exception:
+            data = drafting_export.to_docx(t.name, content)
+    else:
+        data = drafting_export.to_docx(t.name, content)
+    safe = re.sub(r"[^\w.() -]+", "_", (t.name or "template")).strip() or "template"
+    return Response(
+        content=data, media_type=template_docx.DOCX_CONTENT_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{safe}.docx"'},
+    )
 
 
 @router.delete("/templates/{template_id}", status_code=204)

@@ -815,6 +815,9 @@ export interface WsTemplate {
   name: string;
   category: string;
   body: string;
+  kind?: "text" | "file";      // "file" = an uploaded .docx (officer's letterhead)
+  filename?: string | null;
+  has_letterhead?: boolean;    // the uploaded .docx carries a header/footer to preserve
   created_at: string | null;
   updated_at: string | null;
 }
@@ -1439,6 +1442,25 @@ export const api = {
   wsUpdateTemplate: (id: number, body: { name?: string; body?: string; category?: string }) =>
     req<WsTemplate>(`/workspace/templates/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   wsDeleteTemplate: (id: number) => req<void>(`/workspace/templates/${id}`, { method: "DELETE" }),
+  // Upload the officer's own .docx template (their office letterhead).
+  wsUploadTemplate: (file: File, meta?: { name?: string; category?: string }) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (meta?.name) fd.append("name", meta.name);
+    if (meta?.category) fd.append("category", meta.category);
+    return req<WsTemplate>("/workspace/templates/upload", { method: "POST", body: fd });
+  },
+  // Download a template as Word — a letterhead template keeps its header/footer,
+  // filled with `content` (the current, possibly-edited body).
+  async wsRenderTemplateDocx(id: number, content: string, filename: string): Promise<SaveResult> {
+    const res = await fetch(`${BASE}/workspace/templates/${id}/render.docx`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) throw new ApiError(res.status, "Download failed");
+    return saveBlob(await res.blob(), filename);
+  },
   // watchlists
   wsWatchlists: () => req<WsWatchlist[]>("/workspace/watchlists"),
   wsCreateWatchlist: (body: { label: string; query: string; kind?: string }) =>

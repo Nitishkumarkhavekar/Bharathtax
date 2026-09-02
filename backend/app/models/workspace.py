@@ -177,6 +177,15 @@ class WorkspaceTemplate(Base):
     name: Mapped[str] = mapped_column(String(120))
     category: Mapped[str] = mapped_column(String(32), default="other")   # notice/order/appeal/other
     body: Mapped[str] = mapped_column(Text)
+    # "text" = a plain boilerplate template; "file" = an uploaded .docx the
+    # officer owns (their office letterhead). For a file template `body` holds
+    # the extracted text (editable preview) and the original .docx — header/
+    # footer letterhead intact — is fetched from object storage on download.
+    kind: Mapped[str] = mapped_column(String(16), default="text")
+    filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    has_letterhead: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
