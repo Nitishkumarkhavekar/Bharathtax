@@ -1450,6 +1450,12 @@ export const api = {
     if (meta?.category) fd.append("category", meta.category);
     return req<WsTemplate>("/workspace/templates/upload", { method: "POST", body: fd });
   },
+  // One prompt box: draft the body from an instruction (empty body) or revise
+  // the current body per the instruction. Returns the new body text.
+  wsTemplateAi: (instruction: string, body?: string) =>
+    req<{ content: string }>("/workspace/templates/ai", {
+      method: "POST", body: JSON.stringify({ instruction, body: body ?? "" }),
+    }),
   // Download a template as Word — a letterhead template keeps its header/footer,
   // filled with `content` (the current, possibly-edited body).
   async wsRenderTemplateDocx(id: number, content: string, filename: string): Promise<SaveResult> {

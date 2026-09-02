@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Plus, Trash2, Copy, LayoutTemplate, X, Search, Upload, Download, Stamp, Loader2 } from "lucide-react";
+import { FileText, Plus, Trash2, Copy, LayoutTemplate, X, Search, Upload, Download, Stamp, Loader2, Sparkles } from "lucide-react";
 import { api, WsTemplate, WsLibraryTemplate } from "../api";
 import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ export default function Templates() {
   const [showLib, setShowLib] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [libSide, setLibSide] = useState("");
   const [libQuery, setLibQuery] = useState("");
   // Open the library on the user's own wing group (they can clear to see all).
@@ -118,6 +120,28 @@ export default function Templates() {
   };
   const sel = items.find((x) => x.id === selId);
   const isFile = sel?.kind === "file";
+  // One prompt box: draft the body when empty, refine it when present. Grounded
+  // in tax law; the letterhead (for a file template) is applied on download.
+  const QUICK = [
+    { label: "Assessment order", prompt: "Draft a §143(3) assessment order" },
+    { label: "Add demand para", prompt: "Add a notice-of-demand paragraph u/s 156 stating the tax and interest payable within 30 days" },
+    { label: "Formal tone", prompt: "Make the language more formal and precise" },
+    { label: "Shorten", prompt: "Tighten and shorten the draft without dropping any legal content" },
+  ];
+  const runAi = async (instr?: string) => {
+    const instruction = (instr ?? aiPrompt).trim();
+    if (!instruction) return;
+    const hadBody = draft.body.trim().length > 0;
+    setAiBusy(true);
+    try {
+      const r = await api.wsTemplateAi(instruction, draft.body);
+      setDraft((d) => ({ ...d, body: r.content }));
+      setAiPrompt("");
+      toast.success(hadBody ? "Draft updated." : "Draft ready — edit or download it.");
+    } catch (e: any) {
+      toast.error(e?.message || "Couldn't draft — check your plan/quota.");
+    } finally { setAiBusy(false); }
+  };
 
   return (
     <div className="space-y-5">
@@ -185,6 +209,33 @@ export default function Templates() {
               </span>
             </div>
           )}
+          {/* One prompt box — draft from scratch or change what's there. */}
+          <div className="rounded-lg ring-1 ring-primary/20 bg-primary/[0.04] p-2.5 space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-primary shrink-0" />
+              <input
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runAi(); } }}
+                disabled={aiBusy}
+                placeholder={draft.body.trim()
+                  ? "Ask BharatTax to change this…  e.g. “add a para on creditworthiness of the creditors”"
+                  : "Ask BharatTax to draft this…  e.g. “143(3) order adding ₹25L u/s 68 for M/s X, AY 2023-24”"}
+                className="flex-1 min-w-0 bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400"
+              />
+              <Button className="h-8 shrink-0" disabled={aiBusy || !aiPrompt.trim()} onClick={() => runAi()}>
+                {aiBusy ? <Loader2 className="size-4 animate-spin" /> : (draft.body.trim() ? "Update" : "Draft")}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK.map((q) => (
+                <button key={q.label} type="button" disabled={aiBusy} onClick={() => runAi(q.prompt)}
+                  className="text-[11.5px] font-medium text-primary bg-white ring-1 ring-primary/20 rounded-full px-2.5 py-0.5 hover:bg-primary/10 disabled:opacity-50 transition-colors">
+                  {q.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <textarea
             value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
             placeholder={isFile

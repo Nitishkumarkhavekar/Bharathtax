@@ -51,6 +51,7 @@ from app.core.db import get_db
 from app.services import limitation
 from app.services import watchlist as watch_svc
 from app.services import workspace as svc
+from app.services.quota import require_quota
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
 
@@ -617,6 +618,24 @@ async def upload_template(
         has_letterhead=has_letterhead,
     )
     return _template_out(t)
+
+
+class _AiComposeIn(BaseModel):
+    instruction: str
+    body: str | None = None      # current body — drafts when empty, refines when present
+
+
+@router.post("/templates/ai")
+def template_ai(payload: _AiComposeIn, p: Principal = Depends(get_principal),
+                _quota=Depends(require_quota)) -> dict:
+    """One prompt box for the template editor: draft the body from an
+    instruction, or revise the current body per the instruction. Grounded,
+    letterhead-agnostic (the header/footer is applied on download)."""
+    if not (payload.instruction or "").strip():
+        raise HTTPException(400, "Please type what you'd like drafted or changed")
+    from app.services import drafting
+    text = drafting.ai_compose(p.user, payload.instruction, payload.body or "")
+    return {"content": text}
 
 
 class _RenderIn(BaseModel):
