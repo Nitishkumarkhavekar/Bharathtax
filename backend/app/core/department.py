@@ -293,6 +293,77 @@ DESIGNATIONS: list[dict] = [
 DESIGNATIONS_BY_KEY = {d["key"]: d for d in DESIGNATIONS}
 DESIGNATION_KEYS = [d["key"] for d in DESIGNATIONS]
 
+# Role-specific "desk" content for the cadre whose work differs from simply
+# running the wing (the ministerial + Inspector roles). Field/range/commissioner
+# officers ARE the wing, so they take their activities from WINGS. `serves`:
+# core (strong fit) | partial | formatter | reference | minimal. Merged into the
+# designation objects below so the taxonomy endpoint carries them.
+_DESIGNATION_DESK: dict[str, dict] = {
+    "inspector": {"serves": "core", "tools": ["/drafting", "/rulings", "/calculators", "/reconcile"],
+        "activities": [
+            "Conduct §133A surveys & field verification; prepare the appraisal / survey report",
+            "Draft penalty & remand reports for the Assessing Officer",
+            "Issue recovery notices (§220 / 221 / 226)",
+            "Research case law, circulars & notifications; build Tribunal briefs & paper-books",
+        ]},
+    "sta": {"serves": "core", "tools": ["/drafting", "/calculators", "/rulings"],
+        "activities": [
+            "Maintain the penalty-default register; issue show-cause notices",
+            "Draft penalty orders for the officer's approval",
+            "Compute demand / interest / refund; prepare notices & vouchers",
+            "Process TDS defaults (§201(1A), §272A)",
+        ]},
+    "ta": {"serves": "partial", "tools": ["/drafting", "/calculators"],
+        "activities": [
+            "Generate penalty & demand show-cause notices",
+            "Maintain disposal / stay / instalment registers",
+            "Prepare refund vouchers & advice notes",
+            "Compute tax, interest & prepaid taxes",
+        ]},
+    "os": {"serves": "partial", "tools": ["/drafting", "/calculators", "/rulings"],
+        "activities": [
+            "Supervise the section's demand, refund & penalty work",
+            "Maintain the statutory registers; draft routine notices & letters",
+        ]},
+    "steno": {"serves": "formatter", "tools": ["/drafting"],
+        "activities": [
+            "Format & finalise the officer's orders and notices",
+            "Draft hearing & adjournment notices",
+            "Turn a dictated skeleton into a properly-formatted draft",
+        ]},
+    "ps": {"serves": "formatter", "tools": ["/drafting"],
+        "activities": [
+            "Format & finalise the officer's orders and correspondence",
+            "Draft hearing & adjournment notices; maintain the cause list",
+        ]},
+    "pps": {"serves": "formatter", "tools": ["/drafting"],
+        "activities": [
+            "Format & finalise senior-officer orders and correspondence",
+            "Draft hearing / adjournment notices; maintain the cause list",
+        ]},
+    "ao3": {"serves": "reference", "tools": ["/drafting", "/calculators", "/rulings"],
+        "activities": [
+            "Salary-TDS & Form 16 / 24Q for staff (as DDO)",
+            "TDS on office payments (§194C / 194J / 194I) reference",
+            "Office-order, sanction-letter & LPC templates",
+        ]},
+    "mts": {"serves": "minimal", "tools": ["/drafting"],
+        "activities": [
+            "Serve notices & summons; record proof of service",
+            "Generate the served / refusal / affixture endorsement",
+        ]},
+    "notice_server": {"serves": "minimal", "tools": ["/drafting"],
+        "activities": [
+            "Serve notices & summons; record proof of service",
+            "Generate the served / refusal / affixture endorsement; maintain the service register",
+        ]},
+}
+# The AO grades share the AO-III desk; PPS/Sr-PS share the PS desk.
+for _k in ("ao2", "ao1", "pao"):
+    _DESIGNATION_DESK[_k] = _DESIGNATION_DESK["ao3"]
+for _d in DESIGNATIONS:
+    _d.update(_DESIGNATION_DESK.get(_d["key"], {}))
+
 
 def designation_tier(designation_key: str | None) -> str | None:
     """The seniority tier for a designation key, or None if unknown."""

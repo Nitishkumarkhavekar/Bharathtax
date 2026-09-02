@@ -54,6 +54,21 @@ def test_approver_for_151_is_ay_dependent():
     assert dept.approver_for(" S153D ") is not None
 
 
+def test_ministerial_designations_have_role_desks():
+    # The cadre whose work differs from "run the wing" gets its own activities.
+    for key in ("inspector", "sta", "ta", "steno", "ps", "ao3", "ao1", "pao", "mts", "notice_server"):
+        d = dept.DESIGNATIONS_BY_KEY[key]
+        assert d.get("activities"), f"{key} has no role activities"
+        assert d.get("serves") in {"core", "partial", "formatter", "reference", "minimal"}
+    # Inspector is a strong fit; MTS is minimal (honest).
+    assert dept.DESIGNATIONS_BY_KEY["inspector"]["serves"] == "core"
+    assert dept.DESIGNATIONS_BY_KEY["mts"]["serves"] == "minimal"
+    # AO grades share the AO-III desk.
+    assert dept.DESIGNATIONS_BY_KEY["pao"]["activities"] == dept.DESIGNATIONS_BY_KEY["ao3"]["activities"]
+    # Field/range officers take activities from their wing, not the designation.
+    assert not dept.DESIGNATIONS_BY_KEY["ito"].get("activities")
+
+
 def test_role_tier_bridges_structured_and_freetext():
     from app.core.profiles import role_tier
     # structured taxonomy keys resolve to the 3-bucket vocabulary
