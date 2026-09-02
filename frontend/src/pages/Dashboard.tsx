@@ -89,6 +89,79 @@ function useDeskServes(): string | null {
   return serves;
 }
 
+// The limitation runway — every upcoming statutory deadline on one 90-day
+// timeline, colour-coded by how close it is. The signature "never miss a
+// time-bar" view, fed by the same workload the tiles use. Hidden when the desk
+// has nothing due in the window.
+function LimitationRunway({ rows }: { rows: WsWorkloadRow[] }) {
+  const WINDOW = 90;
+  // Map days-from-now → left%, with a little inset at both edges.
+  const pos = (d: number) => 2 + (Math.max(0, Math.min(WINDOW, d)) / WINDOW) * 96;
+  const pins = useMemo(
+    () => rows
+      .filter((m) => m.next_due_date)
+      .map((m) => ({ m, d: daysUntil(m.next_due_date as string) }))
+      .filter((x) => x.d >= 0 && x.d <= WINDOW)
+      .sort((a, b) => a.d - b.d),
+    [rows],
+  );
+  const months = useMemo(() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const out: { left: number; label: string }[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const dt = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const d = Math.round((dt.getTime() - now.getTime()) / 86_400_000);
+      if (d > 4 && d < WINDOW - 2) out.push({ left: pos(d), label: dt.toLocaleDateString("en-IN", { month: "short" }) });
+    }
+    return out;
+  }, []);
+  if (pins.length === 0) return null;
+  const DOT: Record<string, string> = { rose: "bg-rose-500", amber: "bg-amber-500", emerald: "bg-emerald-500" };
+  const TXT: Record<string, string> = { rose: "text-rose-600", amber: "text-amber-600", emerald: "text-emerald-700" };
+  const tone = (d: number) => (d <= 7 ? "rose" : d <= 30 ? "amber" : "emerald");
+  return (
+    <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-[11px] uppercase tracking-wider font-semibold text-primary/80">Limitation runway · next 90 days</div>
+          <h3 className="text-[15px] font-semibold text-slate-900 mt-1">Every clock running against you</h3>
+        </div>
+        <div className="flex gap-3.5 text-[11.5px] text-slate-500 pt-1">
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2 rounded-full bg-rose-500" />≤ 7 days</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2 rounded-full bg-amber-500" />≤ 30 days</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2 rounded-full bg-emerald-500" />on track</span>
+        </div>
+      </div>
+      <div className="relative h-[112px] mt-3">
+        {months.map((m, i) => (
+          <div key={i}>
+            <div className="absolute top-[42px] bottom-[16px] w-px bg-slate-100" style={{ left: `${m.left}%` }} />
+            <div className="absolute bottom-0 -translate-x-1/2 text-[10.5px] font-semibold text-slate-400" style={{ left: `${m.left}%` }}>{m.label}</div>
+          </div>
+        ))}
+        <div className="absolute left-0 right-0 top-[52px] h-px bg-slate-200" />
+        <div className="absolute top-[20px] bottom-[16px] w-0.5 bg-primary/70" style={{ left: `${pos(0)}%` }} />
+        <div className="absolute top-[2px] -translate-x-1/2 text-[10px] font-bold text-primary whitespace-nowrap" style={{ left: `${pos(0)}%` }}>Today</div>
+        {pins.map((x, i) => {
+          const t = tone(x.d); const up = i % 2 === 0; const L = pos(x.d);
+          const sec = x.m.next_section || x.m.next_label || "—";
+          return (
+            <div key={x.m.id} className="absolute inset-y-0" style={{ left: `${L}%` }}
+                 title={`${x.m.title} · ${x.m.next_label ?? ""} · ${fmt(x.m.next_due_date as string)}`}>
+              <div className={cn("absolute left-0 -translate-x-1/2 w-16 text-center leading-tight", up ? "top-[4px]" : "top-[66px]")}>
+                <div className="text-[10px] font-semibold text-primary truncate">{sec}</div>
+                <div className={cn("text-[11px] font-bold tabular-nums", TXT[t])}>{x.d}d</div>
+              </div>
+              <div className={cn("absolute left-0 -translate-x-1/2 w-px bg-slate-300", up ? "top-[38px] h-[12px]" : "top-[52px] h-[12px]")} />
+              <div className={cn("absolute left-0 top-[46px] -translate-x-1/2 size-3 rounded-full ring-2 ring-white shadow-sm", DOT[t])} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const nav = useNavigate();
   const { session } = useAuth();
@@ -203,6 +276,9 @@ export default function Dashboard() {
               })}
         </div>
       )}
+
+      {/* Limitation runway — every statutory clock on one 90-day timeline. */}
+      {!deskLight && <LimitationRunway rows={rows} />}
 
       {/* Your daily work — the officer's real wing + role activities (taxonomy-driven). */}
       <WingActivities />
