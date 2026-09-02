@@ -406,6 +406,42 @@ def delete_doc(cid: str, did: int, p: Principal = Depends(get_principal),
 
 
 # --- run / outputs ---
+def _worker_alive(timeout: float = 1.5) -> bool:
+    """True if at least one Celery worker responds to a broadcast ping. In
+    prod we've seen the worker container run stale code after a deploy —
+    tasks get enqueued to Redis but never picked up. This lets the api
+    fall back to running the pipeline inline instead of silently queuing
+    forever."""
+    try:
+        from app.ingestion.tasks import celery_app
+        pong = celery_app.control.ping(timeout=timeout)
+        return bool(pong)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _run_inline(run_id: int, kind: str) -> None:
+    """Run the drafting pipeline in a daemon thread inside the api process.
+    Used as a fallback when the Celery worker isn't responding to pings.
+    `kind` is 'assessment' or 'appeal'."""
+    import threading, logging
+    log = logging.getLogger("start_run.fallback")
+
+    def _worker():
+        try:
+            if kind == "assessment":
+                from app.services.assessment_draft import run_case
+            else:
+                from app.services.appeal_draft import run_case
+            run_case(run_id)
+        except Exception:  # noqa: BLE001
+            log.exception("inline %s run %s crashed", kind, run_id)
+
+    t = threading.Thread(target=_worker, name=f"inline-{kind}-{run_id}", daemon=True)
+    t.start()
+    log.info("started inline %s run %s (thread=%s)", kind, run_id, t.name)
+
+
 @router.post("/cases/{cid}/run")
 def start_run(cid: str, p: Principal = Depends(get_principal),
               _quota: Principal = Depends(require_quota),
@@ -415,10 +451,18 @@ def start_run(cid: str, p: Principal = Depends(get_principal),
         raise HTTPException(400, "Upload documents before running")
     run = AssessmentRun(case_id=case.id, created_by=p.user.id, status="queued")
     db.add(run); db.commit(); db.refresh(run)
-    from app.ingestion.tasks import run_assessment_case
-    async_result = run_assessment_case.delay(run.id)
-    run.task_id = async_result.id
-    db.commit()
+    # Prefer Celery, but fall back to an in-process thread when the worker
+    # isn't responsive. Prod deploys sometimes leave the worker container
+    # holding stale code after a `git pull` if only the api was restarted;
+    # this keeps the pipeline usable in that window until the worker is
+    # bounced too.
+    if _worker_alive():
+        from app.ingestion.tasks import run_assessment_case
+        async_result = run_assessment_case.delay(run.id)
+        run.task_id = async_result.id
+        db.commit()
+    else:
+        _run_inline(run.id, "assessment")
     audit.log_event(db, action="assessment.run", user_id=p.user.id, wing_id=p.user.wing_id,
                     resource_type="assessment_case", resource_id=str(case.id), **client_meta(request))
     return _run_out(run)

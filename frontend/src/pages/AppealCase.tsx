@@ -249,6 +249,23 @@ export default function AppealCase() {
       // Setting `run` with status="queued"/"running" triggers the polling
       // useEffect above — no manual setInterval needed.
       setRun(r);
+      // Immediately refresh so the poller has authoritative state — a
+      // stale prod worker sometimes leaves the run stuck in "queued" and
+      // the polling useEffect wouldn't fire on top of setRun above.
+      await loadLatest();
+      // Watchdog for a stalled queue: if the run hasn't moved past
+      // "queued" in 45s the worker likely didn't pick it up. Reset the UI
+      // so Start becomes clickable again — the api's inline-thread
+      // fallback will usually take over on retry.
+      window.setTimeout(async () => {
+        try {
+          const rr = await api.appealRunStatus(r.id);
+          if (rr?.status === "queued") {
+            toast.error("Still queued after 45s — worker may be down. Click Start again to retry.");
+            setBusy(false); setProgress("");
+          }
+        } catch { /* ignore */ }
+      }, 45_000);
     } catch (e: any) {
       setBusy(false); setProgress("");
       toast.error(e?.message ?? "Could not start the pipeline");

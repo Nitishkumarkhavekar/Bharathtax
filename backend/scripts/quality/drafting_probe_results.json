@@ -1,0 +1,168 @@
+{
+  "total": 101,
+  "avg_score_10": 7.77,
+  "per_surface": [
+    {
+      "surface": "notice-142-1",
+      "question": "Draft a Notice u/s 142(1) of the Income-tax Act, 1961 to be issued to M/s Anand Traders (PAN AABCA1234K) for AY 2023-24, calling for particulars of cash deposits of Rs 38,50,000 into current account no. 000123456789 with HDFC Bank, Chandni Chowk branch, between 01-04-2022 and 31-03-2023. Ask for the source of cash, cash book, bank statement, sales register, party-wise ledgers and copies of returns filed. Compliance date: 15 days.",
+      "score_10": 9,
+      "issues": [
+        "missing expected phrases: produce"
+      ],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 142(1), Income-tax Act, 1961, Assessment Year, Yours faithfully"
+      ],
+      "answer_preview": "Draft show-cause notice under Section 142(1) seeking evidence for cash deposits into the current account.\n\n## Draft Notice\nOFFICE OF THE INCOME-TAX OFFICER, WARD [•]\n\nDIN: [•]\nF. No. ITO/[Ward]/142(1)/AY23-24/[•]\nDate: [Current Date]\n\nTo,\nM/s Anand Traders\n[Assessee Address]\nPAN: AABCA1234K\nAssessment Year: 2023-24\n\nSub: Notice under Section 142(1) of the Income-tax Act, 1961 — furnishing of evidence in respect of cash deposits for Assessment Year 2023-24.\n\n1.  Whereas, for the purpose of making an assessment under the Income-tax Act, 1961 (hereinafter referred to as 'the Act') for the Assessm"
+    },
+    {
+      "surface": "notice-143-2",
+      "question": "Draft a Notice u/s 143(2) of the Income-tax Act, 1961 for limited scrutiny of Shri Rakesh Kumar (PAN ABCPK9876Q), AY 2023-24, on the CASS reason 'Large increase in sundry creditors compared to preceding year'. E-proceeding to be faceless; state the DIN placeholder and compliance date.",
+      "score_10": 10,
+      "issues": [],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 143(2), Income-tax Act, 1961, scrutiny, DIN, Yours faithfully"
+      ],
+      "answer_preview": "## Draft Notice\n\nOFFICE OF THE INCOME-TAX OFFICER, WARD 1(1), NEW DELHI\n\nDIN: [•]\nF. No. ITO/Ward 1(1)/Scrutiny/RK/2023-24/1234\nDate: 20-09-2024\n\nTo,\nShri Rakesh Kumar\n[Assessee's Address]\nPAN: ABCPK9876Q\nAssessment Year: 2023-24\n\nSub: Notice under Section 143(2) of the Income-tax Act, 1961 for Assessment Year 2023-24 – calling for information and documents in connection with limited scrutiny proceedings.\n\nSir/Madam,\n\n1. Whereas your return of income for the Assessment Year 2023-24, filed on [Date of filing ITR for AY 2023-24], has been selected for limited scrutiny under the Computer Assisted"
+    },
+    {
+      "surface": "notice-148A-1",
+      "question": "Draft a show-cause notice u/s 148A(1) (formerly 148A(b)) of the Income-tax Act, 1961 for AY 2021-22 in respect of M/s Sunrise Enterprises (PAN AAAFS1122L). Insight portal reveals aggregate cash deposits of Rs 45,00,000 in SBI SB a/c during FY 2020-21 that do not match the return filed. Attach the material relied upon and give 7 days to reply. Include the specified-authority approval reference u/s 151.",
+      "score_10": 10,
+      "issues": [],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 148A(1), Section 151, specified authority, show cause, Yours faithfully"
+      ],
+      "answer_preview": "## Draft Notice\n\nOFFICE OF THE INCOME-TAX OFFICER, WARD 1(1), NEW DELHI\n\nDIN: ITBA/SCN/F/148A/2024-25/XXXXXXXXXX\nF. No. ITO/Ward 1(1)/SCN/148A/Sunrise Enterprises/2024-25\nDate: 20-07-2024\n\nTo,\nM/s Sunrise Enterprises\n[Assessee's Address]\nPAN: AAAFS1122L\nAssessment Year: 2021-22\n\nSub: Show-cause notice under Section 148A(1) of the Income-tax Act, 1961 for Assessment Year 2021-22 – regarding information suggesting income chargeable to tax has escaped assessment.\n\nMadam/Sir,\n\n1.  Information has been received by this office which suggests that income chargeable to tax for Assessment Year 2021-22 "
+    },
+    {
+      "surface": "notice-156-demand",
+      "question": "Draft a Notice of Demand u/s 156 of the Income-tax Act, 1961 consequent to an assessment order u/s 143(3) for AY 2022-23 in the case of Shri Aman Verma (PAN ABIPV5551M). Tax demand Rs 8,42,310, interest u/s 234A Rs 12,900, interest u/s 234B Rs 68,450, interest u/s 234C Rs 4,120. Payment within 30 days at the specified BSR / challan route, with warning of recovery u/s 220(4) and 221(1) on default.",
+      "score_10": 0,
+      "issues": [
+        "LLM error after retries: HTTPStatusError(\"Client error '429 Too Many Requests' for url 'https://aiplatform.googleapis.com/v1/projects/gen-lang-client-0080160641/locations/global/publishers/google/models/gemini-2.5-flash:generateContent'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429\")"
+      ],
+      "strengths": [],
+      "answer_preview": ""
+    },
+    {
+      "surface": "notice-226-3-garnishee",
+      "question": "Draft a garnishee notice u/s 226(3) of the Income-tax Act, 1961 to ICICI Bank Ltd, Connaught Place branch, in respect of M/s Delta Metals Pvt Ltd (PAN AACCD3344P), directing the bank to pay over Rs 27,80,000 held in the assessee's current account to the credit of the Central Government against the outstanding demand for AY 2019-20.",
+      "score_10": 0,
+      "issues": [
+        "LLM error after retries: HTTPStatusError(\"Client error '429 Too Many Requests' for url 'https://aiplatform.googleapis.com/v1/projects/gen-lang-client-0080160641/locations/global/publishers/google/models/gemini-2.5-flash:generateContent'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429\")"
+      ],
+      "strengths": [],
+      "answer_preview": ""
+    },
+    {
+      "surface": "notice-271AAC-penalty",
+      "question": "Draft a penalty show-cause notice u/s 271AAC(1) read with Section 274 of the Income-tax Act, 1961 in the case of Shri Prakash Jain (PAN ABPPJ2233K), AY 2022-23, where an addition of Rs 22,00,000 has been sustained u/s 68 as unexplained cash credit and taxed u/s 115BBE. Give 15 days for reply and opportunity of personal hearing.",
+      "score_10": 9,
+      "issues": [
+        "missing expected phrases: opportunity of being heard"
+      ],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 271AAC, Section 274, Section 115BBE, show cause"
+      ],
+      "answer_preview": "## Draft Notice\n\nOFFICE OF THE INCOME-TAX OFFICER, WARD [•]\n\nDIN: [•]\nF. No. ITO/Ward [•]/Penalty/271AAC/2024-25\nDate: 20-05-2024\n\nTo,\nShri Prakash Jain\n[Assessee's Address]\nPAN: ABPPJ2233K\nAssessment Year: 2022-23\n\nSub: Show Cause Notice under Section 271AAC(1) read with Section 274 of the Income-tax Act, 1961 for Assessment Year 2022-23.\n\nWhereas, in your case for the Assessment Year 2022-23, an assessment order under Section 143(3) of the Income-tax Act, 1961 (hereinafter referred to as 'the Act') was passed on [Date of Assessment Order], wherein an addition of Rs. 22,00,000/- (Rupees Twent"
+    },
+    {
+      "surface": "notice-133-6",
+      "question": "Draft a Notice u/s 133(6) of the Income-tax Act, 1961 to Kotak Mahindra Bank Ltd, Andheri West branch, calling for certified copies of the account opening form, KYC documents, monthly statements from 01-04-2020 to 31-03-2023, and specimen signature of M/s Bright Traders (PAN AACFB7788J), with 10 days' compliance.",
+      "score_10": 10,
+      "issues": [],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 133(6), Income-tax Act, 1961, furnish, certified, Yours faithfully"
+      ],
+      "answer_preview": "## Draft Notice\n\nOFFICE OF THE INCOME-TAX OFFICER, WARD [•], [CITY]\n\nDIN: [•]\nF. No. ITO/Ward [•]/133(6)/2023-24/[•]\nDate: [Current Date]\n\nTo,\nThe Branch Manager,\nKotak Mahindra Bank Ltd,\n[Branch Address, e.g., Andheri West Branch, Mumbai]\n\nSub: Notice under Section 133(6) of the Income-tax Act, 1961 – Calling for information in the case of M/s Bright Traders (PAN AACFB7788J) for Assessment Years 2021-22, 2022-23, and 2023-24.\n\nSir/Madam,\n\nIn connection with proceedings under the Income-tax Act, 1961, in the case of M/s Bright Traders (PAN AACFB7788J), it is considered necessary to call for ce"
+    },
+    {
+      "surface": "appeal-oge",
+      "question": "Draft an Order Giving Effect (OGE) to the CIT(A)'s appellate order dated 12-06-2024 in the case of M/s Zenith Realtors (PAN AAACZ4455L), AY 2020-21. The CIT(A) has deleted an addition of Rs 62,00,000 made u/s 68 on unexplained share capital and restricted a Section 40A(3) disallowance from Rs 18,40,000 to Rs 3,20,000. Recompute total income, tax, interest u/s 234A/B/C, and issue revised demand / refund.",
+      "score_10": 8,
+      "issues": [
+        "missing expected phrases: Section 234B; Section 156"
+      ],
+      "strengths": [
+        "no scope deflection",
+        "hit expected phrases: Order Giving Effect, CIT(A), total income"
+      ],
+      "answer_preview": "## Draft Order Giving Effect to CIT(A)'s Order\n\n**OFFICE OF THE INCOME-TAX OFFICER, WARD [•], [CITY]**\n\n**DIN:** [•]\n**F. No.:** ITO/Ward [•]/[City]/OGE/2024-25/[•]\n**Date:** [Current Date]\n\n**To,**\nM/s Zenith Realtors\n[Assessee's Address]\n**PAN:** AAACZ4455L\n**Assessment Year:** 2020-21\n\n**Sub:** Order Giving Effect to the Order of the Commissioner of Income-tax (Appeals), [CIT(A) Designation], dated 12-06-2024 for Assessment Year 2020-21 in the case of M/s Zenith Realtors (PAN: AAACZ4455L) – Reg.\n\nRef:\n1. Assessment Order under Section 143(3) dated [Original Assessment Order Date] for AY 202"
+    },
+    {
+      "surface": "appeal-263-revision",
+      "question": "Draft a show-cause notice u/s 263 of the Income-tax Act, 1961 by the PCIT proposing to revise the assessment order u/s 143(3) dated 28-09-2023 for AY 2021-22 in the case of M/s Orion Infratech (PAN AAACO6677N), on the ground that the AO allowed a Section 80-IA deduction of Rs 4,15,00,000 without verifying the audit report in Form 10CCB and eligibility conditions — order therefore erroneous and prejudicial to the interests of the revenue.",
+      "score_10": 10,
+      "issues": [],
+      "strengths": [
+        "no scope deflection",
+        "hit expected phrases: Section 263, erroneous, prejudicial to the interests of the revenue, show cause, Principal Commissioner"
+      ],
+      "answer_preview": "## Draft Notice\n\nOFFICE OF THE PRINCIPAL COMMISSIONER OF INCOME-TAX, [City/Region]\n\nDIN: [•]\nF. No. PCIT/[City]/263/AY 2021-22/2024-25/[Serial No.]\nDate: [Current Date]\n\nTo,\nM/s Orion Infratech\n[Assessee's Address]\nPAN: AAACO6677N\nAssessment Year: 2021-22\n\nSub: Show Cause Notice under Section 263 of the Income-tax Act, 1961 for Assessment Year 2021-22 – regarding revision of assessment order passed under Section 143(3) dated 28-09-2023.\n\nWhereas, the assessment in your case for Assessment Year 2021-22 was completed under Section 143(3) of the Income-tax Act, 1961 (hereinafter referred to as 't"
+    },
+    {
+      "surface": "appeal-cita-hearing",
+      "question": "Draft the assessee's written submissions for the CIT(A) hearing scheduled on 05-10-2024 in Appeal No. CIT(A)-Delhi-17/10234/2023-24, filed against the assessment order u/s 143(3) dated 25-03-2023 for AY 2020-21 in the case of Shri Karan Malhotra (PAN AJHPM8890R). Grounds: (i) addition of Rs 19,25,000 u/s 68 for cash deposits during demonetisation, (ii) disallowance of Rs 4,60,000 u/s 36(1)(iii) on interest-free advances. Cite Nemi Chand Kothari, S A Builders and CIT vs Reliance Utilities.",
+      "score_10": 7,
+      "issues": [
+        "missing expected phrases: Section 250; Ground; Section 68"
+      ],
+      "strengths": [
+        "no scope deflection",
+        "hit expected phrases: CIT(A), written submissions"
+      ],
+      "answer_preview": "To draft a comprehensive and effective submission, I need a few more specific details regarding the facts of your case. Once you confirm the below, I will produce a tailored draft.\n\n## Facts I Need Before Drafting\n\n1.  **Regarding the cash deposits of Rs 19,25,000 u/s 68:**\n    *   What was the source of these cash deposits? (e.g., past savings, agricultural income, withdrawals from other bank accounts, sale of assets, gifts, business receipts, etc.)\n    *   Can you provide documentary evidence for the source? (e.g., bank passbooks showing prior withdrawals, agricultural land records, sale dee"
+    },
+    {
+      "surface": "assessment-144C-1",
+      "question": "Draft a Draft Assessment Order u/s 144C(1) of the Income-tax Act, 1961 in the case of M/s Global Tech Services Pvt Ltd (PAN AABCG9911R) — an eligible assessee — for AY 2021-22. The TPO's order dated 30-07-2024 proposes a transfer pricing adjustment of Rs 4,72,00,000 to the ALP of software development services rendered to the AE. Set out the variation, invite objections before the DRP or acceptance before the AO within 30 days u/s 144C(2).",
+      "score_10": 10,
+      "issues": [],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 144C(1), eligible assessee, Dispute Resolution Panel, transfer pricing, 30 days"
+      ],
+      "answer_preview": "Draft Assessment Order under Section 144C(1) of the Income-tax Act, 1961\n\nOFFICE OF THE DEPUTY COMMISSIONER OF INCOME-TAX, CIRCLE [•]\n\nDIN: [•]\nF. No. DCIT/Circle [•]/AY 2021-22/144C/2024-25/[•]\nDate: 30-07-2024\n\nTo,\nM/s Global Tech Services Pvt Ltd\n[Assessee's Address]\nPAN: AABCG9911R\nAssessment Year: 2021-22\n\nSub: Draft Assessment Order under Section 144C(1) of the Income-tax Act, 1961 for Assessment Year 2021-22 in the case of M/s Global Tech Services Pvt Ltd (PAN AABCG9911R) – regarding.\n\nSir/Madam,\n\nThis refers to the assessment proceedings for Assessment Year 2021-22 in your case.\n\n1.  *"
+    },
+    {
+      "surface": "assessment-143-3-order",
+      "question": "Draft a final assessment order u/s 143(3) read with Section 144B for AY 2022-23 in the case of M/s Meridian Textiles Pvt Ltd (PAN AAACM2244F). Additions: Rs 34,50,000 u/s 68 on unexplained share application money; Rs 6,20,000 u/s 14A r/w Rule 8D; Rs 2,80,000 u/s 40(a)(ia) for non-deduction of TDS. Compute total income, tax, interest u/s 234A/B/C, initiate penalty u/s 270A, and issue notice of demand u/s 156.",
+      "score_10": 8,
+      "issues": [
+        "missing expected phrases: Section 156; Section 270A"
+      ],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 143(3), Section 144B, total income"
+      ],
+      "answer_preview": "## Draft Final Assessment Order under Section 143(3) read with Section 144B\n\n**OFFICE OF THE ASSESSING OFFICER, WARD [•], [CITY]**\n\n**DIN:** [•]\n**Order No.:** [•]\n**Date:** [•]\n\n**To,**\nM/s Meridian Textiles Pvt Ltd\n[Assessee's Address]\n**PAN:** AAACM2244F\n**Assessment Year:** 2022-23\n\n**Sub:** Final Assessment Order under Section 143(3) read with Section 144B of the Income-tax Act, 1961 for Assessment Year 2022-23.\n\nThis order is passed in accordance with the provisions of Section 143(3) read with Section 144B of the Income-tax Act, 1961 (hereinafter referred to as 'the Act'), subsequent to "
+    },
+    {
+      "surface": "assessment-154-rectification",
+      "question": "Draft an order u/s 154 of the Income-tax Act, 1961 rectifying the intimation u/s 143(1) dated 18-11-2023 for AY 2023-24 in the case of Smt Neha Agarwal (PAN AHRPA6543C). TDS credit of Rs 47,860 reflected in Form 26AS was not granted by CPC; interest u/s 234B was also miscomputed. Give credit, recompute tax and interest, and issue revised demand / refund intimation.",
+      "score_10": 10,
+      "issues": [],
+      "strengths": [
+        "no scope deflection",
+        "uses Template D (document draft), no Template C leak",
+        "hit expected phrases: Section 154, mistake apparent, Section 143(1), Form 26AS, rectified"
+      ],
+      "answer_preview": "## Draft Order under Section 154 of the Income-tax Act, 1961\n\n**OFFICE OF THE ASSESSING OFFICER, WARD [•], [CITY]**\n\n**DIN:** [•]\n**F. No.:** [Assessing Officer's File No.]\n**Date:** [Current Date]\n\n**To,**\nSmt. Neha Agarwal\n[Assessee's Address]\n**PAN:** AHRPA6543C\n**Assessment Year:** 2023-24\n\n**Sub:** Order under Section 154 of the Income-tax Act, 1961 for rectification of intimation under Section 143(1) dated 18-11-2023 for Assessment Year 2023-24 in the case of Smt. Neha Agarwal (PAN AHRPA6543C).\n\nThis order is passed under the provisions of Section 154 of the Income-tax Act, 1961 (hereina"
+    }
+  ],
+  "common_faults": [
+    "missing expected phrases"
+  ]
+}
