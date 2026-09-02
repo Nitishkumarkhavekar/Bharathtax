@@ -70,9 +70,32 @@ const TILE_DEFS: Record<string, { label: string; tone: string; get: (s: DeskStat
   demand: { label: "Demand outstanding", tone: "bg-rose-50 text-rose-700 ring-rose-200", get: (s) => inrCompact(s.demand) },
 };
 
+// The officer's designation "fit" — how much of the matter/deadline workspace
+// their role actually uses. Ministerial roles whose work is service or
+// formatting (MTS, Notice Server, Steno) own no matters, so their dashboard
+// leads with their role desk instead of a wall of zeroed tiles + empty list.
+function useDeskServes(): string | null {
+  const { session } = useAuth();
+  const [serves, setServes] = useState<string | null>(null);
+  useEffect(() => {
+    const d = session?.designation;
+    if (!d) { setServes(null); return; }
+    let alive = true;
+    api.departmentTaxonomy()
+      .then((t) => { if (alive) setServes(t.designations.find((x) => x.key === d)?.serves ?? null); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [session?.designation]);
+  return serves;
+}
+
 export default function Dashboard() {
   const nav = useNavigate();
   const { session } = useAuth();
+  const serves = useDeskServes();
+  // Service / formatting roles (MTS, Notice Server, Steno) don't carry a
+  // caseload — lead them with their desk, drop the hollow matter workspace.
+  const deskLight = serves === "minimal" || serves === "formatter";
   const ws = resolveWorkspace(session?.workspaceProfile, session?.workspaceWings);
   const myCats = ws.categories;
   const [data, setData] = useState<WsWorkload | null>(null);
@@ -154,29 +177,39 @@ export default function Dashboard() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Your Desk</h1>
           <p className="text-[13px] text-slate-500">
-            {myCats.length ? "Tailored to your function — sorted by what's due next." : "Your whole caseload, sorted by what's due next."}
+            {deskLight
+              ? "Your role's work-product — your templates and daily tasks are below."
+              : myCats.length ? "Tailored to your function — sorted by what's due next." : "Your whole caseload, sorted by what's due next."}
           </p>
         </div>
         <PageHelp id="dashboard" className="ml-auto shrink-0" />
-        <button onClick={() => { setLoading(true); load(); }} title="Refresh"
-          className="p-2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-          <RefreshCw className="size-4" />
-        </button>
+        {!deskLight && (
+          <button onClick={() => { setLoading(true); load(); }} title="Refresh"
+            className="p-2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <RefreshCw className="size-4" />
+          </button>
+        )}
       </div>
 
-      {/* Summary tiles — the set is tailored to the officer's function. */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {loading
-          ? tiles.map((k) => <Skeleton key={k} className="h-[76px] rounded-2xl" />)
-          : tiles.map((k) => {
-              const d = TILE_DEFS[k];
-              return d ? <Tile key={k} label={d.label} value={d.get(s)} tone={d.tone} /> : null;
-            })}
-      </div>
+      {/* Summary tiles — the set is tailored to the officer's function. Hidden
+          for service/formatting roles, who carry no matters (all zeroes). */}
+      {!deskLight && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {loading
+            ? tiles.map((k) => <Skeleton key={k} className="h-[76px] rounded-2xl" />)
+            : tiles.map((k) => {
+                const d = TILE_DEFS[k];
+                return d ? <Tile key={k} label={d.label} value={d.get(s)} tone={d.tone} /> : null;
+              })}
+        </div>
+      )}
 
-      {/* Your daily work — the officer's real wing activities (taxonomy-driven). */}
+      {/* Your daily work — the officer's real wing + role activities (taxonomy-driven). */}
       <WingActivities />
 
+      {/* The matter workspace — only for roles that actually carry a caseload. */}
+      {deskLight ? <NewsStrip /> : (
+      <>
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1.5">
@@ -272,6 +305,8 @@ export default function Dashboard() {
           catches overnight headlines without leaving the dashboard. Full feed
           on /news via the "View all →" link. */}
       <NewsStrip />
+      </>
+      )}
     </div>
   );
 }
