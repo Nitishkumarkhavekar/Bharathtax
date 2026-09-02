@@ -16,7 +16,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports: ["5432:5432"]
+    # Host-only publish (127.0.0.1). The app reaches Postgres by service name on
+    # the compose network; 0.0.0.0:5432 exposed the DB to the internet (same
+    # misconfiguration that got Redis hijacked on 2026-09-02). Localhost binding
+    # keeps `psql` / debugging from the host while closing external access.
+    ports: ["127.0.0.1:5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -28,9 +32,20 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports: ["6379:6379"]
+    # NO public port publish. Redis is only reachable from other containers
+    # on the Docker compose network. Publishing 0.0.0.0:6379 without auth
+    # (as we did before 2026-09-02) got the instance hijacked via SLAVEOF —
+    # an attacker planted crontab-injection payloads that would have run
+    # ndt.sh from 194.110.247.97 / 103.79.77.16 if `dir` had ever pointed
+    # at /etc/cron.d. If you need host-only access for debugging, use
+    #   `docker exec bharathtax-web-redis-1 redis-cli -a "$REDIS_PASSWORD"`.
+    # Second defence: require a password on every command (no anonymous
+    # SLAVEOF / CONFIG). REDIS_PASSWORD lives in .env.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "sh", "-c", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -42,7 +57,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-    ports: ["9000:9000", "9001:9001"]
+    # Host-only publish — reached internally as minio:9000; was internet-exposed.
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes:
       - miniodata:/data
     healthcheck:
@@ -55,7 +71,8 @@ services:
     build: ./ml-server
     restart: unless-stopped
     <<: *backend-env
-    ports: ["8001:8001"]
+    # Host-only publish — reached internally as ml-server:8001; was internet-exposed.
+    ports: ["127.0.0.1:8001:8001"]
     volumes:
       - hfcache:/root/.cache/huggingface     # cache bge-m3 / reranker weights
     # CPU on this laptop. GPU override sets a device reservation instead.
