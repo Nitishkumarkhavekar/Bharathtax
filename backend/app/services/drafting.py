@@ -2377,3 +2377,34 @@ def generate(db: Session, user: User, kind: str, inputs: dict) -> str:
     # tight cuts Vertex latency by ~30-40% on the short templates.
     max_out = 1500 if tmpl["category"] in ("Order", "Approval", "Certificate") else 1000
     return _draft_llm().complete(_SYSTEM, user_prompt, max_tokens=max_out).strip()
+
+
+def ai_compose(user: User, instruction: str, body: str = "") -> str:
+    """Free-form draft / refine for the template editor's one prompt box. Drafts
+    the document BODY when `body` is empty; otherwise revises the given body per
+    `instruction`. Returns body text only — the officer's letterhead header/
+    footer is applied separately on download."""
+    instruction = (instruction or "").strip()
+    if not instruction:
+        return body or ""
+    if (body or "").strip():
+        user_prompt = (
+            "You are revising the BODY of an income-tax notice / order.\n\n"
+            f"=== CURRENT BODY ===\n{body}\n\n"
+            f"=== CHANGE REQUESTED ===\n{instruction}\n\n"
+            "Return the COMPLETE revised body only — no preamble, no letterhead, no "
+            "explanation of what you changed. Keep everything the officer did not ask to "
+            "change. Any figure, date, name, PAN, order number or reference you do not have "
+            "must appear as `[•]`; never invent one, and never do arithmetic for a Total row."
+        )
+    else:
+        user_prompt = (
+            "Draft the BODY of the following income-tax document.\n\n"
+            f"=== INSTRUCTION ===\n{instruction}\n\n"
+            f"=== ISSUING OFFICER ===\n{_officer_block(user)}\n\n"
+            "Return the document BODY only — no letterhead header/footer (it is applied "
+            "separately from the officer's own template). Formal and statute-accurate. Any "
+            "figure, date, name, PAN or reference not given must appear as `[•]` — never "
+            "invent, and never compute a Total row yourself."
+        )
+    return _draft_llm().complete(_SYSTEM, user_prompt, max_tokens=1500).strip()
