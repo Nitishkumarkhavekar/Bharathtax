@@ -28,7 +28,7 @@ import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
-import { resolveWorkspace, wingUsesTool } from "@/lib/workspaceProfiles";
+import { resolveWorkspace, wingUsesTool, profileLabel } from "@/lib/workspaceProfiles";
 import WorkspaceProfilePrompt from "./WorkspaceProfilePrompt";
 import NotificationBell from "./NotificationBell";
 import AppTour from "./AppTour";
@@ -447,6 +447,32 @@ export default function Layout({ children }: { children: ReactNode }) {
   );
 }
 
+// A slim, dignified identity band across the very top — the pattern government
+// portals use to signal an official-grade tool. Purely presentational; reuses
+// the brand navy. The officer's function/charge shows on the left when known.
+function IdentityStrip() {
+  const { session } = useAuth();
+  const wing = profileLabel(session?.workspaceProfile);
+  return (
+    <div className="shrink-0 bg-[hsl(225,46%,15%)] text-slate-300/90 text-[11.5px] leading-none border-b border-black/20">
+      <div className="h-7 flex items-center gap-2.5 px-3 sm:px-6 lg:px-8">
+        <span className="tracking-[0.02em] whitespace-nowrap">
+          Income-Tax Department workspace <span className="text-slate-500">·</span>{" "}
+          <span className="text-white font-semibold">BharatTax</span>
+        </span>
+        {wing && (
+          <span className="hidden md:inline truncate text-slate-400">
+            <span className="text-slate-600">·</span> {wing}
+          </span>
+        )}
+        <span className="ml-auto inline-flex items-center gap-1.5 text-emerald-300/85 whitespace-nowrap">
+          <ShieldCheck className="size-[13px]" /> Secure session
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function LayoutInner({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const current = NAV.find((n) => loc.pathname.startsWith(n.to));
@@ -496,8 +522,11 @@ function LayoutInner({ children }: { children: ReactNode }) {
     // h-screen + overflow-hidden pins the shell to the viewport so the sidebar and
     // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
     // whole page grow, scrolling the body — sidebar and all).
-    <div className="h-screen flex bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <WorkspaceProfilePrompt />
+      {/* Government-grade identity band across the very top, above the shell. */}
+      <IdentityStrip />
+      <div className="flex-1 flex min-h-0 overflow-hidden">
       {/* Desktop sidebar — collapses to a 4rem icon rail when the header
           toggle is clicked. The width is animated so the transition feels
           intentional. */}
@@ -574,6 +603,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
             {children}
           </div>
         </main>
+      </div>
       </div>
       <AppTour open={tourOpen} onClose={closeTour} />
     </div>
