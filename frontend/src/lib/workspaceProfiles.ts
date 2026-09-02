@@ -18,7 +18,7 @@ export const PROFILES: ProfileConfig[] = [
   { key: "officer", label: "Assessing Officer", categories: ["officer", "recovery"],
     tools: ["/drafting", "/calculators", "/templates", "/rulings"], calcTab: "interest", templateGroup: "Assessment & notices" },
   { key: "cita", label: "CIT(A) / NFAC", categories: ["cita"],
-    tools: ["/drafting", "/rulings", "/templates"], calcTab: "interest", templateGroup: "Assessment & notices" },
+    tools: ["/drafting", "/rulings", "/templates"], calcTab: "interest", templateGroup: "Appeals" },
   { key: "drp", label: "DRP", categories: ["drp"],
     tools: ["/drafting", "/calculators", "/templates", "/rulings"], calcTab: "alp", templateGroup: "DRP" },
   { key: "tp", label: "Transfer Pricing (TPO)", categories: ["tp"],
@@ -30,7 +30,7 @@ export const PROFILES: ProfileConfig[] = [
   { key: "recovery", label: "Recovery / TRO", categories: ["recovery"],
     tools: ["/drafting", "/calculators", "/templates"], calcTab: "recovery", templateGroup: "Recovery" },
   { key: "tds", label: "TDS / Exemptions", categories: ["tds"],
-    tools: ["/drafting", "/calculators", "/templates"], calcTab: "tds", templateGroup: "Exemptions" },
+    tools: ["/drafting", "/calculators", "/templates"], calcTab: "tds", templateGroup: "TDS" },
   { key: "ca", label: "CA / Advocate", categories: ["ca"],
     tools: ["/drafting", "/calculators", "/templates", "/rulings", "/reconcile"], calcTab: "interest", templateGroup: "Assessee replies" },
   // --- wings added in the taxonomy (Phase 0), given first-class config here (Phase 3) ---
@@ -121,6 +121,7 @@ const WING_DRAFTING_TABS: Record<string, ("assessments" | "appeals" | "notices")
   exemptions: ["notices"],
   recovery: ["notices"],
   ca: ["notices"],
+  hq: ["notices"],          // Headquarters/Admin: no assessment/appeal drafting
 };
 
 /** The Drafting-hub tabs this wing may see, or null = no restriction (all). */
