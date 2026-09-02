@@ -315,10 +315,15 @@ function TemplatePicker({ templates, onPick }: {
   // else sits behind one "other functions" expander (never hidden — just not
   // dumped on them). No profile → no division (all groups are "own").
   const { session } = useAuth();
-  const ownSet = useMemo(
-    () => resolveDraftingGroups(session?.workspaceProfile, session?.workspaceWings),
-    [session?.workspaceProfile, session?.workspaceWings],
-  );
+  const ownSet = useMemo(() => {
+    const s = resolveDraftingGroups(session?.workspaceProfile, session?.workspaceWings);
+    // A ministerial / inspectorate role also owns the group(s) its own
+    // work-product lands in — so a Tax Assistant, Inspector, Steno or Notice
+    // Server sees THEIR templates expanded, even off their wing's groups.
+    const d = session?.designation;
+    if (d) templates.forEach((t) => { if (t.designations?.includes(d)) s.add(t.group || "Other"); });
+    return s;
+  }, [session?.workspaceProfile, session?.workspaceWings, session?.designation, templates]);
   const scoped = ownSet.size > 0;
   const ownGroups = scoped ? groupNames.filter((g) => ownSet.has(g)) : groupNames;
   const otherGroups = scoped ? groupNames.filter((g) => !ownSet.has(g)) : [];

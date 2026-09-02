@@ -1026,6 +1026,7 @@ export interface DraftTemplate {
   section: string;
   group?: string;
   wings?: string[];
+  designations?: string[];   // role keys this template belongs to (ministerial/inspectorate)
   fields: DraftField[];
 }
 export interface DraftReviewEvent {
@@ -1689,6 +1690,7 @@ export const api = {
   rulingsBrowse: (opts: {
     bench?: string | null;
     judge?: string | null;
+    sections?: string[] | null;  // keep only judgments citing one of these IT-Act sections
     date_from?: string | null;   // YYYY-MM-DD
     date_to?: string | null;     // YYYY-MM-DD
     page?: number;
@@ -1697,6 +1699,7 @@ export const api = {
     const qs = new URLSearchParams();
     if (opts.bench && opts.bench !== "All") qs.set("bench", opts.bench);
     if (opts.judge) qs.set("judge", opts.judge);
+    if (opts.sections?.length) qs.set("sections", opts.sections.join(","));
     if (opts.date_from) qs.set("date_from", opts.date_from);
     if (opts.date_to) qs.set("date_to", opts.date_to);
     qs.set("page", String(opts.page ?? 1));
