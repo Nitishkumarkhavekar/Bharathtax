@@ -38,9 +38,9 @@ export default {
       },
       borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
       fontFamily: {
-        sans: ["Inter Variable", "Inter", "Segoe UI", "system-ui", "sans-serif"],
-        // Display/hero serif — use via `font-serif`. Restrained gravitas for a tax-law product.
-        serif: ["Newsreader Variable", "Newsreader", "Georgia", "Cambria", "serif"],
+        sans: ["Public Sans Variable", "Public Sans", "Inter", "Segoe UI", "system-ui", "sans-serif"],
+        // Display/heading serif — use via `font-serif`. Institutional gravitas for a tax-law product.
+        serif: ["Source Serif 4 Variable", "Source Serif 4", "Georgia", "Cambria", "serif"],
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },
