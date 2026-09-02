@@ -28,7 +28,7 @@ import { api, SeatUsage } from "../api";
 import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
-import { resolveWorkspace } from "@/lib/workspaceProfiles";
+import { resolveWorkspace, wingUsesTool } from "@/lib/workspaceProfiles";
 import WorkspaceProfilePrompt from "./WorkspaceProfilePrompt";
 import NotificationBell from "./NotificationBell";
 import AppTour from "./AppTour";
@@ -108,11 +108,17 @@ function SidebarBody({
   const isAdmin = !!session && ["super_admin", "wing_admin"].includes(session.role);
   const feats = session?.features ?? null; // null = all modules
   const hasChat = isAdmin || !feats || feats.includes("chat");
+  // Wing-specific tools are hidden for wings that don't use them (e.g. Reconcile
+  // shows only for Investigation / I&CI / Central / CA). Universal tools
+  // (Calculators, Library, Watchlists) always show.
+  const WING_SPECIFIC_NAV = new Set(["/reconcile"]);
   const nav = NAV.filter(
     (n) =>
       n.to !== "/profile" && // account lives in the footer card, not the nav
       (!n.roles || (session && n.roles.includes(session.role))) &&
-      (!n.feature || isAdmin || !feats || feats.includes(n.feature)),
+      (!n.feature || isAdmin || !feats || feats.includes(n.feature)) &&
+      (!WING_SPECIFIC_NAV.has(n.to) ||
+        wingUsesTool(n.to, session?.workspaceProfile, session?.workspaceWings)),
   );
   // Two clean, always-visible sections: a PRIMARY list (the officer's most-used
   // pages — wing-ordered when they've picked a function) and a TOOLS list. No

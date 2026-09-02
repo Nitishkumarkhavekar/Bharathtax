@@ -7,6 +7,7 @@ import Assessments from "./Assessments";
 import Appeals from "./Appeals";
 import DraftingPage from "./Drafting";
 import PageHelp from "@/components/PageHelp";
+import { resolveDraftingTabs } from "@/lib/workspaceProfiles";
 
 // The unified "Drafting" hub. Every kind of drafting an officer does —
 // assessment orders, appellate orders, and notices — lives here under one item,
@@ -22,14 +23,16 @@ const TABS: Tab[] = [
   { key: "notices", label: "Notices & orders", icon: ScrollText },
 ];
 
-// The tab an officer lands on by default — their own function's drafting.
-function defaultTab(profile: string | null | undefined, wings: string[] | null | undefined, allowAppeals: boolean): TabKey {
+// The tab an officer lands on by default — their own function's drafting,
+// chosen from the tabs actually visible to them.
+function defaultTab(profile: string | null | undefined, wings: string[] | null | undefined,
+                    allowAsst: boolean, allowApp: boolean): TabKey {
   const fns = new Set([profile ?? "", ...(wings ?? [])]);
-  if (allowAppeals) {
-    if (fns.has("cita") || fns.has("drp")) return "appeals";
-    if (fns.has("officer")) return "assessments";
-  }
-  return allowAppeals ? "assessments" : "notices";
+  if (allowApp && (fns.has("cita") || fns.has("drp"))) return "appeals";
+  if (allowAsst && (fns.has("officer") || fns.has("central") || fns.has("inttax") || fns.has("audit"))) return "assessments";
+  if (allowAsst) return "assessments";
+  if (allowApp) return "appeals";
+  return "notices";
 }
 
 export default function DraftingHub() {
@@ -39,9 +42,14 @@ export default function DraftingHub() {
 
   const feats = session?.features ?? null; // null = all modules allotted
   const allowAppeals = !feats || feats.includes("appeals");
-  const visible = TABS.filter((t) => !t.feature || allowAppeals);
+  // Two gates: (1) licensing feature, (2) the wing actually uses this engine.
+  const wingTabs = resolveDraftingTabs(session?.workspaceProfile, session?.workspaceWings);
+  const visible = TABS.filter((t) =>
+    (!t.feature || allowAppeals) && (!wingTabs || wingTabs.has(t.key)));
 
-  const fallback = defaultTab(session?.workspaceProfile, session?.workspaceWings, allowAppeals);
+  const allowAsst = visible.some((t) => t.key === "assessments");
+  const allowApp = visible.some((t) => t.key === "appeals");
+  const fallback = defaultTab(session?.workspaceProfile, session?.workspaceWings, allowAsst, allowApp);
   const active = (visible.find((t) => t.key === tab)?.key ?? fallback) as TabKey;
 
   // Normalise the URL so it always names a valid, allowed tab.

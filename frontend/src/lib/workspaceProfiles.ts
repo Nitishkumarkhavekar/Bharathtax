@@ -103,6 +103,55 @@ export function resolveCalcTabs(
   return WING_CALC_TABS[profile] ?? [];
 }
 
+// Which of the three Drafting-hub ENGINES each wing actually uses. Unlike the
+// notice-template scoping (soft), this is HARD: a wing that doesn't frame
+// assessment/appeal orders should not see those tabs at all. "Notices & orders"
+// is available to everyone (it internally ranks each wing's own notices).
+const WING_DRAFTING_TABS: Record<string, ("assessments" | "appeals" | "notices")[]> = {
+  officer: ["assessments", "notices"],
+  central: ["assessments", "notices"],
+  inttax: ["assessments", "notices"],
+  audit: ["assessments", "notices"],       // audit reviews assessments
+  cita: ["appeals", "notices"],
+  drp: ["appeals", "notices"],
+  tp: ["notices"],
+  investigation: ["notices"],
+  ici: ["notices"],
+  tds: ["notices"],
+  exemptions: ["notices"],
+  recovery: ["notices"],
+  ca: ["notices"],
+};
+
+/** The Drafting-hub tabs this wing may see, or null = no restriction (all). */
+export function resolveDraftingTabs(
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): Set<string> | null {
+  if (!profile || profile === "all") return null;          // show every engine
+  if (profile === "custom") {
+    const s = new Set<string>();
+    let any = false;
+    for (const k of wings ?? []) { const t = WING_DRAFTING_TABS[k]; if (t) { any = true; t.forEach((x) => s.add(x)); } }
+    return any ? s : null;
+  }
+  const t = WING_DRAFTING_TABS[profile];
+  return t ? new Set(t) : null;                            // unknown wing → show all (safe)
+}
+
+/** Whether a nav tool (e.g. "/reconcile") belongs to this wing's desk.
+ *  Core tools (dashboard/calendar/drafting/rulings/library/history/profile)
+ *  are always shown; only "scopable" ones are gated. */
+export function wingUsesTool(
+  path: string,
+  profile: string | null | undefined,
+  wings: string[] | null | undefined,
+): boolean {
+  if (!profile || profile === "all") return true;          // "show everything" mode
+  const rw = resolveWorkspace(profile, wings);
+  return !rw.scoped || rw.tools.includes(path);
+}
+
 /** The drafting groups this officer leads with (empty = show everything). */
 export function resolveDraftingGroups(
   profile: string | null | undefined,
