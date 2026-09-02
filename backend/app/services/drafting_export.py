@@ -103,18 +103,11 @@ def _flush_table(doc, rows_raw: list[str]) -> None:
     doc.add_paragraph()
 
 
-def to_docx(title: str, content: str) -> bytes:
-    doc = Document()
-    style = doc.styles["Normal"]
-    style.font.name = _BODY_FONT
-    style.font.size = Pt(12)
-    style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
-    style.paragraph_format.line_spacing = 1.5
-    style.paragraph_format.space_after = Pt(6)
-    for section in doc.sections:
-        section.top_margin = section.bottom_margin = Cm(2.5)
-        section.left_margin = section.right_margin = Cm(2.5)
-
+def render_content(doc, content: str) -> None:
+    """Render markdown-ish `content` (**bold**, #headings, pipe-tables) as
+    paragraphs/tables appended to `doc`. Style-neutral — it inherits whatever
+    Normal style the document already has, so it works on both a fresh export
+    and an uploaded letterhead template (see template_docx.fill_letterhead_docx)."""
     table_buf: list[str] = []
     for raw in (content or "").splitlines():
         line = raw.rstrip()
@@ -140,6 +133,21 @@ def to_docx(title: str, content: str) -> bytes:
             _add_runs(p, line)
     if table_buf:
         _flush_table(doc, table_buf)
+
+
+def to_docx(title: str, content: str) -> bytes:
+    doc = Document()
+    style = doc.styles["Normal"]
+    style.font.name = _BODY_FONT
+    style.font.size = Pt(12)
+    style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
+    style.paragraph_format.line_spacing = 1.5
+    style.paragraph_format.space_after = Pt(6)
+    for section in doc.sections:
+        section.top_margin = section.bottom_margin = Cm(2.5)
+        section.left_margin = section.right_margin = Cm(2.5)
+
+    render_content(doc, content)
 
     buf = io.BytesIO()
     doc.save(buf)

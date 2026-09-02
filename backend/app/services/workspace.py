@@ -420,6 +420,31 @@ def create_template(db: Session, user_id: int, name: str, body: str,
     return t
 
 
+def get_template(db: Session, template_id: int, user_id: int) -> WorkspaceTemplate | None:
+    return db.scalar(select(WorkspaceTemplate).where(
+        WorkspaceTemplate.id == template_id, WorkspaceTemplate.user_id == user_id))
+
+
+def create_file_template(db: Session, user_id: int, *, name: str, body: str,
+                         category: str, filename: str, content_type: str, raw: bytes,
+                         has_letterhead: bool) -> WorkspaceTemplate:
+    """Store an uploaded .docx template: the original file goes to object
+    storage, the extracted text becomes the editable `body`."""
+    from app.services import storage
+    t = WorkspaceTemplate(user_id=user_id, name=name, body=body, category=category,
+                          kind="file", filename=filename, content_type=content_type,
+                          has_letterhead=has_letterhead)
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    key = f"templates/user:{user_id}/tpl:{t.id}/{filename}"
+    storage.put_bytes(key, raw, content_type)
+    t.storage_key = key
+    db.commit()
+    db.refresh(t)
+    return t
+
+
 def update_template(db: Session, template_id: int, user_id: int, **fields) -> WorkspaceTemplate | None:
     t = db.scalar(select(WorkspaceTemplate).where(
         WorkspaceTemplate.id == template_id, WorkspaceTemplate.user_id == user_id))
@@ -438,8 +463,15 @@ def delete_template(db: Session, template_id: int, user_id: int) -> bool:
         WorkspaceTemplate.id == template_id, WorkspaceTemplate.user_id == user_id))
     if not t:
         return False
+    key = getattr(t, "storage_key", None)
     db.delete(t)
     db.commit()
+    if key:
+        try:
+            from app.services import storage
+            storage.remove_object(key)
+        except Exception:
+            pass   # orphaned object is harmless; row is gone
     return True
 
 

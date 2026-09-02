@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { FileText, Plus, Trash2, Copy, LayoutTemplate, X, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FileText, Plus, Trash2, Copy, LayoutTemplate, X, Search, Upload, Download, Stamp, Loader2 } from "lucide-react";
 import { api, WsTemplate, WsLibraryTemplate } from "../api";
 import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ export default function Templates() {
   const [loading, setLoading] = useState(true);
   const [library, setLibrary] = useState<WsLibraryTemplate[]>([]);
   const [showLib, setShowLib] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   const [libSide, setLibSide] = useState("");
   const [libQuery, setLibQuery] = useState("");
   // Open the library on the user's own wing group (they can clear to see all).
@@ -70,7 +72,8 @@ export default function Templates() {
   const edit = (t: WsTemplate) => { setSelId(t.id); setDraft({ name: t.name, category: t.category, body: t.body }); };
 
   const save = async () => {
-    if (!draft.name.trim() || !draft.body.trim()) { toast.error("Name and body are required."); return; }
+    // A file (letterhead) template may legitimately have an empty body.
+    if (!draft.name.trim() || (!isFile && !draft.body.trim())) { toast.error("Name and body are required."); return; }
     try {
       if (selId) await api.wsUpdateTemplate(selId, draft);
       else { const c = await api.wsCreateTemplate(draft); setSelId(c.id); }
@@ -87,6 +90,34 @@ export default function Templates() {
     try { await navigator.clipboard.writeText(body); toast.success("Copied to clipboard."); }
     catch { toast.error("Copy failed."); }
   };
+  // Upload the officer's own .docx (their office letterhead) as a template.
+  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";   // allow re-uploading the same file
+    if (!f) return;
+    if (!f.name.toLowerCase().endsWith(".docx")) { toast.error("Please choose a Word .docx file."); return; }
+    setUploading(true);
+    try {
+      const t = await api.wsUploadTemplate(f);
+      await load();
+      setSelId(t.id);
+      setDraft({ name: t.name, category: t.category, body: t.body });
+      toast.success(t.has_letterhead
+        ? "Uploaded — your letterhead (header & footer) will be preserved on download."
+        : "Template uploaded.");
+    } catch (e: any) { toast.error(e?.message || "Upload failed."); }
+    finally { setUploading(false); }
+  };
+  // Download a template as Word — a letterhead template keeps its header/footer.
+  const downloadWord = async () => {
+    if (!selId) return;
+    try {
+      await api.wsRenderTemplateDocx(selId, draft.body, `${(draft.name || "template").trim()}.docx`);
+      toast.success("Downloaded.");
+    } catch (e: any) { toast.error(e?.message || "Download failed."); }
+  };
+  const sel = items.find((x) => x.id === selId);
+  const isFile = sel?.kind === "file";
 
   return (
     <div className="space-y-5">
@@ -101,6 +132,11 @@ export default function Templates() {
         <PageHelp id="templates" className="ml-auto shrink-0" />
         <Button variant="outline" onClick={openLibrary}>
           <LayoutTemplate className="size-4 mr-1" /> Library
+        </Button>
+        <input ref={fileRef} type="file" accept=".docx" className="hidden" onChange={onUpload} />
+        <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}
+          title="Upload your own Word template (keeps your office letterhead)">
+          {uploading ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Upload className="size-4 mr-1" />} Upload .docx
         </Button>
         <Button onClick={startNew}><Plus className="size-4 mr-1" /> New</Button>
       </div>
@@ -118,6 +154,12 @@ export default function Templates() {
                   selId === t.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-slate-100")}>
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-slate-800">{t.name}</span>
+                  {t.kind === "file" && (
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[9.5px] font-bold uppercase text-primary bg-primary/10 rounded px-1.5 py-0.5"
+                      title={t.has_letterhead ? "Your uploaded letterhead (.docx)" : "Uploaded .docx"}>
+                      <Stamp className="size-2.5" />{t.has_letterhead ? "Letterhead" : "Docx"}
+                    </span>
+                  )}
                   <span className="shrink-0 text-[10px] font-semibold uppercase text-slate-400">{t.category}</span>
                 </div>
               </button>
@@ -133,9 +175,21 @@ export default function Templates() {
               {CATS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
             </select>
           </div>
+          {isFile && (
+            <div className="flex items-start gap-2 rounded-lg bg-primary/[0.05] ring-1 ring-primary/15 px-3 py-2 text-[12px] text-primary">
+              <Stamp className="size-4 mt-0.5 shrink-0" />
+              <span>
+                {sel?.has_letterhead
+                  ? <>Your <b>letterhead (header &amp; footer)</b> from <b>{sel?.filename}</b> is kept intact. Edit the body below, then <b>Download with letterhead</b> to get a Word file on your office letterhead.</>
+                  : <>Uploaded from <b>{sel?.filename}</b>. Edit the body below, then download as Word.</>}
+              </span>
+            </div>
+          )}
           <textarea
             value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-            placeholder="Template text… use {{PAN}}, {{AY}}, {{ASSESSEE}}, {{APPEAL_NO}} as placeholders." rows={14}
+            placeholder={isFile
+              ? "The body of your uploaded document. Edit it — your header/footer stays untouched."
+              : "Template text… use {{PAN}}, {{AY}}, {{ASSESSEE}}, {{APPEAL_NO}} as placeholders."} rows={14}
             className="w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] text-slate-800 outline-none focus:ring-2 focus:ring-primary/20"
           />
           <div className="flex items-center gap-2">
@@ -144,6 +198,12 @@ export default function Templates() {
               {draft.body.trim() && (
                 <Button variant="outline" className="h-9" onClick={() => copy(draft.body)}>
                   <Copy className="size-4 mr-1" /> Copy
+                </Button>
+              )}
+              {selId && (
+                <Button variant="outline" className="h-9" onClick={downloadWord}
+                  title={isFile ? "Word file on your letterhead" : "Download as Word"}>
+                  <Download className="size-4 mr-1" /> {isFile ? "Download with letterhead" : "Word"}
                 </Button>
               )}
               {selId && (
