@@ -14,6 +14,9 @@ app; no wing gate.
 """
 from __future__ import annotations
 
+import logging
+import os
+import threading
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Literal
 
@@ -28,6 +31,67 @@ from app.models.news import NewsItem, NewsSource
 
 router = APIRouter(prefix="/news", tags=["news"])
 public_router = APIRouter(prefix="/news", tags=["news-public"])
+
+_news_log = logging.getLogger("news.autopoll")
+
+# --- auto-poll safety net -------------------------------------------------
+# Celery beat is supposed to run poll_news_feeds every NEWS_POLL_SECONDS
+# (default 1800 = 30 min). But in production the beat container has been
+# seen to stop or fall behind after a deploy, and users end up staring at
+# stale headlines. This safety net triggers a poll from the api process
+# itself if the newest item is older than NEWS_MAX_STALENESS_SECONDS
+# (default matches the beat cadence so a working beat almost never
+# double-polls). Guarded by a module-level lock + a "last poll started"
+# timestamp so a burst of concurrent /news requests can't fire N polls.
+_NEWS_MAX_STALENESS_S = int(os.getenv("NEWS_MAX_STALENESS_SECONDS", "1800"))
+_NEWS_POLL_LOCK = threading.Lock()
+_last_autopoll_started_at: datetime | None = None
+
+
+def _maybe_autopoll(db: Session) -> None:
+    """If the newest ingested item is older than the staleness threshold,
+    fire a background poll (fire-and-forget). Safe to call on every /news
+    request — the lock + timestamp gate ensures at most one poll runs at
+    a time and no more than one per staleness window."""
+    global _last_autopoll_started_at
+    latest = db.scalar(select(func.max(NewsItem.first_seen_at)))
+    now = datetime.now(timezone.utc)
+    # Consider "fresh" if any item was ingested within the staleness window.
+    if latest is not None:
+        # `first_seen_at` is stored as timezone-aware UTC per the ingest path
+        # (news_ingest stamps datetime.now(timezone.utc)); if a legacy row is
+        # naive, treat it as UTC.
+        latest_utc = latest if latest.tzinfo else latest.replace(tzinfo=timezone.utc)
+        if (now - latest_utc).total_seconds() < _NEWS_MAX_STALENESS_S:
+            return
+    # Don't fire another poll if we already kicked one off recently.
+    if _last_autopoll_started_at is not None:
+        since = (now - _last_autopoll_started_at).total_seconds()
+        if since < _NEWS_MAX_STALENESS_S / 2:
+            return
+    # Try to acquire the lock — if another thread is already polling, skip.
+    if not _NEWS_POLL_LOCK.acquire(blocking=False):
+        return
+    _last_autopoll_started_at = now
+
+    def _poll_and_release():
+        try:
+            from app.services import news_ingest
+            r = news_ingest.poll_all()
+            try:
+                r["image_hydration"] = news_ingest.hydrate_images(limit=40)
+            except Exception as e:  # noqa: BLE001
+                _news_log.warning("hydrate_images failed: %s", e)
+            _news_log.info("auto-poll finished: %s", r)
+        except Exception:  # noqa: BLE001
+            _news_log.exception("auto-poll crashed")
+        finally:
+            _NEWS_POLL_LOCK.release()
+
+    t = threading.Thread(target=_poll_and_release, name="news-autopoll", daemon=True)
+    t.start()
+    _news_log.info("auto-poll started (latest was %s, threshold %ss)",
+                   latest, _NEWS_MAX_STALENESS_S)
 
 
 class NewsItemOut(BaseModel):
@@ -79,6 +143,9 @@ def list_news(
     restricts to a single source group. Date filtering: pass either
     `since_days` (shortcut for Today/7d/30d chips) OR an explicit
     `from_date` / `to_date` range."""
+    # Safety-net: if the feed is stale (beat down / behind), kick off a
+    # background poll so the next request sees fresh headlines.
+    _maybe_autopoll(db)
     filters = []
     if q:
         needle = f"%{q.lower()}%"
@@ -154,6 +221,9 @@ def public_latest_news(
     """Unauthenticated latest-N headlines for the marketing landing page.
     Same shape as `GET /news` — but only the newest items, no filters,
     hard-capped at 20 so this can't be scraped as a free news API."""
+    # Same safety-net as the authed list — public landing visitors are
+    # often the first to notice the feed is stale.
+    _maybe_autopoll(db)
     items = list(db.scalars(
         select(NewsItem).order_by(desc(NewsItem.published_at)).limit(limit)
     ))
