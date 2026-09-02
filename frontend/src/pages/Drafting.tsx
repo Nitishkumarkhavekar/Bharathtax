@@ -3,9 +3,9 @@ import {
   FileText, Plus, Loader2, Sparkles, Copy, Check, RefreshCw, Save,
   Trash2, ArrowLeft, ScrollText, Download, Search, FileSignature,
   Gavel, Scale as ScaleIcon, ChevronRight, ChevronDown, ShieldCheck, Clock,
-  Send, Users, CheckCircle2, CornerUpLeft, History, X, Lock, Inbox,
+  Send, Users, CheckCircle2, CornerUpLeft, History, X, Lock, Inbox, Stamp,
 } from "lucide-react";
-import { api, DraftDoc, DraftListItem, DraftTemplate, Reviewer, ReviewInboxItem, RequiredApproval } from "../api";
+import { api, DraftDoc, DraftListItem, DraftTemplate, Reviewer, ReviewInboxItem, RequiredApproval, WsTemplate } from "../api";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -573,6 +573,9 @@ function DraftEditor({
   const [busy, setBusy] = useState<"save" | "regen" | "send" | "approve" | "return" | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSend, setShowSend] = useState(false);
+  const [lhBusy, setLhBusy] = useState(false);
+  const [lhOpen, setLhOpen] = useState(false);
+  const [lhList, setLhList] = useState<WsTemplate[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [remarks, setRemarks] = useState("");
   const { confirm, dialog } = useConfirm();
@@ -643,6 +646,30 @@ function DraftEditor({
       if (m !== "cancelled") toast.success("Saved to your computer.");
     } catch (e: any) { toast.error(e?.message ?? "Word export failed"); }
   }
+  // Download this draft rendered onto one of the officer's uploaded letterheads
+  // (Templates → Upload .docx). Header/footer preserved; body = this draft.
+  async function letterheadClick() {
+    setLhBusy(true);
+    try {
+      if (dirty && canEdit) await save();
+      const lh = (await api.wsTemplates()).filter((t) => t.kind === "file");
+      if (lh.length === 0) {
+        toast.error("Upload your office letterhead on the Templates page first (Upload .docx).");
+        return;
+      }
+      if (lh.length === 1) { await renderOnLetterhead(lh[0]); return; }
+      setLhList(lh); setLhOpen(true);
+    } catch (e: any) { toast.error(e?.message ?? "Couldn't load your letterheads"); }
+    finally { setLhBusy(false); }
+  }
+  async function renderOnLetterhead(t: WsTemplate) {
+    setLhOpen(false);
+    try {
+      const name = (draft.title || tmpl?.label || "draft").replace(/[^\w.-]+/g, "_");
+      const m = await api.wsRenderTemplateDocx(t.id, content, `${name}.docx`);
+      if (m !== "cancelled") toast.success(`Saved on ${t.name}.`);
+    } catch (e: any) { toast.error(e?.message ?? "Letterhead export failed"); }
+  }
   async function del() {
     if (!(await confirm({
       title: "Delete this draft?",
@@ -691,6 +718,26 @@ function DraftEditor({
             {copied ? "Copied" : "Copy"}
           </TbBtn>
           <TbBtn onClick={downloadWord} disabled={!!busy} icon={<Download className="size-3.5" />}>Word</TbBtn>
+          <div className="relative">
+            <TbBtn onClick={letterheadClick} disabled={!!busy || lhBusy}
+              icon={lhBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Stamp className="size-3.5" />}>
+              Letterhead
+            </TbBtn>
+            {lhOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setLhOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 w-60 rounded-lg bg-white ring-1 ring-slate-200 shadow-lg p-1">
+                  <div className="px-2 py-1 text-[10.5px] uppercase tracking-wide text-slate-400 font-semibold">Download on letterhead</div>
+                  {lhList.map((t) => (
+                    <button key={t.id} onClick={() => renderOnLetterhead(t)}
+                      className="w-full text-left px-2 py-1.5 rounded-md text-[13px] text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                      <Stamp className="size-3.5 text-primary shrink-0" /><span className="truncate">{t.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           {/* Owner-only editing actions — hidden while out for review or for the reviewer */}
           {isOwner && !outForReview && (
             <>
