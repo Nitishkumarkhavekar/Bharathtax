@@ -1,7 +1,8 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { ReactNode, Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import Layout from "./components/Layout";
+import WorkspaceProfilePrompt from "./components/WorkspaceProfilePrompt";
 import { landingPath, useAuth } from "./auth";
 
 // Every route is code-split so a logged-out visitor no longer downloads the
@@ -90,11 +91,22 @@ function AdminGuard({ children, superOnly }: { children: ReactNode; superOnly?: 
   return <>{children}</>;
 }
 
+// The first-run set-up wizard is app-global, not layout-scoped: a freshly
+// registered officer lands on /ask, which renders WITHOUT the Layout shell,
+// so mounting the wizard here (a body portal) is what makes it appear on the
+// very first screen. When it completes we send the officer to their dashboard
+// — "dashboard set accordingly" — where the welcome tour then runs.
+function GlobalOnboarding() {
+  const navigate = useNavigate();
+  return <WorkspaceProfilePrompt onComplete={() => navigate("/dashboard")} />;
+}
+
 export default function App() {
   const { session } = useAuth();
   const landing = landingPath(session?.role);
   return (
     <Suspense fallback={<PageLoader />}>
+    <GlobalOnboarding />
     <Routes>
       {/* Public landing page — the front door for logged-out visitors;
           signed-in users skip straight to their role's home. */}

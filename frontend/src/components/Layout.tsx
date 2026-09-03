@@ -31,7 +31,6 @@ import { useAuth } from "../auth";
 import { cn } from "@/lib/utils";
 import { SidebarSlotProvider, useSidebarSlotContent } from "./SidebarSlot";
 import { resolveWorkspace, wingUsesTool, profileLabel } from "@/lib/workspaceProfiles";
-import WorkspaceProfilePrompt from "./WorkspaceProfilePrompt";
 import NotificationBell from "./NotificationBell";
 import AppTour from "./AppTour";
 
@@ -565,7 +564,6 @@ function LayoutInner({ children }: { children: ReactNode }) {
     // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
     // whole page grow, scrolling the body — sidebar and all).
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <WorkspaceProfilePrompt onComplete={startTour} />
       {/* Government-grade identity band across the very top, above the shell. */}
       <IdentityStrip />
       <div className="flex-1 flex min-h-0 overflow-hidden">
