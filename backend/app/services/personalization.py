@@ -189,7 +189,10 @@ def drafting_persona(db: Session, user: User) -> str:
     if (user.designation or "").strip() or posting:
         lines.append(f"Drafting officer: {who}" + (f", {posting}" if posting else "") + ".")
     if s and (s.custom_instructions or "").strip():
-        lines.append(f"Their drafting instructions: {s.custom_instructions.strip()}")
+        # Sanitise stored custom-instructions here too (build_context already
+        # does for chat) — otherwise it's a persistent injection vector into
+        # every draft this officer generates.
+        lines.append(f"Their drafting instructions: {_pg.sanitize_untrusted(s.custom_instructions.strip())}")
     # House style, minus the officer-standpoint hint — the drafters are already
     # written in the AO's voice, so that hint would be redundant noise here.
     hints = [h for h in _style_hints(s.style if s else {})

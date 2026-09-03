@@ -39,6 +39,7 @@ from app.models.assessment import (
 from app.models.org import User
 from app.services import capture
 from app.services import personalization
+from app.services import prompt_guard as _pg
 from app.services import tokens
 
 # Reuse the appeals engine's low-level building blocks so the two drafters
@@ -103,16 +104,23 @@ def _sys(persona: str = "") -> str:
     return (persona + "\n\n" + ASSESSMENT_SYSTEM) if persona else ASSESSMENT_SYSTEM
 
 
+def _sec(persona: str = "") -> str:
+    # The instruction-hierarchy note fronts every assessment LLM call, so
+    # document text inside <<UNTRUSTED_DOCUMENT>> fences is read as data, never
+    # as commands. Applied here (not in _sys) to keep _sys byte-for-byte.
+    return _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n" + _sys(persona)
+
+
 def _complete(user: str, *, max_tokens: int = 1100, persona: str = "") -> str:
     client = ad._appeal_llm()
     _LAST.client = client
-    return client.complete(_sys(persona), user, max_tokens=max_tokens)
+    return client.complete(_sec(persona), user, max_tokens=max_tokens)
 
 
 def _complete_json(user: str, *, max_tokens: int = 3000, persona: str = "") -> dict:
     client = ad._appeal_llm()
     _LAST.client = client
-    sys = _sys(persona) + "\n\nRespond with ONLY a single valid JSON object, no prose, no code fences."
+    sys = _sec(persona) + "\n\nRespond with ONLY a single valid JSON object, no prose, no code fences."
     if isinstance(client, (ad.GeminiLLM, ad.FallbackLLM)):
         txt = client.complete(sys, user, max_tokens=max_tokens, json_mode=True)
     else:
@@ -201,12 +209,15 @@ def _docs_text(case: AssessmentCase, max_chars: int | None = None) -> str:
     per_doc = 16000 if ad._BIG_CTX else 6000
     parts = []
     for d in case.documents:
-        body = (d.text or "").strip()
+        # Uploaded-document text (incl. OCR) is the widest untrusted surface —
+        # sanitise it so an injected "instruction" in a document can't steer the
+        # order; the fence below marks the whole block as data.
+        body = _pg.sanitize_untrusted((d.text or "").strip())
         if len(body) > per_doc:
             body = body[:per_doc] + "\n...[truncated]..."
         parts.append(f"===== {d.filename} (category: {d.category}) =====\n{body}")
-    blob = "\n\n".join(parts)
-    return ad._trim(blob, cap)
+    blob = ad._trim("\n\n".join(parts), cap)
+    return _pg.wrap_untrusted(blob, kind="document") if blob.strip() else blob
 
 
 def _raw_cat(case: AssessmentCase, *cats) -> str:
@@ -214,8 +225,9 @@ def _raw_cat(case: AssessmentCase, *cats) -> str:
     for c in cats:
         for d in case.documents:
             if d.category == c and (d.text or "").strip():
-                out.append(d.text)
-    return "\n\n".join(out)
+                out.append(_pg.sanitize_untrusted(d.text))
+    joined = "\n\n".join(out)
+    return _pg.wrap_untrusted(joined, kind="document") if joined.strip() else joined
 
 
 # --------------------------------------------------------- issue detection
@@ -365,6 +377,9 @@ def _build_intro(understanding: dict, persona: str = "") -> str:
         "142(1) (and 148 where applicable) with dates; and that the assessee attended / filed replies "
         "which were examined and placed on record. Use ONLY the particulars below; write [not on "
         "record] for anything missing. Formal assessment-order prose, no headings.\n\n"
+        f"ASSESSEE: {understanding.get('assessee') or '[not on record]'}\n"
+        f"PAN: {understanding.get('pan') or '[not on record]'}\n"
+        f"ASSESSMENT YEAR: {understanding.get('ay') or '[not on record]'}\n"
         f"RETURNED INCOME: {understanding.get('return_income') or '[not on record]'}\n"
         f"FILING DATE: {understanding.get('filing_date') or '[not on record]'}\n"
         f"SELECTION / REOPENING REASON: {understanding.get('selection_reason') or '[not on record]'}\n"
@@ -536,6 +551,19 @@ def run_case(run_id: int) -> None:
         progress("Reading the file: return, notices, information")
         understanding = _extract_understanding(case, docs_text, persona)
         _bill("assessment.extract", _last_meta())
+        # Authoritative header particulars from the case record — the officer
+        # entered these when opening the case, so the order header uses them
+        # rather than leaving PAN / AY / assessee as [not on record] when the
+        # documents don't restate them verbatim.
+        if case.pan:
+            understanding["pan"] = case.pan.strip()
+        if case.assessment_year:
+            understanding["ay"] = case.assessment_year.strip()
+        if case.title:
+            # the title is often "Assessee — AY ..."; take the assessee part
+            understanding["assessee"] = re.split(r"\s+[—\-]\s+", case.title.strip())[0].strip()
+        if case.section:
+            understanding.setdefault("section", case.section.strip())
         issues = understanding.get("issues") or []
         if not issues:
             issues = _detect_issues(docs_text) or [{"issue": "Issues arising on scrutiny (see documents)",
