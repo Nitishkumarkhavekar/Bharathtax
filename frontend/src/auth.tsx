@@ -16,7 +16,7 @@ interface AuthCtx {
   loading: boolean;
   login: (u: string, p: string) => Promise<Session>;
   logout: () => Promise<void>;
-  setWorkspaceProfile: (key: string | null, wings?: string[] | null) => void;
+  setWorkspaceProfile: (key: string | null, wings?: string[] | null, designation?: string) => void;
 }
 
 /**
@@ -112,10 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return s;
   }
 
-  function setWorkspaceProfile(key: string | null, wings: string[] | null = null) {
+  function setWorkspaceProfile(key: string | null, wings: string[] | null = null, designation?: string) {
     setSession((prev) => {
       if (!prev) return prev;
       const next = { ...prev, workspaceProfile: key, workspaceWings: key === "custom" ? wings : null };
+      if (designation !== undefined) next.designation = designation;
       localStorage.setItem(SESS, JSON.stringify(next));
       return next;
     });

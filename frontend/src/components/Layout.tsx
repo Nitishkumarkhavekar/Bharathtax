@@ -505,6 +505,12 @@ function IdentityStrip() {
 
 function LayoutInner({ children }: { children: ReactNode }) {
   const loc = useLocation();
+  const { session } = useAuth();
+  const isAdmin = !!session && ["super_admin", "wing_admin"].includes(session.role);
+  // A brand-new officer still has to pick their designation + department; the
+  // welcome tour must wait until that first-run wizard is done, otherwise it
+  // fires behind the modal and is missed.
+  const needsOnboarding = !!session && !isAdmin && !session.workspaceProfile;
   const current = NAV.find((n) => loc.pathname.startsWith(n.to));
   const [mobileOpen, setMobileOpen] = useState(false);
   // Desktop sidebar collapsed state — persisted so it survives page reloads
@@ -533,16 +539,22 @@ function LayoutInner({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [loc.pathname]);
 
-  // First-visit welcome tour — shown once, re-openable from the header help button.
+  // First-visit welcome tour — shown once, re-openable from the header help
+  // button. Opens the tour only if it hasn't been seen yet.
   const [tourOpen, setTourOpen] = useState(false);
-  useEffect(() => {
+  const startTour = () => {
     try {
-      if (localStorage.getItem("bt_tour_seen_v1") !== "1") {
-        const t = setTimeout(() => setTourOpen(true), 600);
-        return () => clearTimeout(t);
-      }
+      if (localStorage.getItem("bt_tour_seen_v1") !== "1") setTourOpen(true);
     } catch { /* */ }
-  }, []);
+  };
+  // Existing officers (already onboarded) get the tour shortly after load.
+  // New officers are onboarding first — startTour() runs when the wizard
+  // completes (onComplete below), so the tour lands right after they set up.
+  useEffect(() => {
+    if (needsOnboarding) return;
+    const t = setTimeout(startTour, 600);
+    return () => clearTimeout(t);
+  }, [needsOnboarding]);
   const closeTour = () => {
     setTourOpen(false);
     try { localStorage.setItem("bt_tour_seen_v1", "1"); } catch { /* */ }
@@ -553,7 +565,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
     // header stay fixed and ONLY <main> scrolls (previously min-h-screen let the
     // whole page grow, scrolling the body — sidebar and all).
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <WorkspaceProfilePrompt />
+      <WorkspaceProfilePrompt onComplete={startTour} />
       {/* Government-grade identity band across the very top, above the shell. */}
       <IdentityStrip />
       <div className="flex-1 flex min-h-0 overflow-hidden">
