@@ -31,6 +31,23 @@ def test_assessment_document_text_is_fenced_as_untrusted():
     assert "Return figures" in out                # legitimate content survives
 
 
+def test_clean_strips_leaked_fence_markers_and_intro_echo():
+    # a malicious document can provoke the model to echo fence markers / the
+    # intro instruction; _clean must remove them from the order text.
+    dirty = (
+        "<<UNTRUSTED_DOCUMENT>>\n"
+        "Draft the OPENING PARAGRAPH(S) of an assessment order. State: the return…\n"
+        "This order is framed under section 143(3) in the case of M/s X, PAN ABCDE1234F.\n"
+        "<<END_UNTRUSTED_DOCUMENT>>"
+    )
+    out = assessment_draft._clean(dirty)
+    assert "UNTRUSTED" not in out
+    assert "Draft the OPENING PARAGRAPH" not in out
+    assert "This order is framed under section 143(3)" in out    # real prose kept
+    # appeal _clean also strips fence markers
+    assert "UNTRUSTED" not in appeal_draft._clean("text <<UNTRUSTED_DOCUMENT>> more")
+
+
 def test_appeal_document_text_is_fenced_as_untrusted():
     # a pre-computed digest avoids the (LLM) digest step
     doc = SimpleNamespace(

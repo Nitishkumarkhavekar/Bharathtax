@@ -150,9 +150,18 @@ def _last_meta() -> dict | None:
             "latency_ms": getattr(c, "last_latency_ms", None)}
 
 
+_FENCE_ECHO_RE = re.compile(r"<<\s*/?\s*(?:END_)?UNTRUSTED[A-Z_]*\s*>>", re.I)
+_INTRO_ECHO_RE = re.compile(
+    r"(?is)^\s*Draft the OPENING PARAGRAPH.*?(?=\n\s*This (?:order|assessment)\b|\Z)")
+
+
 def _clean(text: str) -> str:
-    """Strip prompt scaffolding the model may have echoed into its output."""
+    """Strip prompt scaffolding the model may have echoed into its output —
+    including any guard fence markers (e.g. <<UNTRUSTED_DOCUMENT>>) or a parroted
+    intro instruction that a malicious uploaded document can provoke."""
     t = text or ""
+    t = _FENCE_ECHO_RE.sub("", t)          # never let a fence marker reach the order
+    t = _INTRO_ECHO_RE.sub("", t)          # drop a parroted "Draft the OPENING PARAGRAPH…" echo
     m = re.search(r"(?im)^\s*(citation rules|retrieved law\b|=+\s*retrieved law)", t)
     if m:
         t = t[:m.start()]
