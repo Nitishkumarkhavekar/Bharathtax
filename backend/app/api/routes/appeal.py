@@ -915,7 +915,9 @@ def instruct_draft(cid: str, body: DraftInstruction,
             },
         ) from e
 
-    revised_piece = (revised_piece or "").strip()
+    # Scrub any provoked meta-reply / leaked marker or secret from the edit
+    # before it is spliced into the order (an appellate order never says this).
+    revised_piece = _pg.scrub_meta_leak(_pg.redact_output((revised_piece or "").strip())).strip()
     if not revised_piece:
         raise HTTPException(502, "The AI returned an empty draft — please try rephrasing the instruction")
 

@@ -451,6 +451,25 @@ _TABLE_RE = re.compile(
 _ECHOED_FENCE_RE = re.compile(r"<<(?:/?END_)?UNTRUSTED[_A-Z]*>>", re.IGNORECASE)
 
 
+_META_LEAK_LINE_RE = re.compile(
+    r"(?im)^.*\b("
+    r"system prompt|my (?:instructions|system prompt|system message)|internal instructions|"
+    r"instruction[- ]hierarchy|as an ai\b|as a language model|"
+    r"i (?:cannot|can't|will not|won't|am not able to|am unable to) (?:reveal|print|share|disclose|provide|show)|"
+    r"ignore (?:all|the|any) (?:previous|above|prior|following) instructions"
+    r")\b.*$")
+
+
+def scrub_meta_leak(text: str | None) -> str:
+    """Remove any whole line that references the model's own instructions /
+    system prompt, or that echoes a jailbreak directive. Safe for a legal
+    order or notice — such a document never legitimately says these things — so
+    it turns a provoked meta-reply (or a refusal sentence) into clean output."""
+    if not text:
+        return text or ""
+    return _META_LEAK_LINE_RE.sub("", text)
+
+
 def redact_output(text: str | None) -> str:
     """Strip secrets, credentials, DB URLs, absolute paths, fence markers,
     and canary tokens from an LLM response."""
