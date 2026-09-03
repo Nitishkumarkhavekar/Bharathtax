@@ -26,6 +26,7 @@ from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRu
 from app.models.org import User
 from app.services import llm as llm_mod
 from app.services import personalization
+from app.services import prompt_guard as _pg
 
 
 class _RunCancelled(Exception):
@@ -436,13 +437,20 @@ def _sys(persona: str = "") -> str:
     return (persona + "\n\n" + OFFICER_SYSTEM) if persona else OFFICER_SYSTEM
 
 
+def _sec(persona: str = "") -> str:
+    # Front every appeal LLM call with the instruction-hierarchy note so
+    # document text inside <<UNTRUSTED_DOCUMENT>> fences is read as data, never
+    # as commands. Kept out of _sys so _sys stays byte-for-byte (see tests).
+    return _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n" + _sys(persona)
+
+
 def _complete(user: str, *, max_tokens: int = 900, persona: str = "") -> str:
     # llama-3.1-8b-instruct on the gateway has a 6K context window; keep the
     # output budget low so the *input* prompt has room to fit the docs +
     # retrieved law. Pass a bigger max_tokens explicitly for assembly.
     client = _appeal_llm()
     _LAST.client = client
-    return client.complete(_sys(persona), user, max_tokens=max_tokens)
+    return client.complete(_sec(persona), user, max_tokens=max_tokens)
 
 
 def _last_llm_meta() -> dict | None:
@@ -469,11 +477,11 @@ def _complete_json(user: str, *, max_tokens: int = 1500, persona: str = "") -> d
     _LAST.client = client
     if isinstance(client, (GeminiLLM, FallbackLLM)):
         txt = client.complete(
-            _sys(persona) + "\n\nReturn ONLY a single valid JSON object.",
+            _sec(persona) + "\n\nReturn ONLY a single valid JSON object.",
             user, max_tokens=max_tokens, json_mode=True)
     else:
         txt = client.complete(
-            _sys(persona) + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.",
+            _sec(persona) + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.",
             user, max_tokens=max_tokens)
     s = txt.strip()
     if s.startswith("```"):
@@ -674,7 +682,7 @@ def _docs_text(case: AppealCase, db: Session | None = None,
                 capture.set_context(**_pctx)
             except Exception:  # noqa: BLE001
                 pass
-            return _digest_one(d.filename, d.category, (d.text or "").strip()).strip()
+            return _digest_one(d.filename, d.category, _pg.sanitize_untrusted((d.text or "").strip())).strip()
         with ThreadPoolExecutor(max_workers=min(len(need), _GEMINI_CONCURRENCY)) as _ex:
             _bodies = list(_ex.map(_digest_doc, need))
         for d, body in zip(need, _bodies):
@@ -686,14 +694,16 @@ def _docs_text(case: AppealCase, db: Session | None = None,
                 db.rollback()
     parts = []
     for d in _docs:
-        body = (d.digest or d.text or "").strip()
+        body = _pg.sanitize_untrusted((d.digest or d.text or "").strip())
         if len(body) > per_doc:
             body = body[:per_doc] + "\n…[truncated]…"
         parts.append(f"===== {d.filename} (category: {d.category}) =====\n{body}")
     blob = "\n\n".join(parts)
     if len(blob) > max_chars:
         blob = blob[:max_chars] + "\n…[truncated]…"
-    return blob
+    # Fence the whole document block as untrusted data (the _sys note tells the
+    # model to read <<UNTRUSTED_DOCUMENT>> content as data, never as commands).
+    return _pg.wrap_untrusted(blob, kind="document") if blob.strip() else blob
 
 
 def _trim(s: str, n: int) -> str:
@@ -893,7 +903,7 @@ def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "
             intro = facts[:1200]
     try:
         result = _clean(_appeal_llm().complete(
-            _sys(persona),
+            _sec(persona),
             "Write ONLY the concluding OPERATIVE portion of the appellate order, in 4-8 sentences. "
             "State the outcome of EACH AND EVERY numbered ground in one sentence each, in order and "
             "omitting none, consistent with the finding recorded for that ground (e.g. 'Ground No. 1 is allowed / "

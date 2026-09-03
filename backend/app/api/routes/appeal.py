@@ -16,6 +16,7 @@ from sqlalchemy import func, select, desc
 from sqlalchemy.orm import Session
 
 from app.api.deps import Principal, client_meta, get_principal
+from app.services import prompt_guard as _pg
 from app.services.quota import require_quota
 from app.core.db import get_db
 from app.models.appeal import AppealCase, AppealDocument, AppealOutput, AppealRun
@@ -694,6 +695,7 @@ class DraftInstruction(BaseModel):
 # changed. Only that section (heading + body) is sent to the LLM; the rest of
 # the order is untouched. Big latency + cost win vs. sending the whole draft.
 _INSTRUCT_SYSTEM_SECTION = (
+    _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n"
     "You are an expert AI editor for Indian income-tax appellate orders (CIT(A) / NFAC). "
     "You are given ONE SECTION of a draft order and a natural-language INSTRUCTION from "
     "the reviewing officer. Rewrite ONLY that section to satisfy the instruction.\n"
@@ -721,6 +723,7 @@ _INSTRUCT_SYSTEM_SECTION = (
 # Fallback system prompt when no section could be identified — same as before,
 # whole-draft rewrite.
 _INSTRUCT_SYSTEM_WHOLE = (
+    _pg.INSTRUCTION_HIERARCHY_NOTE + "\n\n"
     "You are an expert AI editor for Indian income-tax appellate orders (CIT(A) / NFAC). "
     "You are given the CURRENT DRAFT of an order and a natural-language INSTRUCTION from the "
     "reviewing officer. Rewrite the draft to satisfy the instruction.\n"
@@ -814,6 +817,7 @@ def instruct_draft(cid: str, body: DraftInstruction,
         raise HTTPException(400, "instruction must not be empty")
     if len(instruction) > 4000:
         raise HTTPException(400, "instruction too long (max 4000 chars)")
+    instruction = _pg.sanitize_untrusted(instruction)   # untrusted edit request
 
     case = _get_case(db, p.user, cid)
     run = _latest_run(db, case.id)
@@ -848,7 +852,7 @@ def instruct_draft(cid: str, body: DraftInstruction,
     # splice the rewrite back into the full draft. If we can't identify a
     # target confidently, fall back to a whole-draft rewrite.
     from app.services import draft_sections as _sec
-    selection = (body.selection or "").strip()
+    selection = _pg.sanitize_untrusted((body.selection or "").strip())
     sel_span = _locate_selection(current_text, selection) if selection else None
     sel_found = sel_span is not None
     sel_excerpt = current_text[sel_span[0]:sel_span[1]] if sel_span else selection
