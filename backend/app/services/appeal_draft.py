@@ -294,7 +294,7 @@ _FENCE_ECHO_RE = re.compile(r"<<\s*/?\s*(?:END_)?UNTRUSTED[A-Z_]*\s*>>", re.I)
 def _clean(text: str) -> str:
     """Strip prompt scaffolding the model may have echoed into its output,
     including any guard fence markers a malicious document could provoke."""
-    t = _FENCE_ECHO_RE.sub("", text or "")
+    t = _pg.scrub_meta_leak(_FENCE_ECHO_RE.sub("", text or ""))
     m = re.search(r"(?im)^\s*(citation rules|retrieved law\b|=+\s*retrieved law)", t)
     if m:
         t = t[:m.start()]
@@ -454,7 +454,9 @@ def _complete(user: str, *, max_tokens: int = 900, persona: str = "") -> str:
     # retrieved law. Pass a bigger max_tokens explicitly for assembly.
     client = _appeal_llm()
     _LAST.client = client
-    return client.complete(_sec(persona), user, max_tokens=max_tokens)
+    out = client.complete(_sec(persona), user, max_tokens=max_tokens)
+    # Never let an echoed fence marker or a leaked secret reach any output.
+    return _pg.redact_output(_FENCE_ECHO_RE.sub("", out or ""))
 
 
 def _last_llm_meta() -> dict | None:
@@ -487,6 +489,7 @@ def _complete_json(user: str, *, max_tokens: int = 1500, persona: str = "") -> d
         txt = client.complete(
             _sec(persona) + "\n\nRespond with ONLY a valid JSON object, no prose, no code fences.",
             user, max_tokens=max_tokens)
+    txt = _pg.redact_output(_FENCE_ECHO_RE.sub("", txt or ""))   # strip any echoed fence/secret
     s = txt.strip()
     if s.startswith("```"):
         s = s.split("```", 2)[1]

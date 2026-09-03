@@ -114,7 +114,8 @@ def _sec(persona: str = "") -> str:
 def _complete(user: str, *, max_tokens: int = 1100, persona: str = "") -> str:
     client = ad._appeal_llm()
     _LAST.client = client
-    return client.complete(_sec(persona), user, max_tokens=max_tokens)
+    out = client.complete(_sec(persona), user, max_tokens=max_tokens)
+    return _pg.redact_output(_FENCE_ECHO_RE.sub("", out or ""))
 
 
 def _complete_json(user: str, *, max_tokens: int = 3000, persona: str = "") -> dict:
@@ -125,6 +126,7 @@ def _complete_json(user: str, *, max_tokens: int = 3000, persona: str = "") -> d
         txt = client.complete(sys, user, max_tokens=max_tokens, json_mode=True)
     else:
         txt = client.complete(sys, user, max_tokens=max_tokens)
+    txt = _pg.redact_output(_FENCE_ECHO_RE.sub("", txt or ""))
     s = (txt or "").strip()
     if s.startswith("```"):
         s = s.split("```", 2)[1]
@@ -162,6 +164,7 @@ def _clean(text: str) -> str:
     t = text or ""
     t = _FENCE_ECHO_RE.sub("", t)          # never let a fence marker reach the order
     t = _INTRO_ECHO_RE.sub("", t)          # drop a parroted "Draft the OPENING PARAGRAPH…" echo
+    t = _pg.scrub_meta_leak(t)             # drop any provoked meta-reply / instruction echo
     m = re.search(r"(?im)^\s*(citation rules|retrieved law\b|=+\s*retrieved law)", t)
     if m:
         t = t[:m.start()]
