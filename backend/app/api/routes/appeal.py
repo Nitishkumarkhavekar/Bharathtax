@@ -671,7 +671,7 @@ def reassemble(cid: str, p: Principal = Depends(get_principal),
     understanding = json.loads(im.content) if im else {}
     findings = sorted([o for o in outs if o.kind == "finding"], key=lambda o: o.seq)
     blocks = [f"### Issue: {o.label}\n\n{o.content}" for o in findings]
-    draft = svc.assemble(understanding, blocks)
+    draft = svc.assemble(understanding, blocks, case=case)
     cur = list(db.scalars(select(AppealOutput).where(AppealOutput.run_id == run.id, AppealOutput.kind == "draft")))
     ver = max([o.version for o in cur], default=0) + 1
     o = AppealOutput(run_id=run.id, kind="draft", content=draft, version=ver)
