@@ -288,9 +288,13 @@ OFFICER_SYSTEM = (
 )
 
 
+_FENCE_ECHO_RE = re.compile(r"<<\s*/?\s*(?:END_)?UNTRUSTED[A-Z_]*\s*>>", re.I)
+
+
 def _clean(text: str) -> str:
-    """Strip prompt scaffolding the model may have echoed into its output."""
-    t = text or ""
+    """Strip prompt scaffolding the model may have echoed into its output,
+    including any guard fence markers a malicious document could provoke."""
+    t = _FENCE_ECHO_RE.sub("", text or "")
     m = re.search(r"(?im)^\s*(citation rules|retrieved law\b|=+\s*retrieved law)", t)
     if m:
         t = t[:m.start()]
