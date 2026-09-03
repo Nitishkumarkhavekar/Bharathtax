@@ -840,10 +840,11 @@ def _parse_date(v: str):
     return None
 
 
-def _build_intro(understanding: dict, docs_text: str) -> str:
+def _build_intro(understanding: dict, docs_text: str, case=None) -> str:
     """Deterministic CIT(A)/NFAC introduction. Extracts the ASSESSMENT-order details
     and Form-35 dates, drops any date after filing (a section-154 rectification), and
-    computes the delay in code."""
+    computes the delay in code. `case` supplies authoritative AY / section from the
+    case record so the header isn't [not on record] when the documents don't restate it."""
     j = _complete_json(
         "From the appeal documents return ONLY JSON (use \"\" if not found; dates dd.mm.yyyy).\n"
         "- assessment_order_section: section of the ORIGINAL assessment / best-judgment order appealed "
@@ -862,11 +863,13 @@ def _build_intro(understanding: dict, docs_text: str) -> str:
         j = {}
     def g(k):
         return (j.get(k) or "").strip()
-    sec = g("assessment_order_section") or "[not on record]"
+    _case_ay = (getattr(case, "assessment_year", "") or "").strip()
+    _case_sec = (getattr(case, "section", "") or "").strip()
+    sec = g("assessment_order_section") or _case_sec or "[not on record]"
     order_date, service = g("assessment_order_date"), g("service_date")
     filing = (understanding.get("institution_date") or "").strip() or g("filing_date")
     ao = g("ao") or "the Assessing Officer"
-    ay = g("ay") or "[not on record]"
+    ay = g("ay") or _case_ay or "[not on record]"
     od, sd, fd = _parse_date(order_date), _parse_date(service), _parse_date(filing)
     # a date AFTER filing is a later (section-154) order, not the impugned one -> drop
     if fd and od and od > fd:
@@ -890,7 +893,7 @@ def _build_intro(understanding: dict, docs_text: str) -> str:
 
 
 def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "",
-             intro: str | None = None, persona: str = "") -> str:
+             intro: str | None = None, persona: str = "", case=None) -> str:
     """Stitch the drafted parts into a complete, properly-structured order. Grounds,
     Facts and Submissions sections are always populated; each finding gets ONE clean
     'Ground No. N' heading (leading duplicates stripped); the operative Result is
@@ -902,7 +905,7 @@ def assemble(understanding: dict, findings_blocks: list[str], docs_text: str = "
     submissions = (understanding.get("appellant_submissions", "") or "").strip()
     if not intro:
         try:
-            intro = _build_intro(understanding, docs_text or facts)
+            intro = _build_intro(understanding, docs_text or facts, case)
         except Exception:
             intro = facts[:1200]
     try:
@@ -1203,7 +1206,7 @@ def run_case(run_id: int) -> None:
             except Exception:  # noqa: BLE001
                 pass
             try:
-                _intro_box["intro"] = _build_intro(understanding, docs_text)
+                _intro_box["intro"] = _build_intro(understanding, docs_text, case)
                 _intro_box["meta"] = _last_llm_meta()
             except Exception:  # noqa: BLE001
                 _intro_box["intro"] = ""
